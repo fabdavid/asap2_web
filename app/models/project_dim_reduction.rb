@@ -1,0 +1,2 @@
+class ProjectDimReduction < ApplicationRecord
+end

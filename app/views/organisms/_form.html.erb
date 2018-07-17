@@ -1,0 +1,32 @@
+<%= form_for(organism) do |f| %>
+  <% if organism.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(organism.errors.count, "error") %> prohibited this organism from being saved:</h2>
+
+      <ul>
+      <% organism.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+<table>
+<tr>
+<td>Name</td><td><%= f.text_field :name %></td>
+</tr><tr>
+<td>Short name</td><td><%= f.text_field :short_name %></td>
+</tr><tr>
+<td>Taxonomic id</td><td><%= f.text_field :tax_id %></td>
+</tr><tr>
+<td>GenRep key</td><td><%= f.text_field :genrep_key %></td>
+</tr><tr>
+<td>Tag (used in global geneset filenames for example)</td><td><%= f.text_field :tag %></td>
+</tr>
+</table>
+
+
+  <div class="actions">
+    <%= f.submit %>
+  </div>
+<% end %>

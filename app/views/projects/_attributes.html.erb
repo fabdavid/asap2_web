@@ -1,0 +1,147 @@
+<%# h_attrs.to_json %>
+<% h_attrs ||= {} %>
+<%# h_attrs = @h_attrs %>
+<%= raw "<div class='form-inline'>" if @form_inline %>
+
+<% @attrs.select{|attr| attr['widget'] and !attr['obsolete']}.each do |attr| %>
+<div class='form-group <%= @div_class || '' %>'>
+ <% attr_name = "attrs[" + attr['name'] + "]" %>
+<% if attr['widget']!='checkbox' and attr['widget']!='hidden' %> 
+ <%= label_tag attr_name, attr['label'], {'data-toggle' => 'tooltip', 'title' => attr['description']} %>
+<% end %>
+ <% if attr['widget']=='textfield' %>
+  <%= text_field_tag attr_name, h_attrs[attr['name']] || attr['default'] || '', {:class => "form-control", :placeholder => ""} %>
+
+ <% elsif attr['widget']=='hidden' %>
+  <%= hidden_field_tag attr_name, h_attrs[attr['name']] || attr['default'] || '', {:class => "form-control", :placeholder => ""} %>
+
+ <% elsif attr['widget']=='checkbox' %>
+  <% h_checkbox = {:placeholder => "", 'data-toggle' => 'tooltip', 'title' => attr['description']} %>
+  <%# h_checkbox[:checked] = false %>
+  <%# h_checkbox[:checked] = true if (h_attrs[attr['name']] and h_attrs[attr['name']] != false) or (!h_attrs[attr['name']] and attr['default'] != false) %>
+  <%# [(@ps.status_id != nil and h_attrs[attr['name']] and h_attrs[attr['name']] != false) , (!@ps.status_id and !h_attrs[attr['name']] and attr['default'] != false)].to_json %>
+  <%# h_attrs.to_json %>
+  <%#  h_checkbox.to_json %>
+  <%# ((h_attrs[attr['name']] and h_attrs[attr['name']] != false) or (!h_attrs[attr['name']] and attr['default'] != false)).to_json %>
+  <%= check_box_tag attr_name, '1', ((@ps.status_id != nil and h_attrs[attr['name']] and h_attrs[attr['name']] != false) or (!@ps.status_id and !h_attrs[attr['name']] and attr['default'] != false)),  h_checkbox %>
+  <%= label_tag attr_name, attr['label'], {'data-toggle' => 'tooltip', 'title' => attr['description']} %>
+
+
+ <% elsif attr['widget'] == 'select' %>
+  <% l = [] %>
+  <% if attr['min_val'] and attr['max_val'] %>
+   <% l = (attr['min_val'] .. attr['max_val']).to_a.map{|e| [e, e]}.sort %>
+  <% elsif attr['list'] %>
+   <% l = attr['list'] %>
+  <% end %> 
+  <% l.unshift([((attr['null_name']) ? attr['null_name'] : "None"), nil]) if !attr['not_null'] %>
+  <%= select_tag attr_name, options_for_select(l, h_attrs[attr['name']] || attr['default']), {class: 'form-control'} %>
+ <% end %>
+
+<% if attr['name'] == 'batch_file_exists' %>
+<b>using <a href='https://www.bu.edu/jlab/wp-assets/ComBat/Abstract.html' target='_blank'>ComBat</a>.</b>
+<% end %>
+<% if (attr['name'] == 'batch_file_exists' or attr['name'] == 'batch_file') and editable? @project %>
+<span>To add a batch file <span id='edit_project_link' class='btn btn-default btn-xs' class='edit_project'>Edit project</span> </span>
+<% end %>
+
+</div>
+
+<% end %>
+
+<%= raw @button || '' %>
+
+<%= raw "</div>"  if @form_inline %>
+
+<%= javascript_tag do %>
+    $('[data-toggle="tooltip"]').tooltip();
+
+function get_infos(){
+ var infos='';
+ if ($("#attrs_nbclust").val() == ''){
+  infos += "<span class='label label-info'>Auto clustering will perform a Silhouette analysis with k in [2,20] and pick the best k as the optimal number of clusters</span>"
+ }
+ return infos
+}
+
+var infos = get_infos();
+$("#infos").html(infos);
+
+$("#method_warning").html("<span class='label label-danger'><%= @warning || '' %></span>");
+
+<% if @button %>
+$(".replot").click(function(){
+var item_id = this.id.split("_")[2];
+var p = $('#visualization_form').serializeArray();
+p.push({"name" : "dr_id", "value" : item_id});
+ refresh_visualisation(item_id);
+//refresh_post("visualization_container", "<%= replot_project_path(:key => @project.key) %>", p, 'post');
+$('#dr_' + item_id + " img").attr("src", "<%= raw image_url('pending.gif') %>");
+$("#step_4 img").attr("src", "<%= raw image_url('pending.gif') %>");
+});
+<% end %>
+
+<% end %>
+
+<%= javascript_tag do %>
+
+<% if params[:obj_name] =='cluster_method' %>
+/*$("#cluster_cluster_method_id").change(function(){
+if ($("#cluster_cluster_method_id").val()!= null){
+ upd_attributes();
+}
+});*/
+<% end %>
+
+<% @attrs.select{|attr| attr['widget']}.each do |attr| %>
+ <% if attr['condition'] == 'batch_file_exists' %>
+
+  <% if !@batch_file_exists %>   
+   $("#attrs_<%= attr['name'] %>").prop("checked", false );
+   $("#attrs_<%= attr['name'] %>").prop("disabled", true );
+  <% else %>
+//   $("#attrs_<%= attr['name'] %>").prop("checked", true );
+   $("#attrs_<%= attr['name'] %>").prop("disabled", false );
+  <% end %>
+ <% elsif attr['condition'] == 'ercc_file_exists' %>
+  <% if !@ercc_file_exists %>
+   $("#attrs_<%= attr['name'] %>").prop("checked", false );
+   $("#attrs_<%= attr['name'] %>").prop("disabled", true );
+  <% else %>
+   $("#attrs_<%= attr['name'] %>").prop("checked", true );
+   $("#attrs_<%= attr['name'] %>").prop("disabled", false );
+  <% end %>
+ <% end %>
+<% end %>
+
+$("#attrs_nbclust").change(function(){
+var infos = get_infos();
+$("#infos").html(infos);
+});
+
+// add tooltip to disabled checkbox
+
+$('input:disabled').after(function (e) {
+    d = $("<div>");
+    i = $(this);
+    d.css({
+        height: i.outerHeight(),
+        width: i.outerWidth(),
+        position: "absolute",
+        cursor: 'no-drop'
+    })
+    d.css(i.offset());
+    d.attr("title", i.attr("data-original-title"));
+    d.attr("data-toggle", i.attr("data-toggle"));
+    d.tooltip();
+    return d;
+});
+
+if ($("#edit_project_link").html()){
+$("#edit_project_link").click(function(){
+refresh("form_container", "<%= edit_project_path(@project.key) %>?global=1");
+$("#ontop_window").removeClass("hidden");
+});
+}
+
+<% end %>

@@ -1,0 +1,60 @@
+<% @pdr_params ||= {} %>
+<%# if Selection.where(:project_id => @project.id).count == 0 %>
+<!--<span class="label label-info">Please create first a selection from the manual selection (from PCA, tSNE, ZIFA views) or from a cluster</span>-->
+<%# else %>
+<% if analyzable? @project and owner? @project %>
+
+<div class='form-inline'>
+  <div id='div_correlation_widgets' class='form-group'>
+    <%= label_tag 'dataset', 'Dataset' %>
+    <% l = [['Original data', 'parsing'], ['Filtered data', 'filtering'], ['Normalized data', 'normalization']] %>
+    <%= select_tag 'attrs[dataset]', options_for_select(l,  @pdr_params['dataset'] || 'normalization'), {class: 'form-control'} %>
+<!--  </div>
+  <div id='div_cell_name1' class='form-group attr_table'>-->
+    <%= label_tag 'gene_set', 'Cell 1' %>
+    <%# l = Selection.where(:project_id => @project.id).all.map{|s| [s.label, s.id]} %>
+    <%# select_tag 'attrs[selection_id_1]', options_for_select(l, @pdr_params['selection_id_1'] || l.first[1]), {class: 'form-control attrs_selections'} %>
+    <%= select_tag 'attrs[cell_name_1]', options_for_select(@cells, @pdr_params['cell_name_1'] || @cells.first[1]), {class: 'form-control'} %>
+<!--  </div>
+  <div id='div_cell_name2' class='form-group attr_table'>-->
+    <%= label_tag 'gene_set', 'Cell 2' %>
+    <%# l = Selection.where(:project_id => @project.id).all.map{|s| [s.label, s.id]} %>
+    <%# select_tag 'attrs[selection_id_2]', options_for_select(l, @pdr_params['selection_id_2'] || l.first[1]), {class: 'form-control attrs_selections'} %>
+    <%= select_tag 'attrs[cell_name_2]', options_for_select(@cells,  @pdr_params['cell_name_2'] || @cells.second[1]), {class: 'form-control'} %>
+<!--  </div>
+  <div id='div_visualization_button' class='form-group attr_table'>-->
+    <span id="visualization_button" class='btn btn-primary' style=''>Plot</span>
+  </div>
+</div>
+<% end %>
+
+<%= javascript_tag do %>
+
+/*
+function upd_corr_plot_fields(num){
+var sel_id = $("#attrs_selection_id_" + num).val();
+if (selections[sel_id]['item_list'] && selections[sel_id]['item_list'].length > 0){
+ //alert( selections[sel_id]['item_list'].join(";"))
+ var cell_names = $("#attrs_cell_name_" + num);
+ cell_names.empty();
+ $.each(selections[sel_id]['item_list'], function() {
+  //   alert(this);
+     cell_names.append($("<option />").val(this).text(this));
+ });
+ cell_names.removeClass("hidden");
+}else{
+cell_names.addClass("hidden");
+}
+}
+
+//upd_corr_plot_fields(1);
+//upd_corr_plot_fields(2);
+
+$('.attrs_selections').change(function(){
+ var num = this.id.split("_")[3];
+ upd_corr_plot_fields(num);
+});
+
+*/
+
+<% end %>

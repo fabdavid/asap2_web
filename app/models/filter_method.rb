@@ -1,0 +1,2 @@
+class FilterMethod < ApplicationRecord
+end

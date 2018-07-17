@@ -1,0 +1,83 @@
+<nav class="navbar navbar-light bg-faded  navbar-fixed-top" style='background-color:white;z-index:10000'>
+<ul id='dim_reduction_tabs' class="nav nav-tabs">
+<% DimReduction.all.sort.each do |dr| %>
+ <% img = '' %>
+ <% pdr = @h_pdr[dr.id] %>
+ <% status = (pdr) ? pdr.status : nil  %>
+ <% img = image_tag(status.name + "." + status.img_extension, :width => '15px', :style => 'margin-top:-10px;') if status %>
+
+ <% class_names = ['visualization_item'] %>
+ <% class_names.push('active') if dr.id == session[:active_dr_id] %>
+ <li class="<%= class_names.join(" ") %>"><a id="dr_<%= dr.id %>"><%= raw dr.label + ((img) ? (' ' + img) : '') %></a></li>
+<% end %>
+<%# if admin? %>
+<%# class_names = ['visualization_item']
+ #class_names.push('active') if session[:active_viz_type] == 'heatmap' %>
+<%# end %>
+</ul>
+</nav>
+
+<div id='full_screen_visualization' class='hidden'>
+  <div class='window_close'><span onclick="$('#full_screen_visualization').addClass('hidden');">x</span></div>
+  <div class='window_content'></div>
+</div>
+<div id='visualization_container'></div>
+
+<%= javascript_tag do %>
+
+function validate(item_id){
+
+var v = true;
+//alert($("#attrs_geneset_type").val());
+if (item_id == 5 && $("#attrs_geneset_type").val() != 'all' && 
+($("#attrs_geneset_name").val() != $("#attrs_geneset_name_saved").val() ||  $("#attrs_geneset_name").val() == '')){
+ alert("Invalid parameters: please select a gene set");
+ v = false;
+}
+return v;
+}
+
+$("#full_screen_visualization div.window_close").click(function(){
+  $("#full_screen_visualization").addClass("hidden");
+  $("#full_screen_visualization div.window_content").empty();
+  if ($('#visualization_form')){
+   var p = $('#visualization_form').serializeArray();
+   p.push({'name' : 'project_key', 'value' : '<%= @project.key %>'});
+   p.push({'name' : 'dr_id', 'value' : '<%= session[:active_dr_id] %>'});
+   refresh_post("visualization_container", "<%= replot_project_path(:key => @project.key) %>", p, 'post');
+  }
+});
+
+
+function refresh_visualisation(item_id=null, active_item_id=null, viz_type=null, force=null){
+
+//alert(item_id + "_" +  viz_type);
+ if ( force == true || (validate(item_id) == true && $('#visualization_form') && $('#visualization_form').html())){ 
+//alert('tada');
+  var p = $('#visualization_form').serializeArray();
+ // alert( $('#visualization_form'));
+if(active_item_id){
+  p.push({"name" : "active_item", "value" : active_item_id});
+  p.push({"name" : "active_viz_type", "value" : viz_type});
+}
+  p.push({"name" : "dr_id", "value" : item_id});
+  refresh_post("visualization_container", "<%= replot_project_path(:key => @project.key) %>", p, 'post');
+ }
+}
+
+$(".visualization_item a").click(function(){
+ var item_id = this.id.split("_")[1];
+ $('#dim_reduction_tabs li.active').removeClass('active');
+ $("#dr_" + item_id).parent().addClass("active");
+ refresh_visualisation(item_id, item_id);
+});
+
+$( document ).ready(function() {
+ refresh_visualisation(<%= session[:active_dr_id] %>, <%= session[:active_dr_id] %>, '<%= session[:active_viz_type] %>', true);
+});
+
+set_margins();
+
+<% end %>
+
+

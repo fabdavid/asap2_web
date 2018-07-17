@@ -1,0 +1,86 @@
+<div class='alert alert-info'><%= raw Step.find(3).description %></div>
+
+<h2>Normalization options</h2>
+<%= form_for(@project, :url => project_path(@project.key), :html => {:id => 'normalization_form'}) do |f| %>
+  <% if @project.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(@project.errors.count, "error") %> prohibited this project from being saved:</h2>
+
+      <ul>
+      <% @project.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+<div class='form-group form-inline'>
+<%= label_tag 'project_norm_id', "Normalization method (all output are log2)", {'data-toggle' => 'tooltip', 'title' => ""} %>
+<% l = Norm.all.select{|e| e.hidden == false}.select{|e| @all_results[:parsing] and @all_results[:parsing]['is_count_table'] == 1 or e.handles_log == true}.map{|e| [e.label, e.id]}.sort %>
+<% l.unshift(["None", nil]) %>
+<%= f.select :norm_id, l, {}, {class: 'form-control'} %>
+<% Speed.all.each do |s| %>
+<%= image_tag 'speed_' + s.name + '.png', :id => 'speed_' + s.id.to_s, :class => 'speed_image hidden', :width => '25px' %>
+<% end %> 
+<span id='method_desc' class='label label-info'></span>
+</div>
+<div id='attrs_container'>
+</div>
+
+
+<%= f.hidden_field :step_id, {:value => 3}  %>
+
+  <div class="actions">
+    <% button_name = "Normalize" %>
+    <%= f.submit button_name, { :class => 'btn btn-primary', :id =>'normalization_button'} %>
+    <button id='cancel' type='button', class='btn btn-secondary'>Cancel</button>
+  </div>
+<% end %>
+
+<%= javascript_tag do %>
+
+
+$('#normalization_form').unbind('submit');
+$('#normalization_form').submit(false);
+
+$("#normalization_button").click(function(){
+ var p = $('#normalization_form').serializeArray();
+ p.push({'name' : 'render_nothing', 'value' : '1'});
+ refresh_post(null, '<%= project_path(@project.key) %>', p, 'post')
+});
+
+
+var h_norms = <%= h ={}; Norm.all.map{|f| h[f.id] = [f.speed_id, f.description, f.link]}; raw h.to_json %>;
+
+$("#project_norm_id").change(function(){
+ $(".speed_image").addClass('hidden');
+ if ($(this).val()){
+//  refresh_attributes('norm', $(this).val());
+  var url = '<%= get_attributes_project_path(:key => @project.key) %>' + '?obj_name=norm&obj_id=' + $(this).val();
+  refresh("attrs_container", url);
+  var img = $("#speed_" + h_norms[$(this).val()][0])
+  if (img) {img.removeClass('hidden');}
+  $("#method_desc").html(h_norms[$(this).val()][1] + ' ' + h_norms[$(this).val()][2]);
+ }else{
+  $("#attrs_container").html("");
+ }
+});
+
+$("#cancel").click(function(){
+refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>");
+});
+
+ 
+ var project_norm_id = $("#project_norm_id").val();
+ if (project_norm_id){
+// refresh_attributes('norm', project_norm_id);
+  var url = '<%= get_attributes_project_path(:key => @project.key) %>' + '?obj_name=norm&obj_id=' + project_norm_id;
+  refresh("attrs_container", url);
+  var img = $("#speed_" + h_norms[project_norm_id][0])
+  if (img) {img.removeClass('hidden');}
+  $("#method_desc").html(h_norms[project_norm_id][1] + ' ' + h_norms[project_norm_id][2]);
+
+ }
+
+
+<% end %>

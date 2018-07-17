@@ -1,0 +1,122 @@
+<% h_nber = {5 => Cluster, 6 => DiffExpr, 7 => GeneEnrichment} %>
+<nav class="navbar navbar-light bg-faded  navbar-fixed-top" style='margin-top:50px;padding-top:10px; background-color:white;z-index:10000'>
+<!--<div class="col-md-12 text-center">-->
+<!--<div id='project_label'><p class="navbar-brand" href="#">Project '<%= @project.name || 'No name' %>' on <%= (@project.organism) ? @project.organism.short_name : 'No name' %>
+<button type='button' id='edit_project' class='btn btn-default'>Edit project <%= image_tag('edited.png', :width => '15px', :style => 'margin-top:-10px;') %></button>
+-->
+<!--<sup><span id='edit_project_name' class='link'>edit</span></sup>
+</p>
+<span id='form_project_name' class='navbar-brand hidden'></span>
+</span>
+<span id= 'project_organism'><p class="navbar-brand" href="#">on <%= (@project.organism) ? @project.organism.name : 'No name' %> 
+<sup><span id='edit_project_organism' class='link'>edit</span></sup>
+</p>
+<span id='form_project_organism' class='navbar-brand hidden'></span>
+</div>-->
+
+<div id='pipeline' class="nav nav-pills">
+<div style='float:right;margin-right:15px'>
+<% if editable? @project %>
+<button type='button' id='edit_project' class='btn btn-default'><i class='fa fa-cog'></i> Settings<%# image_tag('edited.png', :width => '15px', :style => 'margin-top:-10px;') %></button>
+<% end %>
+<% if exportable?(@project) %>
+ <span id='clone_button' class='btn btn-success'><i class='glyphicon glyphicon-duplicate'></i> Clone</span>
+<% end %>
+</div>
+
+<div style='float:left;display:block;width:200px;overflow:hidden;white-space:nowrap;margin-left:15px' title='<%= @project.name || 'No name' %>'>
+ <% organism_name = (@project.organism) ? @project.organism.short_name : 'No name' %>
+<span class='label label-info'><%= organism_name %></span>
+<%= @project.name || 'No name' %>
+
+<!--<div style='float:left;display:block;width:100px;overflow:hidden;white-space:nowrap' title='<%= organism_name %>'>
+ on <%= organism_name %>
+</div>-->
+</div>
+<div style='position: fixed; font-weight:bold; font-size:12px;top:78px;left:15px'>
+<% if !(@project.sandbox == true or (current_user and current_user.id == @project.user_id)) %>
+<div style='color:#204d74;display:block;float:left;width:150px;overflow:hidden;font-size:12px;font-weight:bold;white-space:nowrap'>Shared by 
+ <span style='' title='<%= @project.user.email %>'><%= @project.user.email %></span> 
+</div>
+<div style='display:block;float:left;margin-left:10px'>
+<% if s = @project.shares.select{|s| s.email == current_user.email}.first %>
+   <% h_title = {'eye-open' => 'View', 'stats' => 'Analyze', 'export' => 'Export'} %>
+   <%= raw [s.view_perm && 'eye-open', s.analyze_perm && 'stats', s.export_perm && 'export'].select{|e| e}.map{|e|
+   "<i title='#{h_title[e]}' class='glyphicon glyphicon-" + e + "'></i>"
+   }.join(" ") %>
+<% end %>
+</div>
+<% end %>
+</div>
+<div style='float:left;padding-left:10px'>
+<% Step.all.sort.select{|s| ProjectStep.where(:project_id => @project.id, :step_id => s.id).first}.each do |step| %>
+ <% img =  image_tag('', :width => '15px', :class => 'hidden', :style => 'margin-top:-10px;') %>
+ <% status = ProjectStep.where(:project_id => @project.id, :step_id => step.id).first.status %>
+ <% img = image_tag(status.name + "." + status.img_extension, :width => '15px', :style => 'margin-top:-10px;') if status and step.id < 5 %>
+
+ <% class_names = ['btn', 'btn-primary', 'pipeline_step', 'disabled'] %>
+ <%# class_names.push('active') if step.id == session[:active_step] %>
+ <%# class_names.push('disabled') if @project.step_id < 3 and (step.id > @project.step_id + 1 or ( step.id == @project.step_id+1 and @project.status.id != 3)) %> 
+<!-- <button type='button' id="step_<%= step.id %>" class="<%= class_names.join(" ") %>" ><%= raw step.label.capitalize %> <span class='nber label label-default'><%= h_nber[step.id].where(:project_id => @project.id, :status_id => 3).count || 0 if step.id > 4 %></span> <%= img %></button>-->
+<button type='button' <%= raw "data-toggle='tooltip' title=''" if step.id == 6 %> id="step_<%= step.id %>" class="<%= class_names.join(" ") %>" ><%= raw step.label.capitalize %> <span class='nber label label-default'><%= '0' if step.id > 4 %></span> <%= img %></button>
+<!-- data-toggle="tooltip" data-placement="bottom" title="Tooltip on bottom" -->
+<% end %>
+</div>
+</div>
+<!--</div>-->
+</nav>
+
+<%= javascript_tag do %>
+
+//$(".pipeline_step").tooltip();
+
+$("#edit_project").click(function(){
+refresh("form_container", "<%= edit_project_path(@project.key) %>?global=1");
+$("#ontop_window").removeClass("hidden");
+});
+
+
+/*
+$("#edit_project_name").click(function(){
+$("#project_name p").addClass('hidden');
+$("#form_project_name").removeClass('hidden');
+});
+
+$("#edit_project_organism").click(function(){
+$("#project_organism p").addClass('hidden');
+$("#form_project_organism").removeClass('hidden');
+});
+*/
+
+$(".pipeline_step").click(function(){
+var step_id = this.id.split("_")[1];
+for (var i=1; i<=<%= Step.count %>; i++){
+ $("#step_" + i).removeClass("active");
+}
+if (!$(this).hasClass("disabled")){
+ $(this).addClass("active");
+ $("#popup_window").addClass('hidden');
+ refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>&active_step=" + step_id);
+}
+$("#popup_window").addClass('hidden');
+});
+
+<% if session[:active_step] == 4 %>
+ var pdrs = <%= raw @project.project_dim_reductions.map{|pdr| [pdr.dim_reduction_id, ((pdr.status_id) ? raw(image_url(@h_statuses[pdr.status_id].name + "." + @h_statuses[pdr.status_id].img_extension)) : '')]}.to_json %>;
+ for (var i=0; i<pdrs.length; i++){
+  $("#dr_" + pdrs[i][0] + " img").attr("src", pdrs[i][1]);
+ }
+ $('#dim_reduction_tabs li.active').removeClass('active');
+<% if  session[:active_dr_id] %>
+ $("#dr_" + <%= session[:active_dr_id] %>).parent().addClass("active");
+<% end %>
+<% end %>
+
+$("#clone_button").click(function(){
+window.location = "<%= clone_project_path(@project.key) %>";
+});
+
+//$('[data-toggle="tooltip"]').tooltip();
+
+<% end %>
+

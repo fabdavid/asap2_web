@@ -1,0 +1,98 @@
+<% if @public_projects.size > 0 %>
+<table id='public_projects' class='job_list'>
+  <thead>
+    <tr>
+      <% if admin? %>
+      <th>Key</th>
+<% end %>
+      <th>Name</th>
+      <th>Organism</th>
+      <th># cells</th>
+      <th># genes</th>
+<!--      <th>Last step</th>
+      <th>Status</th>
+      <th>Duration</th>
+      <th>Submitted</th>-->
+      <th>Last update</th>
+<% if admin? %>
+      <th>User</th>
+<% end %>
+      <th>PMID</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @public_projects.sort{|a, b| b.created_at <=> a.created_at}.each do |project| %>
+      <tr>
+<% if admin? %>
+        <td><%= project.key %></td>
+<% end %>
+        <td class='project_name' title='<%= project.name %>'><%= project.name %></td>
+        <td><%= @h_organisms[project.organism_id].short_name.capitalize %></td>
+        <td><%= project.nber_cells %></td>
+        <td><%= project.nber_genes %></td>
+<!--        <td><%= ((step = project.step) ? step.label : 'NA') %></th>
+        <td><%= raw ((status = project.status) ? "<span class='label label-#{status.label}'>#{status.name}</span>" : 'NA') %></td>
+        <td><%= raw ((project.duration) ? (duration((project.status_id == 2) ? (Time.now - project.updated_at) : project.duration)) : '') %></td>
+        <td><%= raw display_date(project.created_at) %></td>-->
+        <td><%= raw display_date(project.updated_at) %></td>
+<% if admin? %>
+        <% email = (project.user) ? project.user.email : 'NA' %>
+        <td class='email' title='<%= email %>'><%= email %></td>
+<% end %>
+        <td><%= (project.pmid) ? link_to(project.pmid, "https://www.ncbi.nlm.nih.gov/pubmed/#{project.pmid}") : 'NA' %></td>
+        <td>
+	  <%# if project.input_filename %>
+	  <%= button_to ((read_only?(project)) ? 'View (read-only)' : 'Open'), project_path(project.key), {:class => 'btn btn-primary', :method => 'get'} %>
+	  <%# else %>
+	  <%# button_to 'Upload', upload_form_project_path(project.key), {:class => 'btn btn-primary', :method => 'get'} %>
+	  <%# end %>
+</td><td>
+  <% clone_text = (current_user) ? 'Clone' : 'Clone to sandbox' %>
+	  <%= button_to clone_text, clone_project_path(project.key), {:class => 'btn btn-primary', :method => 'get'} %>
+	</td>
+        <%# button_to('Destroy', project_path(project.key), method: :delete, data: { confirm: 'Are you sure?' }, :class => 'btn btn-danger') if current_user and current_user.id == project.user_id %>
+          <td>
+  <% if (current_user and current_user.id == project.user_id) or admin? %>
+	  <button class='delete_item btn btn-danger' id='delete_<%= project.key %>'>Delete</button>
+<% end %>
+          </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/Qk3fwXt3RSM" frameborder="0" gesture="media" allow="encrypted-media" allowfullscreen></iframe>
+
+<%= javascript_tag do %>
+
+$(document).ready(function() {
+    /* Build the DataTable with third column using our custom sort functions */
+//    var oTable = $('#projects').dataTable( {
+      //  "pageLength": 50
+      //  "order": [[ 6, "desc" ]]
+//"bSort": false,
+//aaSorting: []
+ //   });
+
+/*$("a").on('click',function(event){
+var href = this.href;
+event.preventDefault();
+window.clearInterval(timer);
+//window.clearTimeout(timer);
+window.location = href;
+});
+*/
+$(".delete_item").click(function(){
+ var t = this.id.split("_");
+ refresh_post("project_list", '<%= projects_path() %>/' + t[1], {}, 'delete');
+});
+
+
+});
+<% end %>
+
+<% end %>

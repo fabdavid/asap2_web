@@ -1,0 +1,81 @@
+<%# session[:viz_params].to_json %>
+<!--
+ <div class='form-group'>
+ <% l = [["2D plot", '2d'], ["3D plot", '3d']] %>
+ <%= label_tag 'plot_type', 'Plot type' %>
+ <%= select_tag 'plot_type', options_for_select(l, params[:plot_type] || '2d'), {class: 'form-control'} %>
+ </div>
+-->
+ <%# if (!params[:plot_type] or params[:plot_type] == '2D') and @h_data['z'] %>
+ <% l = (1 .. 5).to_a.select{|e| @h_ori_data["PC#{e}"]}.map{|e| ["Dim#{e}", e]} %>
+ <div class='form-group'>
+ <%= label_tag 'dim1', 'X' %>
+ <%= select_tag 'dim1', options_for_select(l, session[:viz_params]['dim1']), {class: 'form-control'} %> 
+ </div>
+ <div class='form-group'>
+ <%= label_tag 'dim2', 'Y' %>
+ <%= select_tag 'dim2', options_for_select(l, session[:viz_params]['dim2']), {class: 'form-control'} %>
+ </div>
+ <div id='div_dim3' class='form-group'><!-- <%= 'hidden' if !params[:plot_type] or params[:plot_type] == '2d' %>'>-->
+ <%= label_tag 'dim3', 'Z' %>
+ <%= select_tag 'dim3', options_for_select(l, session[:viz_params]['dim3']), {class: 'form-control'} %>
+ </div>
+ <div id="div_color_by" class='form-group'>
+  <% l = [ ["Gene expression", 'gene_text']] %>
+  <% l_clusters = Cluster.where(:project_id => @project.id, :status_id => 3).all.map{|e| [e.label, e.id]} %>
+  <% l_batch_file_groups = @h_batches.keys %>
+  <% l_selections = Selection.where(:project_id => @project.id).all.map{|e| [e.label, e.id]} %>
+  <% l.unshift(["Clustering result", 'clustering_list']) if l_clusters.size > 0 %>
+  <% l.unshift(["Batch file groups", 'batch_group_list']) if l_batch_file_groups.size > 0 %>
+  <% l.unshift(["Selection", 'selection_list']) if l_selections.size > 0 %>
+  <%= label_tag 'color_by', 'Color by' %>
+  <%= select_tag 'color_by', options_for_select(l, session[:viz_params]['color_by']), {class: 'form-control'} %>
+ </div> 
+ <div id='div_gene_text' class='form-group'>
+  <%= label_tag 'gene_text', 'Gene identifier' %>
+  <%# text_field_tag 'gene_identifier' %>
+  <%= autocomplete_field_tag  :gene_text,  session[:viz_params]['gene_text'] || '', autocomplete_genes_path(:project_key => @project.key, :organism_id => @project.organism_id, :project_key => @project.key), :"data-autocomplete-label" => "This gene is not found in your dataset!"  %>
+  <!--  <%= hidden_field_tag :gene_id %>-->
+  <div id='div_dataset' class='form-group'>
+  <%= label_tag 'dataset', 'Dataset' %>
+  <% l = [['Original data', 'parsing'], ['Normalized data', 'normalization']] %>
+  <%= select_tag 'dataset', options_for_select(l,  session[:viz_params]['dataset']), {class: 'form-control'} %>
+  </div>
+ </div>
+ <div id='div_clustering_list' class='form-group hidden'>
+  <%= label_tag 'cluster_id', 'Clusterings' %>
+  <%= select_tag 'cluster_id', options_for_select(l_clusters, session[:viz_params]['cluster_id']), {class: 'form-control'} %>
+ </div>
+ <div id='div_selection_list' class='form-group hidden'>
+  <%= label_tag 'selection_id', 'Selection' %>
+  <%= select_tag 'selection_id', options_for_select(l_selections, session[:viz_params]['selection_id']), {class: 'form-control'} %>
+ </div>
+
+<%= javascript_tag do %>
+
+/*function upd_fields(){
+}*/
+
+$("#plot_type").change(function(){
+ if ($(this).val() == '2d'){
+  $("#div_dim3").addClass("hidden");
+ }else{
+  $("#div_dim3").removeClass("hidden");
+ }
+});
+
+function upd_form(t){
+ var tab = ['gene_text', 'clustering_list', 'selection_list'];
+  for (var i=0; i< tab.length; i++){
+   $("#div_" + tab[i]).addClass("hidden");
+  }
+   $("#div_" + t.val()).removeClass("hidden");
+}
+
+$("#color_by").change(function(){
+upd_form($(this));
+});
+
+upd_form($("#color_by"));
+
+<% end %>

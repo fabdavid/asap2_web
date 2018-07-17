@@ -1,0 +1,2 @@
+class GeneSet < ApplicationRecord
+end

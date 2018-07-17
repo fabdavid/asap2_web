@@ -1,0 +1,77 @@
+<p id="notice"><%= notice %></p>
+<% 
+h_all_tools = {}
+Tool.all.map{|t| h_all_tools[t.name]= t}
+h_tool_types = {}
+ToolType.all.map{|tt| h_tool_types[tt.id]= tt}
+%>
+
+<% version = @version %>
+
+
+<h1>Last version</h1>
+
+<!--<li>-->
+<div class="panel panel-default" style="display: block;">
+  <div class="panel-heading">
+<span class='version_header'>Release <%= version.id %>: <%= raw display_date2(version.release_date) %></span>
+</div>
+
+  <div class="panel-body"> 
+
+<div class='alert alert-info'>
+
+<%= raw version.description.split("\n").join("<br/>") %>
+
+</div>
+
+<% if admin? %>
+  <%= link_to 'Edit', edit_version_path(version) %>
+  <%= link_to 'Destroy', version_path(version), method: :delete, data: { confirm: 'Are you sure?' } %>
+<% end %>
+  
+  <% h_tools = JSON.parse(version.tools_json)['tool_versions'] %>
+  <table id='version_list'>
+    <thead>
+      <tr>
+	<th>Tool/DB</th>
+	<th>Tool type</th>
+	<th>Reference</th>
+	<th>Version</th>
+      </tr>
+    </thead>
+    
+    <tbody>
+      <% h_tools.each_key do |k| %>
+      <tr>
+	<td><%= h_all_tools[k].label %></td>
+	<td><%= h_tool_types[h_all_tools[k].tool_type_id].name %></td>
+	<td><%= h_all_tools[k].description %></td>
+	<td><%= h_tools[k] %></td>
+      </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+<%= javascript_tag do %>
+
+ var oTable = $('#version_list').dataTable( {
+ "sDom": '',
+        "pageLength":<%= h_tools.keys.size %>,
+//"aoColumnDefs": [{ "sType": "allnumeric", "aTargets": [ 2 ] } ]
+        "order": [[ 1, "asc" ], [0, "asc"]]
+//"bSort": false,
+//aaSorting: []
+    });
+
+<% end %>
+  
+
+</div>
+</div>
+<!--</li>-->
+<%# end %>
+<!--</ul>-->
+
+<%= link_to('New Version', new_version_path) if admin? %>
+

@@ -1,0 +1,69 @@
+<p id="notice"><%= notice %></p>
+<% 
+h_all_tools = {}
+Tool.all.map{|t| h_all_tools[t.name]= t}
+h_tool_types = {}
+ToolType.all.map{|tt| h_tool_types[tt.id]= tt}
+%>
+
+
+
+<ul id='version_list'>
+<% versions = @versions.sort{|a, b| b.created_at <=> a.created_at} %>
+<% versions.each do |version| %>
+<li>
+<div class="panel panel-default" style="display: block;">
+  <div class="panel-heading">
+<span class='version_header'>Release <%= version.id %>: <%= raw display_date2(version.release_date) %></span>
+</div>
+  <div class="panel-body"> 
+<div class='alert alert-info'>
+<%= raw version.description.split("\n").join("<br/>") %>
+</div>
+
+<% if admin? %>
+  <%= link_to 'Edit', edit_version_path(version) %>
+  <%= link_to 'Destroy', version, method: :delete, data: { confirm: 'Are you sure?' } %>
+<% end %>
+  
+  <% h_tools = JSON.parse(version.tools_json)['tool_versions'] %>
+  <table id='version_list'>
+    <thead>
+      <tr>
+	<th>Tool/DB</th>
+	<th>Tool type</th>
+	<th>Reference</th>
+	<th>Version</th>
+      </tr>
+    </thead>
+    
+    <tbody>
+      <% h_tools.each_key do |k| %>
+      <tr>
+	<td><%= (h_all_tools[k]) ? h_all_tools[k].label : 'NA' %></td>
+	<td><%= (h_all_tools[k]) ? h_tool_types[h_all_tools[k].tool_type_id].name : 'NA' %></td>
+	<td><%= (h_all_tools[k]) ? h_all_tools[k].description : 'NA' %></td>
+	<td><%= h_tools[k] || 'NA' %></td>
+      </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+<%= javascript_tag do %>
+
+ var oTable = $('#version_list').dataTable( {
+        "pageLength":<%= h_tools.keys.size %>,
+        "order": [[ 1, "asc" ], [0, "asc"]]
+    });
+
+<% end %>
+  
+
+</div>
+</div>
+</li>
+<% end %>
+</ul>
+
+<%= link_to('New Version', new_version_path) if admin? %>
+

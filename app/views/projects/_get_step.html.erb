@@ -1,0 +1,20 @@
+<% active_step_name = @h_steps[session[:active_step]].name %>
+<% ps = ProjectStep.where(:project_id => @project.id, :step_id => session[:active_step]).first %>
+<% if !ps.status_id and session[:active_step] < 5 %>
+<%= render :partial => "form_" + active_step_name %>
+<% else %>
+<%= render :partial => active_step_name %>
+<% end %>
+
+<%= javascript_tag do %>
+ $("#last_project_step").html('<%= @last_update %>');
+$("#edit_project_link").click(function(){
+refresh("form_container", "<%= edit_project_path(@project.key) %>?global=1");
+$("#ontop_window").removeClass("hidden");
+});
+var table_width = $("div.results table").width();
+ var panel_width = ( $(window).width() > table_width) ? $(window).width() : table_width;
+  // alert(plot_width);
+  $("div.results").css({width: panel_width + 'px'});
+
+<% end %>

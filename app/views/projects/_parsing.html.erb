@@ -1,0 +1,120 @@
+<%# params[:active_step] %>
+<% if (@project.status_id == 3 or @project.step_id > 1) and !@results['displayed_error'] %>
+<div class="display-none panel panel-default results" id="realtime" style="display: block;">
+  <div class="panel-heading">Parsing results
+
+<% if editable?(@project) and File.exist?(Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key + ('input.' + @project.extension)) %>
+<div style='float:right'><button id='reset_parsing' class="btn btn-primary" style="margin-top:-7px">Reset</button></div>
+<% end %>
+</div>
+  <div class="panel-body" id="realtimedata">
+
+ <%= display_warnings(@results['warnings']) %>
+ <%= display_errors(@results['errors']) %>
+
+    <table class="table table-hover"><tbody>
+	<tr><td width="30%">Parameters</td><td width="70%">
+<% h_attrs = JSON.parse(@project.parsing_attrs_json) %>
+<% h_delimiter = {"\\t" => 'Tab', "\t" => "Tab",  " " => "Space", "," => "Comma", ":" => "Colon"} %>
+<span class="label label-default">Delimiter: <%= h_delimiter[h_attrs['delimiter']] %></span>
+<% h_gene_name_col = {"0" => "First", "first" => "First", "-1" => "Last", "last" => "Last", "NA" => "None", 'none' => "None"} %>
+<span class="label label-default">Gene name column: <%= h_gene_name_col[h_attrs['gene_name_col']] %></span>
+<span class="label label-default">Skip lines: <%= h_attrs['skip_line'] %></span>
+<span class="label label-default">Has header: <%= (h_attrs['has_header']== "1") ? 'Yes' : 'No' %></span> 
+
+</td></tr>
+        <tr><td width="30%">Genes (rows)</td><td width="70%"><%= @results['nber_genes'] %><%= (@results['nber_unique_genes']) ? " [#{@results['nber_unique_genes']} uniques]" : '' %> 
+<% if @results['nber_genes'] < 3 %>
+ <span class="glyphicon glyphicon-warning-sign"></span> <span class='label label-danger'>For many steps of the pipeline at least three genes are required</span>
+<% end %>
+</td></tr>                            
+	<tr><td>Cells (columns)</td><td><%= @results['nber_cells'] %>
+<% if @results['nber_cells'] == 0 %>
+ <span class='label label-danger'>You may have selected wrong parameters for the parsing, in particular not the appropriated delimiter</span>
+<% elsif @results['nber_cells'] < 3 %>
+ <span class="glyphicon glyphicon-warning-sign"></span> <span class='label label-danger'>For many steps of the pipeline at least three cells are required</span>  
+<% end %>
+</td></tr>                            
+	<tr><td><span data-toggle="tooltip" title="The input data are detected as count tables if all numbers are integers. Some functions only work with count tables.">
+	    Original file is a count table</span></td><td><%= raw (@results['is_count_table']==1) ? "true <span class='glyphicon glyphicon-ok'></span>" : "false <span class='glyphicon glyphicon-warning-sign'></span> <span class='label label-warning'>Many methods will NOT be available if your original file is not a count matrix</span>" %></td></tr>         
+	
+<% if @results['nber_protein_coding'] and @results['nber_total_biotypes'] and @results['nber_total_biotypes'].to_i > 0 %>
+	<tr><td>
+	    <span data-toggle="tooltip" title="Percentage reads mapping to Ensembl protein coding genes.">Percentage reads mapping to Ensembl protein coding genes</span></td><td>
+	    <%= (@results['nber_protein_coding'].to_f * 100 /  @results['nber_total_biotypes'].to_f).round(2) %>%</td></tr>
+<% end %>
+<% if @results['nber_rRNA'] and @results['nber_total_biotypes'] and @results['nber_total_biotypes'].to_i > 0 %>
+        <tr><td>
+            <span data-toggle="tooltip" title="Percentage reads mapping to ribosomal Ensembl biotype.">Percentage reads mapping to ribosomal Ensembl biotype</span></td><td>
+            <%= (@results['nber_rRNA'].to_f * 100 /  @results['nber_total_biotypes'].to_f).round(2) %>%</td></tr>
+<% end %>
+<% if @results['nber_MT'] and  @results['nber_total_chr'] and  @results['nber_total_chr'].to_i > 0 %>
+	<tr><td>
+	    <span data-toggle="tooltip" title="Percentage reads mapping to chromosome MT.">Percentage reads mapping to chromosome MT</span></td><td>
+            <%= (@results['nber_MT'].to_f * 100 /  @results['nber_total_chr'].to_f).round(2) %>%</td></tr>
+<% end %>
+<% if @results['empty_columns'] and @results['empty_columns'].size > 0 %>
+        <tr><td>
+            <span data-toggle="tooltip" title="Cells without any read (excluded from dataset)">Cells without any read (excluded from dataset)</span></td><td>
+            <%= raw @results['empty_columns'].map{|e| "<span class='label label-warning'>#{e}</span>"}.join(" ") %></td></tr>
+<% end %>
+	<tr><td><span data-toggle="tooltip" title="Percentage of genes with zero expression.">Percentage of zeros</span></td><td><%= ((@results['nber_zeros'].to_f * 100) / (@results['nber_genes'] * @results['nber_cells'])).round(2) %>%</td></tr>                            
+<!--	<tr><td data-toggle="tooltip" title="Average of the all genes expression">Mean of gene expression</td><td><%# ((@results['total_signal'].to_f * 100) / (@results['nber_genes'] * @results['nber_cells'])).round(2) %></td></tr>                            
+<	<tr><td data-toggle="tooltip" title="Standard deviation is calculated for every gene, and then all SDs are averaged over all genes.">Mean SD by gene</td><td><%# ((@results['mean_sd'].to_f * 100) / @results['nber_genes']).round(2) %></td></tr>-->
+<!--	<tr><td data-toggle="tooltip" title="In case of duplicate genes (genes with the same gene name), only the most expressed gene is retained.">Duplicate genes</td><td><%= nber_duplicated_genes = @results['nber_duplicated_genes'] %> <%= raw "<span class='glyphicon " + ((nber_duplicated_genes == 0) ? 'glyphicon-ok' : 'glyphicon-warning-sign') + "'></span>" %></td></tr>-->
+        <tr><td><span data-toggle="tooltip" title="Number of detected ERCC (they are removed from the result datatable)">Number of ERCC</span></td><td>
+   <% if File.exist?( Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key + 'parsing' + 'ercc.tab') and @results['nber_ercc'] > 0 %>
+   <%= link_to raw("<button class='btn btn-primary btn-xs'>#{@results['nber_ercc']} ERCC</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'ercc.tab') %>
+      <% else %>
+     0   
+      <% end %>
+<span class='label label-info'>ERCCs are automatically detected as genes starting with "ERCC-"</span>
+</td></tr>
+    <%= display_batch_file() %>
+
+   <tr><td>
+  Unmapped genes </td><td> 
+         <% if nber_not_found_genes = @results['nber_not_found_genes'] and nber_not_found_genes > 0 %>
+<%= nber_not_found_genes %>, <%= (nber_not_found_genes.to_f * 100 / @results['nber_genes']).round(2) %>% 
+  <span class="glyphicon glyphicon-warning-sign"></span> 
+<%= link_to(raw("<button class='btn btn-primary btn-xs'>Details</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'not_found_genes.txt')) if exportable? @project %>
+ <% else %>
+  <%= nber_not_found_genes %> <span class="glyphicon glyphicon-ok"></span>
+<% end %> 
+</td></tr>
+
+<% if nber_duplicated_genes = @results['nber_duplicated_genes'] and nber_duplicated_genes > 0 %>
+<% nber_all_duplicated_genes = @results['nber_all_duplicated_genes'] %> 
+<tr><td>
+Duplicated genes </td><td> <%= nber_all_duplicated_genes %> [<%= nber_duplicated_genes %> uniques], <%= (nber_all_duplicated_genes.to_f * 100 / @results['nber_genes']).round(2) %>%
+<span class="glyphicon glyphicon-warning-sign"></span>
+<%= link_to raw("<button class='btn btn-primary btn-xs'>Details</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'duplicated_genes.txt') %>
+<span class='label label-warning'>Duplicated genes are kept in the dataset but renamed with a incremented number</span>
+<br/>
+</td></tr>
+<% end %>
+</tbody></table>
+ 
+ <p><%= link_to(raw("<button class='btn btn-primary btn-xs'>Download output file</button>"), get_file_project_path(@project.key, :step => 'parsing'), :target => '_blank') if exportable?(@project) %></p>
+    
+  </div>
+</div>
+
+<% else %>
+No results available. <%= raw ((status = @project.status) ? "<span class='label label-#{status.label}'>#{status.name}</span>" : 'NA') %>
+<% if @results %>
+ <span class='label label-danger'><%= @results['displayed_error'] || '' %></span>
+ <br/><span><%= @results['original_error'] || '' if admin? %></span>
+<% end %>
+<div style='float:right'><button id='reset_parsing' class="btn btn-primary" style="margin-top:-7px">Reset</button></div>
+
+<% end %>
+
+<%= javascript_tag do %>
+
+$("#reset_parsing").click(function(){
+refresh("step_container", "<%= edit_project_path(:key => @project.key, :nolayout => 1) %>");
+});
+set_margins()
+
+<% end %>

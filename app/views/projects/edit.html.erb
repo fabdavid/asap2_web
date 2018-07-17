@@ -1,6 +1,7 @@
-<h1>Editing Project</h1>
 
-<%= render 'form', project: @project %>
+<% if session[:active_step] == 1 %>
+ <h1>Reset parsing</h1>
+ <%= render 'form_parsing', project: @project %>
+<% end %>
 
-<%= link_to 'Show', @project %> |
-<%= link_to 'Back', projects_path %>
+

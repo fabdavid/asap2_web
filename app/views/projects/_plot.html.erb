@@ -1,0 +1,275 @@
+<%# @trace_names %>
+<%# @h_batches.to_json %>
+<% cluster = (params[:cluster_id] and params[:cluster_id] != '') ? Cluster.find(params[:cluster_id]) : nil %>
+<% clustering_method = cluster.cluster_method.label if cluster %>
+<% nber_traces =  (@traces[params[:plot_type]]) ? @traces[params[:plot_type]].size : 0 %>
+<% h_datasets={'parsing' => 'Original', 'normalization' => 'Normalized'} %>
+<% selection_name = Selection.find(params[:selection_id]).label if params[:color_by] == 'selection_list' %>
+<div id='<%= params[:plot_type] %>_plot_container' class='panel panel-default plot_container <%= (params[:full_screen]) ? 'full_screen' : 'windowed' %>' style='<%= (params[:plot_type] == '2d' and !params[:full_screen]) ? 'margin-right:10px' : '' %>'>
+<% if !params[:full_screen] %>
+<div class='panel-heading'><%= params[:plot_type] %> plot
+<span id='toggle_names_<%= params[:plot_type] %>' class='btn btn-default btn-xs' style='float:right'>Toggle cell names</span>
+<span id='toggle_legend_<%= params[:plot_type] %>' class='btn btn-default btn-xs' style='float:right'>Toggle legend</span>
+<span id='full_screen_<%= params[:plot_type] %>' class='btn btn-default btn-xs' style='float:right'>Full Screen</span>
+</div>
+<% end %>
+<div id='<%= params[:plot_type] %>_plotly_plot'></div>
+<div id='<%= params[:plot_type] %>_myDiv'></div>
+</div>
+
+<%= form_tag(direct_download_project_path(:key => @project.key), :id => 'form_export_svg_' + params[:plot_type], :method => 'post') do %>
+ <%= hidden_field_tag 'data_content', '' %>
+ <%= hidden_field_tag 'filename', params[:plot_type] + '_output.svg' %>
+ <%= hidden_field_tag 'content_type', 'image/svg+xml' %>
+<% end %>
+
+<%= javascript_tag do %>
+
+ var h = $(window).height();
+// alert( h - <%= (params[:full_screen]) ? 0 : 320 %>);
+ $("#<%= params[:plot_type] %>_plot_container").css({'height' : h - <%= (params[:full_screen]) ? 60 : 320 %>});
+
+<% if params[:full_screen] %>
+var w = $(window).width();
+$("#full_screen_plot_container").css({'width' : w})
+<% end %>
+
+ var traces_<%= params[:plot_type] %>= <%= raw @traces[params[:plot_type]].to_json %>; 
+ var dim1 = '<%= params[:dim1] || session[:viz_params]['dim1'] %>';
+ var dim2 = '<%= params[:dim2] || session[:viz_params]['dim2'] %>';
+ var dim3 = '<%= params[:dim3] || session[:viz_params]['dim3'] %>';
+
+ for (var i=0; i< traces_<%= params[:plot_type] %>.length; i++){
+  traces_<%= params[:plot_type] %>[i]['mode'] = "markers";
+  traces_<%= params[:plot_type] %>[i]['type'] = "<%= (params[:plot_type]=='3d') ? 'scatter3d' : ((@traces and @traces.size > 1) ? 'scatter' : 'scatter')  %>";
+  if (!traces_<%= params[:plot_type] %>[i]['marker'])
+   traces_<%= params[:plot_type] %>[i]['marker']={};
+traces_<%= params[:plot_type] %>[i]['marker']['size'] = <%= (params[:plot_type]=='3d') ? '5' : '9' %>;
+
+<% if @list_val %>
+ traces_<%= params[:plot_type] %>[i]['marker']['color']=<%= raw @list_val.to_json %>;
+/* data['marker']['colorscale']=[
+  ['<%= @min_val %>', 'rgb(254,224,144)'],
+  ['<%= @max_val %>', 'rgb(165,0,38)'],
+*/
+ traces_<%= params[:plot_type] %>[i]['marker']['showscale']=true;
+<% end %>
+ traces_<%= params[:plot_type] %>[i]['textposition'] = 'bottom center';
+}
+
+var plotly_title = '<%= @h_dim_reductions[session[:active_dr_id]].label + (( session[:viz_params]['color_by'] == 'gene_text' and session[:viz_params]['gene_text'] and session[:viz_params]['gene_text'] != '') ? " with expression levels of <br>#{session[:viz_params]['gene_text']} [#{h_datasets[session[:viz_params]['dataset']]} data]" : '' ) + ((session[:viz_params]['color_by'] == 'clustering_list' and cluster) ? " colored by #{clustering_method} clusters ##{cluster.num}<br>(#{nber_traces} clusters)" : '') + ((session[:viz_params]['color_by'] == 'selection_list') ? " with selection #{selection_name} highlighted" : '') + ((session[:viz_params]['color_by'] == 'batch_group_list') ? ' colored by batch file groups' : '')  %>'; 
+
+ layout = {
+<% if params[:plot_type]=='3d' %>
+scene: {
+xaxis:{title: 'Dim' + dim1},
+yaxis:{title: 'Dim' + dim2},
+zaxis:{title: 'Dim' + dim3},
+},
+<% else %>
+  xaxis: {title: 'Dim' + dim1, type:'linear'},
+  yaxis: {title: 'Dim' + dim2, type:'linear'},
+<% end %>
+  height: h - <%= (params[:full_screen]) ? 60 : 320 %>,
+  hoverinfo:"text",
+  hoveron:"points",
+  hovermode: 'closest',
+<%= raw "dragmode:'pan'," if params[:plot_type] == '2d' %>
+  showlegend:false,
+  margin: { t: 10 },        
+/*  legend: {
+//   y:0.8,
+   yref: 'paper',
+   font: {
+    family: 'Arial, sans-serif',
+    size: 20,
+    color: 'grey',
+   }
+  },*/
+  title: ''
+ };
+
+// var img_jpg_<%= params[:plot_type] %>= d3.select('#jpg-export_<%= params[:plot_type] %>');
+  Plotly.plot('<%= params[:plot_type] %>_plotly_plot', traces_<%= params[:plot_type] %>, layout <%# (params[:plot_type]=='3d') ? '' : ', {scrollZoom: true}' %>)
+/*.then(
+    function(gd)
+     {
+      Plotly.toImage(gd,{height:300,width:300})
+         .then(
+            function(url)
+         {
+             img_jpg_<%= params[:plot_type] %>.attr("src", url);
+             return Plotly.toImage(gd,{format:'svg',height:800,width:800});
+         }
+         )
+    });
+*/
+$("#toggle_names_<%= params[:plot_type] %>").click(function(){
+// alert('toto');
+ var plotDiv = document.getElementById('<%= params[:plot_type] %>_plotly_plot')
+ var tmp_mode = "markers+text"
+ for (var i=0; i<plotDiv.data.length; i++){
+  if (plotDiv.data[i].mode == "markers+text")
+   tmp_mode = "markers"
+  plotDiv.data[i].mode = tmp_mode;
+ }
+ Plotly.redraw(plotDiv);
+});
+
+$("#toggle_legend_<%= params[:plot_type] %>").click(function(){    
+ var plotDiv = document.getElementById('<%= params[:plot_type] %>_plotly_plot')                                                                                                      
+ var tmp = true
+ if (plotDiv.layout.showlegend == true){                               
+   tmp = false;
+   plotDiv.layout.title='';
+   plotDiv.layout.margin.t = 10
+ }else{
+   plotDiv.layout.title=plotly_title
+    plotDiv.layout.margin.t = 100
+ }
+                       
+  plotDiv.layout.showlegend = tmp;                                                                                                                                              
+ Plotly.redraw(plotDiv);                                                                                                                                                             
+});
+
+$("#export_svg_<%= params[:plot_type] %>").click(function(){
+ $("#data_content").val($("#<%= params[:plot_type] %>_plotly_plot div.svg-container").html());
+  var p = $('#form_export_svg_<%= params[:plot_type] %>').serializeArray();
+//  refresh_post("visualization_container", "<%= replot_project_path(:key => @project.key) %>", p, 'post');     
+$('#form_export_svg_<%= params[:plot_type] %>').submit();
+});
+
+$("#full_screen_<%= params[:plot_type] %>").click(function(){
+// $("#data_content").val($("#<%= params[:plot_type] %>_plotly_plot div.svg-container").html());
+//  var p = $('#form_export_svg_<%= params[:plot_type] %>').serializeArray();
+  if ($('#visualization_form')){
+   var p = $('#visualization_form').serializeArray();
+   // alert( $('#visualization_form'));
+   // <%= session[:active_dr_id] %>, '<%= session[:active_viz_type] %>
+   p.push({"name" : "dr_id", "value" : <%= session[:active_dr_id] %>});
+   p.push({"name" : "full_screen", "value" : '<%= params[:plot_type] %>'});
+   refresh_post("full_screen_visualization div.window_content", "<%= replot_project_path(:key => @project.key) %>", p, 'post');
+   $("#full_screen_visualization").removeClass("hidden");
+   $("#visualization_container").empty();
+  }
+  //  refresh_post("body", "<%= replot_project_path(:key => @project.key) %>", p, 'post');
+});
+
+
+<% if params[:plot_type] == '2d' %>
+
+// $("#2d_plotly_plot")
+  document.getElementById("2d_plotly_plot").on('plotly_selected', function(eventData) {
+//  console.log(eventData.points);
+  var list_cells = [];  
+  eventData.points.forEach(function(pt) {
+    console.log(pt);
+    list_cells.push(traces_<%= params[:plot_type] %>[pt.curveNumber].text[pt.pointNumber]);
+  });
+  console.log(list_cells);
+  if (list_cells.length > 0){
+   p = [
+    {name: 'project_key', value: '<%= @project.key %>'},
+    {name: 'list_of_items', value: list_cells.join(";")}
+   ];
+
+   refresh_post("cart", '<%= selections_path %>', p, 'post');
+  }else{
+
+   var p = $('#visualization_form').serializeArray();
+   p.push({'name' : 'project_key', 'value' : '<%= @project.key %>'});
+   p.push({'name' : 'dr_id', 'value' : '<%= session[:active_dr_id] %>'});
+   var container = "visualization_container";
+   if ($("#full_screen").val() && $("#full_screen").val() != ''){
+    container = "full_screen_visualization div.window_content"
+   }
+   refresh_post(container, "<%= replot_project_path(:key => @project.key) %>", p, 'post');
+
+  }
+ });
+
+<% end %>
+
+  set_margins();
+
+/* $('#pca2d_png').on('click', function (e) {
+  if(e.handled !== true) // This will prevent event triggering more then once
+                {
+                    e.preventDefault();
+                    var plotDiv = document.getElementById('2d_pca_graph');
+                    Plotly.downloadImage(plotDiv, {
+                        filename: 'singlecell-viz',
+                        format: 'png', //also can use 'jpeg', 'webp', 'svg'
+                        height: 800,
+                        width: 800
+                    });
+                    e.handled = true;
+                }
+            });
+            $('#pca2d_svg').on('click', function (e) {
+                if(e.handled !== true) // This will prevent event triggering more then once
+                {
+                    e.preventDefault();
+                    var plotDiv = document.getElementById('2d_pca_graph');
+                    Plotly.downloadImage(plotDiv, {
+                        filename: 'singlecellviz',
+                        format: 'svg', //also can use 'jpeg', 'webp', 'svg'
+                        //height: 800,
+                        //width: 800
+                    });
+                   
+                    e.handled = true;
+                }
+            });
+            $('#pca2d_togglelog').on('click', function (e) {
+                if(e.handled !== true) // This will prevent event triggering more then once
+                {
+                    e.preventDefault();
+
+                    if(_2dlayout['xaxis']['type'] === 'linear')
+                    {
+_2dlayout['xaxis']['type'] = 'log';
+_2dlayout['yaxis']['type'] = 'log';
+                    }
+                    else
+                    {
+_2dlayout['xaxis']['type'] = 'linear';
+_2dlayout['yaxis']['type'] = 'linear';                    
+                    }
+                    
+                    setTimeout(function(){
+                        var plotDiv = document.getElementById('2d_pca_graph');
+                        Plotly.relayout(plotDiv, _2dlayout);
+                    }, 100);
+                    
+                    e.handled = true;
+                }
+            });            
+            $('#pca2d_togglenames').on('click', function (e) {
+                if(e.handled !== true) // This will prevent event triggering more then once
+                {
+                    e.preventDefault();
+                    if(_2ddata['mode'] === 'markers')
+                        _2ddata['mode'] = "markers+text";       
+                    else
+                        _2ddata['mode'] = "markers";
+                    
+                    setTimeout(function(){
+                        var plotDiv = document.getElementById('2d_pca_graph');
+                        plotDiv.data[0].mode = _2ddata['mode'];
+                        Plotly.redraw(plotDiv);
+                    }, 100);
+                    
+                    e.handled = true;
+                }
+            });
+           }
+           
+           Plotly.newPlot(PCAGraph2d,[_2ddata],_2dlayout,{showLink: false, displaylogo: false, displayModeBar: true, scrollZoom: true});
+           update2Dgraph();
+           printGeneList('2d');
+           printRegionList('2d');
+           
+        }
+*/
+<% end %>

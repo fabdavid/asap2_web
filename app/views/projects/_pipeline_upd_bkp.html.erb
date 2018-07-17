@@ -1,0 +1,54 @@
+<%# "#{session[:last_step_status_id]} != #{@project.status_id} or #{session[:last_step_id]} != #{@project.step_id} " %>;
+<%# "alert(" + @project.project_dim_reductions.select{|pdr| pdr.status_id < 3}.size.to_s + ");" %>
+$(".pipeline_step").removeClass("disabled");
+
+<% project_steps = ProjectStep.where(:project_id => @project.id).all.select{|e| e.status_id != nil } %>
+
+<% if @project.step_id > 1 %>
+ <% (1 .. @project.step_id).to_a.each do |step_id| %>
+  <% if step_id < 4 or (step_id == 4 and @project.project_dim_reductions.select{|pdr| pdr.status_id < 3}.size == 0) %>
+   <%# raw "alert('" + step_id.to_s + " " + @project.project_dim_reductions.select{|pdr| pdr.status_id < 3}.size.to_s + "');" %>
+   $("#step_<%= step_id %> img").removeClass("hidden");
+   <%= step_name = ProjectStep.where()
+   if ('<%= raw image_url('success.png') %>' != $("#step_<%= step_id %> img").attr('src')){
+    $("#step_<%= step_id %> img").attr('src', '<%= raw image_url('success.png') %>');
+   }
+  <% end %>
+ <% end %>
+<% end %>
+<% status = @project.status %>
+<% if @project.step_id < 5 %> 
+ $("#step_<%= @project.step_id %> img").removeClass("hidden");
+ if ('<%= raw image_url(status.name + "." + status.img_extension) %>' != $("#step_<%= @project.step_id %> img").attr('src')){
+  $("#step_<%= @project.step_id %> img").attr('src', '<%= raw image_url(status.name + "." + status.img_extension) %>');
+ }
+<% else %>
+ $("#step_<%= @project.step_id %> img").addClass("hidden");
+<% end %>
+
+<% if @project.step_id < Step.count  %>
+ <% (@project.step_id+1 .. Step.count).to_a.each do |step_id| %>
+   $("#step_<%= step_id %> img").addClass("hidden");
+   <% if step_id == @project.step_id + 1 and @project.status_id != 3 and step_id < 3 %>
+    $("#step_<%= step_id %>").addClass("disabled");
+   <% end %>
+   <% if (step_id > @project.step_id+1 and @project.step_id < 3) %>
+    $("#step_<%= step_id %>").addClass("disabled");
+   <% end %>
+ <% end %>
+<% end %>
+
+<% if @reload_step_container %>
+refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>");
+<% end %>
+
+<% if session[:active_step] == 4 %>
+ var pdrs = <%= raw @project.project_dim_reductions.map{|pdr| [pdr.dim_reduction_id, raw(image_url(@h_statuses[pdr.status_id].name + "." + @h_statuses[pdr.status_id].img_extension))]}.to_json %>;
+ for (var i=0; i<pdrs.length; i++){
+  $("#dr_" + pdrs[i][0] + " img").attr("src", pdrs[i][1]);
+ }
+ $('#dim_reduction_tabs li.active').removeClass('active');
+ $("#dr_" + <%= session[:active_dr_id] %>).parent().addClass("active");
+<% end %>
+
+

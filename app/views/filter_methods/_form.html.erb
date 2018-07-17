@@ -1,0 +1,17 @@
+<%= form_with(model: filter_method, local: true) do |form| %>
+  <% if filter_method.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(filter_method.errors.count, "error") %> prohibited this filter_method from being saved:</h2>
+
+      <ul>
+      <% filter_method.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

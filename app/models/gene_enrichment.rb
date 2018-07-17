@@ -1,0 +1,2 @@
+class GeneEnrichment < ApplicationRecord
+end

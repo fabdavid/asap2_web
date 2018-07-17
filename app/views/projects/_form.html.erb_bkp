@@ -1,0 +1,166 @@
+<%= form_for(project, :url => projects_path) do |f| %>
+  <% if project.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(project.errors.count, "error") %> prohibited this project from being saved:</h2>
+
+      <ul>
+      <% project.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+<div class='form-group'>
+  <%= label_tag 'project_name', 'Project Name', {'data-toggle' => "tooltip", 'title' => "If you let the name blank, the project name will be automatically generated with an identifier."} %>
+  <%= f.text_field :name, {:class => "form-control", :placeholder => "Name of the project / input file"} %>
+</div>
+
+<div class='form-group'>
+  <%= label_tag 'input_file', 'File input' %>
+  
+  <%= file_field_tag :input_file %>
+  
+ <div id="kv-error-1" style="margin-top: 10px; display: none;" class="file-error-message"></div>
+  <div id="kv-success-1" class="alert alert-success fade in" style="margin-top: 10px;  display: none;"></div>
+  <p class="help-block">
+    Text file with genes expression data (e.g. counts). Rows are genes (gene names or Ensembl IDs) and columns are cells/samples. In case of duplicate gene names, only maximum values will be retained. <%= link_to 'Download example file', "/asap/data/input.tab" %>
+  </p>
+<!--
+  <%# else %>
+  <%= @project.input_filename %>
+  <p class="help-block">
+    If your input file has changed, please create a new project.
+  </p>
+  <%# end %>
+-->
+</div>
+
+<div class='form-group'>
+  <%= label_tag 'group_file', 'Group file input to correct for batch effect [Optional]' %>
+  <%= file_field_tag :group_file %>
+  <div id="kv-error-2" style="margin-top: 10px; display: none;" class="file-error-message"></div>
+  <div id="kv-success-2" class="alert alert-success fade in" style="margin-top: 10px;  display: none;"></div>
+  <p class="help-block">
+    Text file with 2 tab-separated columns. First column : cell name, second column : batch ID [text or number].
+  </p>
+</div>
+
+
+<div class='form-group'>
+<%= label_tag 'organism_id', "Organism" %>
+ <% l = Organism.all.map{|o|  [o.name, o.id]} %>
+ <%= f.select :organism_id, l, {}, {class: 'form-control'} %>
+</div>
+
+<div class='form-group form-inline'>
+<%= label_tag 'attrs[delimiter]', "Delimiter", {'data-toggle' => "tooltip", 'title' => "Character delimiting the fields in the input text file."} %>
+<% l = [['Tabulation', "\t"], ['Space', " "], ['Semicolon', ";"], ['Comma', ',']] %>
+<%= select_tag 'attrs[delimiter]', options_for_select(l), {class: 'form-control'}  %>
+
+<%= label_tag 'attrs[gene_name_col]', "Gene name column" %>
+<% l = [['First column', 0], ['None', 'NA'], ['Last column', -1]] %>
+<%= select_tag 'attrs[gene_name_col]', options_for_select(l), {class: 'form-control'}  %>
+
+<%= label_tag 'attrs[skip_line]', "Number of lines to skip" %>
+<% l = (1 .. 50).to_a.map{|e| [e, e]} %>
+<% l.unshift(['None', '0']) %>
+<%= select_tag 'attrs[skip_line]', options_for_select(l, 0), {class: 'form-control'}  %>
+
+<br/>
+
+<%= check_box_tag 'attrs[has_header]', 1, {:checked => "checked"}  %> 
+<%= label_tag 'attrs[has_header]', "Cell names header is present in line 1", {'data-toggle' => "tooltip", 'title' => "If the cell names header is not present, cell names are generated and contain the column index."} %>
+
+</div>
+<%= f.hidden_field :key  %>
+<%= f.hidden_field :step_id, {:value => 1}  %>
+<%= f.hidden_field :input_filename  %>
+<%= f.hidden_field :group_filename  %>
+
+  <div class="actions">
+    <% button_name = (controller.action_name == 'new') ? "Create project" : "Update project" %>
+    <%= f.submit button_name, {:disabled => 'disabled', :class => 'btn btn-lg btn-primary ladda-button', :id =>'create_project_button'} %>
+  </div>
+<% end %>
+
+
+<%= javascript_tag do %>
+
+<%# if controller.action_name == 'new' %>
+
+$("#input_file").fileinput({
+ uploadUrl:  '<%= upload_file_projects_path(:type => 'input', :key => @project.key) %>',              // server upload action
+ uploadAsync: true,
+ showPreview: false,
+// maxChunkSize: 1000000,
+// maxFileSize: 1000000 * 10000,
+// allowedFileExtensions: ['tab', 'txt', 'csv'],
+ showUpload: false,
+ maxFileCount: 1,
+processData: false, 
+ elErrorContainer: '#kv-error-1'
+}).on('fileuploadchunksend', function (e, data) {
+  alert('t');
+}).on("filebatchselected", function(event, files) {
+ // trigger upload method immediately after files are selected
+ $("#input_file").fileinput("upload");
+}).on('filebatchpreupload', function(event, data, id, index) {
+ $("#kv-success-1").html('<h4>Upload Status</h4><ul></ul>').hide();
+}).on('fileuploaded', function(event, data, id, index) {
+ var fname = data.files[index].name;
+ var out = '<li>' + 'Uploaded file # ' + (index + 1) + ' - '  + fname + ' successfully.' + '</li>';
+ $("#kv-success-1 ul").append(out);
+ $("#input_file").attr('loaded', "1");
+ $("#kv-success-1").fadeIn('slow');
+ $("#project_input_filename").val(fname);
+ if ($("#project_name").val() != '')
+  $("#create_project_button").removeAttr('disabled')
+}).on('fileclear', function(event, id){
+ $("#kv-success-1").hide();
+ $("#project_input_filename").val('');
+});
+
+<%# end %>
+
+
+$("#group_file").fileinput({
+ uploadUrl: '<%= upload_file_projects_path(:type => 'group', :key => @project.key) %>', // server upload action
+ uploadAsync: true,
+ showPreview: false,
+ allowedFileExtensions: ['tab', 'txt', 'csv'],
+ showUpload: false,
+ maxFileCount: 1,
+ elErrorContainer: '#kv-error-2'
+}).on("filebatchselected", function(event, files) {
+ // trigger upload method immediately after files are selected
+ $("#group_file").fileinput("upload");
+}).on('filebatchpreupload', function(event, data, id, index) {
+ $("#kv-success-2").html('<h4>Upload Status</h4><ul></ul>').hide();
+}).on('fileuploaded', function(event, data, id, index) {
+ var fname = data.files[index].name;
+ var out = '<li>' + 'Uploaded file # ' + (index + 1) + ' - '  + fname + ' successfully.' + '</li>';
+ $("#kv-success-2 ul").append(out);
+ $("#group_file").attr('loaded', "1");
+ $("#kv-success-2").fadeIn('slow');
+ $("#project_group_filename").val(fname);
+
+}).on('fileclear', function(event, id){
+ $("#kv-success-2").hide();
+ $("#project_group_filename").val('');
+});
+
+
+function validate_form(){
+<%# code_piece =" && $('#project_input_filename').val() != ''" : '' %>
+if ($("#project_name").val() != '' && $('#project_input_filename').val() != '' ){
+  $("#create_project_button").removeAttr('disabled')
+}else{
+  $("#create_project_button").attr('disabled', 'disabled')
+}
+}
+
+$("#project_name").keypress(function(){validate_form()});
+$("#project_organism_id").change(function(){validate_form()});
+
+<% end %>

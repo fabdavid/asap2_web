@@ -1,0 +1,17 @@
+<%= form_with(model: gene_enrichment, local: true) do |form| %>
+  <% if gene_enrichment.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(gene_enrichment.errors.count, "error") %> prohibited this gene_enrichment from being saved:</h2>
+
+      <ul>
+      <% gene_enrichment.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

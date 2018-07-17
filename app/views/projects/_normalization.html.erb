@@ -1,0 +1,103 @@
+<%# session[:last_update_active_step] %>
+<% if (@project.status_id == 3 or @project.step_id > 3) and !@results['displayed_error'] %>
+<div class="display-none panel panel-default results" id="realtime" style="display: block;">
+  <div class="panel-heading">Normalization result summary
+    <% if editable?(@project) %>
+    <div style='float:right'><button id='reset_normalization' class="btn btn-primary" style="margin-top:-7px">Reset</button></div>
+    <% end %>
+  </div>
+  <div class="panel-body" id="realtimedata">
+    <% if @results %>
+    <table class="table table-hover"><tbody>
+	  <tr><td width="30%">Parameters</td><td width="70%">
+            <% if @project.norm_id %>
+            <% norm = Norm.find(@project.norm_id) %>
+            <% attrs = JSON.parse(norm.attrs_json) %>
+            <%# attrs=[] %>
+	    <% h_attrs = JSON.parse(@project.norm_attrs_json) %>
+            <span class="label label-info"><%= norm.label %></span>	   
+            <% attrs.select{|attr| attr['widget']}.each do |attr| %>
+	    <% if attr['label'] and attr['name'] and  h_attrs[attr['name']] %>
+            <span class="label label-default"><%= attr['label'] + ": " + ((attr['type'] == 'bool') ? (( h_attrs[attr['name']]== '1') ? 'Yes' : 'No' ) : h_attrs[attr['name']]) || 'NA' %></span>
+             <% end %>
+            <% end %>
+            <% else %>
+               None
+            <% end %>
+            </td></tr>
+        <tr><td width="30%">Genes (rows)</td><td width="70%"><%= (@results['nber_genes']) ? @results['nber_genes'] : 'NA' %>
+<% if @results['nber_genes'] < 3 %>
+ <span class="glyphicon glyphicon-warning-sign"></span> <span class='label label-danger'>For many steps of the pipeline at least three genes are required</span>
+<% end %>
+</td></tr>
+        <tr><td>Cells (columns)</td><td><%= (@results['nber_cells']) ? @results['nber_cells'] : 'NA' %>
+<% if @results['nber_cells'] < 3 %>
+ <span class="glyphicon glyphicon-warning-sign"></span> <span class='label label-danger'>For many steps of the pipeline at least three cells are required</span>
+<% end %>
+</td></tr>
+	<tr><td><span data-toggle="tooltip" title="The input data are detected as count tables if all numbers are integers. Some functions only work with count tables.">
+            Original file is a count table</span></td><td><%= raw (@all_results[:parsing]['is_count_table']==1) ? "true <span class='glyphicon glyphicon-ok'></span>" : "false <span class='glyphicon glyphicon-warning-sign'></span> <span class='label label-warning'>Many methods will NOT be available if your original file is not a count matrix</span>" %></td></tr>
+        <tr><td><span data-toggle="tooltip" title="Percentage of genes with zero expression.">Percentage of zeros</span></td><td><%= ((@results['nber_zeros'].to_f * 100) / (@results['nber_genes'] * @results['nber_cells'])).round(2) %>%</td></tr>
+        <tr><td><span data-toggle="tooltip" title="Number of detected ERCC (they are removed from the result datatable)">Number of ERCC</span></td><td>
+   <% if File.exist?( Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key + 'parsing' + 'ercc.tab') and @all_results[:parsing]['nber_ercc'] > 0 %>
+   <%= link_to raw("<button class='btn btn-primary btn-xs'>#{@all_results[:parsing]['nber_ercc']} ERCC</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'ercc.tab') %>
+      <% else %>
+     0
+      <% end %>
+<span class='label label-info'>ERCCs are automatically detected as genes starting with "ERCC-"</span>
+</td></tr>
+<%= display_batch_file() %>
+
+	<% if nber_not_found_genes = @results['nber_not_found_genes'] and nber_not_found_genes > 0 %>
+	<tr><td><span data-toggle="tooltip" title="Unmapped genes.">Unmapped genes</span></td><td>
+	    <%= nber_not_found_genes %>, <%= (nber_not_found_genes.to_f * 100 / @results['nber_genes']).round(2) %>%
+	    <span class="glyphicon glyphicon-warning-sign"></span>
+	    <%= link_to raw("<button class='btn btn-primary btn-xs'>Details</button>"), get_file_project_path(@project.key, :step => 'normalization', :filename => 'not_found_genes.txt', :content_type => 'plain/text') %>
+	</td></tr>
+	<% end %>
+    </tbody></table>
+
+    <%= display_warnings(@results['warnings']) %>
+
+    <%= link_to(raw("<button class='btn btn-primary btn-xs download_button'>Download ouput file</button>"), get_file_project_path(@project.key, :step => 'normalization'), :target => '_blank') if exportable?(@project) %>
+    </div></div>
+
+
+    <% if @results['list_plots'] and @project.norm_id %>
+     <% @results['list_plots'].each do |e| %>
+      <div class="panel panel-default" style="display: block;">
+      <% url =  get_file_project_path(@project.key, :step => 'normalization', :filename => e['name'], :content_type => 'image/png', :display => 1) %>
+      <% download_url =  get_file_project_path(@project.key, :step => 'normalization', :filename => e['name'], :content_type => 'image/png') %>
+      <div class='panel-heading'><%= e['description'] %><div style='float:right'><%= link_to raw("<button class='btn btn-primary btn-xs'>Download</button>"), download_url %></div></div>
+      <div class='panel-body'>
+      <%= image_tag(url) %>
+     </div></div>
+     <% end %>
+     <% end %>
+
+
+
+    <% end %>
+  </div>
+</div>
+
+<% else %>
+No results available. <%= raw ((status = @project.status) ? "<span class='label label-#{status.label}'>#{status.name}</span>" : 'NA') %>
+<% if @results %>
+<span class='label label-danger'><%= @results['displayed_error'] || '' %></span>
+<br/><span><%= @results['original_error'] || '' if admin? %></span>
+<% end %>
+<div style='float:right'><button id='reset_normalization' class="btn btn-primary" style="margin-top:-7px">Reset</button></div>
+
+<% end %>
+
+<%= javascript_tag do %>
+
+$("#reset_normalization").click(function(){
+refresh("step_container", "<%= edit_project_path(:key => @project.key, :nolayout => 1) %>");
+});
+
+set_margins()
+
+<% end %>
+

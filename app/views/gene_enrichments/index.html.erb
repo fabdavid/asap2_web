@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Gene Enrichments</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @gene_enrichments.each do |gene_enrichment| %>
+      <tr>
+        <td><%= link_to 'Show', gene_enrichment %></td>
+        <td><%= link_to 'Edit', edit_gene_enrichment_path(gene_enrichment) %></td>
+        <td><%= link_to 'Destroy', gene_enrichment, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Gene Enrichment', new_gene_enrichment_path %>

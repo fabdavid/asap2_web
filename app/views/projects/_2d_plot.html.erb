@@ -1,0 +1,121 @@
+<div id='2d_plot_container' class='plot_container' style='left:0px;right:0px;'>
+<div id='plotly_plot'></div>
+</div>
+
+<%= javascript_tag do %>
+
+ var data= <%= raw @h_data.to_json %>;
+ data['mode'] = "markers+text";
+ data['type'] = "scatter";
+ //var PCAGraph2d = $('#pca_plot');
+
+ data['marker'] = {size: 9};
+ if (typeof _marker != 'undefined'){ 
+  data['marker'] = clone(_marker);
+  data['marker']['size'] = 8;
+ }
+ data['textposition'] = 'bottom center';
+
+ layout = {
+  xaxis: {title: 'Dimension <%= params[:dim1] || 'x' %>', type:'linear'},
+  yaxis: {title: 'Dimension <%= params[:dim2] || 'y' %>', type:'linear'},
+  hovermode: 'closest',
+  dragmode:'pan',
+  margin: { t: 0 },        
+  legend: {
+   y:0.8,
+   yref: 'paper',
+   font: {
+    family: 'Arial, sans-serif',
+    size: 20,
+    color: 'grey',
+   }
+  },
+  title:'<%= @active_item_name %> 2D plot'
+ };
+
+  Plotly.plot('plotly_plot', [ data ], layout, {scrollZoom: true}); 
+
+  set_margins();
+
+/* $('#pca2d_png').on('click', function (e) {
+  if(e.handled !== true) // This will prevent event triggering more then once
+                {
+                    e.preventDefault();
+                    var plotDiv = document.getElementById('2d_pca_graph');
+                    Plotly.downloadImage(plotDiv, {
+                        filename: 'singlecell-viz',
+                        format: 'png', //also can use 'jpeg', 'webp', 'svg'
+                        height: 800,
+                        width: 800
+                    });
+                    e.handled = true;
+                }
+            });
+            $('#pca2d_svg').on('click', function (e) {
+                if(e.handled !== true) // This will prevent event triggering more then once
+                {
+                    e.preventDefault();
+                    var plotDiv = document.getElementById('2d_pca_graph');
+                    Plotly.downloadImage(plotDiv, {
+                        filename: 'singlecellviz',
+                        format: 'svg', //also can use 'jpeg', 'webp', 'svg'
+                        //height: 800,
+                        //width: 800
+                    });
+                   
+                    e.handled = true;
+                }
+            });
+            $('#pca2d_togglelog').on('click', function (e) {
+                if(e.handled !== true) // This will prevent event triggering more then once
+                {
+                    e.preventDefault();
+
+                    if(_2dlayout['xaxis']['type'] === 'linear')
+                    {
+_2dlayout['xaxis']['type'] = 'log';
+_2dlayout['yaxis']['type'] = 'log';
+                    }
+                    else
+                    {
+_2dlayout['xaxis']['type'] = 'linear';
+_2dlayout['yaxis']['type'] = 'linear';                    
+                    }
+                    
+                    setTimeout(function(){
+                        var plotDiv = document.getElementById('2d_pca_graph');
+                        Plotly.relayout(plotDiv, _2dlayout);
+                    }, 100);
+                    
+                    e.handled = true;
+                }
+            });            
+            $('#pca2d_togglenames').on('click', function (e) {
+                if(e.handled !== true) // This will prevent event triggering more then once
+                {
+                    e.preventDefault();
+                    if(_2ddata['mode'] === 'markers')
+                        _2ddata['mode'] = "markers+text";       
+                    else
+                        _2ddata['mode'] = "markers";
+                    
+                    setTimeout(function(){
+                        var plotDiv = document.getElementById('2d_pca_graph');
+                        plotDiv.data[0].mode = _2ddata['mode'];
+                        Plotly.redraw(plotDiv);
+                    }, 100);
+                    
+                    e.handled = true;
+                }
+            });
+           }
+           
+           Plotly.newPlot(PCAGraph2d,[_2ddata],_2dlayout,{showLink: false, displaylogo: false, displayModeBar: true, scrollZoom: true});
+           update2Dgraph();
+           printGeneList('2d');
+           printRegionList('2d');
+           
+        }
+*/
+<% end %>

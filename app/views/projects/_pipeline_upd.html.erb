@@ -1,0 +1,103 @@
+<% if  @redirect_to_main_page %>
+ window.location='<%= projects_path() %>';  
+<% else %>
+<%# if @reload_step_container and session[:active_step] %>
+if ($("#last_project_step").html() != '<%= @last_update %>'){
+ <% if session[:active_step] < 5 %>
+  refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>");
+ <% else %>
+ <% h_obj = {5 => clusters_path(:project_key => @project.key), 6 => diff_exprs_path(:project_key => @project.key), 7 => gene_enrichments_path(:project_key => @project.key)} %>
+  refresh("list_<%= Step.find(session[:active_step]).name %>s", "<%= h_obj[session[:active_step]] %>");
+ <% end %>
+ $("#last_project_step").html('<%= @last_update %>');
+}
+<%# end %>
+
+// set positions in queues
+//alert("bla");
+var positions = <%= raw @positions.to_json %>;
+var queues = ['Fast', 'Medium', 'Slow'];
+for (var i=0; i< positions.length; i++){
+//alert('t');
+// each queue
+ var h_pos =  positions[i];
+ list_pos = Object.keys(h_pos);
+ for (var j=0; j < list_pos.length; j++){
+   var val = h_pos[list_pos[j]];
+   var e = $("#status_job_" + list_pos[j]);
+   e.attr("title", "Position: " + val + " in " + queues[i] + " queue.");
+//   alert("Position " + val + " in " + queues[i] + " queue.") 
+ }
+}
+
+
+<% if session[:current_project] != @project.key %>
+window.location='<%= project_path(session[:current_project]) %>';
+<% else %>
+<%= raw "//#{session[:active_step]} - #{@positions}.to_json}" %>
+<%= raw "//#{session[:active_step]}, #{params[:active_step]}, #{@project.key}" %>
+<%= raw "//#{@reload_step_container}" %>
+<%= raw "//alert('#{session[:last_update_active_step]} - #{@last_update}');" %>
+<%# "#{session[:last_step_status_id]} != #{@project.status_id} or #{session[:last_step_id]} != #{@project.step_id} " %>;
+<%# "alert(" + @project.project_dim_reductions.select{|pdr| pdr.status_id < 3}.size.to_s + ");" %>
+$(".pipeline_step").removeClass("disabled");
+//var mmm = '<%= session[:last_update_active_step].to_s  + " : " + @last_update.to_s %>';
+<% h_nber = {5 => Cluster, 6 => DiffExpr, 7 => GeneEnrichment} %>
+
+<% project_steps = ProjectStep.where(:project_id => @project.id).all.sort{|a, b| a.step_id <=> b.step_id} %>
+<% last_step = project_steps.select{|ps| ps.status_id}.last %>
+<% last_step_id = last_step.step.id %>
+
+<% h_ps = {} %>
+<% project_steps.map{|ps| h_ps[ps.step_id]=ps } %>
+<% project_steps.each do |ps| %>
+  <% if !ps.status_id %>
+    $("#step_<%= ps.step_id %> img").addClass("hidden");
+  <% elsif ps.step_id < 5 %> //or (ps.step_id == 4 and @project.project_dim_reductions.select{|pdr| pdr.status_id < 3}.size == 0)
+   $("#step_<%= ps.step_id %> img").removeClass("hidden");
+   <% status = ps.status %>
+   if ('<%= raw image_url(status.name + '.' + status.img_extension) %>' != $("#step_<%= ps.step_id %> img").attr('src')){
+    $("#step_<%= ps.step_id %> img").attr('src', '<%= raw image_url(status.name + '.' + status.img_extension) %>');
+   }
+  <% end %>
+  <% if ps.step_id > 4 %>
+   $("#step_<%= ps.step_id %> .nber").html('<%= h_nber[ps.step_id].where(:project_id => @project.id, :status_id => 3).count || 0 %>');
+  <% end %>
+  <% if (ps.step_id != 6 and ps.step_id !=5 and (ps.step_id > last_step_id + 1 or (ps.step_id == last_step_id + 1 and last_step.status_id != 3 and last_step_id !=4 ))) or 
+        (ps.step_id == 6 and (@project.selections.all.size == 0 or last_step_id < 4) and @project.diff_exprs.size == 0) or
+        (ps.step_id == 5 and (last_step_id < 2 or (last_step_id == 2 and last_step.status_id != 3)) or
+        (ps.step_id == 4 and ps.status_id == nil) or
+        (ps.step_id == 7 and @project.diff_exprs.select{|e| e.status_id == 3}.size == 0) or
+	((ps.step_id > 5 or ps.step_id == 4) and h_ps[3].status_id == nil))
+   %><%# and Cluster.where(:project_id => @project.id, :status_id => 3).count == 0 %>
+ //  alert('<%=  session[:selections].to_json %>');
+  <%# if(ps.step_id == 6 and @project.selections.all.size == 0) %>
+    $("#step_<%= ps.step_id %>").addClass("disabled");    
+  <%# end %>
+ <% end %>
+
+ <% if ps.step_id == 6 %>
+   if ($("#step_<%= ps.step_id %>").hasClass("disabled")){
+    $("#step_<%= ps.step_id %>").attr('title', 'Create at least one selection first (from the visualization or clustering steps).');
+   }else{
+    $("#step_<%= ps.step_id %>").attr('title', ''); 
+   }
+ <% end %>
+<% end %>
+
+<% if session[:active_step] == 4 %>
+ var pdrs = <%= raw @project.project_dim_reductions.select{|pdr| pdr.dim_reduction_id < 5 or admin?}.map{|pdr| [pdr.dim_reduction_id, (pdr.status_id) ? raw(image_url(@h_statuses[pdr.status_id].name + "." + @h_statuses[pdr.status_id].img_extension)) : '']}.to_json %>;
+ for (var i=0; i<pdrs.length; i++){
+  $("#dr_" + pdrs[i][0] + " img").attr("src", pdrs[i][1]);
+ }
+ $('#dim_reduction_tabs li.active').removeClass('active');
+ $("#dr_" + <%= session[:active_dr_id] %>).parent().addClass("active");
+<% end %>
+
+<% end %>
+
+<%# session[:to_update] = 0 %>
+
+//$('[data-toggle="tooltip"]').tooltip();
+
+<% end %>

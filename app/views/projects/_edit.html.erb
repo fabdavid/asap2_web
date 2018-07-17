@@ -1,0 +1,108 @@
+<%# admin? %>
+<%= form_for(@project, :url => project_path(:key => @project.key))  do |f| %>
+<div class="form-group">
+  <%= label_tag 'project[project_name]', "Project name" %>
+  <%= f.text_field :name, :class => 'form-control' %>
+</div>
+<div class="form-group">
+  <%= label_tag 'project[organism_id]', "Organism" %>
+  <% l = Organism.all.select{|o| o.id <3}.map{|o| [o.name, o.id]} %>
+  <%= f.select :organism_id, l, {}, {:class => 'form-control'} %>
+</div>
+
+<% if @existing_group_file  %>
+<p class="help-block">
+  You already uploaded this file : <%= @project.group_filename %>.
+  You can upload a modified group file below, but you will have to run again the analyses that are using this file.
+<span id='delete_batch_file' class='btn btn-danger btn-xs'>Delete</span>
+</p>
+<% end %>
+
+<div class='form-group'>                                                                                                                                                                  
+  <%= label_tag 'group_file', 'Group file input to correct for batch effect [Optional]' %> <span style='color:black'>[<%= link_to 'see required format', file_format_home_index_path() + "#batch_file", target: '_blank' %>]</span>
+  <%= file_field_tag :group_file %>
+  <div id="kv-error-2" style="margin-top: 10px; display: none;" class="file-error-message"></div> 
+  <div id="kv-success-2" class="alert alert-success fade in" style="margin-top: 10px;  display: none;"></div>
+  <p class="help-block">
+    Text file with 2 tab-separated columns. First column : cell name, second column : batch ID [text or number].
+  </p>
+</div>
+
+<% if !@project.sandbox %>
+
+<div class='form-group'> 
+<%= f.check_box :public %> <%= f.label :public, 'Analysis publicly available' %>
+</div>
+
+<div class='form-group'>
+ <%= f.label :pmid, 'PMID of the article referencing this analysis' %>
+<%= f.text_field :pmid %>
+</div>
+
+<% end %>
+
+<%# if admin? %>
+<div id='share_container'>
+<%= render :partial => 'shares' %>
+</div>
+<br/>
+<!--
+<div class='form-group'>
+  <%= label_tag 'read_access', 'Shared with read-only access', {'data-toggle' => "tooltip", 'title' => "Comma-separated list of emails to whom you autorize a read-only access"} %>
+  <%= f.text_field :read_access, {:class => "form-control", :placeholder => "Comma-separated list of emails to whom you give read-only access"} %>
+</div>
+
+<div class='form-group'>
+  <%= label_tag 'write_access', 'Shared with write access', {'data-toggle' => "tooltip", 'title' => "Comma-separated list of emails to whom you autorize a write access"} %>
+  <%= f.text_field :write_access, {:class => "form-control", :placeholder => "Comma-separated list of emails to whom you give write access"} %>
+</div>
+-->
+<%# end %>
+
+<%= f.hidden_field :group_filename  %>
+
+<button id='submit_project' type="submit" class="btn btn-primary">Update project</button>
+<button id='cancel_project' type="button" class="btn btn-default">Cancel</button>
+
+<% end %>
+
+
+
+<%= javascript_tag do %>
+
+$("#cancel_project").click(function(){
+$("#ontop_window").addClass("hidden");
+});
+
+$("#delete_batch_file").click(function(){
+refresh_post("form_container", "<%= delete_batch_file_project_path(@project.key) %>", [], 'post');
+});
+
+$("#group_file").fileinput({
+ uploadUrl: '<%= upload_file_projects_path(:type => 'group', :key => @project.key) %>', // server upload action
+ uploadAsync: true,
+ showPreview: false,
+ allowedFileExtensions: ['tab', 'txt', 'csv'],
+ showUpload: false,
+ maxFileCount: 1,
+ elErrorContainer: '#kv-error-2'
+}).on("filebatchselected", function(event, files) {
+ // trigger upload method immediately after files are selected
+ $("#group_file").fileinput("upload");
+}).on('filebatchpreupload', function(event, data, id, index) {
+ $("#kv-success-2").html('<h4>Upload Status</h4><ul></ul>').hide();
+}).on('fileuploaded', function(event, data, id, index) {
+ var fname = data.files[index].name;
+ var out = '<li>' + 'Uploaded file # ' + (index + 1) + ' - '  + fname + ' successfully.' + '</li>';
+ $("#kv-success-2 ul").append(out);
+ $("#group_file").attr('loaded', "1");
+ $("#kv-success-2").fadeIn('slow');
+ $("#project_group_filename").val(fname);
+
+}).on('fileclear', function(event, id){
+ $("#kv-success-2").hide();
+ $("#project_group_filename").val('');
+});
+
+
+<% end %>

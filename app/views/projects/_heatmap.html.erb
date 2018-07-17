@@ -1,0 +1,68 @@
+<%# session[:viz_params].to_json %>
+<div id='point_details' class='hidden'></div>
+<div id='heatmap_panel' class='panel panel-default'>
+ <div class='panel-heading'>
+<span style='margin-right:100px'>Heatmap</span>
+<span id='download_small_pdf' class='btn btn-default btn-xs'>PDF Small</span>
+<span id='download_large_pdf' class='btn btn-default btn-xs'>PDF Large</span> 
+<span id='download_small_png' class='btn btn-default btn-xs'>PNG Small</span>
+<span id='download_large_png' class='btn btn-default btn-xs'>PNG Large</span>
+</div>
+<!-- <table id='download_heatmap'>
+<tr><td>Download PDF</td><td>
+ <span id='download_small_png' class='btn btn-default btn-xs'>Small</span>
+</td><td>
+ <span id='download_full_png' class='btn btn-default btn-xs'>Large</span>
+</td></tr>
+</table>
+-->
+ <div id='heatmap_container' class='d3heatmap'></div>
+</div>
+
+ <%= javascript_tag do %>
+
+ var heatmap_json = <%= raw (@heatmap_json) ? @heatmap_json : '{}' %>;
+// var data = heatmap_json['x']; //['x'][0]['attribs']['id']['x'];
+ if (heatmap_json.x && heatmap_json.x.matrix){
+ var plot_width = heatmap_json.x.matrix.dim[1] *15 + 220;
+var plot_height = heatmap_json.x.matrix.dim[0] *15 + 100;
+
+//   alert( heatmap_json.x.matrix.dim[0] * heatmap_json.x.matrix.dim[1]);
+   if( // heatmap_json.x.matrix.dim[0] < 1000 &&  heatmap_json.x.matrix.dim[1] < 1000 &&  
+     heatmap_json.x.matrix.dim[0] * heatmap_json.x.matrix.dim[1] < 100000){
+  $("#heatmap_container").css({height: plot_height + 'px', width: plot_width + 'px'});
+  heatmap('#heatmap_container', heatmap_json.x);
+ 
+  var panel_width = ( $(window).width() > plot_width) ? $(window).width() : plot_width;
+  // alert(plot_width);
+  $("#heatmap_panel").css({width: panel_width + 'px'});
+  $("#heatmap_container").css({height: (plot_height + 100) + 'px', width: (plot_width + 100) + 'px'});
+  $(".yaxis").css({width: '200px'});									      
+  } else{
+  var html_content = "<span class='label label-warning'>Please restrict the size of the matrix (cells and/or genes) to be able to display the dynamical heatmap</div>";
+  $("#heatmap_container").html(html_content);
+  }
+
+ }else{
+    var html_content = "<span class='label label-warning'>Please restrict the size of the matrix (cells and/or genes) to be able to display the dynamical heatmap</div>";
+  $("#heatmap_container").html(html_content);
+   $("#heatmap_panel").css({height: 100 + 'px', width: 600 + 'px'});
+ }
+
+$(".xaxis").attr("clip-path", "");
+
+$("#download_small_pdf").click(function(){
+window.location = '<%= get_file_project_path(:key => @project.key) %>?step=visualization&filename=heatmap/heatmap.small.pdf';
+});
+$("#download_large_pdf").click(function(){
+window.location = '<%= get_file_project_path(:key => @project.key) %>?step=visualization&filename=heatmap/heatmap.large.pdf';
+});
+$("#download_small_png").click(function(){
+window.location = '<%= get_file_project_path(:key => @project.key) %>?step=visualization&filename=heatmap/heatmap.small.png';
+});
+$("#download_large_png").click(function(){
+window.location = '<%= get_file_project_path(:key => @project.key) %>?step=visualization&filename=heatmap/heatmap.large.png';
+});
+
+
+ <% end %>

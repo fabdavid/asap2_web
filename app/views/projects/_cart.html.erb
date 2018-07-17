@@ -1,0 +1,200 @@
+<%# raw "// #{session.to_json}" %>
+  <!--<div class="container-fluid">
+    <ul class="nav navbar-nav">
+      <li class="selections active">
+        <a href="#">Selections</a>
+      </li>
+  
+    </ul>
+  </div>
+-->
+<% if @project and readable?(@project) %>
+<% cell_selections = @project.selections.where(:selection_type_id => 1).all.sort %>
+<% gene_sets = @project.gene_sets.all.sort %>
+
+<div id='cell_selections' class='selection_container hidden'>
+ <% cell_selections.sort.each do |s| %>
+  <button type='button' id= 'cell_<%= s.id %>' class='btn btn-default btn-sm selection-btn'><span class='selection_title'><span class='selection_label'><%= s.label %></span> <span class='badge'><%= s.nb_items %></span></span> <%= image_tag('edited.png', :class=>'editable-img', :width => '15px', :style => 'margin-top:-10px;') if analyzable_item?(@project, s) %></button>
+ <% end %>
+</div>
+<div id='genesets_selections' class='selection_container hidden'>
+ <% gene_sets.sort.each do |s| %>
+  <button type='button' id= 'genesets_<%= s.id %>' class='btn btn-default btn-sm selection-btn <%= (exportable_item?(@project, s)) ? 'downloadable' : '' %>'><span class='selection_title'><span class='selection_label'><%= s.label %></span> <span class='badge'><%= s.nb_items %></span></span> <%= image_tag('edited.png', :width => '15px', :style => 'margin-top:-10px;') if analyzable_item?(@project, s) %></button>
+ <% end %>
+</div>
+
+<!--<div class="container-fluid">
+  <div class="sel_container">-->
+
+<div class='col-xs-6'>
+<span class='label label-default'><%= cell_selections.size %></span>
+<span class='cart_category'>Cell selections</span>
+<span id='cell_sel_button' class='selection_button btn btn-default'>View</span>
+</div>
+
+<div class='col-xs-6'>
+<span class='label label-default'><%= gene_sets.size %></span>
+<span class='cart_category'>Custom gene sets</span>
+<span id='genesets_sel_button' class='selection_button btn btn-default'>View</span>
+<% if analyzable?(@project) %>
+<span id='genesets_upload_button' class='btn btn-default'>
+Upload new set
+</span> <span style='color:black'>[<%= link_to 'see required format', file_format_home_index_path() + "#geneset_file", target: '_blank' %>]</span>
+<% end %>
+</div>
+
+<!--</div>
+</div>-->
+<!--<div class='selection_container'>
+<span style='vertical-align:top'>Gene selections</span>
+ <% @project.selections.where(:selection_type_id => 2).all.sort.each do |s| %>
+  <button type='button' id= 'selection_<%= s.id %>' class='btn btn-default btn-sm selection-btn'><span class='selection_title'><span class='selection_label'><%= s.label %></span> <span class='badge'><%= s.nb_cells %></span></span> <%= image_tag('edited.png', :width => '15px', :style => 'margin-top:-10px;') if authorized? %></button>
+ <% end %>
+
+</div>
+-->
+<%= javascript_tag do %>
+
+var selections = <%= raw session[:selections].to_json %>;
+
+ $(".selection-btn").unbind('click');
+ $(".selection-btn").click(function(e){
+  var t = this.id.split("_");
+  var selection_content = [];
+  var edited = '';
+  if (selections && selections[t[1]]){ 
+   selection_content = selections[t[1]]['item_list'].join('; ');
+   if (selections[t[1]]['edited'] == true) 
+    edited = ' Edited'
+  }
+
+var nber_el = $(this).children().length;  
+if (nber_el != 2){
+$("#update_sel").addClass("hidden");
+$("#delete_sel").addClass("hidden");
+}else{
+$("#update_sel").removeClass("hidden");
+$("#delete_sel").removeClass("hidden");
+}
+
+var selection_title =  $("#" + this.id + " span.selection_title").html();
+var selection_label =  $("#" + this.id + " span.selection_label").html();
+var html_selection_content = "";
+var download_icon= '';
+  if (t[0] == 'cell'){ 
+   //   alert(selection_content);
+   html_selection_content = "<br/><textarea id='list_of_items' name='list_of_items' 'rows='4' cols='50' name='cells'>" + selection_content + "</textarea>"
+  }else{
+    if ($(this).hasClass('downloadable')){
+     html_selection_content = "<br/>"
+     download_icon = ' <a href="<%= get_file_project_path(:key => @project.key, :step => 'gene_sets') %>&filename=' + t[1] + '.txt"><%= image_tag 'download.png' %></a>';
+    }
+  }
+  var html = "<span class='title_popup'>" + selection_title + edited + download_icon + " </span><br/><input type='hidden' id='selection_id' name='selection_id' value='" + t[1] + "' /><input type='text' id='selection_label' name='selection_label' value='" + selection_label + "'/>" + html_selection_content; 
+  var container = $(this).parent();
+  $("#popup_container2").html(html);
+  $("#popup_window2").removeClass('hidden');
+  $("#popup_window2").css({
+   left: e.pageX + 10,
+   'padding-bottom' : 50 + container.height()
+   }).stop().show(100);
+
+ $(".delete_sel_span").unbind('click');
+ $(".delete_sel_span").click(function(e){
+ var t = this.id.split("_");
+ //alert(this.id);
+ $.ajax({
+  url: "<%= selections_path() %>/" + t[1],
+  type: "delete",
+  beforeSend: function(){
+  },
+  success: function(returnData){
+   var div = $("#cart");
+   div.RemoveChildrenFromDom();
+   div.html(returnData);
+   $("#popup_window2").addClass("hidden");
+  },
+  error: function(e){
+//   alert(e);
+  }
+ });
+
+ });
+});
+
+<% if session[:active_step] == 4 and @project %>
+ if ($('#visualization_form') && $('#visualization_form').html()){
+ // alert($('#visualization_form').html());
+  var p = $('#visualization_form').serializeArray();
+  p.push({'name' : 'project_key', 'value' : '<%= @project.key %>'});
+  p.push({'name' : 'dr_id', 'value' : '<%= session[:active_dr_id] %>'});
+  var container = "visualization_container";
+  if ($("#full_screen").val() != ''){
+   container = "full_screen_visualization div.window_content"
+  } 
+  refresh_post(container, "<%= replot_project_path(:key => @project.key) %>", p, 'post');
+}
+<% else %>
+refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>");
+<% end %>
+
+<% if @project.diff_exprs.size == 0 and @project.selections.size == 0 %>
+ $("#step_4").click();
+<% end %>
+
+$(".selection_button").unbind('click');
+$(".selection_button").click(function(){
+//alert('test');
+  var id = this.id; 
+  var t = id.split("_");
+  //alert("-" + $(this).html() + "-");
+
+  $("#" + t[0] + "_selections").toggleClass("hidden"); 
+//  if ($(this).html() == 'View'){            
+   $(this).html(($(this).html() == 'View') ? 'Hide' : 'View');  
+ 
+  var l = ['cell', 'genesets'];   
+  for (var i=0; i<l.length; i++){
+  // $(this).html('View'); 
+   if (l[i] != t[0]){
+    $("#" + l[i] + "_selections").addClass("hidden");
+    $("#" + l[i] + "_sel_button").html('View')			    
+   }
+  }
+});
+
+$("#genesets_upload_button").unbind('click');
+$("#genesets_upload_button").click(function(){
+ if ($("#genesets_upload_button").attr("disabled") != 'disabled'){
+  $("#gene_set_file").click()
+ }
+});
+ 
+$("#gene_set_file").unbind("change");
+$("#gene_set_file").change(function(){
+$("#genesets_upload_button").attr("disabled", "disabled");
+// $("#new_gene_set").submit
+
+var p = new FormData();
+$.each($('#gene_set_file')[0].files, function(i, file) {
+    p.append('gene_set_file', file);
+});
+
+//var p = $('#new_gene_set').serializeArray();
+//alert(p[0].name + p[0].value + ", " + p[1].name + p[1].value);
+
+//p.push({'name' : 'project_key', 'value' : '<%= @project.key %>'});
+ p.append('project_key', '<%= @project.key %>'); 
+ p.append('gene_set[label]', '');
+refresh_post("cart", '<%= gene_sets_path %>', p, 'post', true, true)
+
+})
+
+<% if session[:cart_display] %>
+$("#<%= session[:cart_display] %>_sel_button").click();
+<% end %>
+
+<% end %>
+<% end %>
+
+

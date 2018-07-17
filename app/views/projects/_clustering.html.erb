@@ -1,0 +1,92 @@
+<div class='alert alert-info'><%= raw Step.find(5).description %></div>
+
+<% if analyzable?(@project) %>
+<form id='clustering_form'>
+<div class='form-inline'>
+<div class='form-group'>
+<%= label_tag 'cluster_method_id', 'Cluster method' %>
+<% l = ClusterMethod.all.sort.map{|e| [e.label, e.id]} %>
+<%# l.unshift(["Manual", nil]) %>
+<%= select_tag 'cluster[cluster_method_id]', options_for_select(l, 1), {class: 'form-control'} %>
+<% Speed.all.each do |s| %>
+<%= image_tag 'speed_' + s.name + '.png', :id => 'speed_' + s.id.to_s, :class => 'speed_image hidden', :width => '25px' %>
+<% end %>
+<span id='method_desc' class="label label-info"></span>
+</div>
+</div>
+<div class='form-inline'>
+<div class='form-group attr_table'>
+<%= label_tag 'cluster_method_id', 'Dataset' %>
+<% l = ProjectDimReduction.where(:project_id => @project.id, :status_id => 3).all.select{|pdr| pdr.dim_reduction_id < 5}.sort{|a, b| a.dim_reduction_id <=> b.dim_reduction_id}.map{|pdr| dr = pdr.dim_reduction; [dr.label, dr.id]} %>
+<% l.unshift(["Normalization", ",3"]) if status_id = ProjectStep.where(:project_id => @project.id, :step_id => 3).first.status_id and status_id == 3 %>
+<% l.unshift(["Filtering", ",2"]) %>
+<%= select_tag 'cluster[dim_reduction_id]', options_for_select(l, ',3'), {class: 'form-control'} %>
+</div>
+<div id='cluster_attributes' class='form-group'></div>
+<div id='cluster_button' class='form-group'>
+<button id="clustering_button" class='btn btn-primary' style=''>New clustering</button>
+</div>
+</div>
+<div id='method_warning'></div>
+<div id='infos'></div>
+</form>
+<% end %>
+<div id='list_clusterings'></div>
+
+
+<%= javascript_tag do %>
+
+<% if analyzable?(@project) %>
+
+var h_cluster_methods = <%= h ={}; ClusterMethod.all.map{|cm| h[cm.id] = [cm.speed_id, cm.description, cm.link]}; raw h.to_json %>;
+
+$('#clustering_form').unbind('submit');
+$('#clustering_form').submit(false);
+
+$("#clustering_button").click(function(){
+ var p = $('#clustering_form').serializeArray();
+ p.push({'name' : 'project_key', 'value' : '<%= @project.key %>'}); 
+ refresh_post("list_clusterings", '<%= clusters_path %>', p, 'post')
+});
+
+function upd_attributes(){
+
+ var cluster_method_id = $("#cluster_cluster_method_id").val();
+ refresh('cluster_attributes', '<%= get_attributes_project_path(:key => @project.key) %>' + '?obj_name=cluster_method&obj_id=' + cluster_method_id);
+ var img = $("#speed_" + h_cluster_methods[$("#cluster_cluster_method_id").val()][0])
+ if (img) {img.removeClass('hidden');}
+
+}
+
+$("#cluster_cluster_method_id").change(function(){
+ $(".speed_image").addClass('hidden');
+ if ($(this).val()){
+  upd_attributes();
+  var html = h_cluster_methods[$(this).val()][1];
+  if (h_cluster_methods[$(this).val()][2] && h_cluster_methods[$(this).val()][2] != ''){
+   html += " <a href='" + h_cluster_methods[$(this).val()][2] + "'" + " target='_blank'>[Link]</a>";
+  }
+  $("#method_desc").html(html);
+  }else{
+   $("#cluster_attributes").html("");
+  }
+});
+
+
+upd_attributes();
+
+/*$("#cluster_cluster_method_id").change(function(){
+if ($("#cluster_cluster_method_id").val()!= null){
+ upd_attributes();
+}
+});
+*/
+<% end %>
+
+refresh("list_clusterings", '<%= clusters_path(:project_key => @project.key) %>')
+
+
+<% end %>
+
+
+

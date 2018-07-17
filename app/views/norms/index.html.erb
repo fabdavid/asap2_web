@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Norms</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @norms.each do |norm| %>
+      <tr>
+        <td><%= link_to 'Show', norm %></td>
+        <td><%= link_to 'Edit', edit_norm_path(norm) %></td>
+        <td><%= link_to 'Destroy', norm, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Norm', new_norm_path %>

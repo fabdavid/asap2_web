@@ -1,0 +1,135 @@
+<label>Permissions</label>
+
+<table id='share_table'>
+<thead>
+<tr id='shares_header' class='<%# (@shares.size == 0) ? 'hidden' : '' %>'>
+<th>Emails</th>
+<th>View</th>
+<th>Analyze</th>
+<th>Export(Download/Clone)</th>
+<th>Edit</th>
+<th></th>
+</thead>
+<tbody>
+<tr>
+<td>Me</td>
+<td><%= check_box_tag "view_perm", '1', true, {:disabled => true, :class => ''} %></td>
+<td><%= check_box_tag "analyze_perm", '1', true, {:disabled => true} %></td>
+<td><%= check_box_tag "export_perm", '1', true, {:disabled => true} %></td>
+<td><%= check_box_tag "edit_perm", '1', true, {:disabled => true} %></td>
+<td></td>
+</tr>
+
+<% i = -1 %>
+<% @shares.each_index do |i| %>
+<% s = @shares[i] %>
+<tr id='share_<%= s.id %>'>
+<td>
+<%= s.email %>
+<%# text_field_tag "shares[#{s.id}][email]", (s.user) ? s.user.email : s.email, {:class => 'form-control'} %>
+</td>
+<td><%= check_box_tag "shares[#{s.id}][view_perm]", '1', s.view_perm, {:disabled => true} %></td>
+<td><%= check_box_tag "shares[#{s.id}][analyze_perm]", '1', s.analyze_perm %></td>
+<td><%= check_box_tag "shares[#{s.id}][export_perm]", '1', s.export_perm %></td>
+<td><%= check_box_tag "shares[#{s.id}][edit_perm]", '1', false, {:disabled => true} %></td>
+<td></td>
+<td>
+<!--  <button type='button' class='btn btn-sm btn-success send_invite'>Activate & Send invitation</button> -->
+  <button id='del-share_<%= s.id %>' type='button' class='btn btn-sm btn-danger delete_share'>Delete</button></td>
+</tr>
+<% end %>
+<tr id='new_email' class='hidden'>
+<td><%= text_field_tag "share[email]", '', {:placeholder => 'New email', :class => 'form-control', :id => 'email_field'} %></td>
+<td><%= check_box_tag "share[view_perm]", '1', true, {:disabled => true} %></td>
+<td><%= check_box_tag "share[analyze_perm]", '1', false %></td>
+<td><%= check_box_tag "share[export_perm]", '1', false %></td>
+<td><%= check_box_tag "share[edit_perm]", '1', false, {:disabled => true} %></td>
+<td>
+<button type='button' id='invite_button' class='hidden btn btn-sm btn-success send_invite'>Send invitation</button>
+<span id='email_status'></span>
+</td>
+</tr>
+</tbody>
+</table>
+<button type='button' id='add_email_button' class='btn btn-primary btn-sm'>Add new email</button>
+
+<%= javascript_tag do %>
+
+$(".delete_share").click(function(){
+  let t = this.id.split("_")
+  let url = "<%= shares_path %>/" + t[1]
+  refresh_post("share_container", url, [], 'delete');
+})
+
+
+function validateEmail(email) {
+  var re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+  return re.test(email);
+}
+
+function validate() {
+  var $result = $("#email_status");
+  var email = $("#email_field").val();
+  $result.text("");
+
+  valid = false
+
+  if (validateEmail(email)) {
+    $result.text("Valid email.");
+    $result.css("color", "green");
+        $("#invite_button").removeClass('hidden')
+    valid = true
+  } else {
+    $result.text("Please enter a valid email.");
+    $result.css("color", "red");
+        $("#invite_button").addClass('hidden')
+  }
+  return valid;
+}
+
+
+$("#email_field").blur(function(){
+ validate()
+});
+
+$("#add_email_button").click(function(){
+ $("#submit_project").attr("disabled", true);
+ $("#new_email").removeClass("hidden");
+ $(this).addClass("hidden");
+ <% if @shares.size == 0 %>
+ // display empty fields
+ $("#shares_header").removeClass("hidden");
+ <% else %>
+ // send last entered email
+ <% end %>
+})
+
+$("#email_field").keyup(function(){
+ //let email = $(this).val();
+ // $("#email_field").val($.trim($("#email_field").val().toLowerCase()));
+ validate()
+})
+
+$("#email_field").change(function(){
+ validate()
+})
+
+$("#invite_button").click(function(){
+ if (validate() == true){
+  let url = "<%= shares_path %>"
+  let p = [];
+  p.push({name : 'share[email]', value : $.trim($("#email_field").val().toLowerCase())});
+  let t = ['view', 'analyze', 'export']
+  for (let i=0; i<t.length; i++){
+   p.push({name : 'share[' + t[i] + '_perm]', value : ($("#share_" + t[i] + "_perm").prop("checked") == true) ? true : false});
+  }
+  p.push({name : 'project_key', value : '<%= @project.key %>'})
+  refresh_post("share_container", url, p, 'post');
+ } else{
+  alert("Current email is not valid.")
+ }
+})
+
+$("#submit_project").attr("disabled", false);
+
+<% end %>

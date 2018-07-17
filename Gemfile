@@ -53,6 +53,21 @@ gem 'font-awesome-rails', '~> 4.7'
 # Use Bootsnap to improve startup times
 # gem 'bootsnap', '>= 1.1.0', require: false
 
+gem 'devise'
+#gem 'therubyracer'
+gem 'jquery-ui-rails'
+gem 'daemons'
+gem 'delayed_job_active_record'
+gem 'jquery-datatables-rails'
+gem 'descriptive_statistics'
+gem 'sys-proctable'
+gem 'rails4-autocomplete'
+gem 'jquery-fileupload-rails'
+gem 'paperclip'
+gem 'multipart-parser'
+gem 'haml'
+gem 'activerecord-session_store'
+
 group :development, :test do
   # Call 'byebug' anywhere in your code to drop into a debugger console
   gem 'byebug', platform: :mri

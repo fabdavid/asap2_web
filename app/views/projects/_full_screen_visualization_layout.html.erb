@@ -1,0 +1,79 @@
+<%# session[:viz_params].to_json %>
+<div class='hidden'>
+  <form id='visualization_form'>
+    <% if @dim_reduction.name=='heatmap' %>
+     <%= render :partial => 'form_heatmap' %>
+    <% end %>
+   <% if @attrs.size > 0 and analyzable?(@project) %>
+    <%= render :partial => "attributes" %>
+   <% end %>
+    <div class='form-inline'>
+     <%= render :partial => "viz_widgets" if @data_json %>
+     <span id="visualization_button" class='btn btn-primary' style=''>Plot</span>
+    </div>
+
+    <%  if @data_json %>
+
+    <div class='form-inline'>
+      <span id='visualization_message' class='<%= "label label-warning" if @message != '' %>'>
+       <%= @message %>
+     </span>
+    </div>
+
+   <% end %>
+   <%= hidden_field_tag 'full_screen', params[:full_screen] %>
+
+  </form>
+</div>
+<div id='full_screen_container'>
+ <div id='full_screen_plot_container'>
+  <% if @dim_reduction.id < 5  %>
+   <% if !@h_ori_data["displayed_error"] %>
+    <% params[:plot_type] = params[:full_screen] %>
+    <%= render :partial => 'plot' %> 
+   <% else %>   
+     <span class='label label-danger'><%= @h_ori_data["displayed_error"] %></span>
+     <%= @h_ori_data["original_error"] if admin? %>
+   <% end %>
+   <div class='clear'></div>
+  <% elsif @heatmap_json %>
+
+   <%= render :partial => 'heatmap' %>
+
+  <% else %>
+   No results.
+  <% end %>
+
+ </div>
+<!-- <div id='full_screen_plot_widgets'>
+  <%= image_tag 'success.png', width: '20px' %>
+ </div>
+-->
+</div>
+
+<%= javascript_tag do %>
+
+
+
+ $('#visualization_form').unbind('submit');
+ $('#visualization_form').submit(false);
+ $("#visualization_button").click(function(){
+  // alert("Plot!");
+  // active_item= + session[:active_dr_id] 
+  //alert("tt");
+  if ($("#gene_text").data('autocomplete')) {
+  //$("#gene_text").autocomplete("destroy");
+  //alert("test");
+  $("#gene_text").autocomplete({source: []});
+  $("#gene_text").removeData('autocomplete');
+}
+//alert("test2");
+
+  var p = $('#visualization_form').serializeArray();
+  p.push({'name' : 'project_key', 'value' : '<%= @project.key %>'});
+  p.push({'name' : 'dr_id', 'value' : '<%= session[:active_dr_id] %>'});
+ 
+  refresh_post("full_screen_visualization div.window_content", "<%= replot_project_path() %>", p, 'post');
+ });
+
+<% end %>

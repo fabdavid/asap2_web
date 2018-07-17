@@ -1,0 +1,699 @@
+<div>
+  <div class="tabbable tabs-top col-sm-12">
+    <ul class="nav nav-tabs" data-tabs="tabs" style="cursor: default;">
+      <li class="active"><a data-target="#input-data" data-toggle="tab">Input Data</a></li>
+      <li class="disable" id="trajectory-tab"><a data-target="#trajectory" data-toggle="tab">Trajectory</a></li>
+      <li class="disable" id="heatmap-tab"><a data-target="#heatmap" data-toggle="tab">Heatmap</a></li>
+      <li class="disable" id="gene-expression-tab"><a data-target="#gene-expression" data-toggle="tab">Gene Expression</a></li>
+    </ul>
+    <div class="tab-content" style="margin-top: 10px; margin-bottom: 10px;">
+      <div class="tab-pane active" id="input-data">
+        <div class="form-horizontal">
+          <div class="form-group">
+            <div class="control-label col-sm-3">
+              <%= label_tag 'dataset', 'Dataset' %>
+            </div>
+            <div class="col-sm-9">
+              <% l = [['Original data', 'parsing'], ['Normalized data', 'normalization']] %>
+              <%= select_tag 'attrs[dataset]', options_for_select(l,  @pdr_params['dataset']), {class: 'form-control'} %>
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="control-label col-sm-3">
+              <%= label_tag 'cell_set', 'Cells' %>
+            </div>
+            <div class="col-sm-9">
+	      <% @cell_set = Selection.where(:project_id => @project.id).all.map{|s| [s.label, s.id]} %>
+	      <% @cell_set.unshift(["All", nil]) %>
+	      <%= select_tag 'attrs[selection_id]', options_for_select(@cell_set, @pdr_params['selection_id'] || 'global'), {class: 'form-control'} %>
+            </div>
+          </div>
+          <!--
+          <div class="form-group">
+            <div class="control-label col-sm-3">
+              <%= label_tag 'cell', 'Staring Cell' %>
+            </div>
+            <div class="col-sm-9">
+              <%= select_tag 'attrs[start_cell]', options_for_select(@cells, @pdr_params['start_cell'] || @cells.first[1]), {class: 'form-control'} %>
+            </div>
+          </div>
+          -->
+          <div class="form-group">
+            <div class="control-label col-sm-3">
+	      <%= label_tag 'gene_set', 'Genes' %>
+            </div>
+            <div id='div_gene_set'>
+              <div class='col-sm-2'>
+                <% l=[['All', 'all'], ['Global gene set', 'global'], ['Custom gene set', 'custom']] %>
+                <% genesets= GeneSet.where(:project_id => @project.id).order("label").all %>
+                <% first_geneset = (genesets.size > 1) ? genesets.sort{|a, b| a.id <=> b.id}.first : genesets.first %>
+		<% l2 = genesets.map{|e| [e.label, e.id]} %>
+		<% l.pop if l2.size == 0 %>
+		<%= select_tag 'attrs[geneset_type]', options_for_select(l, @pdr_params['geneset_type'] || 'all'), {class: 'form-control'} %>
+		
+		<% l= GeneSet.where(:user_id => 1, :project_id => nil, :organism_id => @project.organism_id).order("label").all.map{|e| [e.label, e.id]} %>
+              </div>
+              <div class='col-sm-2'>
+		<%= select_tag 'attrs[global_geneset]', options_for_select(l, @pdr_params['global_geneset']), {class: 'form-control hidden'} %>
+		<%= select_tag 'attrs[custom_geneset]', options_for_select(l2, @pdr_params['custom_geneset'] || first_geneset), {class: 'form-control hidden'} %>
+              </div>
+              <div class='col-sm-3'>
+		<%= text_field_tag 'attrs[geneset_name]', (@pdr_params['geneset_name'] || ''), {:autocomplete => 'off'} %>
+              </div>
+		<%= hidden_field_tag 'attrs[geneset_name_saved]',  (@pdr_params['geneset_name'] || '') %>
+		<ul id='gene_name_list' class='hidden'></ul>
+	    </div>
+          </div>
+          <div class="form-group">
+            <div class="control-label col-sm-3">
+              <%= label_tag 'reduction_method', 'Reduction method' %>
+            </div>
+            <div class="col-sm-9">
+              <% l = [['DDRTree', 'DDRTree'], ['ICA', 'ICA']] %>
+              <%= select_tag 'attrs[reduction_method]', options_for_select(l,  @pdr_params['reduction_method']), {class: 'form-control'} %>
+            </div>
+          </div>
+          <div class='form-group'>
+            <div class="control-label col-sm-3">
+              <%= label_tag 'timeseries_file', 'Time-series file [Optional]' %>
+            </div>
+            <div class="col-sm-9">
+              <%= file_field_tag :timeseries_file %>
+              <div id="kv-error-2" style="margin-top: 10px; display: none;" class="file-error-message"></div>
+              <div id="kv-success-2" class="alert alert-success fade in" style="margin-top: 10px;  display: none;"></div>
+              <p class="help-block">
+                Text file with 2 tab-separated columns. First column: cell name, second column: time [number].
+              </p>
+            </div>
+          </div>
+	  <% if analyzable?(@project) and owner?(@project) %>
+          <div id="visualization_button" class='center-block btn btn-primary' style="width: 100px;">Plot</div>
+	  <% end %>
+        </div>
+      </div>
+      <div class="tab-pane" id="trajectory">
+        <div class="row">
+          <div class="btn btn-primary btn-sm pull-left" id="btncontrol-trajectory" style="margin-left: 20px;">
+            <span class="glyphicon glyphicon-cog"></span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-sm-4" style="position: absolute; z-index: 2; display: none;" id="plot-options-trajectory">
+            <div class="panel panel-default panel-formats plot-settings">
+              <div class="panel-body">
+                <div class="form-horizontal">
+                  <div class="form-group row vertical-align" style="margin-bottom: 10px;">
+                    <label class="control-label col-sm-5" for="trajectory-color-by-select">Color by:</label>
+                    <div class="col-sm-7">
+                      <select class="form-control" id="trajectory-color-by-select">
+                        <option value="state">State</option>
+                        <option value="pseudotime">Pseudotime</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-group row vertical-align" style="margin-bottom: 10px;">
+                    <label class="control-label col-sm-5" for="marker-size-slider">Marker size:</label>
+                    <div class="col-sm-7">
+                      <div id="slidecontainer">
+                        <input type="range" min="1" max="20" value="6" class="slider" id="marker-size-slider">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-group row vertical-align" style="margin-bottom: 10px;">
+                    <label class="control-label col-sm-5" for="branch-node-size-slider">Branch node size:</label>
+                    <div class="col-sm-7">
+                      <div id="slidecontainer">
+                        <input type="range" min="1" max="20" value="10" class="slider" id="branch-node-size-slider">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-12" id="plot-div-trajectory" style="z-index: 1;">
+            <div id="trajectory-plot" style="margin-left: auto; margin-right: auto; width: 1000px;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="tab-pane" id="heatmap"> <!-- style="height: 1200px;" -->
+        <div class="row">
+          <div class="btn btn-primary btn-sm pull-left" id="btncontrol-heatmap" style="margin-left: 20px;">
+            <span class="glyphicon glyphicon-cog"></span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-sm-4" style="position: absolute; z-index: 2; display: none;" id="plot-options-heatmap">
+            <div class="panel panel-default panel-formats plot-settings">
+              <div class="panel-body">
+                <div class="form-horizontal">
+                  <div class="form-group row vertical-align" style="margin-bottom: 10px;">
+                    <label class="control-label col-sm-6" for="branch-select">Branch:</label>
+                    <div class="col-sm-6">
+                      <select class="form-control" id="branch-select">
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-group row vertical-align" style="margin-bottom: 10px;">
+                    <label class="control-label col-sm-6" for="qval-limit">Qval limit:</label>
+                    <div class="col-sm-6">
+                      <input type="text" class="form-control" id="qval-limit">
+                    </div>
+                  </div>
+                  <div class="form-group row vertical-align" style="margin-bottom: 10px;">
+                    <label class="control-label col-sm-6" for="number-of-clusters">Number of clusters:</label>
+                    <div class="col-sm-6">
+                      <input type="text" class="form-control" id="number-of-clusters">
+                    </div>
+                  </div>
+                  <div style="text-align: center;">    
+                    <div id="branch-redraw" type="submit" class="btn btn-primary" style="width: 100px;">Redraw</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-12" id="plot-div-heatmap" style="z-index: 1;">
+            <div id="heatmap-plot" style="margin-left: auto; margin-right: auto; width: 1000px;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="tab-pane" id="gene-expression">
+        <div class="row">
+          <div class="btn btn-primary btn-sm pull-left" id="btncontrol-gene-expression" style="margin-left: 20px;">
+            <span class="glyphicon glyphicon-cog"></span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-sm-4" style="position: absolute; z-index: 2; display: none;" id="plot-options-gene-expression">
+            <div class="panel panel-default panel-formats plot-settings">
+              <div class="panel-body">
+                <div class="form-horizontal">
+                  <div class="form-group row vertical-align" style="margin-bottom: 10px;">
+                    <label class="control-label col-sm-5" for="gene-expression-color-by-select">Color by:</label>
+                    <div class="col-sm-7">
+                      <select class="form-control" id="gene-expression-color-by-select">
+                        <option value="state">State</option>
+                        <option value="pseudotime">Pseudotime</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-group row vertical-align" style="margin-bottom: 10px;">
+                    <label class="control-label col-sm-5" for="gene-expression-marker-size-slider">Marker size:</label>
+                    <div class="col-sm-7">
+                      <div id="slidecontainer">
+                        <input type="range" min="1" max="20" value="6" class="slider" id="gene-expression-marker-size-slider">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-12" id="plot-div-gene-expression" style="z-index: 1;">
+            <div id="gene-expression-plot" style="margin-left: auto; margin-right: auto; width: 1000px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%= javascript_tag do %>
+
+$("#timeseries_file").fileinput({
+ uploadUrl: '<%= raw upload_file_projects_path(:type => 'timeseries', :key => @project.key) %>', // server upload action
+ //uploadUrl: '<%= raw upload_file_projects_path(:type => 'timeseries', :key => (@project.key + '/visualization/' + @pdr.dim_reduction.name)) %>', // server upload action
+ uploadAsync: true,
+ showPreview: false,
+// allowedFileExtensions: ['tab', 'txt', 'csv'],
+ showUpload: false,
+ maxFileCount: 1,
+ elErrorContainer: '#kv-error-2'
+}).on("filebatchselected", function(event, files) {
+ // trigger upload method immediately after files are selected
+ $("#timeseries_file").fileinput("upload");
+}).on('filebatchpreupload', function(event, data, id, index) {
+ $("#kv-success-2").html('<h4>Upload Status</h4><ul></ul>').hide();
+}).on('fileuploaded', function(event, data, id, index) {
+ var fname = data.files[index].name;
+ var out = '<li>' + 'Uploaded file # ' + (index + 1) + ' - '  + fname + ' successfully.' + '</li>';
+ $("#kv-success-2 ul").append(out);
+ $("#timeseries_file").attr('loaded', "1");
+ $("#kv-success-2").fadeIn('slow');
+ //$("#project_group_filename").val(fname);
+
+}).on('fileclear', function(event, id){
+ $("#kv-success-2").hide();
+ //$("#project_group_filename").val('');
+});
+
+
+function update_geneset_names(){
+var url = '<%= autocomplete_gene_sets_path(:project_key => @project.key) %>&term=' + $("#attrs_geneset_name").val();
+$.ajax({
+  url: url,
+  type: "get",
+  dataType: "json",
+  beforeSend: function(){
+  },
+  success: function(h){
+   $("#gene_name_list").empty();
+   var html = '';
+   for(var i=0; i< h.data.length; i++){
+    html+= "<li>" + h.data[i].label + "</li>";
+   }
+   $("#gene_name_list").removeClass("hidden");
+   $("#gene_name_list").html(html);
+    $("#gene_name_list li").mouseover(function(){
+     $(this).addClass("highlight");
+    });
+    $("#gene_name_list li").mouseout(function(){
+     $(this).removeClass("highlight");
+    });
+    $("#gene_name_list li").click(function(){
+     var t = $(this).html().split(" [");
+     var v = t[0]
+     $(".replot").attr('disabled', 'disabled');
+     $("#attrs_geneset_name").val(v);
+     upd_geneset_session();
+     $("#attrs_geneset_name_saved").val(v);
+     $("#gene_name_list").addClass("hidden");
+    });
+
+
+  }
+});
+}
+
+$("#attrs_geneset_name").click(function(){
+update_geneset_names()
+});
+$("#attrs_geneset_name").keyup(function(){
+update_geneset_names()
+});
+
+function upd_heatmap_fields(el){
+
+   if (el.val() == 'all'){
+    $('#attrs_custom_geneset').addClass('hidden');
+    $('#attrs_global_geneset').addClass('hidden');
+    $('#attrs_geneset_name').addClass('hidden');
+   }
+   //  alert('t');
+   if (el.val() == 'global'){
+   //  alert('t2');
+
+    $('#attrs_custom_geneset').addClass('hidden');
+    $('#attrs_global_geneset').removeClass('hidden');
+    //  alert("t3");
+    $('#attrs_geneset_name').removeClass('hidden');
+   }
+   if (el.val() == 'custom'){
+    $('#attrs_global_geneset').addClass('hidden');
+    $('#attrs_custom_geneset').removeClass('hidden');
+    $('#attrs_geneset_name').removeClass('hidden');
+   }
+
+}
+
+upd_heatmap_fields($('#attrs_geneset_type'));
+
+
+function upd_geneset_session(el){
+// alert('toto')
+ var url =  "<%= set_viz_session_project_path(@project.key) %>?" + "geneset_type=" + $("#attrs_geneset_type").val() + "&global_geneset=" + $("#attrs_global_geneset").val() + "&custom_geneset=" + $("#attrs_custom_geneset").val();
+ $.ajax({
+  url: url,
+  type: "get",
+  dataType: "script",
+  beforeSend: function(){
+  },
+  success: function(returnData){
+   if (el){
+    $("#attrs_geneset_name").val("");
+    upd_heatmap_fields(el);
+   }
+   $(".replot").attr("disabled", false);
+  },
+  error: function(e){
+  }
+ });
+}
+
+$('#attrs_geneset_type').change(function(){
+ var el = $(this);
+ upd_geneset_session(el);
+});
+$('#attrs_custom_geneset').change(function(){
+ var el = $("#attrs_geneset_type");
+ upd_geneset_session(el);
+});
+$('#attrs_global_geneset').change(function(){
+ var el = $("#attrs_geneset_type");
+ upd_geneset_session(el);
+});
+
+
+  $('#btncontrol-trajectory').click(function() {
+    if ($('div[id="plot-options-trajectory"]').is(':visible')) {
+      $('div[id="plot-div-trajectory"]').removeClass('disable');
+    } else {
+      $('div[id="plot-div-trajectory"]').addClass('disable');
+    }
+    $('div[id="plot-options-trajectory"]').toggle();
+  });
+  $('#btncontrol-heatmap').click(function() {
+    if ($('div[id="plot-options-heatmap"]').is(':visible')) {
+      $('div[id="plot-div-heatmap"]').removeClass('disable');
+    } else {
+      $('div[id="plot-div-heatmap"]').addClass('disable');
+    }
+    $('div[id="plot-options-heatmap"]').toggle();
+  });
+  $('#branch-redraw').click(function() {
+  });
+  $('#btncontrol-gene-expression').click(function() {
+    if ($('div[id="plot-options-gene-expression"]').is(':visible')) {
+      $('div[id="plot-div-gene-expression"]').removeClass('disable');
+    } else {
+      $('div[id="plot-div-gene-expression"]').addClass('disable');
+    }
+    $('div[id="plot-options-gene-expression"]').toggle();
+  });
+  $('html').click(function(e) {
+    var heatmap_btn = document.getElementById('btncontrol-heatmap');
+    var heatmap_options = document.getElementById('plot-options-heatmap');
+    if ($('div[id="plot-options-heatmap"]').is(':visible') && e.target !== heatmap_btn && !heatmap_btn.contains(e.target) && e.target !== heatmap_options && !heatmap_options.contains(e.target)) {
+      $('div[id="plot-div-heatmap"]').removeClass('disable');
+      $('div[id="plot-options-heatmap"]').toggle();
+    }
+    var trajectory_btn = document.getElementById('btncontrol-trajectory');
+    var trajectory_options = document.getElementById('plot-options-trajectory');
+    if ($('div[id="plot-options-trajectory"]').is(':visible') && e.target !== trajectory_btn && !trajectory_btn.contains(e.target) && e.target !== trajectory_options && !trajectory_options.contains(e.target)) {
+      $('div[id="plot-div-trajectory"]').removeClass('disable');
+      $('div[id="plot-options-trajectory"]').toggle();
+    }
+    var geneexpression_btn = document.getElementById('btncontrol-gene-expression');
+    var geneexpression_options = document.getElementById('plot-options-gene-expression');
+    if ($('div[id="plot-options-gene-expression"]').is(':visible') && e.target !== geneexpression_btn && !geneexpression_btn.contains(e.target) && e.target !== geneexpression_options && !geneexpression_options.contains(e.target)) {
+      $('div[id="plot-div-gene-expression"]').removeClass('disable');
+      $('div[id="plot-options-gene-expression"]').toggle();
+    }
+  }); 
+  $(document).keyup(function(e) {
+    if (e.keyCode == 27) { // escape key maps to keycode `27`
+      if ($('div[id="plot-options-heatmap"]').is(':visible')) {
+        $('div[id="plot-div-heatmap"]').removeClass('disable');
+        $('div[id="plot-options-heatmap"]').toggle();
+      }
+      if ($('div[id="plot-options-trajectory"]').is(':visible')) {
+        $('div[id="plot-div-trajectory"]').removeClass('disable');
+        $('div[id="plot-options-trajectory"]').toggle();
+      }
+      if ($('div[id="plot-options-gene-expression"]').is(':visible')) {
+        $('div[id="plot-div-gene-expression"]').removeClass('disable');
+        $('div[id="plot-options-gene-expression"]').toggle();
+      }
+    }
+  });
+ 
+  $(document).ready(function() {
+    $('#trajectory-color-by-select').on('change', function() {
+      //plotTrajectory($(this).find("option:selected").val());
+      plotTrajectory();
+    });
+    $('#branch-select').on('change', function() {
+      selected_branch_node = parseInt($(this).find("option:selected").val()); 
+      getBranchData(plotHeatmap, 'heatmap', selected_branch_node);
+    });
+    document.getElementById('marker-size-slider').oninput = updateMarkerSizeSlider;
+    document.getElementById('branch-node-size-slider').oninput = updateBranchMarker;
+    document.getElementById('gene-expression-marker-size-slider').oninput = updateGeneExpressionMarkerSizeSlider;
+  });
+  $(document).on('click', '.browse', function() {
+    var file = $(this).parent().parent().parent().find('.file');
+    file.trigger('click');
+  });
+  $(document).on('change', '.file', function() {
+    $(this).parent().find('.form-control').val($(this).val().replace(/C:\\fakepath\\/i, ''));
+  });
+
+  $("#submit_plot").click(function(){
+//$.ajax...
+
+});
+
+  //Trajectory plot variables
+  var trajectory_plot_id = 'trajectory-plot';
+  var trajectory_plot_data = {}, plot_layout = {}, plot_marker = {};
+  var plot_type = 'scattergl';
+  var branch_node_color = '#000000';
+  var selected_branch_node_color = '#FFFFFF';
+  var selected_branch_node = 0;
+  var unique_states_nbr;
+  var unique_timeseries_nbr;
+  var branch_nodes_cn;
+  var branch_nodes_length;
+
+  //Heatmap plot variables
+  var heatmap_plot_id = 'heatmap-plot';
+  var selected_genes = [];
+  window.inchlib = new InCHlib({ //instantiate InCHlib
+    target: heatmap_plot_id, //ID of a target HTML element
+    metadata: true, //turn on the metadata
+    column_metadata: true, //turn on the column metadata
+    max_height: 5200, //set maximum height of visualization in pixels
+    width: 1000, //1000 set width of visualization in pixels
+    heatmap_colors: "BuYl", //set color scale for clustered data
+    highlight_colors: "PuOr", //"Reds",
+    metadata_colors: "RdBkGr", //set color scale for metadata
+    draw_row_ids: true,
+    independent_columns: true,
+    heatmap_part_width: 0.9,
+    navigation_toggle: {color_scale: true, distance_scale: false, export_button: true, filter_button: false, hint_button: false}
+  });
+
+  //Gene Expression plot variables
+  var gene_expression_plot_id = 'gene-expression-plot';
+  var gene_expression_plot_data = {};
+  var subplot_gap = 0.05;
+  var cell_fate_dash = ['solid', 'dot'];
+  var cell_fate_color = ['#000000', '#999999'];
+
+  function sortNumber(a,b) {
+    return a - b;
+  }
+
+  function branchNodeColors() {
+    var colors = Array(branch_nodes_length).fill(branch_node_color);
+    colors[selected_branch_node] = selected_branch_node_color;
+    return colors;
+  }
+
+  function plotTrajectory() {
+    //document.getElementsByClassName('file-caption-name')[0].title;
+    var color_by = $('#trajectory-color-by-select')[0].value;
+    branch_nodes_cn = trajectory_plot_data[color_by].length - 1;
+    Plotly.newPlot(trajectory_plot_id, trajectory_plot_data[color_by], plot_layout[color_by]);
+    document.getElementById(trajectory_plot_id).on('plotly_click', function(data){
+      var cn, colors=[];
+      for(var i=0; i < data.points.length; i++){
+        if (data.points[i].data.name && data.points[i].data.name != "Branch nodes") {
+          continue;
+        }
+        selected_branch_node = data.points[i].pointNumber;
+        cn = data.points[i].curveNumber;
+        colors = data.points[i].data.marker.color;
+      }
+      if (colors.length == 0) {
+        return;
+      }
+      
+      selected_genes = [];
+      getBranchData(plotHeatmap, 'heatmap', selected_branch_node);
+    });
+    updateMarkerSizeSlider();
+    updateBranchMarker();
+  }
+
+  function updateMarkerSizeSlider() {
+    var update = {'marker.size': $('#marker-size-slider')[0].value};
+    Plotly.restyle(trajectory_plot_id, update, Array.from(Array($('#trajectory-color-by-select')[0].value == 'state' ? unique_states_nbr : unique_timeseries_nbr).keys()));
+  }
+
+  function updateGeneExpressionMarkerSizeSlider() {
+    var update = {'marker.size': $('#gene-expression-marker-size-slider')[0].value};
+    var state_marker_idx = [];
+    var idx = Array.from(Array(selected_genes.length).keys(), x => Array.from(Array(unique_states_nbr).keys(), y => (x * (unique_states_nbr + 2)) + y + 2));
+    idx = [].concat(...idx);
+    Plotly.restyle(gene_expression_plot_id, update, idx); 
+  }
+
+  function updateBranchMarker() {
+    var update = {'marker':{
+      size: $('#branch-node-size-slider')[0].value,
+      color: branchNodeColors(),
+      line: {color: branch_node_color, width: 2}
+    }};
+    Plotly.restyle(trajectory_plot_id, update, [branch_nodes_cn]);
+    $('#branch-select').val(selected_branch_node.toString());
+  }
+
+  function plotHeatmap(heatmap_data, branch_number) {
+    selected_genes = [];
+
+    inchlib.read_data(heatmap_data); //read input json file
+    inchlib.draw(); //draw cluster heatmap
+    inchlib.highlight_rows(selected_genes);
+    inchlib.events.row_onclick = function (object_ids, evt){
+      var index = selected_genes.indexOf(object_ids[0]);
+      if (index > -1) {
+        selected_genes.splice(index, 1);
+      } else {
+        selected_genes.push(object_ids[0]);
+      }
+      inchlib.highlight_rows(selected_genes);
+      getSelectedGenesData(branch_number, selected_genes);
+      return;
+    };
+    updateBranchMarker();
+    getSelectedGenesData(branch_number, selected_genes);
+  }
+
+  function getSelectedGenesData(branch_number, selected_genes) {
+    var promises = new Array(selected_genes.length);
+    for(var i = 0; i < promises.length; ++i) {
+      promises[i] = getData('monocle_geneexpression_branch_' + (branch_number+1) + '_' + selected_genes[i] + '.json', getGeneData);
+    }
+    <% if analyzable? @project %>
+    $.when.apply($, promises).then(function() {
+      var objects=arguments;
+      if (objects[1] && objects[1]==="success") {
+        plotGeneExpression(objects[0], selected_genes);
+      } else if (objects.length > 1) {
+        gene_traces = Object.values(objects).map(function(value, index) { return value[0]; });
+        gene_traces_conc = [].concat.apply([], gene_traces);
+        plotGeneExpression(gene_traces_conc, selected_genes);
+      } else {
+        $('#gene-expression-tab').addClass('disable');
+      }
+    });
+    <% end %>
+  }
+
+  function getGeneData(data) {
+    return data;
+  }
+
+  function plotGeneExpression(gene_expression_data, selected_genes) {
+    $('#gene-expression-tab').removeClass('disable');
+    var layout = {
+      autosize: true,
+      //height: 500,
+      showlegend: true
+    };
+
+    var yaxis_list = Array.from(new Set(gene_expression_data.map(o => o.yaxis)));
+    yaxis_list.map(function(value, index) {
+        layout['yaxis' + value.substring(1)] = {
+        title: selected_genes[index],
+        domain: [index/yaxis_list.length, (index+1)/yaxis_list.length - subplot_gap],
+        type: 'log',
+        autorange: true,
+        nticks: 2//3
+      }
+    });
+
+    console.log(gene_expression_data[0].yaxis);
+    layout['xaxis'] = {
+      anchor: gene_expression_data[0].yaxis,
+      title: 'Pseudotime (stretched)'
+      //showticklabels: false
+    };
+
+    //gene_expression_data[gene_expression_data.length - 1].showlegend = true;
+    /*var color_index = 0;
+    for (var i = 0; i<gene_expression_data.length; i++) {
+      if (gene_expression_data[i].yaxis == gene_expression_data[0].yaxis) {
+        gene_expression_data[i].showlegend = true;
+      }
+    }*/
+    Plotly.newPlot(gene_expression_plot_id, gene_expression_data, layout);
+  }
+
+  //var trajectory_data = <%= raw (@trajectory_plot_json) ? @trajectory_plot_json : 'null' %>;
+  
+  function getTrajectoryData(trajectory_data) {
+    trajectory_plot_data = trajectory_data;
+    $('#trajectory-tab').removeClass('disable');
+
+    unique_states_nbr = trajectory_plot_data['state'].filter(o => o.hasOwnProperty('name') && o.name.substring(0,5) === "State").length;
+    branch_nodes_length = trajectory_plot_data['state'][trajectory_plot_data['state'].length - 1].x.length;
+    var branch_select = document.getElementById('branch-select');
+    for(var i = 0; i < branch_nodes_length; ++i) {
+      branch_select.options[branch_select.options.length] = new Option('Branch '+(i+1).toString(), i.toString());
+    }
+
+    if(trajectory_plot_data.hasOwnProperty('timeseries')) {
+      unique_timeseries_nbr = trajectory_plot_data['timeseries'].filter(o => o.hasOwnProperty('name') && o.name.substring(0,11) === "Time-series").length;
+      var color_by_select = document.getElementById('trajectory-color-by-select');
+      color_by_select.options[color_by_select.options.length] = new Option('Time-series', 'timeseries');
+    }
+
+    //unique_states = Array.from(new Set(trajectory_data.state)).sort(sortNumber);
+    plot_layout['state'] = {
+      xaxis: {title: 'Component 1'},
+      yaxis: {title: 'Component 2'},
+      margin: {t: 20},
+      hovermode:'closest'
+    };
+    plot_layout['timeseries'] = plot_layout['state'];
+    plot_layout['pseudotime'] = { ...plot_layout['state'], legend: {x: 0.25, y: -0.15, orientation: 'h'}};
+    
+    //plotTrajectory($('#trajectory-color-by-select')[0].value);
+    plotTrajectory();
+    if (branch_nodes_length > 0) {
+      $('#heatmap-tab').removeClass('disable');
+      getBranchData(plotHeatmap, 'heatmap', selected_branch_node);
+    } else {
+      $('#heatmap-tab').addClass('disable');
+    }
+  }
+
+  function getBranchData(callback, sub_filename, selected_branch_node, gene_name = null) {
+    var callbackForBranch = function(data) {
+      if (gene_name === null) {
+        callback(data, selected_branch_node);
+      } else {
+        callback(data, selected_branch_node, gene_name);
+      }
+    };
+    getData('monocle_' + sub_filename + '_branch_' + (selected_branch_node+1) + '.json', callbackForBranch);
+  }
+
+
+  function getData(filename, successCallback) {
+    var url = '<%= get_file_project_path(@project.key, :step => 'visualization', :display => '1') %>&filename=trajectory/' + filename;
+    return $.ajax({
+      url: url,
+      dataType: 'json',
+      data: {},
+      beforeSend: function() {
+      },
+      success: function(data) {
+        if (successCallback) {
+          successCallback(data);
+        }
+      }
+    });
+  }
+
+  var trajectory_state_exists = <%= @trajectory_exists %>;
+  if (trajectory_state_exists) {
+    getData('monocle_trajectory.json', getTrajectoryData);
+  } else {
+    $('#trajectory-tab').addClass('disable');
+  }
+<% end %>
+

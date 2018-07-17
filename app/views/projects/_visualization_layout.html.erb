@@ -1,0 +1,92 @@
+<%# session[:viz_params].to_json %>
+ 
+<form id='visualization_form'>
+  <% if ['heatmap', 'correlation', 'trajectory'].include?(@dim_reduction.name) %>
+  <%= render :partial => 'form_' + @dim_reduction.name %>
+  <% end %>
+
+  <% if authorized? and (!@pdr.status_id or @pdr.status_id > 2) %>  
+  <%= render :partial => "attributes", locals: {h_attrs: @pdr_params} %>
+  <% end %>
+  <div class='form-inline'>
+    <% if !['heatmap', 'correlation', 'trajectory'].include?(@dim_reduction.name) and (!@pdr.status_id or @pdr.status_id > 2) %>
+    <%= render :partial => "viz_widgets" if @data_json %>
+    <% if !@button %>
+    <span id="visualization_button" class='btn btn-primary' style=''>Plot</span>
+    <% end %>
+    <% end %>
+  </div>
+
+  <%  if @data_json %>
+  
+    <div class='form-inline'>
+      <span id='visualization_message' class='<%= "label label-warning" if @message != '' %>'>
+	<%= @message %>
+      </span>
+    </div>
+    
+    <% end %>
+    <%= hidden_field_tag 'full_screen', params[:full_screen] %>
+</form>
+
+<% if !@h_ori_data or @h_ori_data["displayed_error"] or @h_ori_data["original_error"] %>
+
+<% if @h_ori_data %>
+<span class='label label-danger'><%= @h_ori_data["displayed_error"] %></span>
+<%= @h_ori_data["original_error"] if admin? %>
+<% end %>
+
+<% else %>
+   
+   <% if @dim_reduction.id < 5  %>
+        <%# if !@h_ori_data["displayed_error"] %>
+     <% params[:plot_type] = '2d' %>
+     <%= render :partial => 'plot' %> 
+     <% if @nber_points < 500 %>
+       <% params[:plot_type] = '3d' %>
+       <%= render :partial => 'plot' %>
+     <% else %>
+       <%= render :partial => 'no_plot' %>
+     <% end %>
+     <div class='clear'></div>
+   <% elsif @data_json  %>
+     <%= render :partial => 'heatmap' %>
+ 
+   <% elsif @corr_plot_json %>
+     <%= render :partial => 'correlation' %>
+
+   <% elsif @trajectory_json %>
+     <%= render :partial => 'trajectory' %>
+
+   <% else %>
+     No results.
+   <% end %>
+  <% end %>
+
+
+<%= javascript_tag do %>
+
+
+
+ $('#visualization_form').unbind('submit');
+ $('#visualization_form').submit(false);
+ $("#visualization_button").click(function(){
+  // alert("Plot!");
+  // active_item= + session[:active_dr_id] 
+  //alert("tt");
+  if ($("#gene_text").data('autocomplete')) {
+  //$("#gene_text").autocomplete("destroy");
+  //alert("test");
+  $("#gene_text").autocomplete({source: []});
+  $("#gene_text").removeData('autocomplete');
+}
+//alert("test2");
+
+  var p = $('#visualization_form').serializeArray();
+  p.push({'name' : 'project_key', 'value' : '<%= @project.key %>'});
+  p.push({'name' : 'dr_id', 'value' : '<%= session[:active_dr_id] %>'});
+ 
+  refresh_post("visualization_container", "<%= replot_project_path(:key => @project.key) %>", p, 'post');
+ });
+
+<% end %>

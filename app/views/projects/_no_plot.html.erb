@@ -1,0 +1,17 @@
+<span class='label label-warning'>The 3D plot preview is deactivated when the dataset exceeds 500 cells</span>
+<span id='full_screen_3d' class='btn btn-default btn-xs'>3D plot full screen</span>
+
+<%= javascript_tag do %>
+
+$("#full_screen_3d").click(function(){
+  if ($('#visualization_form')){
+   var p = $('#visualization_form').serializeArray();
+   p.push({"name" : "dr_id", "value" : <%= session[:active_dr_id] %>});
+   p.push({"name" : "full_screen", "value" : '3d'});
+   refresh_post("full_screen_visualization div.window_content", "<%= replot_project_path(:key => @project.key) %>", p, 'post');
+   $("#full_screen_visualization").removeClass("hidden");
+   $("#visualization_container").empty();
+  }
+});
+
+<% end %>

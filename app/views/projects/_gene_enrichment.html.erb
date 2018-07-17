@@ -1,0 +1,148 @@
+<div class='alert alert-info'><%= raw Step.find(7).description %></div>
+
+<% if analyzable?(@project) %>
+<form id='gene_enrichment_form'>
+<div class='form-inline'>
+<!--<div id='gene_enrichment_attributes' class='form-group'></div>-->
+<div class='form-group'>
+<%= label_tag 'gene_enrichment_diff_expr_id', 'Input (DE result)' %>
+<% h_selections = {}
+Selection.where(:md5 => @project.diff_exprs.select{|e| e.status_id == 3}.map{|e| [e.md5_sel1, e.md5_sel2].compact}.flatten.uniq).all.map{|e| h_selections[e.md5]=e} %>
+<% l = @project.diff_exprs.select{|e| e.status_id == 3}.sort{|a, b| a.num <=> b.num}.map{|e| 
+sels= "selection " + [(( h_selections[e.md5_sel1] and e.md5_sel1 == h_selections[e.md5_sel1].md5) ? h_selections[e.md5_sel1].label : ("(" + e.nb_cells_sel1.to_s + " cells)")), 
+((e.md5_sel2) ? ((h_selections[e.md5_sel2] and e.md5_sel2 == h_selections[e.md5_sel2].md5) ? h_selections[e.md5_sel2].label : ("(" + e.nb_cells_sel2.to_s + " cells)")) : nil)   
+].compact.join(" vs. "); 
+["##{e.num}: " + e.short_label + " on #{sels} [Up: #{e.nber_up_genes} Down: #{e.nber_down_genes}]", e.id]} %>
+<%= select_tag 'gene_enrichment[diff_expr_id]', options_for_select(l), {class: 'form-control'} %>
+</div>
+</div>
+<div class='form-inline'>
+Enrich 
+<%# l = [10, 20, 50, 100].map{|e| [e, e]} %>
+<%= text_field_tag 'attrs[nber_best_hits]', '100', {class: 'form-control', size: '5'} %>
+top DE 
+<% l = [['up-regulated', 'up'], ['down-regulated', 'down'], ['both down-regulated and up-regulated','both']] %>
+<%= select_tag 'attrs[type_best_hits]', options_for_select(l), {class: 'form-control'} %>  
+genes (according to Fold Change) in
+<!--<% l = [['KEGG', 'kegg'], ['GO CC', 'GO_CC'], ['GO MF', 'GO_MF'], ['GO BP', 'GO_BP'], ['Gene Atlas', 'gene_atlas']] %>
+<%= select_tag 'attrs[db_type]', options_for_select(l, 'gene_atlas'), {class: 'form-control'} %>
+-->
+
+    <% l=[['Global gene set', 'global'], ['Custom gene set', 'custom']] %>
+    <% l2= GeneSet.where(:project_id => @project.id).order("label").all.map{|e| [e.label, e.id]} %>
+    <% l.pop if l2.size == 0 %>
+    <%= select_tag 'attrs[geneset_type]', options_for_select(l), {class: 'form-control'} %>
+    <% l= GeneSet.where(:user_id => 1, :project_id => nil, :organism_id => @project.organism_id).order("label").all.map{|e| [e.label, e.id]} %>
+    <%= select_tag 'attrs[global_geneset]', options_for_select(l), {class: 'form-control hidden'} %>
+
+    <%= select_tag 'attrs[custom_geneset]', options_for_select(l2), {class: 'form-control hidden'} %>
+
+<!--
+<div class='form-group attr_table'>
+<%= label_tag 'attrs_db_type', 'Database' %>
+<% l = [['KEGG', 'kegg'], ['GO CC', 'GO_CC'], ['GO MF', 'GO_MF'], ['GO BP', 'GO_BP'], ['Gene Atlas', 'gene_atlas']] %>
+<%= select_tag 'attrs[db_type]', options_for_select(l, 'gene_atlas'), {class: 'form-control'} %>
+</div>
+<div class='form-inline'>
+<div class='form-group attr_table'>
+<%= label_tag 'attrs_nber_best_hits', 'Number of selected hits' %>
+<%# l = [10, 20, 50, 100].map{|e| [e, e]} %>
+<%= text_field_tag 'attrs[nber_best_hits]', '100', {class: 'form-control'} %>
+</div>
+<div class='form-group'>
+<%= label_tag 'attrs_type_best_hits', 'Type of selected hits' %>
+<% l = [['up-regulated only', 'up'], ['down-regulated only', 'down'], ['both down-regulated and up-regulated','both']] %>
+<%= select_tag 'attrs[type_best_hits]', options_for_select(l), {class: 'form-control'} %>
+</div>
+-->
+<!--<div class='form-inline'>
+<div class='form-group attr_table'>
+<%= label_tag 'attrs_p_value', 'P-value' %>
+<%= text_field_tag 'attrs[p_value]', '0.05', {class: 'form-control'} %>
+</div>
+<div class='form-group'>
+<%= label_tag 'attrs_adj', 'Adjustment method' %>
+<% l = [['None', 'none'], ['FDR', 'fdr'], ['Bonferroni', 'bonferroni']] %>
+<%= select_tag 'attrs[adj]', options_for_select(l, 'fdr'), {class: 'form-control'} %>
+</div>
+</div>-->
+<div class='form-group'>
+<button id="gene_enrichment_button" class='btn btn-primary' style=''>New gene enrichment analysis</button>
+</div>
+</div>
+</div>
+
+<div id='method_warning'></div>
+</form>
+<% end %>
+<div id='list_gene_enrichments'></div>
+
+
+<%= javascript_tag do %>
+
+<% if analyzable?(@project) %>
+
+$('#gene_enrichment_form').unbind('submit');
+$('#gene_enrichment_form').submit(false);
+
+$("#gene_enrichment_button").click(function(){
+ var p = $('#gene_enrichment_form').serializeArray();
+ p.push({'name' : 'project_key', 'value' : '<%= @project.key %>'}); 
+ $(this).attr('disabled', 'disabled');
+ refresh_post("list_gene_enrichments", '<%= gene_enrichments_path %>', p, 'post')
+});
+
+/*
+function upd_attributes(){
+// var cluster_method_id = $("#cluster_cluster_method_id").val();
+ refresh('cluster_attributes', '<%= get_attributes_project_path(:key => @project.key) %>' + '?obj_name=gene_enrichment_method');
+}
+*/
+//upd_attributes();
+
+/*$("#cluster_cluster_method_id").change(function(){
+if ($("#cluster_cluster_method_id").val()!= null){
+ upd_attributes();
+}
+});
+*/
+<% end %>
+
+refresh("list_gene_enrichments", '<%= gene_enrichments_path(:project_key => @project.key) %>')
+
+
+function upd_geneset_fields(el){
+
+   if (el.val() == 'all'){
+    $('#attrs_custom_geneset').addClass('hidden');
+    $('#attrs_global_geneset').addClass('hidden');
+   }
+   if (el.val() == 'global'){
+    $('#attrs_custom_geneset').addClass('hidden');
+    $('#attrs_global_geneset').removeClass('hidden');
+   }
+   if (el.val() == 'custom'){
+    $('#attrs_global_geneset').addClass('hidden');
+    $('#attrs_custom_geneset').removeClass('hidden');
+   }
+
+}
+
+upd_geneset_fields($('#attrs_geneset_type'));
+
+
+$('#attrs_geneset_type').change(function(){
+ var el = $(this);
+ upd_geneset_fields(el);
+});
+$('#attrs_custom_geneset').change(function(){
+ var el = $("#attrs_geneset_type");
+ upd_geneset_fields(el);
+});
+$('#attrs_global_geneset').change(function(){
+ var el = $("#attrs_geneset_type");
+ upd_geneset_fields(el);
+});
+
+
+<% end %>

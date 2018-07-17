@@ -1,0 +1,2 @@
+class DiffExpr < ApplicationRecord
+end

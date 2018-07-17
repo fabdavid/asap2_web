@@ -1,0 +1,176 @@
+<%# session[:viz_params].to_json %>
+<% if analyzable? @project %>
+<div class='form-inline'>
+  <div id='div_dataset' class='form-group attr_table'>
+    <%= label_tag 'dataset', 'Dataset' %>
+    <% l = [['Original data', 'parsing'], ['Normalized data', 'normalization']] %>
+    <%= select_tag 'attrs[dataset]', options_for_select(l,  @pdr_params['dataset']), {class: 'form-control'} %>
+  </div>
+  <div id='div_cell_name' class='form-group attr_table'>
+    <%= label_tag 'gene_set', 'Cells' %>
+    <% l = Selection.where(:project_id => @project.id).all.map{|s| [s.label, s.id]} %>
+    <% l.unshift(["All", nil]) %>
+    <%= select_tag 'attrs[selection_id]', options_for_select(l, @pdr_params['selection_id'] || 'global'), {class: 'form-control'} %>
+  </div>
+  <div id='div_gene_set' class='form-group attr_table' style='white-space:nowrap'>
+    <%= label_tag 'gene_set', 'Genes' %>       
+    <% l=[['All', 'all'], ['Global gene set', 'global'], ['Custom gene set', 'custom']] %>
+    <% genesets= GeneSet.where(:project_id => @project.id).order("label").all %>
+    <% first_geneset = (genesets.size > 1) ? genesets.sort{|a, b| a.id <=> b.id}.first : genesets.first %>
+    <% l2 = genesets.map{|e| [e.label, e.id]} %>
+    <% l.pop if l2.size == 0 %> 
+    <%= select_tag 'attrs[geneset_type]', options_for_select(l, @pdr_params['geneset_type'] || 'all'), {class: 'form-control'} %>
+
+    <% l= GeneSet.where(:user_id => 1, :project_id => nil, :organism_id => @project.organism_id).order("label").all.map{|e| [e.label, e.id]} %>
+    <%= select_tag 'attrs[global_geneset]', options_for_select(l, @pdr_params['global_geneset']), {class: 'form-control hidden'} %>
+
+    <%= select_tag 'attrs[custom_geneset]', options_for_select(l2, @pdr_params['custom_geneset'] || first_geneset), {class: 'form-control hidden'} %>
+    
+    <%# autocomplete_field_tag  'attrs[geneset_name]',  (@pdr_params['geneset_name'] || ''), autocomplete_gene_sets_path(:project_key => @project.key, :organism_id => @project.organism_id), {'min-length' => 1, 'class' => 'form-control hidden'} %>
+    
+    <%# l3 = @geneset_names.map{|e| [e, e]} %>
+    <%# select_tag 'attrs[geneset_names]', options_for_select(l3, nil), {class:'form-control hidden'} %>
+    <%= text_field_tag 'attrs[geneset_name]', (@pdr_params['geneset_name'] || ''), {:autocomplete => 'off'} %>
+    <%= hidden_field_tag 'attrs[geneset_name_saved]',  (@pdr_params['geneset_name'] || '') %>
+    <ul id='gene_name_list' class='hidden'></ul>
+  </div>
+</div>
+<% end %>
+<%= javascript_tag do %>
+
+function update_geneset_names(){
+var url = '<%= autocomplete_gene_sets_path(:project_key => @project.key) %>&term=' + $("#attrs_geneset_name").val();
+$.ajax({
+  url: url,
+  type: "get",
+  dataType: "json",
+  beforeSend: function(){
+  },
+  success: function(h){
+    console.log(h);
+    console.log(h.data);
+   $("#gene_name_list").empty();
+   var html = '';
+   for(var i=0; i< h.data.length; i++){
+    html+= "<li>" + h.data[i].label + "</li>";
+   }
+   $("#gene_name_list").removeClass("hidden");
+   $("#gene_name_list").html(html);
+    $("#gene_name_list li").mouseover(function(){
+     $(this).addClass("highlight");
+    });
+    $("#gene_name_list li").mouseout(function(){
+     $(this).removeClass("highlight");
+    });
+    $("#gene_name_list li").click(function(){
+     var t = $(this).html().split(" [");
+     var v = t[0]
+     $(".replot").attr('disabled', 'disabled');
+     $("#attrs_geneset_name").val(v);
+     upd_geneset_session();
+     $("#attrs_geneset_name_saved").val(v);
+     $("#gene_name_list").addClass("hidden");
+    });
+
+    
+  }
+});
+}
+
+$("#attrs_geneset_name").click(function(){
+update_geneset_names()
+});
+$("#attrs_geneset_name").keyup(function(){
+update_geneset_names()
+});
+
+
+
+//$( "#attrs_geneset_name" ).trigger("focus");
+/*$( "#attrs_geneset_name" ).autocomplete({
+        source: availableTags,
+        minLength:0
+    }).bind('focus', function(){ $(this).autocomplete("search"); } );
+$( "#attrs_geneset_name" ).trigger("focus");*/
+
+/*$("input#attrs_geneset_name").autocomplete(
+                    {
+                        source: <%# raw C.select("distinct description as value, code as name, id as ID").where("description ILIKE ?", "%#{params[:term]}%").to_json %>,
+                        minLength: 0,
+                        select: function (event, data) {
+                            $(this).autocomplete('disable');
+                        console.log(data.item);
+
+                        }
+                    })
+                    .blur(function(){
+                        $(this).autocomplete('enable');
+                    })
+                    .focus(function () {
+                        $(this).autocomplete('search', '');
+                    });
+*/
+
+function upd_heatmap_fields(el){
+
+   if (el.val() == 'all'){
+    $('#attrs_custom_geneset').addClass('hidden');
+    $('#attrs_global_geneset').addClass('hidden');
+    $('#attrs_geneset_name').addClass('hidden');
+   }
+   //  alert('t');
+   if (el.val() == 'global'){
+   //  alert('t2');
+
+    $('#attrs_custom_geneset').addClass('hidden');
+    $('#attrs_global_geneset').removeClass('hidden');
+    //  alert("t3");
+    $('#attrs_geneset_name').removeClass('hidden');
+   }
+   if (el.val() == 'custom'){
+    $('#attrs_global_geneset').addClass('hidden');
+    $('#attrs_custom_geneset').removeClass('hidden');
+    $('#attrs_geneset_name').removeClass('hidden');
+   }
+
+}
+
+upd_heatmap_fields($('#attrs_geneset_type'));
+
+
+function upd_geneset_session(el){
+// alert('toto')
+ var url =  "<%= set_viz_session_project_path(@project.key) %>?" + "geneset_type=" + $("#attrs_geneset_type").val() + "&global_geneset=" + $("#attrs_global_geneset").val() + "&custom_geneset=" + $("#attrs_custom_geneset").val();
+ $.ajax({
+  url: url,
+  type: "get",
+  dataType: "script",
+  beforeSend: function(){
+  },
+  success: function(returnData){
+   if (el){
+    $("#attrs_geneset_name").val("");
+    upd_heatmap_fields(el);
+   }
+   $(".replot").attr("disabled", false);
+  },
+  error: function(e){
+  }
+ });
+}
+
+$('#attrs_geneset_type').change(function(){
+ var el = $(this);
+ upd_geneset_session(el);
+});
+$('#attrs_custom_geneset').change(function(){
+ var el = $("#attrs_geneset_type");
+ upd_geneset_session(el);
+});
+$('#attrs_global_geneset').change(function(){
+ var el = $("#attrs_geneset_type");
+ upd_geneset_session(el);
+});
+
+
+<% end %>

@@ -1,0 +1,130 @@
+<%# @h_counts.to_json %>
+
+<div class='panel panel-default' style='margin-top:10px'>
+  <div class='panel-heading'>
+    <div style='float:right'>
+      
+      <% if current_user %>
+      <%= link_to('New Project', new_project_path, :class => "btn btn-primary") %>
+    </div>
+    <div style='float:right'>
+      <div style='float:right;margin-right:5px;width:220px'>
+	<div class="input-group stylish-input-group">
+	  <%= text_field_tag 'free_text', session[:settings][:free_text], {:size => 20, :class => "form-control", :placeholder => "Search by project name"} %>
+	  <span id='search_btn' class="input-group-addon">
+	    <span class="search_btn glyphicon glyphicon-search"></span>
+	  </span>
+	</div>
+      </div>
+    </div>
+
+    <div style='float:right;width:'80px;margin-right:5px;'>
+      <% l = [5, 10, 50, 100, 200].map{|e| ["Last " + e.to_s, e]} %>
+      <%= select_tag 'limit', options_for_select(l, session[:settings][:limit]), {:class => "form-control"} %>
+      <% else %>
+      <%= link_to('Test your dataset', new_project_path, :class => "btn btn-primary", 'data-toggle'=>"tooltip", 'data-placement'=>"left", :title=>"You can upload your own dataset and test the platform withit. The data will not be stored after your browser session ends.") %>
+      <% end %>
+    </div>
+
+    <% if current_user %>
+    <span class='h3'>
+      <% if admin? %>
+      All projects
+      <%= image_tag 'info.svg', {:width => '20px', :style=> 'margin-top:-20px', 'data-toggle'=>"tooltip", 'data-placement'=>"right", :title=>""} %>
+      <% else %>
+      My projects
+      <%= image_tag 'info.svg', {:width => '20px', :style=> 'margin-top:-20px', 'data-toggle'=>"tooltip", 'data-placement'=>"right", :title=>"Here you can see info about the projects that you created and the final step that was computed."} %>
+      <% end %>
+      <% if @h_counts[:private] > 0 %>
+      <small id='nber_projects'>
+	<%= @h_counts[:private] %> project<%= (@h_counts[:private] > 1) ? 's' : '' %> found.<%= " Last #{params[:limit]} displayed." if @h_counts[:private] > 10 %></small>
+      <% end %>
+    </span>
+    
+    <% else %>
+    <span class='h3' style='margin-right:2em'>Sandbox
+      <%= image_tag 'info.svg', {:width => '20px', :style=> 'margin-top:-20px', 'data-toggle'=>"tooltip", 'data-placement'=>"right", :title=>"Here you can create a single modifiable temporary project by uploading your own file or cloning an example project."} %></span>
+    <% end %>
+  </div>
+  
+  <div class='panel-body' id='project_list'>
+    <% if @projects and @projects.size > 0 %>
+    <%= render :partial => 'project_list' %>
+    <% else %>
+    You have not created a project yet.
+    <% end %>
+  </div>
+</div>
+
+<% if !admin? %>
+<div class='panel panel-default' style='margin-top:10px'>
+  <div class='panel-heading'>
+    <div style='float:right'>
+      <div style='float:right;margin-right:5px;width:220px'>
+	<div class="input-group stylish-input-group">
+	  <%= text_field_tag 'public_free_text', session[:settings][:public_free_text], {:size => 20, :class => "form-control", :placeholder => "Search by project name"} %>
+	  <span id ='public_search_btn' class="input-group-addon">
+	    <!-- <button type="submit"> -->
+	    <span class="search_btn glyphicon glyphicon-search"></span>
+	    <!--     </button>-->
+	  </span>
+	</div>
+      </div>
+      <div style='float:right;width:'80px;margin-right:5px;'>
+	<% l = [5, 10, 50, 100, 200].map{|e| ["Last " + e.to_s, e]} %>
+	<%= select_tag 'public_limit', options_for_select(l, session[:settings][:public_limit]), {:class => "form-control"} %>
+      </div>
+    </div>
+    
+    <span class='h3'>
+      <% if current_user %>
+      Public projects
+      <%= image_tag 'info.svg', {:width => '20px', :style=> 'margin-top:-20px', 'data-toggle'=>"tooltip", 'data-placement'=>"right", :title=>"Here you can see all projects that were posted as public by any registered user. You can make any project public using the [Edit project] link"} %>
+      <% if @h_counts[:public] > 0 %>
+      <small id='nber_public_projects'><%= @h_counts[:public] %> project<%= (@h_counts[:public] > 1) ? 's' : '' %> found.<%= " Last #{params[:limit]} displayed." if @h_counts[:public] > 10 %></small>
+      <% end %>
+      <% else %>
+      Examples
+      <%= image_tag 'info.svg', {:width => '20px', :style=> 'margin-top:-20px', 'data-toggle'=>"tooltip", 'data-placement'=>"right", :title=>"Here you can see Example projects (but you cannot modify them)."} %>
+      <% end %>
+    </span>
+  </div>
+  <div class='panel-body' id='public_project_list'>
+    <%= render :partial => 'public_project_list' %>
+  </div>
+
+</div>
+<% end %>
+
+
+<%= javascript_tag do %>
+
+$("#limit").change(function(){
+ refresh_lists()
+});
+$("#public_limit").change(function(){
+ refresh_lists()
+});
+
+$("#public_free_text").keypress(function(e){
+ if(e.which == 13) {
+  $("#public_search_btn").click();
+ }
+});
+
+$("#free_text").keypress(function(e){
+ if(e.which == 13) {
+  $("#search_btn").click();
+ }
+});
+
+$("#search_btn").click(function(){
+ refresh_lists()
+});
+$("#public_search_btn").click(function(){
+ refresh_lists()
+});
+
+
+
+<% end %>
