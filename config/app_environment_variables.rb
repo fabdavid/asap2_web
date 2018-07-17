@@ -39,7 +39,7 @@ ENV['POSTGRES_DB']='asap2'
 
 # The database name will automatically get the Rails environment appended to it
 # such as: asap2_development or asap2_production.
-ENV['DATABASE_URL']='postgresql://postgres:yourpassword@postgres:5432/asap2?encoding=utf8&pool=5&timeout=5000'
+ENV['DATABASE_URL']='postgresql://postgres:yourpassword@postgres:5432/asap2?encoding=utf8&pool=5&timeout=10000'
 
 # The full Redis URL for the Redis cache. The last segment is the namespace.
 ENV['REDIS_CACHE_URL']='redis://:yourpassword@redis:6379/0/cache'

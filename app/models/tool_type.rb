@@ -1,0 +1,2 @@
+class ToolType < ApplicationRecord
+end

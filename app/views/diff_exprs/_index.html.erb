@@ -1,0 +1,158 @@
+<div class='panel panel-default' style='margin-top:10px'>
+<div class='panel-heading'>List of DE analyses
+  <div style='float:right'>
+    FDR <= <%= (analyzable? @project) ? text_field_tag('filter[fdr_cutoff]',  @h_diff_expr_filters['fdr_cutoff']) : @h_diff_expr_filters['fdr_cutoff'] %> 
+    Fold change >= <%= (analyzable? @project) ? text_field_tag('filter[fc_cutoff]', @h_diff_expr_filters['fc_cutoff']) : @h_diff_expr_filters['fc_cutoff'] %> 
+     <% if analyzable? @project %>
+      <div id='filter_btn' class='btn btn-primary btn-xs'>Filter</div>
+     <% end %>
+  </div>
+</div>
+<div style='margin:10px'>
+
+<% if @diff_exprs.size > 0 %>
+<table id='de_list' class='job_list'>
+  <thead>
+    <tr>
+      <th>Method</th>
+      <th style='white-space:nowrap'>Selection 1</th>
+      <th style='white-space:nowrap'>Selection 2</th>
+      <th>Down-regulated genes in Selection 1</th>
+      <th>Up-regulated genes in Selection 1</th>
+      <th>Status</th>
+      <th>Created (GMT)</th>
+      <th>Created by</th>
+ <% if editable?(@project) %>
+      <th></th>
+      <th></th>
+<% end %>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @diff_exprs.sort.reverse.each do |de| %>
+    <tr>
+      <td>#<%= de.num %> - <%= display_method_label2(de, de.diff_expr_method) %></td>
+      <td><span id='sel_1_<%= de.id %>' class='de_selection label label-default'><%= de.nb_cells_sel1 %></span></td>
+      <td><%= raw((de.nb_cells_sel2) ? "<span id='sel_2_#{de.id}' class='de_selection label label-default'>#{de.nb_cells_sel2}</span>" : 'Complementary set') %></td>
+      <td>
+	<% if de.nber_down_genes %>
+	<% if de.nber_down_genes > 0 %>
+	<span id='lg_<%= de.id %>_down' class='label label-danger list_genes'><%= de.nber_down_genes %></span>
+	<% else %>
+	<span class='label label-danger'>0</span>
+	<% end %>
+	<% end %>
+      </td>
+      <td>
+	<% if de.nber_up_genes %>
+	<% if de.nber_up_genes > 0 %>
+	<span id='lg_<%= de.id %>_up' class='label label-success list_genes'><%= de.nber_up_genes %>
+      </td>
+      <% else %>
+      <span class='label label-success'>0</span>
+      <% end %>
+      <% end %>
+      <td>
+	<% if de.status %>
+        <%= image_tag(de.status.name + "." + de.status.img_extension, :id => ('status_job_' + de.job_id.to_s) , :width => '15px', :style => 'margin-top:-10px;') %>
+        <%= raw "<span class='label label-danger'>#{de.error}</span>" if de.error %>
+        <% end %>
+      </td>
+      <td><%= raw display_date(de.created_at) %></td>
+      <td><%= (user = de.user) ? user.email : 'NA' %></td>
+
+      <td style='white-space:nowrap'>
+        
+	<% if editable?(@project) %>
+      <td>
+	<% if de.status_id == 3 %>
+        <button class='add_custom_gene_set btn btn-primary btn-xs' id ='add_<%= de.id %>'>Add to custom gene sets</button>
+        <% end %>
+      </td>
+      <td style='white-space:nowrap'>
+        <button class='delete_item btn btn-danger' id='delete_<%= de.id %>'>Delete</button>
+      </td>
+      <% end %>
+      
+    </tr>
+    <% end %>
+  </tbody>
+</table>
+<% else %>
+None.
+<% end %>
+</div></div>
+<%= javascript_tag do %>
+
+$(document).ready(function(){
+
+$(".de_selection").click(function(e){
+ var t = this.id.split("_");
+ var url = '<%= diff_exprs_path() %>/' + t[2] + '/get_selection?sel=' + t[1];
+  $.ajax({
+  url: url,
+  type: "get",
+  dataType: "html",
+  beforeSend: function(){
+  },
+  success: function(selection){
+   var div= $("#popup_container3");
+    $('#popup_container3').html(JSON.parse(selection).join(', '));
+    $('#popup_window3').removeClass('hidden');
+    $("#popup_window3").css({
+        left: e.pageX + 10,
+        top: e.pageY + 10
+    }).stop().show(100);
+  }
+ });
+});
+
+$(".list_genes").click(function(){
+var t = this.id.split("_");
+//if ($(this).html() != '0'){
+refresh("step_container", '<%= diff_exprs_path %>/' + t[1] + "/list_genes?type=" + t[2]);
+//}
+});
+
+$(".delete_item").click(function(){
+ var t = this.id.split("_");
+ refresh_post("list_des", '<%= diff_exprs_path() %>/' + t[1], {}, 'delete');
+});
+
+
+});
+
+<% if @existing_diff_expr %>
+alert("This analysis already exists!");
+<% end %>
+
+<% if @project.diff_exprs.size == 0 and @project.selections.size == 0 %>
+$("#step_4").click();
+<% end %>
+
+$("#filter_btn").click(function(){
+$(this).attr('disabled', 'disabled');
+ p = [
+  {'name' : 'filter[fc_cutoff]', 'value' : $("#filter_fc_cutoff").val()},
+  {'name' : 'filter[fdr_cutoff]', 'value' : $("#filter_fdr_cutoff").val()}
+ ];                                                                                                                                            
+  refresh_post("list_des", "<%= filter_results_diff_exprs_path(:project_key => @project.key) %>", p, 'post'); 
+});
+
+
+
+$(".add_custom_gene_set").click(function(){
+var diff_expr_id = this.id.split("_")[1];
+ p = [
+  {'name' : 'project_key', 'value' : '<%= @project.key %>'},
+  {'name' : 'diff_expr_id', 'value' : diff_expr_id},
+  {'name' : 'gene_set[label]', 'value' : ''},
+ ]
+ refresh_post("cart", "<%= gene_sets_path() %>", p, 'post', true);
+
+});
+
+
+<% end %>
+

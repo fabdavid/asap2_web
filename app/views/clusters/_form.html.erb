@@ -1,4 +1,4 @@
-<%= form_with(model: cluster, local: true) do |form| %>
+<%= form_for(cluster) do |f| %>
   <% if cluster.errors.any? %>
     <div id="error_explanation">
       <h2><%= pluralize(cluster.errors.count, "error") %> prohibited this cluster from being saved:</h2>
@@ -12,6 +12,6 @@
   <% end %>
 
   <div class="actions">
-    <%= form.submit %>
+    <%= f.submit %>
   </div>
 <% end %>

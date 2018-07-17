@@ -1,0 +1,17 @@
+<%= form_with(model: dim_reduction, local: true) do |form| %>
+  <% if dim_reduction.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(dim_reduction.errors.count, "error") %> prohibited this dim_reduction from being saved:</h2>
+
+      <ul>
+      <% dim_reduction.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

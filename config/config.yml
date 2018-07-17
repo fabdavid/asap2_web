@@ -1,0 +1,19 @@
+development:
+ server_url:
+  https://asap.epfl.ch
+ data_dir:
+  /data
+ user_data_dir:
+  /data/users
+ upload_data_dir:
+  /data/uploads
+
+production:
+ server_url:
+  https://asap.epfl.ch
+ data_dir:
+  /data
+ user_data_dir:
+  /data/users
+ upload_data_dir:
+  /data/uploads

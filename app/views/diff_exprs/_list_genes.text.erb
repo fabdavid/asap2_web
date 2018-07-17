@@ -1,0 +1,11 @@
+<% h = {"input_gene" => "Input gene name", "ensembl_id" => "Ensembl ID", 
+"alt_names" => "Alternative names",
+"logFC" => "log(Fold change)", "gene_name" => "Gene name", "pval" => "p-value", "FDR" => "FDR", 
+"AvCountG1" => "Average count sel.1", "AvCountG2" => "Average count sel.2",
+"AvNormG1" => "Average norm sel.1", "AvNormG2" => "Average norm sel.2"} %>
+<% list_p = ["input_gene", "ensembl_id", "gene_name", "alt_names", "logFC", "pval", "FDR", "AvCountG1", "AvCountG2", "AvNormG1", "AvNormG2"]
+#list_p.push(["AvNormG1", "AvNormG2"]).flatten! if @diff_expr.diff_expr_method.creates_av_norm == true %>
+<%= list_p.select{|k| @results[k]}.map{ |k| h[k]}.join("\t") %>
+<% (0 .. @results[list_p.first].size-1).each do |row_i| %>
+<%= list_p.select{|k| @results[k]}.map{|k| (@results[k]) ? @results[k][row_i] : 'NA'}.join("\t") %>
+<% end %>

@@ -1,4 +1,4 @@
-<%= form_with(model: diff_expr, local: true) do |form| %>
+<%= form_for(diff_expr) do |f| %>
   <% if diff_expr.errors.any? %>
     <div id="error_explanation">
       <h2><%= pluralize(diff_expr.errors.count, "error") %> prohibited this diff_expr from being saved:</h2>
@@ -12,6 +12,6 @@
   <% end %>
 
   <div class="actions">
-    <%= form.submit %>
+    <%= f.submit %>
   </div>
 <% end %>

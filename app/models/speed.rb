@@ -1,0 +1,2 @@
+class Speed < ApplicationRecord
+end

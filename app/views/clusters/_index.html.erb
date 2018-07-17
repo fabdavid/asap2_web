@@ -1,0 +1,108 @@
+<!--<p id="notice"><%= notice %></p>-->
+<%# session[:selections] %>
+<% base_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key + 'clustering'  %>
+
+<div class='panel panel-default' style='margin-top:10px'>
+<div class='panel-heading'>List of clusters </div>
+<div style='margin:10px'>
+
+<% if @clusters.size > 0 %>
+<table id='clustering_list' class='job_list'>
+  <thead>
+    <tr>
+    <!--  <th>#</th> -->
+      <th>Method</th>
+      <th>Data source</th>
+      <th>Clusters</th>
+      <th>Status</th>
+      <th>Created (GMT)</th>
+    <th>Created by</th>
+      <th>Downloads</th>
+      <th></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% h_step_name = {1 => 'Original data', 2=> 'Filtered data', 3=>'Normalized data'} %>
+    <% @clusters.sort.reverse.each do |cluster| %>
+      <tr>
+<!--	<td><%= cluster.num %></td> -->
+	<td><%= display_method_label2(cluster, cluster.cluster_method) %></td>
+	<td><%= (cluster.step_id and cluster.step_id < 4) ? h_step_name[cluster.step_id] : DimReduction.find(cluster.dim_reduction_id).label %></td>
+	<td><%= raw (( @cluster_data[cluster.id]) ? (1 .. @cluster_data[cluster.id].size).to_a.map{|i| "<button type='button' href='#' class='btn btn-success cluster' id='#{cluster.id}_#{i-1}'>Cluster #{cluster.num}.#{i} <span class='badge'>#{@cluster_data[cluster.id][i-1].size}</span></button>"}.join(" ") : '') %></td>
+	<td>
+	  <% if cluster.status %>
+          <%= image_tag(cluster.status.name + "." + cluster.status.img_extension, :id => ('status_job_' + cluster.job_id.to_s), :width => '15px', :style => 'margin-top:-10px;') %>
+          <%= raw "<span class='label label-danger'>#{cluster.error}</span>" if cluster.error %>
+          <% end %>
+	</td>
+	<td><%= raw display_date(cluster.created_at) %></td>
+        <td><%= (user = cluster.user) ? user.email : 'NA' %></td>
+	<td>
+	  <% file = base_dir + cluster.id.to_s + 'output.json' %>
+	  <%= link_to raw("<button class='btn btn-primary btn-xs'>Clusters</button>"), to_tab_cluster_path(cluster.id) if File.exist?(file) %>
+	  <% file =  base_dir + cluster.id.to_s + 'silhouette.png' %> 
+	  <%= link_to raw("<button class='btn btn-primary btn-xs'>Silhouette</button>"), get_file_project_path(@project.key, :step => 'clustering', :item_id => cluster.id, :filename => 'silhouette.png') if File.exist?(file) %>
+	</td>
+        <td>
+	  <% if analyzable_item?(@project, cluster) %>
+          <button class='delete_item btn btn-danger' id='delete_<%= cluster.id %>'>Delete</button>	  
+          <% end %>
+	</td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+<% else %>
+None.
+<% end %>
+</div>
+</div>
+<%= javascript_tag do %>
+
+var cluster_data = <%= raw @cluster_data.to_json %>;
+$(document).ready(function(){
+//    $('[data-toggle="popover"]').popover({html: 'true', trigger: 'click'});
+$('.cluster').dblclick(function(e) {
+$("#popup_window").addClass('hidden');
+});
+$('.cluster').click(function(e) {
+var t = this.id.split("_")
+$('#popup_window').removeClass('hidden');
+//alert(cluster_data[t[0]][t[1]].join("; "));
+//var objs = $(".add_sel")
+//if (objs)
+ $("#add_selection").unbind('click');
+ $('#popup_container').html(cluster_data[t[0]][t[1]].join("; "));
+ $("#add_selection").click(function(){
+  p = [
+    {name: 'project_key', value: '<%= @project.key %>'},
+    {name: 'selection[obj_id]', value: t[0]},
+    {name: 'selection[obj_num]', value: parseInt(t[1])+1},
+    {name: 'list_of_items', value: cluster_data[t[0]][t[1]].join(";")}
+  ];
+
+  refresh_post("cart", '<%= selections_path %>', p, 'post');
+  $("#popup_window").addClass('hidden');
+ });
+ $("#popup_window").css({
+        left: e.pageX + 10,
+        top: e.pageY + 10
+    }).stop().show(100);
+});  
+});
+
+$(".add_sel").click(function(){
+//alert("mn");
+});
+
+$(".delete_item").click(function(){
+ var t = this.id.split("_");
+ refresh_post("list_clusterings", '<%= clusters_path() %>/' + t[1], {}, 'delete');
+});
+
+<% if @existing_cluster %>
+alert("This analysis already exists!");
+<% end %>
+
+<% end %>

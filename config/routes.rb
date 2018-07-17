@@ -1,12 +1,45 @@
 Rails.application.routes.draw do
-  resources :gene_sets
-  resources :gene_enrichments
+  resources :genes do
+    collection do
+      get :autocomplete
+    end
+  end
+
+  resources :dim_reductions
+  resources :gene_sets do
+    collection do
+      get :autocomplete
+    end
+  end
+
+  resources :gene_enrichments do
+    member do
+      get :get_list
+    end
+    collection do
+      post :filter_results
+    end
+  end
   resources :project_dim_reductions
   resources :filter_methods
   resources :norms
-  resources :diff_exprs
+  resources :diff_exprs do
+    member do
+      get :list_genes
+      get :get_selection
+    end
+    collection do
+      post :filter_results
+    end
+  end
+
   resources :selections
-  resources :clusters
+  resources :clusters do
+    member do
+      get :to_tab
+    end
+  end
+  
   resources :shares
   resources :statuses
   resources :steps
@@ -26,8 +59,8 @@ Rails.application.routes.draw do
   end
   resources :organisms
   devise_for :users
-  resources :projects do
-  collection do
+  resources :projects, param: :key do
+    collection do
       post :upload_file
       get :get_cart
     end

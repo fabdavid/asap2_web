@@ -1,0 +1,65 @@
+<div class='panel panel-default' style='margin-top:10px'>
+<div class='panel-heading'>Gene enrichment results 
+<div class='btn btn-default btn-xs back' style='float:right'>Back</div>
+<% download_url = get_list_gene_enrichment_path(@gene_enrichment, :format => 'text') %>
+<%= link_to raw("<button  style='float:right;margin-right:10px' class='btn btn-primary btn-xs download'>Download</button>"), download_url %>
+</div>
+<div style='margin:10px'>
+
+<% h = {"pathways" => "Annotation", "descriptions" => "Description", 
+"OR" => "OR", "p_value" => "p-value", "adj_p_value" => "Adjusted p-value"} %>
+<% list_p = ["pathways", "descriptions", "OR", "p_value", "adj_p_value"] %>
+<% list_p = ["pathways", "OR", "p_value", "adj_p_value"] if @results["descriptions"].compact.reject{|e| e == 'null'}.size == 0 %>
+
+
+<table id='list_of_pathways'>
+<thead>
+<% list_p.each do |k| %>
+<th><%= h[k] %></th>
+<% end %>
+</thead>
+<tbody>
+<% (0 .. @results[list_p.first].size-1).each do |row_i| %>
+<tr>
+<% list_p.each do |k| %>
+<td>
+<% if k == "pathways" and @results["urls"][row_i] and @results["urls"][row_i]!='null' %>
+  <%= link_to((@results[k]) ? @results[k][row_i] : 'NA', @results["urls"][row_i])%>
+<% else %>
+  <%= raw (@results[k]) ? ((@results[k][row_i] != 1.7976931348623157e+308) ? @results[k][row_i] : "&infin;" ) : 'NA' %>
+<% end %>
+</td>
+<% end %>
+</tr>
+<% end %>
+</tbody>
+</table>
+</div>
+</div>
+
+<%= javascript_tag do %>
+
+ var oTable = $('#list_of_pathways').dataTable( {
+// "sDom": 'Wfsrt',
+//        "pageLength":<%= @results.size %>,
+//"aoColumnDefs": [{ "sType": "allnumeric", "aTargets": [ 2 ] } ]
+//dom: 'BfrTtip',
+/*buttons: [
+            'copy', 'excel', 'pdf'
+        ],
+*/
+<% if list_p.size == 4 %>
+      "order": [[ 1, "desc" ], [2, "asc"]]
+<% else %>
+        "order": [[ 2, "desc" ], [3, "asc"]]
+<% end %>
+//"bSort": false,
+//aaSorting: []
+    });
+
+$('.back').click(function(){
+$("#step_7").click();
+//refresh("list_gene_enrichments", '<%= gene_enrichments_path(:project_key => @project.key) %>');
+});
+
+<% end %>

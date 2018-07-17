@@ -1,0 +1,14 @@
+<% h = {"pathways" => "Annotation", "descriptions" => "Description", 
+"OR" => "OR", "p_value" => "p-value", "adj_p_value" => "Adjusted p-value"} %>
+<% list_p = ["pathways", "descriptions", "OR", "p_value", "adj_p_value"] %>
+<% list_p = ["pathways", "OR", "p_value", "adj_p_value"] if @results["descriptions"].compact.reject{|e| e == 'null'}.size == 0 %>
+<%= list_p.map{|k|  h[k]}.join("\t") %>
+<% (0 .. @results[list_p.first].size-1).each do |row_i| %>
+ <%= list_p.map{ |k| 
+  if k == "pathways" and @results["urls"][row_i] and @results["urls"][row_i]!='null' 
+   link_to((@results[k]) ? @results[k][row_i] : 'NA', @results["urls"][row_i])
+  else 
+   (@results[k]) ? @results[k][row_i] : 'NA'
+  end
+  }.join("\t") %>
+<% end %>

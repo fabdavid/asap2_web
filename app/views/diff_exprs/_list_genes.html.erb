@@ -1,0 +1,80 @@
+<%# @results['alt_names'].to_json %>
+<div class='panel panel-default' style='margin-top:10px'> 
+<div class='panel-heading'>List of <%= params[:type] %>-regulated genes
+<div class='btn btn-default btn-xs back' style='float:right'>Back</div>
+<% download_url = list_genes_diff_expr_path(@diff_expr, :type => params[:type], :format => 'text') %>
+<%= link_to raw("<button  style='float:right;margin-right:10px' class='btn btn-primary btn-xs download'>Download all</button>"), download_url %>
+<!--<div id='add_sel' style='float:right;margin-right:10px' class='btn btn-primary btn-xs'>Add to selections</div>-->
+</div>
+<div style='margin:10px'>
+<% h = {"input_gene" => "Input gene name", "ensembl_id" => "Ensembl ID",
+"alt_names" => "Alternative names", 
+"logFC" => "log(Fold change)", "gene_name" => "Gene name", "pval" => "p-value", "FDR" => "FDR", 
+"AvCountG1" => "Average count sel.1", "AvCountG2" => "Average count sel.2",
+"AvNormG1" => "Average norm sel.1", "AvNormG2" => "Average norm sel.2"
+} %>
+<% list_p = ["input_gene", "ensembl_id", "gene_name", "alt_names", "logFC", "pval", "FDR", "AvCountG1", "AvCountG2", "AvNormG1", "AvNormG2"]
+#list_p.push(["AvNormG1", "AvNormG2"]).flatten! if @diff_expr.diff_expr_method.creates_av_norm == true %>
+
+<table id='list_of_genes'>
+<thead>
+<% list_p.select{|k| @results[k]}.each do |k| %>
+<th><%= h[k] %></th>
+<% end %>
+</thead>
+<tbody>
+<% (0 .. @results[list_p.first].size-1).each do |row_i| %>
+<tr>
+<% list_p.select{|k| @results[k]}.each do |k| %>
+<td><%= raw (@results[k] and  @results[k][row_i]) ? ((k=='ensembl_id') ? @results[k][row_i].split(", ").map{|e| link_to(e, "http://www.ensembl.org/Gene/Summary?g=#{e}")}.join(", ") : @results[k][row_i]) : 'NA' %></td>
+<% end %>
+</tr>
+<% end %>
+</tbody>
+</table>
+</div>
+</div>
+<%= javascript_tag do %>
+
+ var oTable = $('#list_of_genes').dataTable( {
+// "sDom": 'Wfsrt',
+//        "pageLength":<%= @results.size %>,
+//"aoColumnDefs": [{ "sType": "allnumeric", "aTargets": [ 2 ] } ]
+        "order": [[ 4, "<%= (params[:type] == 'down') ? "asc" : "desc" %>" ]]
+//"bSort": false,
+//aaSorting: []
+    });
+
+$('.back').click(function(){
+  $("#step_6").click();
+//refresh("list_des", '<%= diff_exprs_path(:project_key => @project.key) %>');
+});
+
+$('#add_sel').click(function(e) {
+var t = this.id.split("_")
+$('#popup_window').removeClass('hidden');
+//alert(cluster_data[t[0]][t[1]].join(", "));
+//var objs = $(".add_sel")
+//if (objs)
+ $("#add_selection").unbind('click');
+ $('#popup_container').html(cluster_data[t[0]][t[1]].join(", "));
+ $("#add_selection").click(function(){
+  p = [
+    {name: 'project_key', value: '<%= @project.key %>'},
+    {name: 'selection[obj_id]', value: t[0]},
+    {name: 'selection[obj_num]', value: parseInt(t[1])+1},
+    {name: 'list_of_items', value: cluster_data[t[0]][t[1]]}
+  ];
+
+  refresh_post("cart", '<%= selections_path %>', p, 'post');
+  $("#popup_window").addClass('hidden');
+ });
+ $("#popup_window").css({
+        left: e.pageX + 10,
+        top: e.pageY + 10
+    }).stop().show(100);
+});
+
+
+
+<% end %>

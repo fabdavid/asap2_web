@@ -18,6 +18,8 @@ module Asap2
     # through an environment variable.
     config.log_level = ENV['LOG_LEVEL']
 
+    config.middleware.delete Rack::Lock
+
     # Log to STDOUT because Docker expects all processes to log here. You could
     # then redirect logs to a third party service on your own such as systemd,
     # or a third party host such as Loggly, etc..

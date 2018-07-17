@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Dim Reductions</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @dim_reductions.each do |dim_reduction| %>
+      <tr>
+        <td><%= link_to 'Show', dim_reduction %></td>
+        <td><%= link_to 'Edit', edit_dim_reduction_path(dim_reduction) %></td>
+        <td><%= link_to 'Destroy', dim_reduction, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Dim Reduction', new_dim_reduction_path %>

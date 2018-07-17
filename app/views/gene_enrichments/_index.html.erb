@@ -1,0 +1,85 @@
+<div class='panel panel-default' style='margin-top:10px'>
+  <div class='panel-heading'>List of gene enrichment analyses
+    
+    <div style='float:right'>
+      FDR <= 
+	     <%= (analyzable? @project) ? text_field_tag('filter[fdr_cutoff]',  @h_gene_enrichment_filters['fdr_cutoff']) : @h_gene_enrichment_filters['fdr_cutoff'] %> 
+	     <% if analyzable? @project %>
+	     <div id='filter_btn' class='btn btn-primary btn-xs'>Filter</div>
+	     <% end %>
+    </div>
+  </div>
+  <div style='margin:10px'>
+    
+    <table id='ge_list' class='job_list'>
+  <thead>
+    <tr>
+      <th>DE input</th>
+      <th># of pathways</th>
+      <th>Status</th>
+      <th>Created (GMT)</th>
+      <th>Created by</th>
+      <th></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @gene_enrichments.sort.reverse.each do |ge| %>
+      <tr>
+        <td><%= display_method_label(ge.label) %>
+         <!--<span class='small'>[DE details: <%= (ge.diff_expr) ? ge.diff_expr.label : 'NA' %> <%= display_de_selections(ge.diff_expr) %>] </span>-->
+	</td>
+	<td><span id='ge_<%= ge.id %>' class='label label-<%= (ge.nber_pathways == 0) ? 'danger' : 'success list_pathways' %>'><%= ge.nber_pathways %></span></td>
+         <td>
+	   <% if ge.status %>
+	   <%= image_tag(ge.status.name + "." + ge.status.img_extension, :id => ('status_job_' + ge.job_id.to_s), :width => '15px', :style => 'margin-top:-10px;') %>
+           <%= raw "<span class='label label-danger'>#{ge.error}</span>" if ge.error %>
+           <% end %>
+         </td>
+	<td><%= raw display_date(ge.created_at) %></td>
+        <td><%= (user = ge.user) ? user.email : 'NA' %></td>
+        <td>
+	  <% if analyzable_item?(@project, ge) %>
+	  <%# if editable?(@project) or (current_user and ge.user_id == current_user.id) %>
+	  <button class='delete_item btn btn-danger' id='delete_<%= ge.id %>'>Delete</button>
+	  <% end %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+</div></div>
+<%= javascript_tag do %>
+
+$(document).ready(function(){
+
+$(".list_pathways").click(function(){
+var t = this.id.split("_");
+//if ($(this).html() != '0'){
+refresh("step_container", '<%= gene_enrichments_path %>/' + t[1] + "/get_list");
+//}
+});
+
+$(".delete_item").click(function(){
+ var t = this.id.split("_");
+ refresh_post("list_gene_enrichments", '<%= gene_enrichments_path() %>/' + t[1], {}, 'delete');
+});
+
+});
+
+<% if @existing_gene_enrichment %>
+alert("This analysis already exists!");
+<% end %>
+
+$("#filter_btn").click(function(){
+$(this).attr('disabled', 'disabled');
+ p = [
+  {'name' : 'filter[fdr_cutoff]', 'value' : $("#filter_fdr_cutoff").val()}
+ ];
+  refresh_post("list_gene_enrichments", "<%= filter_results_gene_enrichments_path(:project_key => @project.key) %>", p, 'post');
+});
+
+// alert("cancel disabled");
+ $("#gene_enrichment_button").attr('disabled', false);
+
+
+<% end %>
