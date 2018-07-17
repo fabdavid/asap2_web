@@ -1,0 +1,2308 @@
+> args <- commandArgs(trailingOnly = TRUE)
+> 
+> ### Default Parameters
+> set.seed(42)
+> input.file <- args[1]
+> output.folder <- args[2]
+> algorithm <- args[3]
+> batch.file <- args[4]
+> group.file <- args[5]
+> type.file <- args[8]
+> 
+> ### Libraries
+> require(jsonlite)
+> 
+> ### Functions
+> error.json <- function(displayed) {
++   stats <- list()
++   stats$displayed_error = displayed
++   write(toJSON(stats, method="C", auto_unbox=T), file = paste0(output.folder,"/output.json"), append=F)
++   stop(displayed)
++ }
+> 
+> ### Plots that will be generated
+> data.plots = NULL
+> 
+> ### Load data
+> data.norm <- read.table(input.file, sep="\t", header=T, row.names=1, colClasses=c(Genes="character"), check.names=F, stringsAsFactors=F)
+> data.group <- NULL
+> 
+> ### Extra params: cutoffs
+> p.cutoff <- args[6]
+> if(is.null(p.cutoff) || is.na(p.cutoff) || p.cutoff == "" || p.cutoff == "null") p.cutoff <- 0.05
+> fc.cutoff <- args[7]
+> if(is.null(fc.cutoff) || is.na(fc.cutoff) || fc.cutoff == "" || fc.cutoff == "null") fc.cutoff <- 2
+> 
+> ### Batch effect file
+> data.batch <- NULL
+> if(!is.null(batch.file) & !is.na(batch.file) & batch.file != "" & batch.file != "null") {
++   print("Batch file detected. Will perform batch effect correction.")
++   data.batch <- read.table(batch.file, sep="\t", header=F, row.names=1, check.names=F, stringsAsFactors=F)
++   if(all(sort(colnames(data.norm)) %in% sort(rownames(data.batch)))) { # If all names are in the batch file (handle filtered cells)
++     print("Batch file is correct. Process with it.")
++   } else error.json("Batch data is wrong.")
++ }
+> 
+> ### Handle groups
+> if(is.null(group.file) || is.na(group.file) || group.file == "" || group.file == "null") error.json("Select file is missing")
+> data.group.json <- fromJSON(group.file)
+> data.group.1 <- data.group.json$group1
+> data.group.2 <- data.group.json$group2
+> if(is.null(data.group.1)) error.json("\"group1\" is not found in JSON select file")
+> if(!all(data.group.1 %in% colnames(data.norm))) error.json("Samples from Selection 1 were not found in data matrix.")
+> 
+> if(is.null(data.group.2)){
++   print("One group file found. Performing this group against all other samples [Marker Genes]")
++   data.group <- data.frame(row.names=colnames(data.norm), group = rep(2,ncol(data.norm)))
++   data.group[data.group.1,] <- 1
++ } else {
++   print("Two group files found. Performing DE [G1 vs G2] and discarding other samples")
++   if(!all(data.group.2 %in% colnames(data.norm))) error.json("Samples from Selection 2 were not found in data matrix.")
++   all <- unique(c(data.group.1, data.group.2))
++   if(length(all) != length(data.group.1) + length(data.group.2)) error.json("Selections should not overlap")
++   data.group <- data.frame(row.names=all, group = rep(1,length(all)))
++   data.group[data.group.2,] <- 2
++ }
+[1] "One group file found. Performing this group against all other samples [Marker Genes]"
+> 
+> if(sum(data.group$group == 1) < 2) error.json("Group 1 should contain at least 2 samples")
+> if(sum(data.group$group == 2) < 2) error.json("Group 2 should contain at least 2 samples")
+> 
+> # Order by group number
+> data.group <- data.group[with(data.group, order(group)), , drop=F]
+> data.norm <- data.norm[,rownames(data.group)]
+> # Create design matrix from groups
+> if(is.null(data.batch)){
++   data.design <- model.matrix(~data.group[colnames(data.norm),])
++ } else { # incorporate the batch into the model
++   data.design <- model.matrix(~data.group[colnames(data.norm),]+data.batch[colnames(data.norm),])
++ }
+> 
+> # Run DE algorithms
+> if(algorithm=="limma"){
++   require(limma)
++   if(type.file == "original" || type.file == "filtered"){ # if data is a count matrix
++     print("Input data is a count table. Voom Normalizing...")
++     data.voom <- voom(counts = data.norm, normalize.method="quantile", plot=F)$E # normalize
++     fit <- NULL
++     tryCatch({
++       fit <<- lmFit(data.voom, data.design)
++     }, warning = function(war) {
++       if(grepl("Partial NA coefficients", war$message)) error.json("Seems that your batches and selections are confounded. There is no way to properly analyze the experiment in that case.")
++     })
++     fit <- eBayes(fit)
++     DE <- topTable(fit,n=Inf,adjust="fdr") # Create the table with all DE results
++     DE <- DE[which(DE$adj.P.Val <= as.double(p.cutoff) & abs(DE$logFC) >= log2(as.double(fc.cutoff))),] # restrict the table to the 2 given cutoff
++     DE <- DE[with(DE, order(abs(logFC), decreasing=T)), ]  ## ON ORDONNE par log fold change, n�gatif = upr�gul� dans le groupe 1
++     DE$AvCountSelected <- rowMeans(data.norm[rownames(DE),rownames(data.group)[data.group == 1],drop=F])
++     DE$AvCountOthers <- rowMeans(data.norm[rownames(DE),rownames(data.group)[data.group == 2],drop=F])
++     DE$AvVoomSelected <- rowMeans(data.voom[rownames(DE),rownames(data.group)[data.group == 1],drop=F])
++     DE$AvVoomOthers <- rowMeans(data.voom[rownames(DE),rownames(data.group)[data.group == 2],drop=F])
++     data.out <- DE[,c(-2, -3, -6)]
++     colnames(data.out) <- c("logFC", "pval", "FDR", "AvCountG1", "AvCountG2", "AvNormG1", "AvNormG2")
++   } else { 
++     fit <- NULL
++     tryCatch({
++       fit <<- lmFit(data.norm, data.design)
++     }, warning = function(war) {
++       if(grepl("Partial NA coefficients", war$message)) error.json("Seems that your batches and selections are confounded. There is no way to properly analyze the experiment in that case.")
++     })
++     fit <- eBayes(fit)
++     DE <- topTable(fit,n=Inf,adjust="fdr") # Create the table with all DE results
++     DE <- DE[which(DE$adj.P.Val <= as.double(p.cutoff) & abs(DE$logFC) >= log2(as.double(fc.cutoff))),] # restrict the table to the 2 given cutoff
++     DE <- DE[with(DE, order(abs(logFC), decreasing=T)), ]  ## ON ORDONNE par log fold change
++     DE$AvExprSelected <- rowMeans(data.norm[rownames(DE),rownames(data.group)[data.group == 1],drop=F])
++     DE$AvExprOthers <- rowMeans(data.norm[rownames(DE),rownames(data.group)[data.group == 2],drop=F])
++     data.out <- DE[,c(-2, -3, -6)]
++     colnames(data.out) <- c("logFC", "pval", "FDR", "AvNormG1", "AvNormG2")
++   }
++ } else if(algorithm=="deseq2"){ # Assuming data is a count table
++   require(DESeq2)
++   require(BiocParallel)
++   if(is.null(args[9]) || is.na(args[9]) || args[9] == "" || args[9] == "null") { 
++     nb.cores <- 8
++   } else {
++     nb.cores <- as.numeric(args[9])
++   }
++   if(is.null(data.batch)){
++     data.colData = data.frame(row.names=colnames(data.norm), group=factor(data.group[colnames(data.norm),]))
++     data.dds <- DESeqDataSetFromMatrix(data.norm, colData=data.colData, design=~group)
++   } else { # incorporate the batch into the model
++     data.colData = data.frame(row.names=colnames(data.norm), group=factor(data.group[colnames(data.norm),]), batch=factor(data.batch[colnames(data.norm),]))
++     data.dds <- NULL
++     tryCatch({
++       data.dds <<- DESeqDataSetFromMatrix(data.norm, colData=data.colData, design=~batch+group)
++     }, error = function(err) {
++       if(grepl("the model matrix is not full rank", err$message)) error.json("Seems that your batches and selections are confounded. There is no way to properly analyze the experiment in that case.")
++       error.json(err$message)
++     })
++   }
++   if(nb.cores > 1) {
++     register(MulticoreParam(nb.cores))
++     data.dds <- DESeq(data.dds, parallel=T)
++   } else data.dds <- DESeq(data.dds, parallel=F)
++   DE <- results(data.dds)
++   DE <- DE[which(DE$padj <= as.double(p.cutoff) & abs(DE$log2FoldChange) >= log2(as.double(fc.cutoff))),]
++   DE <- data.frame(DE[with(DE, order(abs(log2FoldChange), decreasing = T)), ])
++   data.deseq <- as.data.frame(counts(data.dds, normalized=TRUE))
++   data.deseq <- sign(data.deseq) * log2(1 + abs(data.deseq))
++   DE$AvCountSelected <- rowMeans(data.norm[rownames(DE),rownames(data.group)[data.group == 1],drop=F])
++   DE$AvCountOthers <- rowMeans(data.norm[rownames(DE),rownames(data.group)[data.group == 2],drop=F])
++   DE$AvDESeqSelected <- rowMeans(data.deseq[rownames(DE),rownames(data.group)[data.group == 1],drop=F])
++   DE$AvDESeqOthers <- rowMeans(data.deseq[rownames(DE),rownames(data.group)[data.group == 2],drop=F])
++   data.out <- DE[,c(-1, -3, -4)]
++   colnames(data.out) <- c("logFC", "pval", "FDR", "AvCountG1", "AvCountG2", "AvNormG1", "AvNormG2")
++ } else if(algorithm=="edger"){ # Assuming data is a count table
++   require(edgeR)
++   data.dge <- DGEList(counts=data.norm, group=data.group[colnames(data.norm),1])
++   #data.dge <- relevel(data.dge, ref="1")
++   data.dge <- calcNormFactors(data.dge)
++   if(is.null(data.batch)){
++     data.dge <- estimateDisp(data.dge)
++   } else {
++     tryCatch({
++       data.dge <<- estimateDisp(data.dge, design=data.design, robust=TRUE)
++     }, error = function(err) {
++       if(grepl("Design matrix not of full rank", err$message)) error.json("Seems that your batches and selections are confounded. There is no way to properly analyze the experiment in that case.")
++       error.json(err$message)
++     })
++   }
++   DE <- exactTest(data.dge)
++   DE <- data.frame(topTags(DE, n=Inf, adjust="fdr"))
++   DE <- DE[which(DE$FDR <= as.double(p.cutoff) & abs(DE$logFC) >= log2(as.double(fc.cutoff))),]
++   DE <- DE[with(DE, order(abs(logFC), decreasing = T)), ]
++   data.edger <- as.data.frame(cpm(data.dge, normalized.lib.sizes=TRUE, log = T))
++   DE$AvCountG1 <- rowMeans(data.norm[rownames(DE),rownames(data.group)[data.group == 1],drop=F])
++   DE$AvCountG2 <- rowMeans(data.norm[rownames(DE),rownames(data.group)[data.group == 2],drop=F])
++   DE$AvEdgeRG1 <- rowMeans(data.edger[rownames(DE),rownames(data.group)[data.group == 1],drop=F])
++   DE$AvEdgeRG2 <- rowMeans(data.edger[rownames(DE),rownames(data.group)[data.group == 2],drop=F])
++   data.out <- DE[,c(-2)]
++   colnames(data.out) <- c("logFC", "pval", "FDR", "AvCountG1", "AvCountG2", "AvNormG1", "AvNormG2")
++ } else if(algorithm=="scde"){ # Assuming data is a count table
++   require(scde)
++   if(is.null(args[9]) || is.na(args[9]) || args[9] == "" || args[9] == "null") { 
++     nb.cores <- 8
++   } else {
++     nb.cores <- as.numeric(args[9])
++   }
++   if(!is.null(data.batch)) { # sanity check before the long computing
++     require(limma)
++     data.voom <- voom(counts = data.norm, normalize.method="quantile", plot=F)$E # normalize
++     tryCatch({
++       fit <- lmFit(data.voom, data.design)
++     }, warning = function(war) {
++       if(grepl("Partial NA coefficients", war$message)) error.json("Seems that your batches and selections are confounded. There is no way to properly analyze the experiment in that case.")
++     })
++   }
++   nb.cores <- as.integer(nb.cores)
++   data.model.ifm <- scde.error.models(counts=data.norm, min.nonfailed = 1, min.size.entries = 1, groups=data.group[colnames(data.norm),1], n.cores=nb.cores, threshold.segmentation = TRUE, save.crossfit.plots = FALSE, save.model.plots = FALSE, verbose = 1)
++   data.model.ifm <- data.model.ifm[data.model.ifm$corr.a > 0, ] # keep only valid cells
++   data.model.prior <- scde.expression.prior(models=data.model.ifm, counts=data.norm[,rownames(data.model.ifm)], length.out=400, show.plot=F)
++   if(is.null(data.batch)){
++     DE <- scde.expression.difference(data.model.ifm, data.norm[,rownames(data.model.ifm)], data.model.prior, groups=factor(data.group[rownames(data.model.ifm),1]), n.randomizations=100, n.cores=nb.cores, verbose=1)
++   } else {
++     DE <- scde.expression.difference(data.model.ifm, data.norm[,rownames(data.model.ifm)], data.model.prior, batch=factor(data.batch[rownames(data.model.ifm),1]), groups=factor(data.group[rownames(data.model.ifm),1]), n.randomizations=100, n.cores=nb.cores, verbose=1)
++   }  
++   DE$pval <- 2*pnorm(-abs(DE$Z)) # Calculation of p-pvalue from Z-score
++   DE$padj <- p.adjust(DE$pval, method="fdr") # Multiple test adjustment
++   DE <- DE[which(DE$padj <= as.double(p.cutoff) & abs(DE$mle) >= log2(as.double(fc.cutoff))),]
++   DE <- DE[with(DE, order(abs(mle), decreasing = T)), ]
++   DE$AvCountSelected <- rowMeans(data.norm[rownames(DE),rownames(data.group)[data.group == 1],drop=F])
++   DE$AvCountOthers <- rowMeans(data.norm[rownames(DE),rownames(data.group)[data.group == 2],drop=F])
++   data.out <- DE[, c(-1, -3, -4, -5, -6)]
++   colnames(data.out) <- c("logFC", "pval", "FDR", "AvCountG1", "AvCountG2")
++ }
+cross-fitting cells.
+number of pairs:  171 
+number of pairs:  2556 
+total number of pairs:  2727 
+building individual error models.
+Classification: weighted 
+Classification: weighted 
+Classification: weighted 
+Classification: weighted 
+Classification: weighted 
+Classification: weighted 
+   1 Log-likelihood :   -9596.0977 
+   2 Log-likelihood :   -9592.8537 
+   1 Log-likelihood :   -9682.4411 
+   1 Log-likelihood :  -10792.5544 
+   3 Log-likelihood :   -9592.2902 
+   1 Log-likelihood :   -9385.1777 
+   4 Log-likelihood :   -9592.2356 
+   1 Log-likelihood :   -9883.6964 
+   1 Log-likelihood :   -9451.1293 
+   5 Log-likelihood :   -9592.2786 
+   2 Log-likelihood :  -10675.2582 
+   2 Log-likelihood :   -9679.5787 
+   6 Log-likelihood :   -9592.3388 
+   2 Log-likelihood :   -9427.7860 
+   7 Log-likelihood :   -9592.3968 
+   2 Log-likelihood :   -9385.1534 
+   2 Log-likelihood :   -9865.3496 
+   8 Log-likelihood :   -9592.4492 
+   3 Log-likelihood :  -10587.3337 
+   3 Log-likelihood :   -9679.0455 
+   9 Log-likelihood :   -9592.4947 
+   3 Log-likelihood :   -9386.4657 
+  10 Log-likelihood :   -9592.5345 
+   3 Log-likelihood :   -9423.2246 
+   4 Log-likelihood :  -10521.6307 
+   3 Log-likelihood :   -9857.7315 
+   4 Log-likelihood :   -9678.7897 
+  11 Log-likelihood :   -9592.5673 
+  12 Log-likelihood :   -9592.5943 
+   5 Log-likelihood :  -10474.7766 
+   4 Log-likelihood :   -9387.3211 
+  13 Log-likelihood :   -9592.6161 
+   5 Log-likelihood :   -9678.5536 
+   4 Log-likelihood :   -9421.6783 
+  14 Log-likelihood :   -9592.6333 
+   4 Log-likelihood :   -9855.8092 
+  15 Log-likelihood :   -9592.6467 
+   6 Log-likelihood :   -9678.3502 
+   6 Log-likelihood :  -10441.6317 
+  16 Log-likelihood :   -9592.6571 
+   5 Log-likelihood :   -9855.4478 
+   5 Log-likelihood :   -9387.9939 
+   7 Log-likelihood :   -9678.1859 
+  17 Log-likelihood :   -9592.6650 
+converged
+   5 Log-likelihood :   -9421.1708 
+   6 Log-likelihood :   -9855.3259 
+   8 Log-likelihood :   -9678.0573 
+   7 Log-likelihood :  -10418.3744 
+   6 Log-likelihood :   -9388.6123 
+   9 Log-likelihood :   -9677.9555 
+Classification: weighted 
+   7 Log-likelihood :   -9855.3130 
+   6 Log-likelihood :   -9420.7892 
+  10 Log-likelihood :   -9677.8743 
+   8 Log-likelihood :  -10402.2790 
+  11 Log-likelihood :   -9677.8084 
+   8 Log-likelihood :   -9855.3183 
+converged
+   1 Log-likelihood :   -9171.0614 
+   7 Log-likelihood :   -9388.9843 
+  12 Log-likelihood :   -9677.7554 
+   7 Log-likelihood :   -9420.8173 
+   9 Log-likelihood :  -10391.3349 
+  13 Log-likelihood :   -9677.7122 
+  14 Log-likelihood :   -9677.6752 
+   8 Log-likelihood :   -9389.4209 
+Classification: weighted 
+   2 Log-likelihood :   -9171.6193 
+  15 Log-likelihood :   -9677.6457 
+   8 Log-likelihood :   -9421.3705 
+  10 Log-likelihood :  -10384.0396 
+   3 Log-likelihood :   -9171.4938 
+  16 Log-likelihood :   -9677.6213 
+   1 Log-likelihood :   -9248.8375 
+   9 Log-likelihood :   -9389.4547 
+  17 Log-likelihood :   -9677.6045 
+   4 Log-likelihood :   -9171.3617 
+  11 Log-likelihood :  -10378.2171 
+   9 Log-likelihood :   -9420.6557 
+  18 Log-likelihood :   -9677.5850 
+   5 Log-likelihood :   -9171.4131 
+   2 Log-likelihood :   -9231.1593 
+  19 Log-likelihood :   -9677.5694 
+   6 Log-likelihood :   -9171.5858 
+   3 Log-likelihood :   -9217.8743 
+  12 Log-likelihood :  -10377.9721 
+  10 Log-likelihood :   -9389.7220 
+  20 Log-likelihood :   -9677.5552 
+   4 Log-likelihood :   -9217.3306 
+   7 Log-likelihood :   -9171.8244 
+  10 Log-likelihood :   -9420.9924 
+   5 Log-likelihood :   -9216.1878 
+   8 Log-likelihood :   -9172.0820 
+  21 Log-likelihood :   -9677.5439 
+   6 Log-likelihood :   -9215.7306 
+   9 Log-likelihood :   -9172.3327 
+  13 Log-likelihood :  -10373.5030 
+   7 Log-likelihood :   -9215.4647 
+  22 Log-likelihood :   -9677.5338 
+  10 Log-likelihood :   -9172.5644 
+   8 Log-likelihood :   -9215.3053 
+  11 Log-likelihood :   -9390.0528 
+  11 Log-likelihood :   -9420.8089 
+  23 Log-likelihood :   -9677.5253 
+converged
+  11 Log-likelihood :   -9172.7728 
+   9 Log-likelihood :   -9215.2036 
+  10  12  Log-likelihoodLog-likelihood  ::    -9215.1351  -9172.9575  
+
+  14 Log-likelihood :  -10373.2587 
+  11 Log-likelihood :   -9215.0812 
+  13 Log-likelihood :   -9173.1191 
+  12 Log-likelihood :   -9390.2080 
+Classification: weighted 
+  14 Log-likelihood :   -9173.2603 
+  12 Log-likelihood :   -9215.0500 
+  12 Log-likelihood :   -9421.0510 
+  15 Log-likelihood :   -9173.3829 
+  13 Log-likelihood :   -9215.0259 
+  15 Log-likelihood :  -10366.3334 
+  16 Log-likelihood :   -9173.4891 
+  14 Log-likelihood :   -9215.0074 
+  17 Log-likelihood :   -9173.5810 
+  15 Log-likelihood :   -9214.9930 
+  13 Log-likelihood :   -9420.8388 
+  13 Log-likelihood :   -9390.2597 
+  16 Log-likelihood :   -9214.9818 
+  18 Log-likelihood :   -9173.6603 
+   1 Log-likelihood :   -9058.1722 
+  16 Log-likelihood :  -10373.3620 
+  17 Log-likelihood :   -9214.9729 
+converged
+  19 Log-likelihood :   -9173.7288 
+  20 Log-likelihood :   -9173.7879 
+  14 Log-likelihood :   -9420.4223 
+  14 Log-likelihood :   -9390.4002 
+  21 Log-likelihood :   -9173.8387 
+  17 Log-likelihood :  -10375.2426 
+Classification: weighted 
+  22 Log-likelihood :   -9173.8827 
+   2 Log-likelihood :   -9071.1896 
+  23 Log-likelihood :   -9173.9205 
+  24 Log-likelihood :   -9173.9534 
+   1 Log-likelihood :   -8929.0813 
+  18 Log-likelihood :  -10370.2904 
+  15 Log-likelihood :   -9421.2942 
+  15 Log-likelihood :   -9390.3270 
+  25 Log-likelihood :   -9173.9813 
+  26 Log-likelihood :   -9174.0052 
+   3 Log-likelihood :   -9082.1643 
+  27 Log-likelihood :   -9174.0259 
+   2 Log-likelihood :   -8921.3176 
+  19 Log-likelihood :  -10372.6601 
+  28 Log-likelihood :   -9174.0440 
+  16 Log-likelihood :   -9420.6127 
+  16 Log-likelihood :   -9390.5534 
+  29 Log-likelihood :   -9174.0597 
+   4 Log-likelihood :   -9097.2756 
+  30 Log-likelihood :   -9174.0728 
+  20 Log-likelihood :  -10370.0189 
+  31 Log-likelihood :   -9174.0841 
+   3 Log-likelihood :   -8921.0477 
+  17 Log-likelihood :   -9421.0350 
+  32 Log-likelihood :   -9174.0940 
+  17 Log-likelihood :   -9390.5942 
+  33 Log-likelihood :   -9174.1023 
+converged
+   5 Log-likelihood :   -9110.1051 
+  21 Log-likelihood :  -10369.9839 
+   4 Log-likelihood :   -8920.8706 
+  18 Log-likelihood :   -9420.5701 
+Classification: weighted 
+   6 Log-likelihood :   -9123.7538 
+  18 Log-likelihood :   -9390.5988 
+converged
+   5 Log-likelihood :   -8920.8127 
+  22 Log-likelihood :  -10370.8204 
+   1 Log-likelihood :   -8627.6101 
+  19 Log-likelihood :   -9421.1971 
+   2 Log-likelihood :   -8622.9568 
+   6 Log-likelihood :   -8920.8152 
+converged
+Classification: weighted 
+   7 Log-likelihood :   -9134.9251 
+  23 Log-likelihood :  -10365.9004 
+   3 Log-likelihood :   -8621.4270 
+   4 Log-likelihood :   -8621.0290 
+Classification: weighted 
+  20 Log-likelihood :   -9420.8984 
+   1 Log-likelihood :   -9118.5489 
+   5 Log-likelihood :   -8620.9980 
+  24 Log-likelihood :  -10364.7171 
+   8 Log-likelihood :   -9143.2737 
+   6 Log-likelihood :   -8621.0494 
+   1 Log-likelihood :   -8508.9000 
+  21 Log-likelihood :   -9421.0574 
+   7 Log-likelihood :   -8621.1168 
+   2 Log-likelihood :   -9101.0527 
+  25 Log-likelihood :  -10374.2213 
+   2 Log-likelihood :   -8490.8444 
+   9 Log-likelihood :   -9148.5795 
+   8 Log-likelihood :   -8621.1843 
+   9 Log-likelihood :   -8621.2446 
+   3 Log-likelihood :   -8490.8230 
+  22 Log-likelihood :   -9420.6297 
+  26 Log-likelihood :  -10369.8925 
+  10 Log-likelihood :   -8621.2981 
+   3 Log-likelihood :   -9095.4655 
+  10 Log-likelihood :   -9151.7721 
+  11 Log-likelihood :   -8621.3435 
+   4 Log-likelihood :   -8490.8394 
+  12 Log-likelihood :   -8621.3824 
+  27 Log-likelihood :  -10369.8290 
+   4 Log-likelihood :   -9092.7169 
+  23 Log-likelihood :   -9421.0982 
+   5 Log-likelihood :   -8490.9054 
+  13 Log-likelihood :   -8621.4160 
+  11 Log-likelihood :   -9155.6071 
+  14 Log-likelihood :   -8621.4442 
+   5 Log-likelihood :   -9092.0916 
+   6 Log-likelihood :   -8490.9855 
+  28 Log-likelihood :  -10369.9429 
+  15 Log-likelihood :   -8621.4690 
+  24 Log-likelihood :   -9421.0625 
+   6 Log-likelihood :   -9092.0163 
+  12 Log-likelihood :   -9160.6545 
+   7 Log-likelihood :   -8491.0722 
+  16 Log-likelihood :   -8621.4879 
+  29 Log-likelihood :  -10369.4466 
+   7 Log-likelihood :   -9092.0125 
+converged
+  17 Log-likelihood :   -8621.5058 
+   8 Log-likelihood :   -8491.1505 
+  25 Log-likelihood :   -9421.1284 
+  18 Log-likelihood :   -8621.5341 
+  13 Log-likelihood :   -9161.9541 
+Classification: weighted 
+  30 Log-likelihood :  -10369.2853 
+  19 Log-likelihood :   -8621.5426 
+converged
+   9 Log-likelihood :   -8491.2160 
+  14 Log-likelihood :   -9161.3136 
+  10 Log-likelihood :   -8491.2665 
+  26 Log-likelihood :   -9421.2921 
+   1 Log-likelihood :   -8610.7932 
+  31 Log-likelihood :  -10363.5845 
+   2 Log-likelihood :   -8643.5728 
+  11 Log-likelihood :   -8491.3007 
+  27 Log-likelihood :   -9420.7063 
+  32 Log-likelihood :  -10366.5797 
+  15 Log-likelihood :   -9161.1631 
+  12 Log-likelihood :   -8491.3177 
+   3 Log-likelihood :   -8545.1691 
+  13 Log-likelihood :   -8491.3188 
+converged
+  33 Log-likelihood :  -10371.5541 
+  28 Log-likelihood :   -9421.4181 
+  16 Log-likelihood :   -9164.8354 
+   4 Log-likelihood :   -8572.5428 
+  34 Log-likelihood :  -10367.6612 
+  29 Log-likelihood :   -9421.3977 
+   5 Log-likelihood :   -8501.5813 
+  17 Log-likelihood :   -9162.8690 
+  35 Log-likelihood :  -10370.7272 
+  30 Log-likelihood :   -9421.2080 
+  18 Log-likelihood :   -9165.3974 
+   6 Log-likelihood :   -8518.1942 
+  36 Log-likelihood :  -10369.3511 
+  31 Log-likelihood :   -9421.0972 
+  19 Log-likelihood :   -9167.0979 
+   7 Log-likelihood :   -8502.0656 
+  37 Log-likelihood :  -10371.0972 
+  20 Log-likelihood :   -9164.4994 
+  32 Log-likelihood :   -9420.7392 
+   8 Log-likelihood :   -8502.9792 
+  38 Log-likelihood :  -10369.9892 
+  21 Log-likelihood :   -9167.6357 
+   9 Log-likelihood :   -8499.8763 
+  33 Log-likelihood :   -9420.8157 
+  39 Log-likelihood :  -10365.5558 
+  22 Log-likelihood :   -9168.3316 
+  10 Log-likelihood :   -8498.7289 
+  34 Log-likelihood :   -9421.0801 
+  40 Log-likelihood :  -10365.0499 
+  23 Log-likelihood :   -9166.6258 
+  11 Log-likelihood :   -8497.5636 
+  41 Log-likelihood :  -10366.9006 
+  35 Log-likelihood :   -9420.6741 
+  24 Log-likelihood :   -9166.1338 
+  12 Log-likelihood :   -8496.7412 
+  42 Log-likelihood :  -10372.6342 
+  36 Log-likelihood :   -9421.8048 
+  25 Log-likelihood :   -9166.9156 
+  13 Log-likelihood :   -8496.0872 
+  43 Log-likelihood :  -10370.9502 
+  37 Log-likelihood :   -9420.8826 
+  14 Log-likelihood :   -8495.5778 
+  26 Log-likelihood :   -9168.7947 
+  44 Log-likelihood :  -10365.8078 
+  38 Log-likelihood :   -9421.5329 
+  15 Log-likelihood :   -8495.1761 
+  45 Log-likelihood :  -10370.9880 
+  27 Log-likelihood :   -9168.0253 
+  39 Log-likelihood :   -9421.0906 
+  16 Log-likelihood :   -8494.8681 
+  46 Log-likelihood :  -10370.5887 
+  28 Log-likelihood :   -9168.9029 
+  17 Log-likelihood :   -8494.6170 
+  47 Log-likelihood :  -10370.4184 
+  40 Log-likelihood :   -9420.9210 
+  29 Log-likelihood :   -9169.1949 
+  18 Log-likelihood :   -8494.4216 
+  48 Log-likelihood :  -10362.9736 
+  41 Log-likelihood :   -9421.1203 
+  30 Log-likelihood :   -9169.0661 
+  19 Log-likelihood :   -8494.2690 
+  49 Log-likelihood :  -10365.9795 
+  42 Log-likelihood :   -9421.1537 
+  31 Log-likelihood :   -9169.4759 
+  50 Log-likelihood :  -10370.9796 
+  20 Log-likelihood :   -8494.1451 
+  43 Log-likelihood :   -9420.9100 
+  32 Log-likelihood :   -9171.1724 
+Classification: weighted 
+  21 Log-likelihood :   -8494.0468 
+   1 Log-likelihood :  -11523.1085 
+  33 Log-likelihood :   -9170.3095 
+  44 Log-likelihood :   -9421.3236 
+   2 Log-likelihood :  -11847.9581 
+  22 Log-likelihood :   -8493.9740 
+   3 Log-likelihood :  -11955.6946 
+   4 Log-likelihood :  -12046.7487 
+  45 Log-likelihood :   -9420.7890 
+  34 Log-likelihood :   -9168.5489 
+   5 Log-likelihood :  -12122.6452 
+  23 Log-likelihood :   -8493.9107 
+   6 Log-likelihood :  -12182.4807 
+  46 Log-likelihood :   -9421.5412 
+  35 Log-likelihood :   -9170.1784 
+   7 Log-likelihood :  -12227.6633 
+   8 Log-likelihood :  -12261.3113 
+  24 Log-likelihood :   -8493.8621 
+   9 Log-likelihood :  -12286.5163 
+  36 Log-likelihood :   -9168.6613 
+  47 Log-likelihood :   -9421.3981 
+  10 Log-likelihood :  -12305.6738 
+  25 Log-likelihood :   -8493.8267 
+  11 Log-likelihood :  -12320.4546 
+  37 Log-likelihood :   -9169.6624 
+  12 Log-likelihood :  -12331.9498 
+  26 Log-likelihood :   -8493.8016 
+  48 Log-likelihood :   -9420.9186 
+  13 Log-likelihood :  -12341.0622 
+  14 Log-likelihood :  -12348.2697 
+  38 Log-likelihood :   -9170.9831 
+  15 Log-likelihood :  -12353.9909 
+  27 Log-likelihood :   -8493.7672 
+  49 Log-likelihood :   -9421.1317 
+  16 Log-likelihood :  -12358.5913 
+  17 Log-likelihood :  -12362.2828 
+  39 Log-likelihood :   -9170.4687 
+  28 Log-likelihood :   -8493.7487 
+  18 Log-likelihood :  -12365.2731 
+  50 Log-likelihood :   -9420.8737 
+  19 Log-likelihood :  -12367.6765 
+  40 Log-likelihood :   -9172.0693 
+  29 Log-likelihood :   -8493.7368 
+  20 Log-likelihood :  -12369.5957 
+  21 Log-likelihood :  -12371.1741 
+Classification: weighted 
+  22 Log-likelihood :  -12372.4341 
+  41 Log-likelihood :   -9172.4217 
+  30 Log-likelihood :   -8493.7279 
+   1 Log-likelihood :   -8783.7930 
+  23 Log-likelihood :  -12373.4828 
+   2 Log-likelihood :   -8760.5485 
+  24 Log-likelihood :  -12374.2961 
+   3 Log-likelihood :   -8758.4220 
+  42 Log-likelihood :   -9170.6645 
+  31 Log-likelihood :   -8493.7136 
+  25 Log-likelihood :  -12374.9750 
+   4 Log-likelihood :   -8758.2509 
+  26 Log-likelihood :  -12375.5224 
+   5 Log-likelihood :   -8758.2466 
+converged
+  27 Log-likelihood :  -12375.9469 
+  32 Log-likelihood :   -8493.7095 
+converged
+  43 Log-likelihood :   -9171.6489 
+  28 Log-likelihood :  -12376.3279 
+  29 Log-likelihood :  -12376.6173 
+Classification: weighted 
+   1 Log-likelihood :   -8567.0896 
+  30 Log-likelihood :  -12376.8479 
+  44 Log-likelihood :   -9170.4238 
+   2 Log-likelihood :   -8534.8219 
+  31 Log-likelihood :  -12377.0532 
+   3 Log-likelihood :   -8531.0048 
+  32 Log-likelihood :  -12377.1981 
+  45 Log-likelihood :   -9171.9230 
+  33 Log-likelihood :  -12377.3265 
+   4 Log-likelihood :   -8529.2254 
+  34 Log-likelihood :  -12377.4286 
+   5 Log-likelihood :   -8528.0253 
+  35 Log-likelihood :  -12377.5104 
+   6 Log-likelihood :   -8527.3039 
+  46 Log-likelihood :   -9171.2218 
+  36 Log-likelihood :  -12377.5923 
+   7 Log-likelihood :   -8526.9092 
+  37 Log-likelihood :  -12377.6676 
+   8 Log-likelihood :   -8526.7040 
+   9 Log-likelihood :   -8526.5986 
+  38 Log-likelihood :  -12377.6707 
+converged
+  47 Log-likelihood :   -9172.5417 
+  10 Log-likelihood :   -8526.5438 
+Classification: weighted 
+  11 Log-likelihood :   -8526.5144 
+  48 Log-likelihood :   -9173.2186 
+   1 Log-likelihood :   -8652.4195 
+  12 Log-likelihood :   -8526.4982 
+   2 Log-likelihood :   -8621.7712 
+  13 Log-likelihood :   -8526.4891 
+   3 Log-likelihood :   -8619.1085 
+   4 Log-likelihood :   -8618.7465 
+  49 Log-likelihood :   -9172.3536 
+  14 Log-likelihood :   -8526.4838 
+converged
+   5 Log-likelihood :   -8618.5508 
+   6 Log-likelihood :   -8618.3997 
+   7 Log-likelihood :   -8618.2838 
+   8 Log-likelihood :   -8618.1962 
+  50 Log-likelihood :   -9173.2871 
+   9 Log-likelihood :   -8618.1305 
+  10 Log-likelihood :   -8618.0817 
+  11 Log-likelihood :   -8618.0458 
+Classification: weighted 
+  12 Log-likelihood :   -8618.0195 
+  13 Log-likelihood :   -8618.0004 
+  14 Log-likelihood :   -8617.9865 
+  15 Log-likelihood :   -8617.9764 
+   1 Log-likelihood :   -8080.4210 
+  16 Log-likelihood :   -8617.9691 
+converged
+   2 Log-likelihood :   -8061.5045 
+   3 Log-likelihood :   -8056.1587 
+   4 Log-likelihood :   -8055.1303 
+   5 Log-likelihood :   -8054.9296 
+   6 Log-likelihood :   -8054.9102 
+   7 Log-likelihood :   -8054.9341 
+   8 Log-likelihood :   -8054.9657 
+   9 Log-likelihood :   -8054.9954 
+  10 Log-likelihood :   -8055.0209 
+  11 Log-likelihood :   -8055.0421 
+  12 Log-likelihood :   -8055.0597 
+  13 Log-likelihood :   -8055.0740 
+  14 Log-likelihood :   -8055.0857 
+  15 Log-likelihood :   -8055.0954 
+  16 Log-likelihood :   -8055.1031 
+converged
+Classification: weighted 
+Classification: weighted 
+Classification: weighted 
+Classification: weighted 
+Classification: weighted 
+Classification: weighted 
+   1 Log-likelihood :   -9939.8672 
+   1 Log-likelihood :  -11870.0475 
+   1 Log-likelihood :   -8353.1864 
+   1 Log-likelihood :   -8628.1884 
+   1 Log-likelihood :  -10300.2448 
+   1 Log-likelihood :   -9895.7431 
+   2 Log-likelihood :   -9917.1180 
+   2 Log-likelihood :  -11852.7497 
+   3 Log-likelihood :   -9916.2418 
+   2 Log-likelihood :   -8355.8978 
+   2 Log-likelihood :  -10278.5055 
+   2 Log-likelihood :   -9880.2429 
+   2 Log-likelihood :   -8628.2871 
+   4 Log-likelihood :   -9916.0868 
+   3 Log-likelihood :  -11852.2226 
+   3 Log-likelihood :   -8356.3646 
+   5 Log-likelihood :   -9916.0358 
+   3 Log-likelihood :  -10278.3861 
+   3 Log-likelihood :   -9880.0148 
+   3 Log-likelihood :   -8633.5368 
+   4 Log-likelihood :  -11852.1123 
+   6 Log-likelihood :   -9916.0162 
+   4 Log-likelihood :   -8355.8125 
+   7 Log-likelihood :   -9916.0087 
+converged
+   5 Log-likelihood :  -11852.0874 
+   4 Log-likelihood :   -9879.7162 
+   4 Log-likelihood :  -10278.1914 
+   4 Log-likelihood :   -8633.0107 
+   5 Log-likelihood :   -8355.0224 
+   6 Log-likelihood :  -11852.0803 
+converged
+   5 Log-likelihood :   -9879.5718 
+   5 Log-likelihood :  -10278.0143 
+   5 Log-likelihood :   -8631.7359 
+Classification: weighted 
+   6 Log-likelihood :   -8354.3071 
+   6 Log-likelihood :   -9879.5115 
+   6 Log-likelihood :  -10277.9030 
+   6 Log-likelihood :   -8630.7597 
+   7 Log-likelihood :   -8353.7389 
+   1 Log-likelihood :   -7846.0159 
+   7 Log-likelihood :   -9879.4859 
+   7 Log-likelihood :  -10277.8374 
+Classification: weighted 
+   7 Log-likelihood :   -8630.1146 
+   8 Log-likelihood :   -8353.3148 
+   8 Log-likelihood :   -9879.4763 
+converged
+   2 Log-likelihood :   -7854.9825 
+   8 Log-likelihood :  -10277.7985 
+   1 Log-likelihood :   -7693.7720 
+   8 Log-likelihood :   -8629.6993 
+   9 Log-likelihood :   -8353.0081 
+   2 Log-likelihood :   -7690.8625 
+   3 Log-likelihood :   -7855.3123 
+   9 Log-likelihood :  -10277.7752 
+   9 Log-likelihood :   -8629.4438 
+  10 Log-likelihood :   -8352.7897 
+   3 Log-likelihood :   -7691.8597 
+  10 Log-likelihood :  -10277.7606 
+   4 Log-likelihood :   -7855.4094 
+Classification: weighted 
+   4 Log-likelihood :   -7692.1751 
+  11 Log-likelihood :   -8352.6345 
+  10 Log-likelihood :   -8629.2798 
+  11 Log-likelihood :  -10277.7521 
+converged
+   1 Log-likelihood :   -9117.6563 
+   5 Log-likelihood :   -7692.3454 
+   5 Log-likelihood :   -7855.4718 
+  12 Log-likelihood :   -8352.5245 
+   2 Log-likelihood :   -9104.9380 
+  11 Log-likelihood :   -8629.1771 
+   6 Log-likelihood :   -7692.4703 
+   6 Log-likelihood :   -7855.5111 
+   3 Log-likelihood :   -9102.7898 
+  13 Log-likelihood :   -8352.4466 
+   7 Log-likelihood :   -7694.4013 
+   4 Log-likelihood :   -9102.3103 
+  12 Log-likelihood :   -8629.1147 
+   7 Log-likelihood :   -7855.5409 
+Classification: weighted 
+  14 Log-likelihood :   -8352.3908 
+   8 Log-likelihood :   -7692.1909 
+   5 Log-likelihood :   -9102.1612 
+  13 Log-likelihood :   -8629.0609 
+   1 Log-likelihood :   -7779.1477 
+   8 Log-likelihood :   -7855.5613 
+   9 Log-likelihood :   -7694.6881 
+  15 Log-likelihood :   -8352.3517 
+   6 Log-likelihood :   -9102.1060 
+  14 Log-likelihood :   -8629.0268 
+  10 Log-likelihood :   -7692.2528 
+   2 Log-likelihood :   -7783.9373 
+   7 Log-likelihood :   -9102.0825 
+   9 Log-likelihood :   -7855.5780 
+  16 Log-likelihood :   -8352.3206 
+  11 Log-likelihood :   -7692.7455 
+   3 Log-likelihood :   -7791.5142 
+   8 Log-likelihood :   -9102.0716 
+  15 Log-likelihood :   -8629.0055 
+  10 Log-likelihood :   -7855.5901 
+  17 Log-likelihood :   -8352.3001 
+   9 Log-likelihood :   -9102.0663 
+converged
+  12 Log-likelihood :   -7694.7559 
+   4 Log-likelihood :   -7790.1549 
+  11 Log-likelihood :   -7855.5991 
+  16 Log-likelihood :   -8628.9930 
+  18 Log-likelihood :   -8352.2837 
+  13 Log-likelihood :   -7692.3394 
+   5 Log-likelihood :   -7785.0190 
+  17 Log-likelihood :   -8628.9857 
+converged
+  14 Log-likelihood :   -7694.8923 
+  12 Log-likelihood :   -7855.6058 
+converged
+  19 Log-likelihood :   -8352.2739 
+Classification: weighted 
+   6 Log-likelihood :   -7785.7921 
+  15 Log-likelihood :   -7692.3333 
+  20 Log-likelihood :   -8352.2680 
+converged
+   1 Log-likelihood :  -10269.6797 
+Classification: weighted 
+   7 Log-likelihood :   -7785.5584 
+  16 Log-likelihood :   -7694.8915 
+   2 Log-likelihood :  -10208.8325 
+Classification: weighted 
+   1 Log-likelihood :  -10577.5877 
+   3 Log-likelihood :  -10208.0241 
+   8 Log-likelihood :   -7785.4914 
+  17 Log-likelihood :   -7692.3324 
+   1 Log-likelihood :   -9620.9134 
+   2 Log-likelihood :  -10550.4020 
+   4 Log-likelihood :  -10208.0452 
+Classification: weighted 
+   2 Log-likelihood :   -9604.2479 
+   3 Log-likelihood :  -10543.9868 
+   9 Log-likelihood :   -7785.4077 
+  18 Log-likelihood :   -7694.8903 
+   5 Log-likelihood :  -10208.0672 
+   3 Log-likelihood :   -9602.2392 
+   1 Log-likelihood :   -8301.8108 
+  19 Log-likelihood :   -7692.3320 
+  10 Log-likelihood :   -7790.8092 
+   4 Log-likelihood :  -10519.4805 
+   6 Log-likelihood :  -10208.0881 
+   4 Log-likelihood :   -9601.8271 
+   7 Log-likelihood :  -10208.1149 
+   5 Log-likelihood :   -9601.7050 
+  20 Log-likelihood :   -7694.8897 
+   2 Log-likelihood :   -8294.7058 
+   5 Log-likelihood :  -10541.8316 
+  11 Log-likelihood :   -7784.3524 
+   8 Log-likelihood :  -10208.1373 
+   6 Log-likelihood :   -9601.6614 
+   3 Log-likelihood :   -8291.5990 
+   6 Log-likelihood :  -10519.1123 
+  21 Log-likelihood :   -7692.3318 
+   9 Log-likelihood :  -10208.1589 
+   7 Log-likelihood :   -9601.6444 
+  12 Log-likelihood :   -7785.2676 
+  10 Log-likelihood :  -10208.1782 
+   8 Log-likelihood :   -9601.6375 
+converged
+   7 Log-likelihood :  -10541.1006 
+  22 Log-likelihood :   -7694.8895 
+   4 Log-likelihood :   -8289.8115 
+  11 Log-likelihood :  -10208.1956 
+   8 Log-likelihood :  -10519.5821 
+  23 Log-likelihood :   -7692.3318 
+  13 Log-likelihood :   -7790.7833 
+  12 Log-likelihood :  -10208.2116 
+   5 Log-likelihood :   -8289.0397 
+  13 Log-likelihood :  -10208.2253 
+  24 Log-likelihood :   -7694.8893 
+Classification: weighted 
+   9 Log-likelihood :  -10520.9977 
+  14 Log-likelihood :   -7784.1673 
+   6 Log-likelihood :   -8288.7405 
+  14 Log-likelihood :  -10208.2383 
+   1 Log-likelihood :  -10356.7894 
+  25 Log-likelihood :   -7692.3317 
+  15 Log-likelihood :  -10208.2497 
+  10 Log-likelihood :  -10521.3863 
+   7 Log-likelihood :   -8288.6262 
+  15 Log-likelihood :   -7790.7018 
+  26 Log-likelihood :   -7694.8893 
+   2 Log-likelihood :  -10259.5015 
+  16 Log-likelihood :  -10208.2602 
+  11 Log-likelihood :  -10521.8874 
+   8 Log-likelihood :   -8288.5695 
+   3 Log-likelihood :  -10254.2351 
+  16 Log-likelihood :   -7784.0609 
+  17 Log-likelihood :  -10208.2697 
+converged
+  27 Log-likelihood :   -7692.3319 
+   9 Log-likelihood :   -8288.5490 
+  28 Log-likelihood :   -7694.8892 
+  12 Log-likelihood :  -10522.4281 
+  17 Log-likelihood :   -7785.0193 
+   4 Log-likelihood :  -10252.9050 
+Classification: weighted 
+  10 Log-likelihood :   -8288.5360 
+  29 Log-likelihood :   -7692.3315 
+  13 Log-likelihood :  -10522.9555 
+  18 Log-likelihood :   -7784.8916 
+   5 Log-likelihood :  -10252.2870 
+  30 Log-likelihood :   -7694.8895 
+  11 Log-likelihood :   -8288.5288 
+converged
+  19 Log-likelihood :   -7784.9084 
+   6 Log-likelihood :  -10252.0651 
+   1 Log-likelihood :  -10028.7255 
+  14 Log-likelihood :  -10523.4277 
+  31 Log-likelihood :   -7692.3315 
+   7 Log-likelihood :  -10251.9284 
+  20 Log-likelihood :   -7784.8944 
+Classification: weighted 
+   2 Log-likelihood :   -9978.7211 
+  15 Log-likelihood :  -10523.8180 
+  32 Log-likelihood :   -7694.8892 
+   8 Log-likelihood :  -10251.8970 
+   3 Log-likelihood :   -9955.1554 
+  21 Log-likelihood :   -7784.8873 
+converged
+   1 Log-likelihood :  -10497.5085 
+  33 Log-likelihood :   -7692.3316 
+  16 Log-likelihood :  -10524.1229 
+   9 Log-likelihood :  -10251.8676 
+  34 Log-likelihood :   -7694.8892 
+   2 Log-likelihood :  -10439.2150 
+   4 Log-likelihood :   -9979.5322 
+  10 Log-likelihood :  -10251.8679 
+converged
+  17 Log-likelihood :  -10524.3499 
+Classification: weighted 
+   3 Log-likelihood :  -10437.1174 
+  35 Log-likelihood :   -7692.3318 
+   5 Log-likelihood :   -9956.4013 
+   1 Log-likelihood :  -11091.8529 
+  18 Log-likelihood :  -10524.5129 
+  36 Log-likelihood :   -7694.8892 
+   4 Log-likelihood :  -10435.9225 
+   2 Log-likelihood :  -11028.2985 
+Classification: weighted 
+   6 Log-likelihood :   -9979.2767 
+   5 Log-likelihood :  -10435.2420 
+  37 Log-likelihood :   -7692.3316 
+  19 Log-likelihood :  -10524.6282 
+   3 Log-likelihood :  -11029.6850 
+   1 Log-likelihood :  -10188.8819 
+   7 Log-likelihood :   -9957.8731 
+  38 Log-likelihood :   -7694.8892 
+   6 Log-likelihood :  -10434.8188 
+   4 Log-likelihood :  -11029.9456 
+   2 Log-likelihood :  -10130.7765 
+  20 Log-likelihood :  -10524.7075 
+   8 Log-likelihood :   -9979.1914 
+   5 Log-likelihood :  -11029.6565 
+   3 Log-likelihood :  -10129.3286 
+  39 Log-likelihood :   -7692.3317 
+   7 Log-likelihood :  -10434.5449 
+   4 Log-likelihood :  -10129.3668 
+   9 Log-likelihood :   -9959.1110 
+  21 Log-likelihood :  -10524.7618 
+  40 Log-likelihood :   -7694.8892 
+   6 Log-likelihood :  -11029.6464 
+converged
+   8 Log-likelihood :  -10434.3634 
+   5 Log-likelihood :  -10129.4202 
+  22 Log-likelihood :  -10524.7987 
+  41 Log-likelihood :   -7692.3316 
+  10 Log-likelihood :   -9979.1591 
+   6 Log-likelihood :  -10129.4616 
+Classification: weighted 
+   9 Log-likelihood :  -10434.2417 
+  11 Log-likelihood :   -9960.1888 
+  42 Log-likelihood :   -7694.8891 
+   7 Log-likelihood :  -10129.4986 
+   1 Log-likelihood :  -10370.1808 
+  23 Log-likelihood :  -10524.8235 
+   8 Log-likelihood :  -10129.5315 
+  10 Log-likelihood :  -10434.1584 
+   2 Log-likelihood :  -10311.5187 
+  43 Log-likelihood :   -7692.3316 
+  12 Log-likelihood :   -9979.1496 
+   9 Log-likelihood :  -10129.5605 
+  24 Log-likelihood :  -10524.8407 
+  44 Log-likelihood :   -7694.8892 
+   3 Log-likelihood :  -10313.7745 
+  10 Log-likelihood :  -10129.5850 
+  11 Log-likelihood :  -10434.1007 
+  13 Log-likelihood :   -9961.2497 
+  11 Log-likelihood :  -10129.6060 
+  25 Log-likelihood :  -10524.8513 
+   4 Log-likelihood :  -10313.9879 
+  45 Log-likelihood :   -7692.3317 
+  12 Log-likelihood :  -10434.0627 
+  12 Log-likelihood :  -10129.6241 
+   5 Log-likelihood :  -10314.0252 
+  46 Log-likelihood :   -7694.8892 
+  14 Log-likelihood :   -9979.1471 
+  26 Log-likelihood :  -10524.8589 
+converged
+  13 Log-likelihood :  -10129.6393 
+  13 Log-likelihood :  -10434.0370 
+   6 Log-likelihood :  -10314.0587 
+  47 Log-likelihood :   -7692.3316 
+  14 Log-likelihood :  -10129.6523 
+  15 Log-likelihood :   -9979.1829 
+   7 Log-likelihood :  -10314.0667 
+converged
+Classification: weighted 
+  48 Log-likelihood :   -7694.8891 
+  15 Log-likelihood :  -10129.6635 
+  14 Log-likelihood :  -10434.0174 
+  16 Log-likelihood :  -10129.6728 
+converged
+  49 Log-likelihood :   -7692.3317 
+   1 Log-likelihood :   -8818.6854 
+Classification: weighted 
+  16 Log-likelihood :   -9979.2014 
+  15 Log-likelihood :  -10434.0056 
+  50 Log-likelihood :   -7694.8893 
+  16 Log-likelihood :  -10433.9957 
+converged
+  17 Log-likelihood :   -9979.2144 
+   1 Log-likelihood :   -9319.4830 
+Classification: weighted 
+   2 Log-likelihood :   -8763.2002 
+   1 Log-likelihood :   -9476.4760 
+  18 Log-likelihood :   -9979.2267 
+Classification: weighted 
+Classification: weighted 
+   2 Log-likelihood :   -9281.5439 
+   1 Log-likelihood :   -9955.2170 
+   2 Log-likelihood :   -9374.4549 
+   2 Log-likelihood :   -9837.9785 
+   3 Log-likelihood :   -9831.1880 
+   1 Log-likelihood :   -7773.6036 
+   4 Log-likelihood :   -9829.1517 
+  19 Log-likelihood :   -9979.2371 
+   3 Log-likelihood :   -9360.4247 
+   3 Log-likelihood :   -8743.0208 
+   5 Log-likelihood :   -9828.0313 
+   2 Log-likelihood :   -7769.0789 
+   6 Log-likelihood :   -9827.3267 
+   4 Log-likelihood :   -9358.9047 
+   3 Log-likelihood :   -9263.7848 
+   7 Log-likelihood :   -9826.9215 
+   3 Log-likelihood :   -7765.1107 
+   5 Log-likelihood :   -9359.0455 
+   8 Log-likelihood :   -9826.7667 
+  20 Log-likelihood :   -9979.2481 
+   4 Log-likelihood :   -9272.2616 
+   9 Log-likelihood :   -9826.7233 
+   4 Log-likelihood :   -7762.8979 
+  10 Log-likelihood :   -9826.7106 
+   6 Log-likelihood :   -9359.3826 
+   4 Log-likelihood :   -8736.7894 
+  11 Log-likelihood :   -9826.7064 
+converged
+   5 Log-likelihood :   -7761.9409 
+   7 Log-likelihood :   -9359.7691 
+  21 Log-likelihood :   -9979.2553 
+converged
+   5 Log-likelihood :   -8729.3377 
+   8 Log-likelihood :   -9360.1613 
+   6 Log-likelihood :   -7761.5588 
+Classification: weighted 
+   5 Log-likelihood :   -9270.6738 
+   9 Log-likelihood :   -9360.5404 
+   1 Log-likelihood :   -9091.8056 
+   7 Log-likelihood :   -7761.3974 
+   6 Log-likelihood :   -8727.9964 
+  10 Log-likelihood :   -9360.8979 
+Classification: weighted 
+   2 Log-likelihood :   -9085.7895 
+   8 Log-likelihood :   -7761.3241 
+  11 Log-likelihood :   -9361.2314 
+   6 Log-likelihood :   -9273.2418 
+   3 Log-likelihood :   -9084.3120 
+  12 Log-likelihood :   -9361.5411 
+   7 Log-likelihood :   -8726.8485 
+   9 Log-likelihood :   -7761.2888 
+   1 Log-likelihood :   -9663.0629 
+  13 Log-likelihood :   -9361.8296 
+   4 Log-likelihood :   -9083.6610 
+   7 Log-likelihood :   -9273.2747 
+  10 Log-likelihood :   -7761.2705 
+   8 Log-likelihood :   -8726.1042 
+  14 Log-likelihood :   -9362.0996 
+   2 Log-likelihood :   -9647.3445 
+  11 Log-likelihood :   -7761.2610 
+   5 Log-likelihood :   -9083.4585 
+  15 Log-likelihood :   -9362.3533 
+   8 Log-likelihood :   -9273.4147 
+  16 Log-likelihood :   -9362.5929 
+  12 Log-likelihood :   -7761.2541 
+converged
+   9 Log-likelihood :   -8725.6185 
+   3 Log-likelihood :   -9642.8449 
+  17 Log-likelihood :   -9362.8208 
+   6 Log-likelihood :   -9083.4095 
+   9 Log-likelihood :   -9273.5733 
+  18 Log-likelihood :   -9363.0382 
+   4 Log-likelihood :   -9641.3442 
+   7 Log-likelihood :   -9083.3990 
+  10 Log-likelihood :   -9273.7332 
+  10 Log-likelihood :   -8725.3045 
+  19 Log-likelihood :   -9363.2461 
+   5 Log-likelihood :   -9640.6409 
+Classification: weighted 
+  20 Log-likelihood :   -9363.4454 
+   8 Log-likelihood :   -9083.3982 
+converged
+  11 Log-likelihood :   -9273.8836 
+   6 Log-likelihood :   -9640.1470 
+  21 Log-likelihood :   -9363.6361 
+  11 Log-likelihood :   -8725.1109 
+  12 Log-likelihood :   -9274.0192 
+  22 Log-likelihood :   -9363.8182 
+Classification: weighted 
+   7 Log-likelihood :   -9639.7275 
+   1 Log-likelihood :  -10514.5528 
+  23 Log-likelihood :   -9363.9922 
+  12 Log-likelihood :   -8724.9963 
+  13 Log-likelihood :   -9274.1354 
+   1 Log-likelihood :  -11602.8004 
+   8 Log-likelihood :   -9639.3592 
+  24 Log-likelihood :   -9364.1569 
+   2 Log-likelihood :  -10491.7661 
+  25 Log-likelihood :   -9364.3111 
+   2 Log-likelihood :  -11595.4280 
+  14 Log-likelihood :   -9274.2350 
+  13 Log-likelihood :   -8724.9314 
+   9 Log-likelihood :   -9639.0369 
+  26 Log-likelihood :   -9364.4549 
+   3 Log-likelihood :  -11594.4835 
+  15 Log-likelihood :   -9274.3182 
+  27 Log-likelihood :   -9364.5874 
+  10 Log-likelihood :   -9638.7623 
+  14 Log-likelihood :   -8724.8962 
+   4 Log-likelihood :  -11594.2979 
+   3 Log-likelihood :  -10485.8065 
+  28 Log-likelihood :   -9364.7080 
+  11 Log-likelihood :   -9638.5321 
+  29 Log-likelihood :   -9364.8166 
+   5 Log-likelihood :  -11594.2495 
+  16 Log-likelihood :   -9274.3852 
+  30 Log-likelihood :   -9364.9135 
+   4 Log-likelihood :  -10484.1848 
+  15 Log-likelihood :   -8724.8756 
+  12 Log-likelihood :   -9638.3410 
+   6 Log-likelihood :  -11594.2343 
+  31 Log-likelihood :   -9364.9986 
+  13 Log-likelihood :   -9638.1815 
+  32 Log-likelihood :   -9365.0728 
+   7 Log-likelihood :  -11594.2294 
+converged
+  17 Log-likelihood :   -9274.4431 
+  16 Log-likelihood :   -8724.8636 
+  33 Log-likelihood :   -9365.1374 
+   5 Log-likelihood :  -10483.6340 
+  14 Log-likelihood :   -9638.0497 
+  18 Log-likelihood :   -9274.4903 
+  34 Log-likelihood :   -9365.1917 
+Classification: weighted 
+  35 Log-likelihood :   -9365.2384 
+  15 Log-likelihood :   -9637.9422 
+  19 Log-likelihood :   -9274.5295 
+  17 Log-likelihood :   -8724.8585 
+converged
+   6 Log-likelihood :  -10483.4050 
+  36 Log-likelihood :   -9365.2772 
+  20 Log-likelihood :   -9274.5610 
+  16 Log-likelihood :   -9637.8520 
+  37 Log-likelihood :   -9365.3098 
+   1 Log-likelihood :   -8979.6507 
+  21 Log-likelihood :   -9274.5879 
+Classification: weighted 
+  38 Log-likelihood :   -9365.3374 
+   7 Log-likelihood :  -10483.4163 
+  17 Log-likelihood :   -9637.7803 
+   2 Log-likelihood :   -8968.2535 
+  22 Log-likelihood :   -9274.6098 
+  39 Log-likelihood :   -9365.3599 
+   1 Log-likelihood :   -9676.1471 
+  23 Log-likelihood :   -9274.6276 
+  40 Log-likelihood :   -9365.3786 
+  18 Log-likelihood :   -9637.7292 
+   3 Log-likelihood :   -8952.4073 
+   8 Log-likelihood :  -10483.3970 
+  24 Log-likelihood :   -9274.6423 
+  41 Log-likelihood :   -9365.3940 
+   2 Log-likelihood :   -9663.8791 
+  25 Log-likelihood :   -9274.6549 
+  19 Log-likelihood :   -9637.6903 
+   4 Log-likelihood :   -8949.2345 
+  42 Log-likelihood :   -9365.4065 
+  26 Log-likelihood :   -9274.6652 
+   9 Log-likelihood :  -10483.3923 
+converged
+  43 Log-likelihood :   -9365.4167 
+   3 Log-likelihood :   -9663.6753 
+   5 Log-likelihood :   -8945.9576 
+  20 Log-likelihood :   -9637.6615 
+  27 Log-likelihood :   -9274.6739 
+converged
+  44 Log-likelihood :   -9365.4254 
+converged
+   6 Log-likelihood :   -8943.8221 
+   4 Log-likelihood :   -9663.7092 
+  21 Log-likelihood :   -9637.6368 
+Classification: weighted 
+   7 Log-likelihood :   -8942.5456 
+Classification: weighted 
+   5 Log-likelihood :   -9663.7243 
+  22 Log-likelihood :   -9637.6171 
+Classification: weighted 
+   1 Log-likelihood :  -10039.5254 
+   1 Log-likelihood :   -9168.2923 
+   8 Log-likelihood :   -8941.8589 
+   6 Log-likelihood :   -9663.7283 
+converged
+  23 Log-likelihood :   -9637.6070 
+   2 Log-likelihood :  -10012.1593 
+   1 Log-likelihood :  -11693.3585 
+   2 Log-likelihood :   -9064.4065 
+   3 Log-likelihood :   -9072.5687 
+   3 Log-likelihood :  -10012.7587 
+   2 Log-likelihood   24:  Log-likelihood -11683.3615  :
+   -9637.6038 
+converged
+   9 Log-likelihood :   -8941.5057 
+Classification: weighted 
+   4 Log-likelihood :   -9071.8192 
+   4 Log-likelihood :  -10012.8262 
+   3 Log-likelihood :  -11682.1533 
+   5 Log-likelihood :   -9072.2499 
+   1 Log-likelihood :  -11986.9704 
+   5 Log-likelihood :  -10012.9139 
+  10 Log-likelihood :   -8941.3251 
+   4 Log-likelihood :  -11681.9211 
+Classification: weighted 
+   6 Log-likelihood :   -9072.4849 
+   6 Log-likelihood :  -10012.9925 
+   2 Log-likelihood :  -11962.5089 
+   5 Log-likelihood :  -11681.8366 
+   7 Log-likelihood :   -9072.6963 
+   1 Log-likelihood :  -11130.5008 
+   7 Log-likelihood :  -10013.0453 
+   3 Log-likelihood :  -11960.4093 
+   6 Log-likelihood :  -11681.7740 
+   8 Log-likelihood :   -9072.8806 
+   2 Log-likelihood :  -11121.2395 
+  11 Log-likelihood :   -8935.7563 
+   8 Log-likelihood :  -10013.0747 
+   4 Log-likelihood :  -11959.2249 
+   9 Log-likelihood :   -9073.0419 
+   7 Log-likelihood :  -11681.6701 
+   3 Log-likelihood :  -11120.0024 
+   9 Log-likelihood :  -10013.0904 
+   5 Log-likelihood :  -11958.3348 
+  10 Log-likelihood :   -9073.1835 
+   8 Log-likelihood :  -11681.2354 
+   4 Log-likelihood :  -11119.6754 
+  12 Log-likelihood :   -8942.6465 
+  10 Log-likelihood :  -10013.0984 
+converged
+  11 Log-likelihood :   -9073.3082 
+   6 Log-likelihood :  -11957.6039 
+   5 Log-likelihood :  -11119.5167 
+   9 Log-likelihood :  -11680.8818 
+  12 Log-likelihood :   -9073.4185 
+   7 Log-likelihood :  -11956.9885 
+   6 Log-likelihood :  -11119.4235 
+  10 Log-likelihood :  -11680.7730 
+  13 Log-likelihood :   -9073.5162 
+   7 Log-likelihood :  -11119.3571 
+   8 Log-likelihood :  -11956.5400 
+Classification: weighted 
+  13 Log-likelihood :   -8937.9794 
+  14 Log-likelihood :   -9073.6024 
+  11 Log-likelihood :  -11680.7454 
+   8 Log-likelihood :  -11119.2922 
+   9 Log-likelihood :  -11956.3197 
+   1 Log-likelihood :   -9225.6208 
+  15 Log-likelihood :   -9073.6785 
+  12 Log-likelihood :  -11680.7378 
+converged
+   2 Log-likelihood :   -9142.8740 
+   9 Log-likelihood :  -11119.2142 
+  10 Log-likelihood :  -11956.2743 
+  16 Log-likelihood :   -9073.7467 
+   3 Log-likelihood :   -9133.5218 
+  10 Log-likelihood :  -11119.1022 
+  14 Log-likelihood :   -8939.9879 
+   4 Log-likelihood :   -9131.2712 
+  11 Log-likelihood :  -11956.2977 
+  17 Log-likelihood :   -9073.8061 
+  11 Log-likelihood :  -11118.9062 
+   5 Log-likelihood :   -9130.5827 
+  18 Log-likelihood :   -9073.8597 
+Classification: weighted 
+  12 Log-likelihood :  -11956.3287 
+  12 Log-likelihood :  -11118.5694 
+   6 Log-likelihood :   -9130.3097 
+  15 Log-likelihood :   -8943.4324 
+  19 Log-likelihood :   -9073.9074 
+   1 Log-likelihood :   -9606.7638 
+  13 Log-likelihood :  -11956.3501 
+  13 Log-likelihood :  -11118.2036 
+   7 Log-likelihood :   -9130.1706 
+  20 Log-likelihood :   -9073.9489 
+   2 Log-likelihood :   -9578.8849 
+  14 Log-likelihood :  -11956.3624 
+   8 Log-likelihood :   -9130.0887 
+  14 Log-likelihood :  -11117.9522 
+  21 Log-likelihood :   -9073.9864 
+   3 Log-likelihood :   -9564.9577 
+  15 Log-likelihood :  -11956.3689 
+converged
+   9 Log-likelihood :   -9130.0367 
+  15 Log-likelihood :  -11117.8150 
+  16 Log-likelihood :   -8938.3071 
+  22 Log-likelihood :   -9074.0192 
+   4 Log-likelihood :   -9559.5743 
+  10 Log-likelihood :   -9130.0022 
+  16 Log-likelihood :  -11117.7451 
+  23 Log-likelihood :   -9074.0492 
+  11 Log-likelihood :   -9129.9785 
+   5 Log-likelihood :   -9557.3585 
+Classification: weighted 
+  12 Log-likelihood :   -9129.9619 
+  24 Log-likelihood :   -9074.0744 
+  17 Log-likelihood :  -11117.7088 
+   6 Log-likelihood :   -9556.2009 
+  13 Log-likelihood :   -9129.9501 
+   1 Log-likelihood :  -10512.1269 
+  17 Log-likelihood :   -8940.8265 
+  25 Log-likelihood :   -9074.0976 
+   7 Log-likelihood :   -9555.4707 
+  18 Log-likelihood :  -11117.6892 
+  14 Log-likelihood :   -9129.9415 
+converged
+  26 Log-likelihood :   -9074.1178 
+   8 Log-likelihood :   -9554.9658 
+   2 Log-likelihood :  -10470.3649 
+  19 Log-likelihood :  -11117.6765 
+  18 Log-likelihood :   -8943.5682 
+  27 Log-likelihood :   -9074.1366 
+   9 Log-likelihood :   -9554.6039 
+  20 Log-likelihood :  -11117.6687 
+converged
+   3 Log-likelihood :  -10458.2035 
+  28 Log-likelihood :   -9074.1537 
+  10 Log-likelihood :   -9554.3281 
+Classification: weighted 
+  29 Log-likelihood :   -9074.1672 
+  19 Log-likelihood :   -8942.4469 
+   4 Log-likelihood :  -10453.6600 
+  11 Log-likelihood :   -9554.0939 
+  30 Log-likelihood :   -9074.1788 
+   1 Log-likelihood :  -11304.0149 
+   5 Log-likelihood :  -10451.8736 
+  12 Log-likelihood :   -9553.8672 
+  31 Log-likelihood :   -9074.1904 
+Classification: weighted 
+  20 Log-likelihood :   -8941.9065 
+  32 Log-likelihood :   -9074.2004 
+   6 Log-likelihood :  -10450.9821 
+  13 Log-likelihood :   -9553.6153 
+   2 Log-likelihood :  -11299.6323 
+  33 Log-likelihood :   -9074.2092 
+converged
+  14 Log-likelihood :   -9553.3010 
+   7 Log-likelihood :  -10450.4319 
+   1 Log-likelihood :  -10354.7941 
+   3 Log-likelihood :  -11299.1523 
+  15 Log-likelihood :   -9552.9392 
+  21 Log-likelihood :   -8937.1887 
+   8 Log-likelihood :  -10450.0217 
+Classification: weighted 
+   4 Log-likelihood :  -11299.0360 
+   2 Log-likelihood :  -10262.2468 
+  16 Log-likelihood :   -9552.6992 
+   5 Log-likelihood :  -11298.9993 
+   9 Log-likelihood :  -10449.6703 
+  17 Log-likelihood :   -9552.6903 
+converged
+   3 Log-likelihood :  -10240.9735 
+  22 Log-likelihood :   -8939.3202 
+   6 Log-likelihood :  -11298.9841 
+   1 Log-likelihood :  -10481.5517 
+  10 Log-likelihood :  -10449.3477 
+   7 Log-likelihood :  -11298.9771 
+converged
+   4 Log-likelihood :  -10236.1957 
+  11 Log-likelihood :  -10449.0588 
+Classification: weighted 
+   2 Log-likelihood :  -10396.5214 
+  23 Log-likelihood :   -8940.7524 
+  12 Log-likelihood :  -10448.8308 
+   1 Log-likelihood :   -9501.7352 
+   3 Log-likelihood :  -10380.1682 
+   5 Log-likelihood :  -10234.1677 
+Classification: weighted 
+  13 Log-likelihood :  -10448.6862 
+   4 Log-likelihood :  -10374.2305 
+  24 Log-likelihood :   -8943.6053 
+   2 Log-likelihood :   -9360.5208 
+   1 Log-likelihood :   -9229.9744 
+   3 Log-likelihood :   -9357.3600 
+   5 Log-likelihood :  -10370.5042 
+  14 Log-likelihood :  -10448.6217 
+   6 Log-likelihood :  -10233.1026 
+   2 Log-likelihood :   -9141.6065 
+   4 Log-likelihood :   -9411.3558 
+   7 Log-likelihood :  -10239.3947 
+   6 Log-likelihood :  -10368.4601 
+  25 Log-likelihood :   -8938.1114 
+   5 Log-likelihood :   -9355.9087 
+  15 Log-likelihood :  -10448.6116 
+converged
+   3 Log-likelihood :   -9133.5889 
+   8 Log-likelihood :  -10232.9169 
+   7 Log-likelihood :  -10366.4435 
+   4 Log-likelihood :   -9128.6631 
+  26 Log-likelihood :   -8943.2738 
+   6 Log-likelihood :   -9402.1286 
+   9 Log-likelihood :  -10238.4370 
+Classification: weighted 
+   8 Log-likelihood :  -10361.8638 
+   5 Log-likelihood :   -9124.8305 
+  27 Log-likelihood :   -8949.3519 
+   7 Log-likelihood :   -9355.7018 
+   1 Log-likelihood :   -9536.9315 
+   8 Log-likelihood :   -9352.6071 
+   9 Log-likelihood :  -10359.5853 
+   6 Log-likelihood :   -9121.6778 
+  10 Log-likelihood :  -10231.5259 
+   2 Log-likelihood :   -9507.4656 
+  11 Log-likelihood :  -10238.6410 
+  28 Log-likelihood :   -8938.8615 
+   9 Log-likelihood :   -9405.6246 
+   7 Log-likelihood :   -9118.9616 
+  10 Log-likelihood :  -10359.2831 
+   3 Log-likelihood :   -9494.1694 
+  12 Log-likelihood :  -10239.5788 
+  10 Log-likelihood :   -9354.0300 
+  13 Log-likelihood :  -10239.5813 
+converged
+   8 Log-likelihood :   -9116.7199 
+   4 Log-likelihood :   -9487.6138 
+  11 Log-likelihood :   -9352.0728 
+  11 Log-likelihood :  -10359.2349 
+  29 Log-likelihood :   -8936.2845 
+   9 Log-likelihood :   -9114.9817 
+   5 Log-likelihood :   -9484.7952 
+  12 Log-likelihood :  -10359.2258 
+converged
+  12 Log-likelihood :   -9405.9877 
+  30 Log-likelihood :   -8942.4329 
+Classification: weighted 
+   6 Log-likelihood :   -9483.5131 
+   1 Log-likelihood :   -8396.9525 
+  10 Log-likelihood :   -9113.6703 
+  13 Log-likelihood :   -9353.7058 
+  14 Log-likelihood :   -9351.8580 
+Classification: weighted 
+  11 Log-likelihood :   -9112.6646 
+  31 Log-likelihood :   -8936.5812 
+  15 Log-likelihood :   -9406.3004 
+   7 Log-likelihood :   -9470.8793 
+   2 Log-likelihood :   -8333.5408 
+   1 Log-likelihood :   -9439.2459 
+  12 Log-likelihood :   -9111.8786 
+  16 Log-likelihood :   -9353.5967 
+  32 Log-likelihood :   -8942.9190 
+   8 Log-likelihood :   -9482.6102 
+   2 Log-likelihood :   -9428.0449 
+  17 Log-likelihood :   -9351.7859 
+  13 Log-likelihood :   -9108.4507 
+   3 Log-likelihood :   -9415.9419 
+  18 Log-likelihood :   -9406.4441 
+  33 Log-likelihood :   -8937.5613 
+   3 Log-likelihood :   -8299.6501 
+  14 Log-likelihood :   -9112.7623 
+  19 Log-likelihood :   -9353.5636 
+  34 Log-likelihood :   -8943.0820 
+   4 Log-likelihood :   -9407.3960 
+   9 Log-likelihood :   -9469.8899 
+  20 Log-likelihood :   -9351.7653 
+  15 Log-likelihood :   -9108.4459 
+  10 Log-likelihood :   -9482.4446 
+   5 Log-likelihood :   -9399.0723 
+   4 Log-likelihood :   -8290.4504 
+  21 Log-likelihood :   -9406.4896 
+  35 Log-likelihood :   -8938.0290 
+  16 Log-likelihood :   -9111.5099 
+  22 Log-likelihood :   -9353.5544 
+   6 Log-likelihood :   -9396.4010 
+  36 Log-likelihood :   -8943.1313 
+  17 Log-likelihood :   -9108.3120 
+  23 Log-likelihood :   -9351.7603 
+  11 Log-likelihood :   -9471.4113 
+   5 Log-likelihood :   -8287.0639 
+   7 Log-likelihood :   -9393.9128 
+  37 Log-likelihood :   -8942.2146 
+  18 Log-likelihood :   -9108.3008 
+  24 Log-likelihood :   -9406.5023 
+   8 Log-likelihood :   -9389.8822 
+  25 Log-likelihood :   -9353.5521 
+  12 Log-likelihood :   -9488.1422 
+  19 Log-likelihood :   -9108.0961 
+  26 Log-likelihood :   -9351.7588 
+   6 Log-likelihood :   -8286.1825 
+   9 Log-likelihood :   -9387.1052 
+  38 Log-likelihood :   -8936.8331 
+  20 Log-likelihood :   -9107.9345 
+  10 Log-likelihood :   -9386.3250 
+  27 Log-likelihood :   -9406.5055 
+  13 Log-likelihood :   -9469.8719 
+  21 Log-likelihood :   -9107.8136 
+  28 Log-likelihood :   -9353.5514 
+   7 Log-likelihood :   -8285.2481 
+  11 Log-likelihood :   -9386.2239 
+  39 Log-likelihood :   -8939.6251 
+  29 Log-likelihood :   -9351.7583 
+  14 Log-likelihood :   -9482.3265 
+  22 Log-likelihood :   -9107.7213 
+  12 Log-likelihood :   -9386.2979 
+  30 Log-likelihood :   -9406.5064 
+   8 Log-likelihood :   -8284.2136 
+  23 Log-likelihood :   -9107.6473 
+  40 Log-likelihood :   -8940.9988 
+  13 Log-likelihood :   -9386.3665 
+  31 Log-likelihood :   -9353.5512 
+  24 Log-likelihood :   -9107.5861 
+  32 Log-likelihood :   -9351.7583 
+  15 Log-likelihood :   -9470.9412 
+  41 Log-likelihood :   -8943.6337 
+  14 Log-likelihood :   -9386.4090 
+  25 Log-likelihood :   -9107.5341 
+   9 Log-likelihood :   -8283.7513 
+  33 Log-likelihood :   -9406.5066 
+  15 Log-likelihood :   -9386.4322 
+  34 Log-likelihood :   -9353.5514 
+  26 Log-likelihood :   -9107.4887 
+  35 Log-likelihood :   -9351.7584 
+  42 Log-likelihood :   -8939.0685 
+  16 Log-likelihood :   -9386.4442 
+  16 Log-likelihood :   -9467.2386 
+  27 Log-likelihood :   -9107.4486 
+  10 Log-likelihood :   -8282.9972 
+  36 Log-likelihood :   -9406.5065 
+  17 Log-likelihood :   -9386.4502 
+converged
+  17 Log-likelihood :   -9482.3960 
+  28 Log-likelihood :   -9107.4127 
+  37 Log-likelihood :   -9353.5512 
+  43 Log-likelihood :   -8941.0302 
+  11 Log-likelihood :   -8281.5696 
+Classification: weighted 
+  38 Log-likelihood :   -9351.7578 
+  44 Log-likelihood :   -8943.5947 
+  29 Log-likelihood :   -9107.3802 
+   1 Log-likelihood :   -7667.6141 
+  39 Log-likelihood :   -9406.5068 
+  18 Log-likelihood :   -9470.0635 
+  12 Log-likelihood :   -8281.5809 
+   2 Log-likelihood :   -7579.6077 
+  30 Log-likelihood :   -9107.3506 
+  40 Log-likelihood :   -9353.5515 
+  45 Log-likelihood :   -8942.4646 
+   3 Log-likelihood :   -7558.3105 
+  19 Log-likelihood :   -9482.3257 
+  41 Log-likelihood :   -9351.7583 
+  13 Log-likelihood :   -8280.1763 
+  31 Log-likelihood :   -9107.3234 
+   4 Log-likelihood :   -7547.8522 
+  46 Log-likelihood :   -8941.9158 
+   5 Log-likelihood :   -7542.2679 
+  42 Log-likelihood :   -9406.5072 
+  32 Log-likelihood :   -9107.2988 
+  43 Log-likelihood :   -9353.5512 
+   6 Log-likelihood :   -7538.9071 
+  20 Log-likelihood :   -9470.5488 
+  14 Log-likelihood :   -8280.4662 
+  44 Log-likelihood :   -9351.7583 
+   7 Log-likelihood :   -7536.7125 
+  33 Log-likelihood :   -9107.2756 
+  47 Log-likelihood :   -8936.9869 
+   8 Log-likelihood :   -7535.1512 
+  45 Log-likelihood :   -9406.5068 
+  15 Log-likelihood :   -8279.1154 
+  34 Log-likelihood :   -9107.2541 
+  21 Log-likelihood :   -9467.3415 
+  46 Log-likelihood :   -9353.5510 
+   9 Log-likelihood :   -7533.9444 
+  35 Log-likelihood :   -9107.2344 
+  47 Log-likelihood :   -9351.7582 
+  48 Log-likelihood :   -8939.4622 
+  22 Log-likelihood :   -9482.3943 
+  10 Log-likelihood :   -7532.9593 
+  16 Log-likelihood :   -8279.2464 
+  48 Log-likelihood :   -9406.5066 
+  36 Log-likelihood :   -9107.2155 
+  11 Log-likelihood :   -7532.1331 
+  49 Log-likelihood :   -8943.3240 
+  49 Log-likelihood :   -9353.5512 
+  17 Log-likelihood :   -8278.5103 
+  37 Log-likelihood :   -9107.1983 
+  12 Log-likelihood :   -7531.4449 
+  50 Log-likelihood :   -9351.7586 
+  23 Log-likelihood :   -9469.9097 
+  38 Log-likelihood :   -9107.1821 
+  13 Log-likelihood :   -7530.8784 
+  50 Log-likelihood :   -8938.2236 
+  24 Log-likelihood :   -9482.3241 
+  18 Log-likelihood :   -8278.5289 
+  14 Log-likelihood :   -7530.4248 
+Classification: weighted 
+  39 Log-likelihood :   -9107.1671 
+Classification: weighted 
+   1 Log-likelihood :   -8950.7366 
+  19 Log-likelihood :   -8277.5563 
+  15 Log-likelihood :   -7530.0638 
+  40 Log-likelihood :   -9107.1532 
+   2 Log-likelihood :   -8917.2800 
+  16 Log-likelihood :   -7529.7814 
+  25 Log-likelihood :   -9470.6689 
+  41 Log-likelihood :   -9107.1404 
+   3 Log-likelihood :   -8874.3586 
+   1 Log-likelihood :   -9539.5406 
+  20 Log-likelihood :   -8278.0855 
+  17 Log-likelihood :   -7529.5364 
+  42 Log-likelihood :   -9107.1287 
+   4 Log-likelihood :   -8868.3312 
+   2 Log-likelihood :   -9443.9525 
+  18 Log-likelihood :   -7529.3734 
+  26 Log-likelihood :   -9467.2614 
+  43 Log-likelihood :   -9107.1179 
+  21 Log-likelihood :   -8276.7852 
+   3 Log-likelihood :   -9430.3867 
+   5 Log-likelihood :   -8865.3929 
+  19 Log-likelihood :   -7529.2294 
+  27 Log-likelihood :   -9482.4042 
+  44 Log-likelihood :   -9107.1089 
+converged
+   4 Log-likelihood :   -9425.5057 
+  22 Log-likelihood :   -8277.6153 
+  20 Log-likelihood :   -7529.1132 
+   6 Log-likelihood :   -8863.5167 
+   5 Log-likelihood :   -9422.9137 
+  21 Log-likelihood :   -7529.0147 
+Classification: weighted 
+   6 Log-likelihood :   -9421.3277 
+  28 Log-likelihood :   -9470.7743 
+   7 Log-likelihood :   -8862.2347 
+   1 Log-likelihood :   -8896.8624 
+  23 Log-likelihood :   -8277.3252 
+  22 Log-likelihood :   -7528.9307 
+   2 Log-likelihood :   -8855.3736 
+   7 Log-likelihood :   -9420.2978 
+   3 Log-likelihood :   -8836.8207 
+   8 Log-likelihood :   -8861.0138 
+   8 Log-likelihood :   -9419.3783 
+   4 Log-likelihood :   -8825.5096 
+  23 Log-likelihood :   -7528.8671 
+   5 Log-likelihood :   -8818.1890 
+  29 Log-likelihood :   -9467.2475 
+  24 Log-likelihood :   -8277.0124 
+   9 Log-likelihood :   -9418.0547 
+   6 Log-likelihood :   -8813.2911 
+  24 Log-likelihood :   -7528.8079 
+   7 Log-likelihood :   -8809.8223 
+   9 Log-likelihood :   -8858.5919 
+  30 Log-likelihood :   -9482.4179 
+  10 Log-likelihood :   -9416.8106 
+   8 Log-likelihood :   -8807.2233 
+  25 Log-likelihood :   -7528.7578 
+  25 Log-likelihood :   -8276.0149 
+   9 Log-likelihood :   -8805.1876 
+  11 Log-likelihood :   -9416.5359 
+  10 Log-likelihood :   -8803.5408 
+  10 Log-likelihood :   -8854.8248 
+  26 Log-likelihood :   -7528.7382 
+  11 Log-likelihood :   -8802.1782 
+  12 Log-likelihood :   -9416.4809 
+  26 Log-likelihood :   -8275.9909 
+  11 Log-likelihood :   -8858.7357 
+  12 Log-likelihood :   -8801.0321 
+  13 Log-likelihood :   -9416.4661 
+  31 Log-likelihood :   -9470.8514 
+  27 Log-likelihood :   -7528.6835 
+  13 Log-likelihood :   -8800.0558 
+  12 Log-likelihood :   -8858.6984 
+  14 Log-likelihood :   -9416.4620 
+converged
+  14 Log-likelihood :   -8799.2162 
+  15 Log-likelihood :   -8798.4882 
+  13 Log-likelihood :   -8858.6641 
+  28 Log-likelihood :   -7528.6248 
+  27 Log-likelihood :   -8275.9124 
+  16 Log-likelihood :   -8797.8527 
+Classification: weighted 
+  14 Log-likelihood :   -8858.6569 
+converged
+  17 Log-likelihood :   -8797.2939 
+  29 Log-likelihood :   -7528.5956 
+  32 Log-likelihood :   -9467.0046 
+  18 Log-likelihood :   -8796.8003 
+  19 Log-likelihood :   -8796.3625 
+  28 Log-likelihood :   -8276.4504 
+  30 Log-likelihood :   -7528.5938 
+converged
+  33 Log-likelihood :   -9482.4468 
+  20 Log-likelihood :   -8795.9715 
+Classification: weighted 
+  21 Log-likelihood :   -8795.6215 
+  22 Log-likelihood :   -8795.3070 
+Classification: weighted 
+   1 Log-likelihood :   -7190.8018 
+  29 Log-likelihood :   -8276.8924 
+  23 Log-likelihood :   -8795.0235 
+  24 Log-likelihood :   -8794.7672 
+  34 Log-likelihood :   -9470.9478 
+  25 Log-likelihood :   -8794.5353 
+   1 Log-likelihood :  -11615.7644 
+   2 Log-likelihood :   -7112.0365 
+   1 Log-likelihood :  -11593.7277 
+  26 Log-likelihood :   -8794.3235 
+   2 Log-likelihood :  -11590.3054 
+  30 Log-likelihood :   -8275.9645 
+  27 Log-likelihood :   -8794.1312 
+  28 Log-likelihood :   -8793.9559 
+  29 Log-likelihood :   -8793.7953 
+  35 Log-likelihood :   -9487.8242 
+   3 Log-likelihood :   -7082.7424 
+   3 Log-likelihood :  -11593.5584 
+  30 Log-likelihood :   -8793.6485 
+  31 Log-likelihood :   -8276.7326 
+  31 Log-likelihood :   -8793.5140 
+   2 Log-likelihood :  -11574.6734 
+  32 Log-likelihood :   -8793.3899 
+   4 Log-likelihood :  -11593.5853 
+   4 Log-likelihood :   -7074.0329 
+   3 Log-likelihood :  -11575.2902 
+  33 Log-likelihood :   -8793.2768 
+   5 Log-likelihood :  -11591.1061 
+   4 Log-likelihood :  -11575.4440 
+  32 Log-likelihood :   -8276.3320 
+  34 Log-likelihood :   -8793.1724 
+  36 Log-likelihood :   -9469.9186 
+   5 Log-likelihood :  -11575.4358 
+converged
+   6 Log-likelihood :  -11591.0849 
+  35 Log-likelihood :   -8793.0763 
+   5 Log-likelihood :   -7070.4063 
+  36 Log-likelihood :   -8792.9876 
+  37 Log-likelihood :   -9482.3177 
+  37 Log-likelihood :   -8792.9058 
+  33 Log-likelihood :   -8275.4513 
+   7 Log-likelihood :  -11593.5051 
+   6 Log-likelihood :   -7068.4648 
+  38 Log-likelihood :   -8792.8306 
+Classification: weighted 
+   8 Log-likelihood :  -11591.0544 
+  39 Log-likelihood :   -8792.7608 
+   9 Log-likelihood :  -11591.0548 
+converged
+  40 Log-likelihood :   -8792.6962 
+   1 Log-likelihood :   -9943.4673 
+   7 Log-likelihood :   -7067.3111 
+  34 Log-likelihood :   -8275.6319 
+  41 Log-likelihood :   -8792.6367 
+  38 Log-likelihood :   -9470.7544 
+  42 Log-likelihood :   -8792.5816 
+Classification: weighted 
+   8 Log-likelihood :   -7066.6107 
+  39 Log-likelihood :   -9482.2785 
+  43 Log-likelihood :   -8792.5306 
+   2 Log-likelihood :   -9854.1947 
+  35 Log-likelihood :   -8275.7476 
+  44 Log-likelihood :   -8792.4830 
+   1 Log-likelihood :  -10319.0240 
+  45 Log-likelihood :   -8792.4395 
+   9 Log-likelihood :   -7066.1999 
+  46 Log-likelihood :   -8792.3989 
+   3 Log-likelihood :   -9850.5429 
+  47 Log-likelihood :   -8792.3612 
+  36 Log-likelihood :   -8276.2164 
+  10 Log-likelihood :   -7065.9710 
+  40 Log-likelihood :   -9470.2402 
+   2 Log-likelihood :  -10312.1713 
+  48 Log-likelihood :   -8792.3264 
+  49 Log-likelihood :   -8792.2941 
+   4 Log-likelihood :   -9850.0256 
+  41 Log-likelihood :   -9482.2853 
+  11 Log-likelihood :   -7065.8467 
+   3 Log-likelihood :  -10310.3616 
+  50 Log-likelihood :   -8792.2638 
+  37 Log-likelihood :   -8275.5699 
+  12 Log-likelihood :   -7065.7813 
+   5 Log-likelihood :   -9838.1834 
+   4 Log-likelihood :  -10309.9882 
+Classification: weighted 
+  13 Log-likelihood :   -7065.7423 
+  42 Log-likelihood :   -9470.7429 
+  38 Log-likelihood :   -8275.7144 
+   5 Log-likelihood :  -10309.8178 
+   1 Log-likelihood :  -11654.0680 
+   6 Log-likelihood :   -9849.9045 
+  14 Log-likelihood :   -7065.7173 
+  43 Log-likelihood :   -9482.2701 
+   2 Log-likelihood :  -11644.9167 
+   6 Log-likelihood :  -10309.7311 
+   3 Log-likelihood :  -11644.8691 
+   7 Log-likelihood :   -9849.5431 
+  39 Log-likelihood :   -8276.0295 
+   4 Log-likelihood :  -11644.5528 
+   7 Log-likelihood :  -10309.6989 
+  15 Log-likelihood :   -7065.7007 
+   5 Log-likelihood :  -11644.1958 
+   6 Log-likelihood :  -11643.8459 
+   8 Log-likelihood :  -10309.6972 
+converged
+   7 Log-likelihood :  -11643.5397 
+  40 Log-likelihood :   -8275.7342 
+   8 Log-likelihood :   -9849.5141 
+  16 Log-likelihood :   -7065.6882 
+  44 Log-likelihood :   -9470.7265 
+   8 Log-likelihood :  -11643.3038 
+   9 Log-likelihood :  -11643.1640 
+  17 Log-likelihood :   -7065.6766 
+Classification: weighted 
+   9 Log-likelihood :   -9834.9715 
+  10 Log-likelihood :  -11650.3010 
+  41 Log-likelihood :   -8275.6355 
+   1 Log-likelihood :   -9745.5827 
+  18 Log-likelihood :   -7065.6682 
+  11 Log-likelihood :  -11642.8899 
+  45 Log-likelihood :   -9467.8895 
+   2 Log-likelihood :   -9695.2600 
+  12 Log-likelihood :  -11650.3193 
+  19 Log-likelihood :   -7065.6600 
+  10 Log-likelihood :   -9849.9869 
+  42 Log-likelihood :   -8276.2740 
+  13 Log-likelihood :  -11642.8681 
+  46 Log-likelihood :   -9487.8563 
+   3 Log-likelihood :   -9694.5716 
+  11 Log-likelihood :   -9849.5280 
+  14 Log-likelihood :  -11650.3300 
+  20 Log-likelihood :   -7065.6515 
+   4 Log-likelihood :   -9694.6513 
+  15 Log-likelihood :  -11642.8618 
+  43 Log-likelihood :   -8275.6586 
+   5 Log-likelihood :   -9694.6885 
+  21 Log-likelihood :   -7065.6444 
+  12 Log-likelihood :   -9849.5650 
+  47 Log-likelihood :   -9469.6843 
+  16 Log-likelihood :  -11650.3372 
+   6 Log-likelihood :   -9694.7162 
+  17 Log-likelihood :  -11642.8582 
+   7 Log-likelihood :   -9694.7362 
+  48 Log-likelihood :   -9482.3317 
+  44 Log-likelihood :   -8275.7282 
+  13 Log-likelihood :   -9849.5787 
+  22 Log-likelihood :   -7065.6378 
+converged
+  18 Log-likelihood :  -11650.3365 
+   8 Log-likelihood :   -9694.7564 
+  19 Log-likelihood :  -11642.8590 
+  14 Log-likelihood :   -9849.5906 
+   9 Log-likelihood :   -9694.7744 
+Classification: weighted 
+  45 Log-likelihood :   -8275.9913 
+  15 Log-likelihood :   -9849.6016 
+  20 Log-likelihood :  -11650.3371 
+  10 Log-likelihood :   -9694.7862 
+  49 Log-likelihood :   -9470.6998 
+  21 Log-likelihood :  -11642.8591 
+  11 Log-likelihood :   -9694.7982 
+  16 Log-likelihood :   -9849.6121 
+  22 Log-likelihood :  -11650.3378 
+  12 Log-likelihood :   -9694.8076 
+converged
+  46 Log-likelihood :   -8276.3759 
+  17 Log-likelihood :   -9849.6211 
+converged
+  23 Log-likelihood :  -11642.8592 
+   1 Log-likelihood :  -10602.1262 
+  50 Log-likelihood :   -9467.3812 
+  24 Log-likelihood :  -11650.3364 
+  47 Log-likelihood :   -8275.1813 
+  25 Log-likelihood :  -11642.8592 
+Classification: weighted 
+Classification: weighted 
+   1 Log-likelihood :   -9721.3404 
+   2 Log-likelihood :  -10563.3193 
+   2 Log-likelihood :   -9645.2634 
+  26 Log-likelihood :  -11650.3356 
+   1 Log-likelihood :   -6474.4662 
+   3 Log-likelihood :   -9638.9511 
+   4 Log-likelihood :   -9637.2776 
+  27 Log-likelihood :  -11642.8592 
+  48 Log-likelihood :   -8275.8438 
+   5 Log-likelihood :   -9636.3910 
+   6 Log-likelihood :   -9635.8366 
+   2 Log-likelihood :   -6400.2962 
+   7 Log-likelihood :   -9635.4516 
+   8 Log-likelihood :   -9635.1849 
+   9 Log-likelihood :   -9635.0174 
+  28 Log-likelihood :  -11650.3364 
+  10 Log-likelihood :   -9634.9264 
+   3 Log-likelihood :   -6377.1692 
+   3 Log-likelihood :  -10559.7105 
+  29 Log-likelihood :  -11642.8592 
+  11 Log-likelihood :   -9634.8835 
+  12 Log-likelihood :   -9634.8654 
+  49 Log-likelihood :   -8275.6176 
+  13 Log-likelihood :   -9634.8582 
+converged
+   4 Log-likelihood :   -6369.0253 
+  30 Log-likelihood :  -11650.3363 
+  31 Log-likelihood :  -11642.8592 
+   5 Log-likelihood :   -6364.4722 
+   4 Log-likelihood :  -10558.7914 
+  50 Log-likelihood :   -8275.5982 
+  32 Log-likelihood :  -11650.3366 
+   6 Log-likelihood :   -6361.6344 
+  33 Log-likelihood :  -11642.8592 
+Classification: weighted 
+  34 Log-likelihood :  -11650.3364 
+   7 Log-likelihood :   -6345.7174 
+  35 Log-likelihood :  -11642.8592 
+   5 Log-likelihood :  -10557.6980 
+   1 Log-likelihood :   -7242.8280 
+   8 Log-likelihood :   -6359.7803 
+  36 Log-likelihood :  -11650.3365 
+  37 Log-likelihood :  -11642.8592 
+   2 Log-likelihood :   -7205.2579 
+   9 Log-likelihood :   -6333.8929 
+   6 Log-likelihood :  -10556.4369 
+  38 Log-likelihood :  -11650.3364 
+   3 Log-likelihood :   -7183.1969 
+  39 Log-likelihood :  -11642.8592 
+  10 Log-likelihood :   -6359.2141 
+   4 Log-likelihood :   -7173.0132 
+  40 Log-likelihood :  -11650.3361 
+  41 Log-likelihood :  -11642.8592 
+  11 Log-likelihood :   -6331.1188 
+   7 Log-likelihood :  -10556.2757 
+   5 Log-likelihood :   -7168.8315 
+  42 Log-likelihood :  -11650.3363 
+   6 Log-likelihood :   -7169.5118 
+  12 Log-likelihood :   -6358.5470 
+  43 Log-likelihood :  -11642.8592 
+   7 Log-likelihood :   -7164.7687 
+  13 Log-likelihood :   -6329.5585 
+  44 Log-likelihood :  -11650.3363 
+   8 Log-likelihood :  -10555.8946 
+  45 Log-likelihood :  -11642.8592 
+  14 Log-likelihood :   -6358.1670 
+   8 Log-likelihood :   -7163.5703 
+  46 Log-likelihood :  -11650.3364 
+  47 Log-likelihood :  -11642.8592 
+  15 Log-likelihood :   -6328.8439 
+   9 Log-likelihood :   -7162.9997 
+   9 Log-likelihood :  -10555.7803 
+  16 Log-likelihood :   -6357.6518 
+  48 Log-likelihood :  -11650.3364 
+  10 Log-likelihood :   -7165.6829 
+  49 Log-likelihood :  -11642.8592 
+  17 Log-likelihood :   -6327.8398 
+  11 Log-likelihood :   -7162.0369 
+  10 Log-likelihood :  -10555.7080 
+  50 Log-likelihood :  -11650.3368 
+  18 Log-likelihood :   -6357.1257 
+  12 Log-likelihood :   -7161.4892 
+  13 Log-likelihood :   -7161.4173 
+  19 Log-likelihood :   -6327.1946 
+Classification: weighted 
+  11 Log-likelihood :  -10555.4557 
+  14 Log-likelihood :   -7161.2869 
+  20 Log-likelihood :   -6356.8952 
+   1 Log-likelihood :  -10474.8841 
+  15 Log-likelihood :   -7164.3104 
+  21 Log-likelihood :   -6326.9364 
+   2 Log-likelihood :  -10420.4896 
+  12 Log-likelihood :  -10555.4211 
+  16 Log-likelihood :   -7160.6711 
+  22 Log-likelihood :   -6356.7995 
+   3 Log-likelihood :  -10422.2935 
+  17 Log-likelihood :   -7162.4410 
+  18 Log-likelihood :   -7159.4697 
+  13 Log-likelihood :  -10555.4986 
+   4 Log-likelihood :  -10420.2624 
+  23 Log-likelihood :   -6326.8585 
+  19 Log-likelihood :   -7158.1684 
+   5 Log-likelihood :  -10420.4898 
+  24 Log-likelihood :   -6356.7742 
+  20 Log-likelihood :   -7158.3119 
+   6 Log-likelihood :  -10420.1745 
+  14 Log-likelihood :  -10555.4804 
+  21 Log-likelihood :   -7159.3953 
+  25 Log-likelihood :   -6326.8393 
+   7 Log-likelihood :  -10422.0392 
+  22 Log-likelihood :   -7158.2461 
+  26 Log-likelihood :   -6356.7690 
+   8 Log-likelihood :  -10420.2114 
+  23 Log-likelihood :   -7161.5264 
+  15 Log-likelihood :  -10555.4686 
+  24 Log-likelihood :   -7158.1092 
+  27 Log-likelihood :   -6326.8352 
+   9 Log-likelihood :  -10420.1417 
+  28 Log-likelihood :   -6356.7680 
+  16 Log-likelihood :  -10555.5170 
+  25 Log-likelihood :   -7161.4264 
+  10 Log-likelihood :  -10420.4760 
+  26 Log-likelihood :   -7158.0854 
+  29 Log-likelihood :   -6326.8344 
+  11 Log-likelihood :  -10420.1531 
+  27 Log-likelihood :   -7161.4159 
+  17 Log-likelihood :  -10555.4544 
+  30 Log-likelihood :   -6356.7671 
+  12 Log-likelihood :  -10420.4746 
+  28 Log-likelihood :   -7158.0825 
+  31 Log-likelihood :   -6326.8344 
+  13 Log-likelihood :  -10420.3153 
+  18 Log-likelihood :  -10555.4682 
+  29 Log-likelihood :   -7158.2124 
+  14 Log-likelihood :  -10420.1444 
+  32 Log-likelihood :   -6356.7678 
+  30 Log-likelihood :   -7158.3406 
+  31 Log-likelihood :   -7158.3792 
+  19 Log-likelihood :  -10555.4641 
+converged
+  33 Log-likelihood :   -6326.8344 
+  15 Log-likelihood :  -10422.0149 
+  32 Log-likelihood :   -7158.3917 
+  34 Log-likelihood :   -6356.7677 
+  16 Log-likelihood :  -10420.1998 
+Classification: weighted 
+  33 Log-likelihood :   -7158.3959 
+converged
+  17 Log-likelihood :  -10420.1442 
+  35 Log-likelihood :   -6326.8343 
+   1 Log-likelihood :   -9833.3737 
+Classification: weighted 
+  36 Log-likelihood :   -6356.7676 
+   2 Log-likelihood :   -9713.1174 
+  18 Log-likelihood :  -10422.0177 
+   1 Log-likelihood :  -10563.8998 
+   2 Log-likelihood :  -10488.3486 
+   3 Log-likelihood :   -9715.1943 
+  37 Log-likelihood :   -6326.8342 
+   3 Log-likelihood :  -10485.5075 
+  19 Log-likelihood :  -10420.2087 
+   4 Log-likelihood :  -10485.1502 
+   4 Log-likelihood :   -9708.8239 
+  38 Log-likelihood :   -6356.7678 
+   5 Log-likelihood :  -10485.2070 
+   6 Log-likelihood :  -10485.2956 
+   7 Log-likelihood :  -10485.3849 
+  20 Log-likelihood :  -10422.0146 
+   5 Log-likelihood :   -9715.6001 
+  39 Log-likelihood :   -6326.8343 
+   8 Log-likelihood :  -10485.4652 
+   9 Log-likelihood :  -10485.5340 
+  40 Log-likelihood :   -6356.7679 
+   6 Log-likelihood :   -9708.6135 
+  10 Log-likelihood :  -10485.5921 
+  21 Log-likelihood :  -10420.2157 
+  11 Log-likelihood :  -10485.6404 
+   7 Log-likelihood :   -9715.1774 
+  12 Log-likelihood :  -10485.6801 
+  41 Log-likelihood :   -6326.8344 
+  13 Log-likelihood :  -10485.7129 
+  22 Log-likelihood :  -10420.1528 
+   8 Log-likelihood :   -9708.5916 
+  14 Log-likelihood :  -10485.7399 
+  42 Log-likelihood :   -6356.7677 
+  15 Log-likelihood :  -10485.7620 
+   9 Log-likelihood :   -9715.8841 
+  16 Log-likelihood :  -10485.7804 
+  23 Log-likelihood :  -10421.9993 
+  17 Log-likelihood :  -10485.7950 
+  43 Log-likelihood :   -6326.8342 
+  10 Log-likelihood :   -9708.5415 
+  18 Log-likelihood :  -10485.8071 
+  19 Log-likelihood :  -10485.8173 
+converged
+  44 Log-likelihood :   -6356.7678 
+  24 Log-likelihood :  -10420.2187 
+  11 Log-likelihood :   -9715.9809 
+Classification: weighted 
+   1 Log-likelihood :   -9906.0977 
+  45 Log-likelihood :   -6326.8343 
+  12 Log-likelihood :   -9708.5337 
+   2 Log-likelihood :   -9757.0763 
+  25 Log-likelihood :  -10420.4311 
+   3 Log-likelihood :   -9749.6179 
+   4 Log-likelihood :   -9746.3437 
+   5 Log-likelihood :   -9743.3158 
+   6 Log-likelihood :   -9742.4385 
+  13 Log-likelihood :   -9715.8675 
+   7 Log-likelihood :   -9742.4310 
+converged
+  46 Log-likelihood :   -6356.7675 
+  14 Log-likelihood :   -9708.5392 
+  26 Log-likelihood :  -10421.5940 
+Classification: weighted 
+  47 Log-likelihood :   -6326.8343 
+   1 Log-likelihood :   -9639.7362 
+  15 Log-likelihood :   -9715.9208 
+   2 Log-likelihood :   -9612.8471 
+  27 Log-likelihood :  -10420.2161 
+  48 Log-likelihood :   -6356.7677 
+   3 Log-likelihood :   -9609.6514 
+  16 Log-likelihood :   -9708.5375 
+   4 Log-likelihood :   -9608.0418 
+   5 Log-likelihood :   -9606.6968 
+  28 Log-likelihood :  -10420.1588 
+  17 Log-likelihood :   -9715.5665 
+  49 Log-likelihood :   -6326.8343 
+  18 Log-likelihood :   -9708.5554 
+  50 Log-likelihood :   -6356.7677 
+  29 Log-likelihood :  -10420.1610 
+converged
+   6 Log-likelihood :   -9605.1254 
+  19 Log-likelihood :   -9716.0959 
+Classification: weighted 
+Classification: weighted 
+   1 Log-likelihood :  -10696.7338 
+  20 Log-likelihood :   -9708.5308 
+   2 Log-likelihood :  -10577.3272 
+   3 Log-likelihood :  -10564.3135 
+   7 Log-likelihood :   -9602.7469 
+  21 Log-likelihood :   -9716.0793 
+   4 Log-likelihood :  -10560.3532 
+   1 Log-likelihood :  -10082.9820 
+   5 Log-likelihood :  -10558.6956 
+  22 Log-likelihood :   -9708.5325 
+   6 Log-likelihood :  -10557.7889 
+   7 Log-likelihood :  -10557.0581 
+   8 Log-likelihood :   -9608.4552 
+  23 Log-likelihood :   -9715.5435 
+   2 Log-likelihood :  -10079.6134 
+   8 Log-likelihood :  -10556.1331 
+   9 Log-likelihood :  -10554.7529 
+  24 Log-likelihood :   -9710.9039 
+   3 Log-likelihood :  -10077.6442 
+  10 Log-likelihood :  -10553.4095 
+  25 Log-likelihood :   -9708.6306 
+   4 Log-likelihood :  -10077.1938 
+   9 Log-likelihood :   -9601.0664 
+  11 Log-likelihood :  -10552.6029 
+  12 Log-likelihood :  -10552.2554 
+   5 Log-likelihood :  -10077.0710 
+  13 Log-likelihood :  -10552.1562 
+  26 Log-likelihood :   -9716.0251 
+   6 Log-likelihood :  -10077.0290 
+  10 Log-likelihood :   -9597.7110 
+  14 Log-likelihood :  -10552.1317 
+  27 Log-likelihood :   -9708.5315 
+   7 Log-likelihood :  -10077.0147 
+  15 Log-likelihood :  -10552.1259 
+converged
+  28 Log-likelihood :   -9708.4613 
+   8 Log-likelihood :  -10077.0105 
+converged
+  11 Log-likelihood :   -9600.8173 
+Classification: weighted 
+  29 Log-likelihood :   -9715.9069 
+   1 Log-likelihood :  -10200.2424 
+  30 Log-likelihood :   -9708.5428 
+  12 Log-likelihood :   -9600.6476 
+   2 Log-likelihood :  -10170.5911 
+   3 Log-likelihood :  -10169.7980 
+  31 Log-likelihood :   -9716.1512 
+   4 Log-likelihood :  -10169.8320 
+  32 Log-likelihood :   -9708.5312 
+  13 Log-likelihood :   -9601.4217 
+   5 Log-likelihood :  -10169.8341 
+converged
+  33 Log-likelihood :   -9715.7232 
+  34 Log-likelihood :   -9708.5508 
+Classification: weighted 
+  14 Log-likelihood :   -9599.6411 
+  35 Log-likelihood :   -9716.1402 
+   1 Log-likelihood :   -9699.4564 
+  15 Log-likelihood :   -9609.5023 
+  36 Log-likelihood :   -9708.5311 
+   2 Log-likelihood :   -9663.5391 
+  37 Log-likelihood :   -9716.1160 
+  16 Log-likelihood :   -9609.3454 
+   3 Log-likelihood :   -9659.9156 
+  38 Log-likelihood :   -9708.5326 
+   4 Log-likelihood :   -9659.8450 
+  17 Log-likelihood :   -9608.2192 
+  39 Log-likelihood :   -9716.1546 
+   5 Log-likelihood :   -9659.8835 
+  40 Log-likelihood :   -9710.8269 
+  18 Log-likelihood :   -9609.3749 
+  41 Log-likelihood :   -9708.6345 
+   6 Log-likelihood :   -9650.8735 
+  42 Log-likelihood :   -9715.5632 
+  19 Log-likelihood :   -9609.8740 
+  43 Log-likelihood :   -9708.5544 
+   7 Log-likelihood :   -9660.3596 
+  44 Log-likelihood :   -9715.9577 
+  20 Log-likelihood :   -9608.6116 
+   8 Log-likelihood :   -9659.9671 
+  45 Log-likelihood :   -9710.0161 
+   9 Log-likelihood :   -9660.0218 
+  46 Log-likelihood :   -9715.1667 
+  21 Log-likelihood :   -9609.3719 
+  47 Log-likelihood :   -9708.5694 
+  10 Log-likelihood :   -9660.0564 
+  48 Log-likelihood :   -9715.5166 
+  11 Log-likelihood :   -9660.0877 
+  22 Log-likelihood :   -9607.6485 
+  49 Log-likelihood :   -9708.5570 
+  12 Log-likelihood :   -9660.1111 
+  50 Log-likelihood :   -9715.7225 
+  23 Log-likelihood :   -9607.7565 
+Classification: weighted 
+  13 Log-likelihood :   -9660.1280 
+  24 Log-likelihood :   -9609.5520 
+  14 Log-likelihood :   -9660.1663 
+   1 Log-likelihood :   -9306.8180 
+  15 Log-likelihood :   -9660.1923 
+  25 Log-likelihood :   -9607.8684 
+   2 Log-likelihood :   -9294.3212 
+  16 Log-likelihood :   -9660.2189 
+  26 Log-likelihood :   -9609.3839 
+   3 Log-likelihood :   -9292.7370 
+  17 Log-likelihood :   -9660.2420 
+  18 Log-likelihood :   -9660.2628 
+   4 Log-likelihood :   -9292.7054 
+  27 Log-likelihood :   -9609.3725 
+   5 Log-likelihood :   -9292.6490 
+  19 Log-likelihood :   -9648.3352 
+  28 Log-likelihood :   -9609.2070 
+   6 Log-likelihood :   -9292.6253 
+  20 Log-likelihood :   -9660.6620 
+  29 Log-likelihood :   -9609.1815 
+   7 Log-likelihood :   -9292.6114 
+   8 Log-likelihood :   -9292.7778 
+  21 Log-likelihood :   -9649.6205 
+  30 Log-likelihood :   -9609.3521 
+   9 Log-likelihood :   -9292.6030 
+  22 Log-likelihood :   -9660.9419 
+  23 Log-likelihood :   -9660.4098 
+  10 Log-likelihood :   -9292.5960 
+converged
+  31 Log-likelihood :   -9609.3674 
+  24 Log-likelihood :   -9660.4626 
+  32 Log-likelihood :   -9605.5649 
+  25 Log-likelihood :   -9660.4803 
+  26 Log-likelihood :   -9660.4929 
+  33 Log-likelihood :   -9600.3671 
+  27 Log-likelihood :   -9660.5041 
+  28 Log-likelihood :   -9660.5148 
+  34 Log-likelihood :   -9598.9875 
+  29 Log-likelihood :   -9660.5241 
+converged
+  35 Log-likelihood :   -9598.6761 
+  36 Log-likelihood :   -9599.0297 
+  37 Log-likelihood :   -9599.2314 
+  38 Log-likelihood :   -9600.1138 
+  39 Log-likelihood :   -9601.1318 
+  40 Log-likelihood :   -9600.2537 
+  41 Log-likelihood :   -9599.4621 
+  42 Log-likelihood :   -9599.8990 
+  43 Log-likelihood :   -9598.4786 
+  44 Log-likelihood :   -9599.8678 
+  45 Log-likelihood :   -9599.6475 
+  46 Log-likelihood :   -9599.1416 
+  47 Log-likelihood :   -9599.1348 
+converged
+comparing groups:
+
+ 1  2 
+19 72 
+calculating difference posterior
+summarizing differences
+> 
+> # TODO Volcano plot
+> 
+> data.neg <- data.out[data.out$logFC < 0,]
+> l.neg <- length(which(data.neg$AvCountG1 < data.neg$AvCountG2))
+> l.pos <- length(which(data.neg$AvCountG1 > data.neg$AvCountG2))
+> if(l.neg == 0 && l.pos == 0) {
++   l.neg <- length(which(data.neg$AvNormG1 < data.neg$AvNormG2))
++   l.pos <- length(which(data.neg$AvNormG1 > data.neg$AvNormG2))
++ }
+> 
+> if(l.neg < l.pos) data.out$logFC <- -data.out$logFC # SANITY CHECK (because these DE methods are wild and we want G1 as reference)
+> 
+> data.out.up <- data.out[data.out$logFC >= 0,]
+> data.out.up$text = rownames(data.out.up)
+> 
+> data.out.down <- data.out[data.out$logFC < 0,]
+> data.out.down$text = rownames(data.out.down)
+> 
+> write(toJSON(as.list(data.out.up), method="C", auto_unbox=F), file = paste0(output.folder,"/output.up.json"), append=F)
+> write(toJSON(as.list(data.out.down), method="C", auto_unbox=F), file = paste0(output.folder,"/output.down.json"), append=F)
+> 
+> 

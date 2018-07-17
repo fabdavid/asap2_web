@@ -1,0 +1,1 @@
+{"p_value":[2.2973771382162056e-05],"adj_p_value":[0.001608163996751344],"OR":[11.03875968992248],"pathways":["mmu05414"],"descriptions":["Dilated cardiomyopathy"],"urls":["http://www.genome.jp/dbget-bin/www_bget?mmu05414"],"error":null,"warning":"After filtering out genes not present in pathway file: 51 genes remain to be enriched."}

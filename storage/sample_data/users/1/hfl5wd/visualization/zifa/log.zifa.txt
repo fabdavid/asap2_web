@@ -1,0 +1,6 @@
+Filtering out all genes which are zero in more than 95.0% of samples. To change this, change p0_thresh.
+Warning: your Y matrix contains genes which are frequently zero. If the algorithm fails to converge, try filtering out genes which are zero more than 80 - 90% of the time, or using standard ZIFA.
+Number of blocks has been set to 2
+Running block zero-inflated factor analysis with N = 91, D = 1166, K = 5, n_blocks = 2
+Block sizes [583, 583]
+Param change below threshold 1.000e-02 after 7 iterations

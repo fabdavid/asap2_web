@@ -1,0 +1,2 @@
+class ProjectStep < ApplicationRecord
+end

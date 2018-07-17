@@ -1,0 +1,10 @@
+Loading required package: jsonlite
+Loading required package: methods
+Loading required package: scde
+Loading required package: flexmix
+Loading required package: lattice
+cross-fitting 2727 pairs:
+Error in estimate.library.sizes(counts, cfm, groups, min.size.entries,  : 
+  The number of valid genes (1166) is lower then the specified min.size.entries (2000). Please either increase min.size.entries or lower min.nonfailed parameter to increase the number of valid genes
+Calls: scde.error.models ... calculate.individual.models -> estimate.library.sizes
+Execution halted
