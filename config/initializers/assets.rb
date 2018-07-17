@@ -12,3 +12,5 @@ Rails.application.config.assets.paths << Rails.root.join('node_modules')
 Rails.application.config.assets.precompile << proc do |path|
   true if path =~ /\.(eot|svg|ttf|woff|png)\z/
 end
+Rails.application.config.assets.precompile += %w( heatmapcore.js cssify.js d3.js XPath.js welcome.js project.js heatmapcore.css )
+
