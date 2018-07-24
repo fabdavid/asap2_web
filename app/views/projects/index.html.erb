@@ -91,14 +91,12 @@ var public_limit = $("#public_limit");
 App.projects.onConnected( function(){
   console.log( <%= @projects.length %> );
   <% @projects.each do |project| %>
-    console.log( <%= project.id %> );
     App.projects.subscribeStatusChanges( <%= project.id %> );
   <% end %>
   });
 
 App.projects.onReceived( function(data){
   refresh_lists('');
-  console.log('[ActionCable] [project:'+data['project_id']+'] [status:'+data['new_status']+']', data);
   });
 
 <% if @projects.size > 0 %>
