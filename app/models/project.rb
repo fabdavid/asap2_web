@@ -1,5 +1,7 @@
 class Project < ApplicationRecord
 
+  before_save :broadcast_new_status, if: :will_save_change_to_status_id?
+
   belongs_to :user
   belongs_to :status
   belongs_to :step
@@ -18,14 +20,18 @@ class Project < ApplicationRecord
   has_many :gene_sets
   has_many :shares
 
+  def broadcast_new_status
+    ProjectStatusBroadcastJob.perform_later self
+  end
+
   NewParsing = Struct.new(:project) do
     def perform
       project.parse
     end
-    
+
     def error(job, exception)
       if job.last_error
-        lines = job.last_error.split("\n") 
+        lines = job.last_error.split("\n")
         lines = lines.join("\\n")
         project_step = ProjectStep.where(:project_id => project.id, :step_id => 1).first
         project_step.update_attributes(:error_message => lines, :status_id => 4)
@@ -33,12 +39,12 @@ class Project < ApplicationRecord
       end
     end
   end
-  
+
   NewFilter = Struct.new(:project) do
     def perform
-      project.filter 
+      project.filter
     end
-    
+
     def error(job, exception)
       if job.last_error
         lines = job.last_error.split("\n")
@@ -52,9 +58,9 @@ class Project < ApplicationRecord
 
   NewNorm = Struct.new(:project) do
     def perform
-      project.norm 
+      project.norm
     end
-    
+
     def error(job, exception)
       if job.last_error
         lines = job.last_error.split("\n")
@@ -65,7 +71,7 @@ class Project < ApplicationRecord
       end
     end
   end
-  
+
 
   def parse_files 
     job = Basic.create_job(self, 1, self, :parsing_job_id, 1)
