@@ -8,6 +8,8 @@ services:
       - 'dumps:/dumps'
     env_file:
       - '.env'
+    ports:
+      - '5433:5432'
 
   redis:
     image: 'redis:4.0-alpine'
