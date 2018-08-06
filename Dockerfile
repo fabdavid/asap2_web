@@ -1,6 +1,6 @@
 FROM ruby:2.5-alpine
 
-RUN apk update && apk add build-base nodejs postgresql-dev bash emacs
+RUN apk update && apk add build-base nodejs postgresql-dev bash emacs docker
 
 WORKDIR /app
 

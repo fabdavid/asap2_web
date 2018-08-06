@@ -1393,8 +1393,6 @@ class ProjectsController < ApplicationController
 
   def delete_project(p)
 
-#    if editable? p
-
       ## remove foreign keys to jobs    
       p.update_attributes(:parsing_job_id => nil, :filtering_job_id => nil, :normalization_job_id => nil)
       p.project_dim_reductions.map{|de| de.update_attribute(:job_id, nil)}
@@ -1414,7 +1412,7 @@ class ProjectsController < ApplicationController
         end
       end
       
-      ## delete files                                                                                                                                                                        
+      ## delete files                                                                                            
       new_tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + ((p.user_id == nil) ? '0' : p.user_id.to_s) + p.key
       FileUtils.rm_r new_tmp_dir if File.exist?(new_tmp_dir)
       
@@ -1434,7 +1432,7 @@ class ProjectsController < ApplicationController
       list_pending_jobs.map{|j| j.destroy}
       
       p.destroy
- #   end
+
   end
   
   # DELETE /projects/1

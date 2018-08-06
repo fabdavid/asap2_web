@@ -1,4 +1,6 @@
 development:
+ docker_call:
+  "docker run -ti -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --rm -v /data/asap:/data/asap asap_run"
  server_url:
   https://asap.epfl.ch
  data_dir:
@@ -9,6 +11,8 @@ development:
   /data/uploads
 
 production:
+ docker_call:
+  "docker run -ti -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --rm -v /data/asap:/data/asap asap_run"
  server_url:
   https://asap.epfl.ch
  data_dir:
