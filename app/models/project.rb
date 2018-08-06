@@ -349,7 +349,7 @@ class Project < ApplicationRecord
     #-d %s   Delimiter.
     #-skip %i                Number of lines to skip at the beginning of the file.
     
-    cmd = "java -jar #{Rails.root}/lib/ASAP.jar -T Parsing -organism #{self.organism_id} -o #{tmp_dir} -f #{project_dir + ("input." + self.extension)} -col #{p['gene_name_col']} -d '#{p['delimiter']}' -header #{(p['has_header']) ? 'true' : 'false'} -skip #{p['skip_line']}"  
+    cmd = "#{APP_CONFIG[:docker_call]} java -jar /srv/ASAP.jar -T Parsing -organism #{self.organism_id} -o #{tmp_dir} -f #{project_dir + ("input." + self.extension)} -col #{p['gene_name_col']} -d '#{p['delimiter']}' -header #{(p['has_header']) ? 'true' : 'false'} -skip #{p['skip_line']}"  
     logger.debug("#{cmd}")
 
     queue = 1
@@ -676,7 +676,7 @@ class Project < ApplicationRecord
       #    logger.debug("LIST_ATTRS: " + list_attrs.to_json)
       log_file = project_dir + 'filtering' + "output.log"
       err_file = project_dir + 'filtering' + "output.err"
-      cmd = ["Rscript --vanilla lib/filtering.R",  project_dir + 'parsing' + 'output.tab', project_dir + 'filtering', filter_method.name, list_p.join(' '), ercc_file, "1> #{log_file} 2> #{err_file}"].compact.join(" ")
+      cmd = ["#{APP_CONFIG[:docker_call]} Rscript --vanilla /srv/filtering.R",  project_dir + 'parsing' + 'output.tab', project_dir + 'filtering', filter_method.name, list_p.join(' '), ercc_file, "1> #{log_file} 2> #{err_file}"].compact.join(" ")
       
 #      ### search potentially running script
 #      job = Job.where(:project_id => self.id, :step_id => 2, :status_id => 2).first
@@ -697,7 +697,7 @@ class Project < ApplicationRecord
       #    ## write result files to download 
       #    write_download_file('filtering')
       gene_names_file = project_dir + 'parsing' + 'gene_names.json'
-      cmd = "java -jar #{Rails.root}/lib/ASAP.jar -T CreateDLFile -f #{output_file} -j #{gene_names_file} -o #{output_dir + 'dl_output.tab'}"
+      cmd = "#{APP_CONFIG[:docker_call]} java -jar /srv/ASAP.jar -T CreateDLFile -f #{output_file} -j #{gene_names_file} -o #{output_dir + 'dl_output.tab'}"
       logger.debug("CMD: " + cmd)
       `#{cmd}`
     else
@@ -771,7 +771,7 @@ class Project < ApplicationRecord
       ercc_filename = project_dir + 'parsing' + "ercc.tab"
       ercc_file = ercc_filename if h_parameters['ercc_file_exists']
       
-      cmd = "Rscript --vanilla lib/normalization.R " + [(project_dir + 'filtering' + 'output.tab'), (project_dir + 'normalization'), norm.name, group_file, list_p.join(' '), ercc_file].compact.join(" ") + " 2>&1 > #{project_dir + 'normalization' + "output.log"}"
+      cmd = "#{APP_CONFIG[:docker_call]} Rscript --vanilla /srv/normalization.R " + [(project_dir + 'filtering' + 'output.tab'), (project_dir + 'normalization'), norm.name, group_file, list_p.join(' '), ercc_file].compact.join(" ") + " 2>&1 > #{project_dir + 'normalization' + "output.log"}"
       #      logger.debug("CMD: " + cmd)
       #   Basic::launch_cmd(self, cmd)
       #      pid = spawn(cmd)
@@ -791,7 +791,7 @@ class Project < ApplicationRecord
       ## write result files to download  
       #write_download_file('normalization')
       gene_names_file = project_dir + 'parsing' + 'gene_names.json'
-      cmd = "java -jar #{Rails.root}/lib/ASAP.jar -T CreateDLFile -f #{output_file} -j #{gene_names_file} -o #{output_dir + 'dl_output.tab'}"
+      cmd = "#{APP_CONFIG[:docker_call]} java -jar /srv/ASAP.jar -T CreateDLFile -f #{output_file} -j #{gene_names_file} -o #{output_dir + 'dl_output.tab'}"
       logger.debug("CMD: " + cmd)
       `#{cmd}`
       
