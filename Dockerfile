@@ -34,4 +34,7 @@ USER ${USER}
 
 LABEL maintainer="Fabrice David <fabrice.david@epfl.ch>"
 
+#CMD rm /app/tmp/pids/*
+CMD RAILS_ENV=development bin/delayed_job --pool=fast:1 --pool=medium:1 --pool=slow:1  restart
+
 CMD puma -C config/puma.rb
