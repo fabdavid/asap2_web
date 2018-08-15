@@ -1,18 +1,19 @@
 development:
  docker_call:
-  "docker run -ti -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --rm -v /data/asap:/data/asap asap_run"
+#  'docker run -ti -p 5434:5433 -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --rm --entrypoint "/bin/sh" -v /data/asap2:/data/asap2 fabdavid/asap_run'
+  "docker run --network=asap2_asap_network -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2 fabdavid/asap_run -c" 
  server_url:
   https://asap.epfl.ch
  data_dir:
-  /data
+  /data/asap2
  user_data_dir:
-  /data/users
+  /data/asap2/users
  upload_data_dir:
-  /data/uploads
+  /data/asap2/uploads
 
 production:
  docker_call:
-  "docker run -ti -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --rm -v /data/asap:/data/asap asap_run"
+  "docker run --network=asap2_asap_network -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2 fabdavid/asap_run -c"
  server_url:
   https://asap.epfl.ch
  data_dir:

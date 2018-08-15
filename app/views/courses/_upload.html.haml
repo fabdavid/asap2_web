@@ -1,0 +1,126 @@
+= form_for @course, url: upload_course_path(@course), method: :post, html: { multipart: true, id: "fileupload" } do |f|
+  .row 
+    - if @course.status == 'uploading'
+      .alert.alert-warning.smaller-text
+        The system detected an unfinished upload. To resume it, please select the same file and press the green button. <br />
+        Resume not working or receiving error messages? Then please click #{link_to 'here', reset_upload_course_path(@course)} to delete the temporary file and start over.
+
+  .row.fileupload-buttonbar
+    #js-data{ data: { course: @course.id } }
+    .col-lg-7
+      .btn.btn-primary.fileinput-button{:id => 'button_input_file'}
+        %i.glyphicon.glyphicon-folder-open 
+        %span{:class => "hidden-xs", :style => 'margin-left:5px'}
+          Browse ...
+        = f.file_field :upload
+
+  = hidden_field_tag :path, course_path(@course)
+
+  %table#js-file-container{ role: "presentation" }
+    %tbody.files
+
+
+:javascript
+  $(document).ready(function () {
+    var course_id = $('#js-data').data('course');
+    var controller_name = $('body').data('controller');
+    var model_instance_path = $("#path").val();
+    //    var model_instance_path = '/asap/courses/1';
+    var resume_path = model_instance_path + '/resume_upload';
+    var update_status_path = model_instance_path + '/update_status';
+
+    $('#fileupload').fileupload({
+      maxNumberOfFiles: 1,
+      maxChunkSize: 10000000, // 10 MB
+      //acceptFileTypes: /.+/,
+      //contentType: 'plain/text',
+      type: 'PATCH',
+      beforeSend: function(xhr) {
+       //xhr.setRequestHeader("Accept", "application/json");
+       //xhr.setRequestHeader("Content-type", "plain/text; charset=utf-8");
+      },
+      add: function (e, data) {
+        var that = this;
+        if ($('#js-file-container tbody').children().length == 0){
+          $.getJSON(resume_path, { file: data.files[0].name }, function (result) {
+            var file = result.file;
+            data.uploadedBytes = file && file.size;
+            $.blueimp.fileupload.prototype
+                .options.add.call(that, e, data);        
+          });        
+        }else{
+          alert("Please reload the page");
+        }
+      }
+    });
+
+    $('#fileupload')
+      .bind('fileuploadchunkdone', function (e, data) {
+        var perc = parseInt(data.loaded / data.total * 100, 10);
+        $('#js-completed').html(perc + "%");
+      })
+      .bind('fileuploaddone', function (e, data) {
+        $.ajax({
+          url: update_status_path,
+          type: "PATCH",
+          data: { status: 'uploaded'},
+          success: function(data) {
+            //window.location.replace(model_instance_path);
+            //$('#button_input_file').attr('disabled', 'disabled');
+            //alert("validate");
+            validate_form(true);
+            //            $("#button_input_file").attr("disabled", "disabled");
+            $("#button_input_file").addClass('hidden');
+   
+          } 
+        });
+      });
+    });
+
+:plain
+  <script id="template-upload" type="text/x-tmpl">
+    {% for (var i=0, file; file=o.files[i]; i++) { %}
+        <tr class="template-upload fade">
+
+            <td width="45%">
+                <p class="name"><h3>{%=file.name%}</h3></p>
+                <p class="size">Processing...</p>
+                <strong class="error text-danger"></strong>
+
+                {% if (!i && !o.options.autoUpload) { %}
+                    <button class="btn btn-success start" disabled>
+                        <i class="glyphicon glyphicon-upload"></i>
+                        Start / resume
+                    </button> 
+                {% } %}
+                {% if (!i) { %}
+                    <!--<button class="btn btn-danger cancel" onclick="$('#create_project_button').attr('disabled', 'disabled')">
+                        <i class="glyphicon glyphicon-ban-circle"></i>
+                        Cancel upload
+                    </button>-->
+                {% } %}
+            </td>
+            <td width="45%" style="vertical-align: middle;">
+                <div class="progress progress-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-bar progress-bar-success" style="width:0%;"></div></div>
+                <p><h1 id="js-completed" align="center"></h1></p>
+            </td>
+        </tr>  
+    {% } %}
+  </script>
+
+  <script id="template-download" type="text/x-tmpl">
+    {% for (var i=0, file; file=o.files[i]; i++) { %}
+        <tr class=""><td>
+        <div class="alert alert-success">
+                <span>{%=file.name%} has been uploaded successfully.</span>
+                <span class="size">{%=o.formatFileSize(file.size)%}</span>
+                {% if (file.error) { %}
+                    <!--<div><span class="label label-danger">Error</span> {%=file.error%}</div>-->
+                {% } %}
+
+                {% if (file.error && file.error=='Unprocessable Entity') { %}
+                    <div><span class="label label-danger">Error: The type of the file is incorrect. Input file must be a text file.</span></div>
+                {% } %}
+        </div></td></tr>
+      {% } %}      
+    </script>

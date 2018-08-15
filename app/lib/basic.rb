@@ -123,7 +123,7 @@ module Basic
       
       start_time = Time.now
       
-      logger.debug("CMD: " + cmd)
+      logger.debug("CMD2: " + cmd)
 
 #      jobs = []
 #      if step_id < 5
@@ -134,6 +134,7 @@ module Basic
       ### search potentially running script                                                                                                                    
       
       pid = spawn(cmd)
+      logger.debug("CMD3: " + cmd)
 
       job = Job.find(job_id)
 
@@ -156,8 +157,10 @@ module Basic
 #      else
 #        o.update_attribute(:job_id, job.id)
 #      end
+      logger.debug("BLABLABLA")
 
       Process.waitpid(pid)
+      
       #      launch_cmd(cmd, self)                                                                                                                                           
       logger.debug "CMD_STATUS: #{$?.stopped?}" 
 

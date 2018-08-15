@@ -56,7 +56,7 @@
       <td>
 	<% if de.status %>
         <%= image_tag(de.status.name + "." + de.status.img_extension, :id => ('status_job_' + de.job_id.to_s) , :width => '15px', :style => 'margin-top:-10px;') %>
-        <%= raw "<span class='label label-danger'>#{de.error}</span>" if de.error %>
+        <%= raw "<span class='label label-danger' title='#{de.error}'>#{de.error}</span>" if de.error %>
         <% end %>
       </td>
       <td><%= raw display_date(de.created_at) %></td>

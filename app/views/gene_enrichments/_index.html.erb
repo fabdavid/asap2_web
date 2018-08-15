@@ -33,7 +33,7 @@
          <td>
 	   <% if ge.status %>
 	   <%= image_tag(ge.status.name + "." + ge.status.img_extension, :id => ('status_job_' + ge.job_id.to_s), :width => '15px', :style => 'margin-top:-10px;') %>
-           <%= raw "<span class='label label-danger'>#{ge.error}</span>" if ge.error %>
+           <%= raw "<span class='label label-danger' title='#{ge.error}'>#{ge.error}</span>" if ge.error %>
            <% end %>
          </td>
 	<td><%= raw display_date(ge.created_at) %></td>

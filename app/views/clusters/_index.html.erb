@@ -33,7 +33,7 @@
 	<td>
 	  <% if cluster.status %>
           <%= image_tag(cluster.status.name + "." + cluster.status.img_extension, :id => ('status_job_' + cluster.job_id.to_s), :width => '15px', :style => 'margin-top:-10px;') %>
-          <%= raw "<span class='label label-danger'>#{cluster.error}</span>" if cluster.error %>
+          <%= raw "<span class='label label-danger' title='#{cluster.error}'>#{cluster.error}</span>" if cluster.error %>
           <% end %>
 	</td>
 	<td><%= raw display_date(cluster.created_at) %></td>

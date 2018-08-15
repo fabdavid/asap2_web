@@ -1,6 +1,6 @@
 class Course < ActiveRecord::Base
 
-  belongs_to :project
+  belongs_to :project, :optional => true
 
   # Variables
   COURSE_STATUSES = %w(new uploading uploaded)
