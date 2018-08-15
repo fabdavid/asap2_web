@@ -6,16 +6,27 @@ services:
     volumes:
       - 'postgres:/var/lib/postgresql/data'
       - 'dumps:/dumps'
+    command: -p 5434
     env_file:
       - '.env'
     ports:
-      - '5433:5432'
+      - '5433:5434'
+    expose:
+      - "5434"
+    networks:
+       - asap_network
+#:
+#        ipv4_address: 172.19.0.2
 
   redis:
     image: 'redis:4.0-alpine'
     command: redis-server --requirepass yourpassword
     volumes:
       - 'redis:/data'
+    networks:
+      - asap_network
+#:
+#       ipv4_address: 172.19.0.3
 
   website:
     depends_on:
@@ -27,10 +38,15 @@ services:
     volumes:
       - '.:/app'
       - 'dumps:/dumps'
-      - 'data:/data'
+      - '/data/asap2/:/data/asap2'
       - '/var/run/docker.sock:/var/run/docker.sock'
     env_file:
-      - '.env'
+      - '.env_website'
+    networks:
+       - asap_network
+#:
+#        ipv4_address: 172.19.0.4
+
 
   sidekiq:
     depends_on:
@@ -42,6 +58,10 @@ services:
       - '.:/app'
     env_file:
       - '.env'
+    networks:
+      - asap_network
+#:
+ #      ipv4_address: 172.19.0.5
 
   cable:
     depends_on:
@@ -54,10 +74,25 @@ services:
       - '.:/app'
     env_file:
       - '.env'
+    networks:
+      - asap_network
+#:
+ #      ipv4_address: 172.19.0.6
+
+networks:
+   asap_network:
+    driver: bridge
+ #   driver_opts:
+ #     com.docker.network.enable_ipv6: "false"
+ #   ipam:
+ #     driver: default
+ #     config:
+ #     - subnet: 172.19.0.0/24
+ #       gateway: 172.19.0.1
 
 volumes:
   dumps:
-  data:
+#  data:
   redis:
   postgres:
   

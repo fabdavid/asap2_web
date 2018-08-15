@@ -5,6 +5,17 @@ Rails.application.routes.draw do
     end
   end
 
+  resources :courses do
+    member do
+      get 'upload', to: 'courses#upload'
+      patch 'upload', to: 'courses#do_upload'
+      get 'resume_upload', to: 'courses#resume_upload'
+      patch 'update_status', to: 'courses#update_status'
+      get 'reset_upload', to: 'courses#reset_upload'
+    end
+  end
+
+
   resources :dim_reductions
   resources :gene_sets do
     collection do

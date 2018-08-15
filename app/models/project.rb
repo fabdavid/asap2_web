@@ -5,12 +5,12 @@ class Project < ApplicationRecord
   belongs_to :user
   belongs_to :status
   belongs_to :step
-  belongs_to :session
+  belongs_to :session, :optional => true
   has_many :clusters
   has_many :selections
   has_many :diff_exprs
-  belongs_to :norm
-  belongs_to :filter_method
+  belongs_to :norm, :optional => true
+  belongs_to :filter_method, :optional => true
   belongs_to :organism
   has_many :project_dim_reductions
   has_many :gene_enrichments
@@ -58,7 +58,7 @@ class Project < ApplicationRecord
 
   NewNorm = Struct.new(:project) do
     def perform
-      project.norm
+      project.run_norm
     end
 
     def error(job, exception)
@@ -344,7 +344,7 @@ class Project < ApplicationRecord
     
     project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + self.user_id.to_s + self.key
     tmp_dir = project_dir + 'parsing'
-#    Dir.mkdir(tmp_dir) if !File.exists?(tmp_dir)
+    Dir.mkdir(tmp_dir) if !File.exist?(tmp_dir)
 
     #    Options:
     #-col %s                 Name Column [none, first, last].
@@ -355,7 +355,7 @@ class Project < ApplicationRecord
     #-d %s   Delimiter.
     #-skip %i                Number of lines to skip at the beginning of the file.
     
-    cmd = "#{APP_CONFIG[:docker_call]} java -jar /srv/ASAP.jar -T Parsing -organism #{self.organism_id} -o #{tmp_dir} -f #{project_dir + ("input." + self.extension)} -col #{p['gene_name_col']} -d '#{p['delimiter']}' -header #{(p['has_header']) ? 'true' : 'false'} -skip #{p['skip_line']}"  
+    cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T Parsing -organism #{self.organism_id} -o #{tmp_dir} -f #{project_dir + ("input." + self.extension)} -col #{p['gene_name_col']} -d '#{p['delimiter']}' -header #{(p['has_header']) ? 'true' : 'false'} -skip #{p['skip_line']}\""  
     logger.debug("#{cmd}")
 
     queue = 1
@@ -703,7 +703,7 @@ class Project < ApplicationRecord
       #    ## write result files to download 
       #    write_download_file('filtering')
       gene_names_file = project_dir + 'parsing' + 'gene_names.json'
-      cmd = "#{APP_CONFIG[:docker_call]} java -jar /srv/ASAP.jar -T CreateDLFile -f #{output_file} -j #{gene_names_file} -o #{output_dir + 'dl_output.tab'}"
+      cmd = "#{APP_CONFIG[:docker_call]} -c 'java -jar /srv/ASAP.jar -T CreateDLFile -f #{output_file} -j #{gene_names_file} -o #{output_dir + 'dl_output.tab'}'"
       logger.debug("CMD: " + cmd)
       `#{cmd}`
     else
@@ -738,12 +738,12 @@ class Project < ApplicationRecord
 #    end
   end
 
-  def norm
+  def run_norm
 
     #  require 'basic'
     
     start_time = Time.now
-    self.update_attributes(:status_id => 2)
+    self.update_attributes({:status_id => 2})
     project_step = ProjectStep.where(:project_id => self.id, :step_id => 3).first
     project_step.update_attributes(:status_id => 2)
     
@@ -797,7 +797,7 @@ class Project < ApplicationRecord
       ## write result files to download  
       #write_download_file('normalization')
       gene_names_file = project_dir + 'parsing' + 'gene_names.json'
-      cmd = "#{APP_CONFIG[:docker_call]} java -jar /srv/ASAP.jar -T CreateDLFile -f #{output_file} -j #{gene_names_file} -o #{output_dir + 'dl_output.tab'}"
+      cmd = "#{APP_CONFIG[:docker_call]} -c 'java -jar /srv/ASAP.jar -T CreateDLFile -f #{output_file} -j #{gene_names_file} -o #{output_dir + 'dl_output.tab'}'"
       logger.debug("CMD: " + cmd)
       `#{cmd}`
       

@@ -137,6 +137,7 @@ test = false
 <%# code_piece =" && $('#project_input_filename').val() != ''" : '' %>
 //alert( $('#js-file-container tbody tr td div.alert-success').html());
 if ($("#project_name").val() != '' && ($('#js-file-container tbody tr td div.alert-success').html() || test == true)){
+alert('t');
 $("#create_project_button").removeAttr('disabled')
 }else{
 $("#create_project_button").attr('disabled', 'disabled')
@@ -145,7 +146,7 @@ $("#create_project_button").attr('disabled', 'disabled')
 
 $("#project_name").keyup(function(){validate_form()});
 $("#project_organism_id").change(function(){validate_form()});
-
+<%# if @course_input %>
 refresh("course_input", "<%= upload_course_path(@course_input) %>");
-
+<%# end %>
 <% end %>
