@@ -42,7 +42,7 @@ class Project < ApplicationRecord
 
   NewFilter = Struct.new(:project) do
     def perform
-      project.filter
+      project.start_filter
     end
 
     def error(job, exception)
@@ -58,7 +58,7 @@ class Project < ApplicationRecord
 
   NewNorm = Struct.new(:project) do
     def perform
-      project.run_norm
+      project.start_norm
     end
 
     def error(job, exception)
@@ -642,7 +642,7 @@ class Project < ApplicationRecord
    #    f.close
   end
 
-  def filter
+  def start_filter
 
     require 'basic'
 
@@ -738,7 +738,7 @@ class Project < ApplicationRecord
 #    end
   end
 
-  def run_norm
+  def start_norm
 
     #  require 'basic'
     

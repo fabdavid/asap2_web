@@ -1215,8 +1215,8 @@ class ProjectsController < ApplicationController
       params[:project][:status_id]=1
       params[:project][:duration]=0
       step = @h_steps[params[:project][:step_id].to_i] # Step.where(:id => params[:project][:step_id].to_i).first
-      params[:attrs]||=[]
-      params[:project][(step.obj_name + "_attrs_json").to_sym]=(params[:attrs].size > 0) ? params[:attrs].to_json : "{}" 
+      params[:attrs]||={}
+      params[:project][(step.obj_name + "_attrs_json").to_sym]=(params[:attrs].keys.size > 0) ? params[:attrs].to_json : "{}" 
     else ### update of project details 
       
       #@project.parse_batch_file()
