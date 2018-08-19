@@ -1,10 +1,53 @@
 class GenesController < ApplicationController
   before_action :set_gene, only: [:show, :edit, :update, :destroy]
 
+  def autocomplete
+    to_render = []
+    final_list=[]
+    
+    project = Project.find_by_key(params[:project_key])
+    data_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + project.user_id.to_s + project.key
+    filename = data_dir + 'parsing' + "gene_names.json"
+
+    gene_list = JSON.parse(File.read(filename)).flatten
+    h_genes = {}
+    
+    gene_list.each do |identifier|
+      identifier.split(",").each do |tmp|
+        h_genes[tmp.downcase]=1
+      end
+    end
+    
+    gene_names = GeneName.select("gene_id, value").where("organism_id = ? and lower(value) ~ ?", params[:organism_id], ("^" + params[:term].downcase)).all
+    h_gene_names = {}
+    h_all_gene_names = {}
+    gene_names.each do |gn|
+        h_all_gene_names[gn.value.downcase]=1
+    end
+    
+    final_list = Gene.select("id, name, ensembl_id, alt_names").where(:id => gene_names.map{|e| e.gene_id}.uniq)# | Gene.where(:id => gene_names[1].map{|e| e.gene_id}.uniq)                                                                                              
+    to_render = final_list.to_a.select{|e| h_genes[e.ensembl_id.downcase] or h_genes[e.name.downcase]}.first(20).map{|e| {:id => e.id, :label => "#{e.ensembl_id} #{e.name}" + ((e.alt_names.size > 0) ? " [" + e.alt_names.split(",").join(", ") + "]" : '')}}
+    
+    render :text => to_render.to_json
+  end
+  
+
   # GET /genes
   # GET /genes.json
   def index
-    @genes = Gene.all
+    h_cond={}
+    h_cond[:organism_id] = params[:organism_id] if params[:organism_id]
+    
+    @genes = Gene.select("id, name").where(h_cond).all
+    output = []
+    @genes.each do |g|
+      h = {:name => g.name}
+      output.push h 
+    end
+    respond_to do |format|
+      format.html {render :nothing}
+      format.json {render :json => output.to_json}
+    end
   end
 
   # GET /genes/1

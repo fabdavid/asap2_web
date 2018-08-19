@@ -137,7 +137,6 @@ test = false
 <%# code_piece =" && $('#project_input_filename').val() != ''" : '' %>
 //alert( $('#js-file-container tbody tr td div.alert-success').html());
 if ($("#project_name").val() != '' && ($('#js-file-container tbody tr td div.alert-success').html() || test == true)){
-alert('t');
 $("#create_project_button").removeAttr('disabled')
 }else{
 $("#create_project_button").attr('disabled', 'disabled')

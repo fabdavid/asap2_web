@@ -93,6 +93,7 @@ class Project < ApplicationRecord
     fm = self.filter_method
     job = Basic.create_job(self, 2, self, :filtering_job_id, (fm) ? fm.speed_id : 'fast') if fm
     delayed_job = Delayed::Job.enqueue NewFilter.new(self), :queue => (fm and fm.speed) ? fm.speed.name : 'fast'
+#    self.start_filter
     job.update_attributes(:delayed_job_id => delayed_job.id) if job
   end
   
@@ -102,8 +103,9 @@ class Project < ApplicationRecord
 #    norm
     nm = Norm.where(:id => self.norm_id).first
     job = Basic.create_job(self, 3, self, :normalization_job_id, nm.speed_id) if nm
-    delayed_job = Delayed::Job.enqueue NewNorm.new(self), :queue => (nm and nm.speed) ? nm.speed.name : 'fast'
-    job.update_attributes(:delayed_job_id => delayed_job.id) if job
+#    delayed_job = Delayed::Job.enqueue NewNorm.new(self), :queue => (nm and nm.speed) ? nm.speed.name : 'fast'
+    self.start_norm
+#    job.update_attributes(:delayed_job_id => delayed_job.id) if job
   end
 
   def get_cells
@@ -645,7 +647,7 @@ class Project < ApplicationRecord
   def start_filter
 
     require 'basic'
-
+    logger.debug("BLA!!!!!")
     start_time = Time.now
     self.update_attributes(:status_id => 2)
     project_step = ProjectStep.where(:project_id => self.id, :step_id => 2).first
@@ -672,18 +674,16 @@ class Project < ApplicationRecord
         list_p.push((h_parameters[attr['name']]) ? h_parameters[attr['name']] : attr['default'])
       end
 
-
       ercc_file = nil
       ercc_filename = project_dir + 'parsing' + "ercc.tab"
       ercc_file = ercc_filename if h_parameters['ercc_file_exists']
-
 
       #    logger.debug("H_PARAMETERS: " + h_parameters.to_json)
       #    logger.debug("LIST_ATTRS: " + list_attrs.to_json)
       log_file = project_dir + 'filtering' + "output.log"
       err_file = project_dir + 'filtering' + "output.err"
-      cmd = ["#{APP_CONFIG[:docker_call]} Rscript --vanilla /srv/filtering.R",  project_dir + 'parsing' + 'output.tab', project_dir + 'filtering', filter_method.name, list_p.join(' '), ercc_file, "1> #{log_file} 2> #{err_file}"].compact.join(" ")
-      
+      cmd = ["#{APP_CONFIG[:docker_call]}" + " '" + "Rscript --vanilla /srv/filtering.R",  project_dir + 'parsing' + 'output.tab', project_dir + 'filtering', filter_method.name, list_p.join(' '), ercc_file, "1> #{log_file} 2> #{err_file}", "'"].compact.join(" ") 
+       logger.debug "CMD: #{cmd.to_json}"
 #      ### search potentially running script
 #      job = Job.where(:project_id => self.id, :step_id => 2, :status_id => 2).first
 #      if job and `ps -ef | grep 'rvmuser' | grep '#{job.pid}' | wc -l`.to_i > 0
@@ -740,7 +740,7 @@ class Project < ApplicationRecord
 
   def start_norm
 
-    #  require 'basic'
+    require 'basic'
     
     start_time = Time.now
     self.update_attributes({:status_id => 2})
@@ -777,8 +777,8 @@ class Project < ApplicationRecord
       ercc_filename = project_dir + 'parsing' + "ercc.tab"
       ercc_file = ercc_filename if h_parameters['ercc_file_exists']
       
-      cmd = "#{APP_CONFIG[:docker_call]} Rscript --vanilla /srv/normalization.R " + [(project_dir + 'filtering' + 'output.tab'), (project_dir + 'normalization'), norm.name, group_file, list_p.join(' '), ercc_file].compact.join(" ") + " 2>&1 > #{project_dir + 'normalization' + "output.log"}"
-      #      logger.debug("CMD: " + cmd)
+      cmd = "#{APP_CONFIG[:docker_call]} 'Rscript --vanilla /srv/normalization.R " + [(project_dir + 'filtering' + 'output.tab'), (project_dir + 'normalization'), norm.name, group_file, list_p.join(' '), ercc_file].compact.join(" ") + " 2>&1 > #{project_dir + 'normalization' + "output.log"}'"
+      logger.debug("CMD: " + cmd)
       #   Basic::launch_cmd(self, cmd)
       #      pid = spawn(cmd)
       #      Process.waitpid(pid)
@@ -901,6 +901,7 @@ class Project < ApplicationRecord
         job = Basic.create_job(new_pdr, 4, self, :job_id, dr.speed_id)
         #  pdr.delay(:queue => (dr.speed) ? dr.speed.name : 'fast').run                                                                                                                                                     
         delayed_job = Delayed::Job.enqueue ProjectDimReduction::NewVisualization.new(new_pdr), :queue => (dr.speed) ? dr.speed.name : 'fast'
+#        new_pdr.run(nil)
         job.update_attributes(:delayed_job_id => delayed_job.id) 
 
       end
