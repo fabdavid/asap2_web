@@ -37,11 +37,10 @@ class ProjectDimReduction < ApplicationRecord
       puts "Deleting file #{e}..."
       File.delete(visualization_dir+ e)
     end
-
     
     h_cmds = {
-      'visualization.R' => "Rscript --vanilla lib/visualization.R",
-      'zifa.py' => "export MKL_NUM_THREADS=4 && export NUMEXPR_NUM_THREADS=4 && export OMP_NUM_THREADS=4 && python lib/zifa.py",
+      'visualization.R' => "#{APP_CONFIG[:docker_call]} \"Rscript --vanilla /srv/visualization.R",
+      'zifa.py' => "#{APP_CONFIG[:docker_call]} \"export MKL_NUM_THREADS=4 && export NUMEXPR_NUM_THREADS=4 && export OMP_NUM_THREADS=4 && python /srv/zifa.py",
  #     'heatmap.R' => "Rscript --vanilla --max-ppsize=500000 lib/heatmap.R",
  #     'correlation.R' => "rails --trace create_correlation[#{self.id}]"
     }
@@ -67,7 +66,7 @@ class ProjectDimReduction < ApplicationRecord
         list_p.push((h_parameters[attr['name']]) ? h_parameters[attr['name']] : attr['default'])
       end    
       
-      cmd = ([h_cmds[dr.program], (project_dir + 'normalization' + 'output.tab'), visualization_dir, dr.name] + list_p).join(" ")
+      cmd = ([h_cmds[dr.program], (project_dir + 'normalization' + 'output.tab'), visualization_dir, dr.name, '"'] + list_p).join(" ")
 
     elsif dr.id == 5
 

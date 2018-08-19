@@ -1181,7 +1181,7 @@ class ProjectsController < ApplicationController
         manage_access()
         
         @project.parse_files()
-        @project.parse()
+        #        @project.parse()
         session[:active_step]=1
         format.html { redirect_to project_path(@project.key) #, notice: 'Project was successfully created.'
         }

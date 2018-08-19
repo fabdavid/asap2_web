@@ -8,7 +8,8 @@ class Upload < ActiveRecord::Base
 
   # Paperclip
   has_attached_file :upload, url: "/storage/:class/:id/:basename.:extension"
-  validates_attachment :upload, content_type: { content_type: ['application/zip', 'application/pdf', 'text/plain'] }
+#  validates_attachment :upload, content_type: { content_type: ['application/zip', 'application/x-gzip', 'application/pdf', 'text/plain'] }
+  do_not_validate_attachment_file_type  :upload
 
   def to_jq_upload(error=nil)
     {
