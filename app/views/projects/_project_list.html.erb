@@ -104,7 +104,7 @@ $(document).ready(function() {
 //aaSorting: []
  //   });
 
-$("a").on('click',function(event){
+$("#projects a").on('click',function(event){
 var href = this.href;
 event.preventDefault();
 window.clearInterval(timer);
@@ -112,7 +112,7 @@ window.clearInterval(timer);
 window.location = href;
 });
 
-$(".delete_item").click(function(){
+$("#projects .delete_item").click(function(){
  var t = this.id.split("_");
  var p = [];
  p.push({name : 'nolayout', value : 1})
