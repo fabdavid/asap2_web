@@ -104,12 +104,12 @@
     
 
 <%= javascript_tag do %>
+
 $("#home_link").on('click',function(event){
 var href = this.href;
 event.preventDefault();
 if (typeof timer !== 'undefined')
  window.clearInterval(timer);
-//window.clearTimeout(timer);
 window.location = href;
 });
 
