@@ -1,0 +1,17 @@
+<%= form_with(model: filtering, local: true) do |form| %>
+  <% if filtering.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(filtering.errors.count, "error") %> prohibited this filtering from being saved:</h2>
+
+      <ul>
+      <% filtering.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

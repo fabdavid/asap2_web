@@ -1,0 +1,17 @@
+<%= form_with(model: imputation, local: true) do |form| %>
+  <% if imputation.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(imputation.errors.count, "error") %> prohibited this imputation from being saved:</h2>
+
+      <ul>
+      <% imputation.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

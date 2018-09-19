@@ -132,7 +132,7 @@ class ProjectsController < ApplicationController
         #    new_e.status_id = nil if [1, 2].include?(new_e.status_id) 
         new_project.project_steps << new_e
       }
-      @project.courses.map{|e| new_e = e.dup; new_e.update_attribute(:project_key, new_project.key); new_project.courses << new_e}
+      @project.fus.map{|e| new_e = e.dup; new_e.update_attribute(:project_key, new_project.key); new_project.fus << new_e}
  
       ## do not clone the jobs that are kept only for stat purpose
       #@project.jobs.select{|e| [3,4].include?(e.status_id)}.sort{|a, b| a.updated_at <=> b.updated_at}.map{|e| new_job = e.dup; new_job.cloned_job_id=e.id; new_project.jobs << new_job}
@@ -284,7 +284,7 @@ class ProjectsController < ApplicationController
     else
       @redirect_to_main_page = 1
     end
-    render :partial => 'pipeline_upd'
+    render :partial => 'pipeline_upd2'
     
   end
   
@@ -387,7 +387,7 @@ class ProjectsController < ApplicationController
           #logger.debug("blabla 2: " + params[:attrs][:dim1] + " : " + @pdr.to_json)
           if analyzable?(@project) and (@pdr.dim_reduction_id < 5 or owner?(@project))
             #  logger.debug("blabla 3")
-                      logger.debug("RERUN2! #{params[:attrs].to_json} #{@pdr.attrs_json}")
+            logger.debug("RERUN2! #{params[:attrs].to_json} #{@pdr.attrs_json}")
             File.delete tmp_dir + 'output.json' if File.exist? tmp_dir + 'output.json'
             rerun_dim_reduction(@pdr)
           end
@@ -950,6 +950,8 @@ class ProjectsController < ApplicationController
         end
         @h_statuses={}
         Status.all.map{|s| @h_statuses[s.id]=s}
+        @h_steps={}
+        Step.all.map{|s| @h_steps[s.id]=s}
       end
     else
       @error = "The project doesn't exist or the session has expired. Please create a new project."
@@ -962,23 +964,23 @@ class ProjectsController < ApplicationController
 
     ### reset upload
 
-    h = {:upload_type => 1, :project_key => project_key}
-    @course_inputs = Course.where(h).all
+    h = {:upload_type => 1, :project_key => project_key, :user_id => (current_user) ? current_user.id : 1}
+    @fu_inputs = Fu.where(h).all
      
-    if @course_inputs.count > 0
-      @course_inputs.to_a.each do |course_input|
-        if course_input.upload_file_name
-          file_path = Pathname.new(APP_CONFIG[:upload_data_dir]) + 'courses' + course_input.id.to_s + course_input.upload_file_name
+    if @fu_inputs.count > 0
+      @fu_inputs.to_a.each do |fu_input|
+        if fu_input.upload_file_name
+          file_path = Pathname.new(APP_CONFIG[:upload_data_dir]) + fu_input.id.to_s + fu_input.upload_file_name
           File.delete file_path if File.exist?(file_path)
         end
-        course_input.destroy
+        fu_input.destroy
         # end
       end
     end
 
     h[:status]= 'new'
-    @course_input = Course.new(h)
-    @course_input.save!
+    @fu_input = Fu.new(h)
+    @fu_input.save!
     
     ### reset project
 
@@ -1104,17 +1106,29 @@ class ProjectsController < ApplicationController
       delete_project(p)
     end
     
-    tmp_attrs = params[:attrs]
+    tmp_attrs = params[:attrs] || {}
     tmp_attrs[:has_header] = 1 if tmp_attrs[:has_header]
+    [:file_type, :sel_name, :nb_cells, :nb_genes].each do |k|
+      tmp_attrs[k] = params[k] if !params[k].strip.empty?
+    end
+    if tmp_attrs[:file_type] != 'RAW_TEXT' ## delete the RAW_TEXT parsing options
+      [:delimiter, :col_gene_name, :has_header].each do |k|
+        tmp_attrs.delete(k)
+      end
+    end
     @project.parsing_attrs_json = tmp_attrs.to_json
     
     @project.user_id = (current_user) ? current_user.id : 1
     @project.sandbox = (current_user) ? false : true
     @project.session_id = (s = Session.where(:session_id => session.id).first) ? s.id : nil
 
-    input_file = Course.where(:project_key => @project.key).first
+    input_file = Fu.where(:project_key => @project.key).first
     @project.input_filename = input_file.upload_file_name
 
+    file_path = Pathname.new(APP_CONFIG[:upload_data_dir]) + input_file.id.to_s + input_file.upload_file_name
+
+    logger.debug("CMD_ls0 " + `ls -alt #{file_path}`)
+    
     default_diff_expr_filters = {
       :fc_cutoff => '2',
       :fdr_cutoff => '0.05'
@@ -1126,9 +1140,10 @@ class ProjectsController < ApplicationController
     }
     @project.gene_enrichment_filter_json = default_gene_enrichment_filters.to_json
 
-    tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s
-    File.delete tmp_dir + ('input.' + @project.extension) if File.exist?(tmp_dir + ('input.' + @project.extension))
-    
+#    tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s
+#    File.delete tmp_dir + ('input.' + @project.extension) if File.exist?(tmp_dir + ('input.' + @project.extension))
+    logger.debug("1. File #{file_path} exists!") if File.exist?(file_path)
+
     respond_to do |format|
       if input_file and @project.save
 
@@ -1136,7 +1151,7 @@ class ProjectsController < ApplicationController
         
         ### get extension
         ext = input_file.upload_file_name.split(".").last
-        if ext != 'zip' and ext != 'gz'
+        if !['zip', 'gz', 'h5', 'loom'].include? ext
           ext = 'txt'
         end
         @project.update_attribute(:extension, ext)
@@ -1149,9 +1164,9 @@ class ProjectsController < ApplicationController
         Dir.mkdir(tmp_dir) if !File.exist?(tmp_dir)
         tmp_dir += @project.key   
         Dir.mkdir(tmp_dir) if !File.exist?(tmp_dir)
-        upload_path =  Pathname.new(APP_CONFIG[:upload_data_dir]) + 'courses' + input_file.id.to_s + input_file.upload_file_name
-        `dos2unix #{upload_path}`
-        `mac2unix #{upload_path}`        
+        upload_path =  Pathname.new(APP_CONFIG[:upload_data_dir]) + input_file.id.to_s + input_file.upload_file_name
+        #`dos2unix #{upload_path}`
+        #`mac2unix #{upload_path}`        
         ### to be sure because normally it is already deleted
         File.delete tmp_dir + ('input.' + @project.extension) if File.exist?(tmp_dir + ('input.' + @project.extension))
         # ext = input_file.upload_file_name.split(".").last
@@ -1161,14 +1176,14 @@ class ProjectsController < ApplicationController
         
         File.delete tmp_dir + ('input.' + ext) if File.exist?(tmp_dir + ('input.'+ ext))
         File.symlink upload_path, tmp_dir + ('input.' + ext) 
-
+#        logger.debug("2. File #{file_path} exists!") if File.exist?(file_path)
         ### parse batch_file
 
         #        @project.parse_batch_file()
 
         ### init project_steps
         
-        (1 .. 7).each do |step_id|
+        (1 .. Step.count).each do |step_id|
           project_step = ProjectStep.where(:project_id => @project.id, :step_id => step_id).first
           if !project_step
             project_step = ProjectStep.new(:project_id => @project.id, :step_id => step_id, :status_id => (step_id == 1) ? 1 : nil  )
@@ -1179,8 +1194,11 @@ class ProjectsController < ApplicationController
         ### read_write access
 
         manage_access()
+        logger.debug("3. File #{file_path} exists!") if File.exist?(file_path)
         
         @project.parse_files()
+        logger.debug("4. File #{file_path} exists!") if File.exist?(file_path)
+        
         #        @project.parse()
         session[:active_step]=1
         format.html { redirect_to project_path(@project.key) #, notice: 'Project was successfully created.'
@@ -1376,7 +1394,7 @@ class ProjectsController < ApplicationController
           #    session[:last_update_active_step] = last_update
           #  end
             
-            render :partial => 'pipeline_upd' #:nothing => true
+            render :partial => 'pipeline_upd2' #:nothing => true
           else
             ### reset active_step
             session[:override_active_step]=1
@@ -1418,7 +1436,7 @@ class ProjectsController < ApplicationController
       
       # delete objects
       p.shares.destroy_all
-      p.courses.destroy_all
+      #p.fus.destroy_all
       p.project_steps.destroy_all
       p.gene_enrichments.destroy_all
       p.diff_exprs.destroy_all

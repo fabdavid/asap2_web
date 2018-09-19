@@ -1,4 +1,4 @@
-<nav class="navbar navbar-light bg-faded  navbar-fixed-top" style='background-color:white;z-index:10000'>
+<!--<nav class="navbar navbar-light bg-faded  navbar-fixed-top" style='background-color:white;z-index:10000'>
 <ul id='dim_reduction_tabs' class="nav nav-tabs">
 <% DimReduction.all.sort.each do |dr| %>
  <% img = '' %>
@@ -15,7 +15,7 @@
  #class_names.push('active') if session[:active_viz_type] == 'heatmap' %>
 <%# end %>
 </ul>
-</nav>
+</nav>-->
 
 <div id='full_screen_visualization' class='hidden'>
   <div class='window_close'><span onclick="$('#full_screen_visualization').addClass('hidden');">x</span></div>
@@ -76,7 +76,8 @@ $( document ).ready(function() {
  refresh_visualisation(<%= session[:active_dr_id] %>, <%= session[:active_dr_id] %>, '<%= session[:active_viz_type] %>', true);
 });
 
-set_margins();
+// remove set margins
+//set_margins();
 
 <% end %>
 

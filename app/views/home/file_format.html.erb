@@ -1,0 +1,50 @@
+<ul id='list_formats'>
+<li>
+<div class='panel panel-default panel-formats'>
+<div class='panel-heading'>Input file format</div>
+<div class='panel_container'>
+<table><tr><td>
+<%= image_tag 'format_asap_small.png', { } %>
+</td><td>
+Example file:
+<pre>
+<%= `cut -f 1-10 /data/asap/input_without_quotes.tab | head` %>
+</pre>
+
+</td></tr></table>
+
+</div>
+</div>
+</li>
+
+<li>
+<a id="batch_file"></a>
+<div class='panel panel-default panel-formats'>
+<div class='panel-heading'>Batch file format</div>
+<div class='panel_container'>
+<table><tr><td>
+<%= image_tag 'format_batch_small.png', { } %>
+</td><td>
+Example file:
+<pre>
+<%= `cut -f 1-10 /data/asap/batch.txt | head` %>
+</pre>
+
+</td></tr></table>
+</div>
+</div>
+</li>
+
+<li>
+<a id="geneset_file"></a>
+<div class='panel panel-default panel-formats'>
+<div class='panel-heading'>Geneset file</div>
+<div class='panel_container'>
+<table><tr><td>
+<a href='http://software.broadinstitute.org/cancer/software/gsea/wiki/index.php/Data_formats#GMT:_Gene_Matrix_Transposed_file_format_.28.2A.gmt.29'>GMT format</a>
+</td></tr></table>
+</div>
+</div>
+</li>
+
+</ul>

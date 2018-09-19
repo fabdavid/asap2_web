@@ -1,0 +1,17 @@
+<%= form_with(model: figure, local: true) do |form| %>
+  <% if figure.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(figure.errors.count, "error") %> prohibited this figure from being saved:</h2>
+
+      <ul>
+      <% figure.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

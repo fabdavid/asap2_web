@@ -5,6 +5,7 @@ class Project < ApplicationRecord
   belongs_to :user
   belongs_to :status
   belongs_to :step
+  has_many :fus
   belongs_to :session, :optional => true
   has_many :clusters
   has_many :selections
@@ -76,7 +77,7 @@ class Project < ApplicationRecord
   def parse_files 
     job = Basic.create_job(self, 1, self, :parsing_job_id, 1)
     #    p[:filename]='input'
-#          parse
+     #     parse
     delayed_job = Delayed::Job.enqueue NewParsing.new(self), :queue => 'fast'
     job.update_attributes(:delayed_job_id => delayed_job.id) #job.id)
   end
@@ -85,7 +86,6 @@ class Project < ApplicationRecord
     cmd = "rails --trace parse[#{self.id}] 2>&1 log/parse.log"
     logger.debug("CMD = #{cmd}")
     `#{cmd}`
-
   end
   
   def run_filter
@@ -348,6 +348,9 @@ class Project < ApplicationRecord
     tmp_dir = project_dir + 'parsing'
     Dir.mkdir(tmp_dir) if !File.exist?(tmp_dir)
 
+    filepath = File.readlink(project_dir + ("input." + self.extension)) 
+    logger.debug("CMD_ls4 " + `ls -alt #{filepath}`)
+
     #    Options:
     #-col %s                 Name Column [none, first, last].
     #-o %s           Output folder
@@ -357,29 +360,34 @@ class Project < ApplicationRecord
     #-d %s   Delimiter.
     #-skip %i                Number of lines to skip at the beginning of the file.
     
-    cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T Parsing -organism #{self.organism_id} -o #{tmp_dir} -f #{project_dir + ("input." + self.extension)} -col #{p['gene_name_col']} -d '#{p['delimiter']}' -header #{(p['has_header']) ? 'true' : 'false'} -skip #{p['skip_line']}\""  
+    #cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T Parsing -organism #{self.organism_id} -o #{tmp_dir} -f #{project_dir + ("input." + self.extension)} -col #{p['gene_name_col']} -d '#{p['delimiter']}' -header #{(p['has_header']) ? 'true' : 'false'} -skip #{p['skip_line']}\""
+
+#    cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T Parsing -organism #{self.organism_id} -o #{tmp_dir} -f #{project_dir + ("input." + self.extension)} -col #{p['gene_name_col']} -d '#{p['delimiter']}' -header #{(p['has_header']) ? 'true' : 'false'}\""  
+    options = []
+    options.push("-sel '#{p['sel_name']}'") if p['sel_name']
+    options.push("-col #{p['gene_name_col']}") if p['gene_name_col']
+    options.push("-d '#{p['delimiter']}'") if p['delimiter'] and p['delimiter'] != ''
+    options.push("-header " + ((p['has_header'] and p['has_header'] == '1') ? 'true' : 'false')) if p['has_header']
+    options.push("-ncells #{p['nb_cells']}")
+    options.push("-ngenes #{p['nb_genes']}")
+    options.push("-type #{p['file_type']}")
+    options_txt = options.join(" ")
+
+    cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T Parsing -organism #{self.organism_id} -o #{tmp_dir} -f #{filepath} #{options_txt}\""
     logger.debug("#{cmd}")
 
     queue = 1
 
-    output_file = tmp_dir + "output.tab"
+    logger.debug("CMD_ls4 " + `ls -alt #{filepath}`)
+    output_file = tmp_dir + "output.loom"
     output_json = tmp_dir + "output.json"
+    #    FileUtils.touch output_json if !File.exist?(output_json)
     job = Basic.run_job(logger, cmd, self, self, 1, output_file, output_json, queue, self.parsing_job_id, self.user)
     
-    ## write result files to download                                                                                                                                               
-    #    puts "write download file"
-    #    write_download_file('parsing')
-
+    #    cmd = "rails parse_batch_file[#{self.key}]"
+    #    logger.debug("CMD: " + cmd)
+    #    `#{cmd}`
     
-    ## copy group file                                                                                                                                                              
-    #if File.exist?(project_dir + "group.txt")
-    #  FileUtils.cp project_dir + "group.txt", tmp_dir + "group.tab"
-    #end
-    cmd = "rails parse_batch_file[#{self.key}]"
-    logger.debug("CMD: " + cmd)
-    `#{cmd}`
-    # self.parse_batch_file()
-
     content_json_file = File.read(output_json)
     status_id = 3
     h_parsing={}
@@ -404,9 +412,8 @@ class Project < ApplicationRecord
                            :nber_genes => h_parsing['nber_genes'] || nil
                            )
     project_step.update_attributes(:status_id => status_id)   
-
   end
-
+  
   def parse2
     
     begin

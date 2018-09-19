@@ -42,7 +42,7 @@
 	<td><%= project.nber_cells %></td>
         <td><%= project.nber_genes %></td>
         <td><%= ((step = project.step) ? step.label : 'NA') %></th>
-        <td><%= raw ((status = project.status) ? "<span class='label label-#{status.label}'>#{status.name}</span>" : 'NA') %></td>
+        <td><%= raw ((status = project.status) ? "<span class='badge badge-#{status.label}'>#{status.name}</span>" : 'NA') %></td>
         <td><%= raw ((project.duration) ? (duration((project.status_id == 2) ? (Time.now - project.updated_at) : project.duration)) : '') %></td>
         <td><%= raw display_date(project.created_at) %></td>
         <td><%= raw display_date(project.updated_at) %></td>
@@ -51,7 +51,7 @@
 	<td>
 	  <% shares = project.shares %>
 	  <% if (current_user and u.email == current_user.email) or admin? %>
-	  <%= raw ((nb_shares = shares.size) > 0) ? ("<span title='" + shares.map{|s| s.email + "[" + [s.view_perm && 'V', s.analyze_perm && 'A', s.export_perm && 'E'].select{|e| e}.join(",") + "]"}.join(", ") + "'>Shared <span class='label label-info'>#{nb_shares}</span></span>") : "Not shared" %>
+	  <%= raw ((nb_shares = shares.size) > 0) ? ("<span title='" + shares.map{|s| s.email + "[" + [s.view_perm && 'V', s.analyze_perm && 'A', s.export_perm && 'E'].select{|e| e}.join(",") + "]"}.join(", ") + "'>Shared <span class='badge badge-info'>#{nb_shares}</span></span>") : "Not shared" %>
  <% elsif s = shares.select{|s| s.email == current_user.email}.first %>
 	   <%# (read_only?(project)) ? ' : 'Read/Write' %> 
 	   <% h_title = {'eye-open' => 'View', 'stats' => 'Analyze', 'export' => 'Export'} %>
@@ -70,7 +70,7 @@
 <% end %>
         <td>
 	  <%# if project.input_filename %>
-    	  <%= button_to ((!analyzable?(project)) ? 'View' : 'Open'), project_path(project.key), {:class => 'btn btn-primary', :method => 'get'} %>
+    	  <%= button_to ((!analyzable?(project)) ? 'View' : 'Open'), project_path(project.key), {:class => 'btn btn-primary btn-sm', :method => 'get'} %>
 	  <%# else %>
 	  <%# button_to 'Upload', upload_form_project_path(project.key), {:class => 'btn btn-primary', :method => 'get'} %>
 	  <%# end %>
@@ -78,12 +78,12 @@
 <% if current_user %>
 <td> 
   <% clone_text = (current_user) ? 'Clone' : 'Clone to sandbox' %>
-	  <%= button_to clone_text, clone_project_path(project.key), {:class => 'btn btn-primary', :method => 'get'} if project.project_steps.select{|ps| [1,2].include?(ps.status_id)}.size == 0 and exportable? project %>
+	  <%= button_to clone_text, clone_project_path(project.key), {:class => 'btn btn-primary btn-sm', :method => 'get'} if project.project_steps.select{|ps| [1,2].include?(ps.status_id)}.size == 0 and exportable? project %>
  	</td>
 <% end %>
-        <td><%# button_to('Destroy', project_path(project.key), method: :delete, data: { confirm: 'Are you sure?' }, :class => 'btn btn-danger') if current_user and current_user.id == project.user_id %>
+        <td><%# button_to('Destroy', project_path(project.key), method: :delete, data: { confirm: 'Are you sure?' }, :class => 'btn btn-danger btn-sm') if current_user and current_user.id == project.user_id %>
 	  <% if (current_user and current_user.id == project.user_id) or admin? %>
-	  <button class='delete_item btn btn-danger' id='delete_<%= project.key %>'>Delete</button>
+	  <button class='delete_item btn btn-danger btn-sm' id='delete_<%= project.key %>'>Delete</button>
           <% end %>
 	</td>
       </tr>

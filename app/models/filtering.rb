@@ -1,0 +1,2 @@
+class Filtering < ApplicationRecord
+end

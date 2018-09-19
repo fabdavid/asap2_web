@@ -1,0 +1,199 @@
+<div class='alert alert-success'>
+  File <%= @fu.upload_file_name %> was successfully uploaded (<%= (@fu.upload_file_size.to_f/1000000).round(1).to_s %> Mo) and identified as a <%= @h_format[@h_upload_details['detected_format']][:description]  %> file<%= 's' if @h_format[@h_upload_details['detected_format']][:many] %>.
+</div>
+
+<div id='loading_dataset' class='loading hidden'>
+  <i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i><br/><span class='loading_text'>Please wait, loading preview...</span>
+</div>
+
+<% if @error %>
+<div id='preparsing_error' class='row'>
+  <span class='alert alert-danger'><%= @error %></span>
+</div>
+<% end %>
+
+<div id='list_datasets' class="list-group <%= 'hidden' if @current_dataset or params[:sel] %>">
+  <% if @list_datasets.size > 0 %>
+  <%= @list_datasets.size %> datasets found. Which one do you want to load ?
+  <% elsif @current_dataset %>
+  1 dataset found.
+  <% else %>
+  No dataset found.
+  <% end %>
+  
+  <% @list_datasets.each do |d| %>
+  <a class="list-group-item list-group-item-action"><%= d['filename'] %></a>
+  <% end %>
+  <%= hidden_field_tag 'sel_name', (params[:sel] || '') %>
+  <%= hidden_field_tag 'file_type', @h_upload_details['detected_format'] %>
+</div>
+
+<div id='dataset_details'>
+  <% if @current_dataset %>
+  
+  <% nb_genes = @current_dataset['matrix'].size %>
+  <% nb_cells = @current_dataset['matrix'][0].size %>
+  
+  <div class='card-deck'>
+    <div class='card'>
+      <div class='card-body' style='overflow:hidden'>
+	<div>
+	  <i class='fa fa-file-o fa-3x'><div style='position:relative;top:-15px;left:5px;font-size:10px;font-weight:bold;background-color:<%= @h_format[@h_upload_details['detected_format']][:color] %>;color:white;padding:3px;border:2px solid white'><%= @h_format[@h_upload_details['detected_format']][:label] %></div></i>
+	  <div style='position:relative;top:-45px;left:40px;font-size:16px'>
+	    Dataset <span class='dataset_name'><%= @current_dataset['group'] %></span>
+	  </div>
+          <div style='margin-top:-30px'>
+	    <table id='summary_dataset'><tbody>
+		<tr><td>Number cells</td><td><%= @current_dataset['nb_cells'] %></td></tr>
+		<tr><td>Number genes</td><td><%= @current_dataset['nb_genes'] %></td></tr>
+		<tr><td>Count matrix?</td><td><%= (@current_dataset['is_count'] == 1) ? 'Yes' : 'No' %></td></tr>
+            </tbody></table>
+	  </div>
+	  <% if (@current_dataset or @error) and  @list_datasets.size > 1 %>
+          <div style='float:right'>
+            <div id='cancel_sel'  class='btn btn-outline-secondary'>Select other dataset</div>
+          </div>
+          <% end %>
+	  
+	</div>
+      </div>
+    </div>
+    <% if (@current_dataset or @error) and @h_json['detected_format'] == 'RAW_TEXT' %>
+    <div class='card'>
+      <div class='card-header'>
+	Parsing parameters
+      </div>
+      <div class='card-body'>
+	<%# @current_dataset.to_json %>
+	<%# @error.to_json %>
+	<!--  <div id='txt_format_parameters' class='form-group row'>-->
+	<!--      <form class='form'>-->
+	<div class='form-group2 row'>
+	  <%= label_tag 'attrs[delimiter]', "Delimiter", {'class' => 'col-6 col-form-label', 'data-toggle' => "tooltip", 'title' => "Character delimiting the fields in the input text file."} %>
+	  <% l = [['Tabulation', ''], ['Space', " "], ['Semicolon', ";"], ['Comma', ',']] %>
+	  <%= select_tag 'attrs[delimiter]', options_for_select(l, (params[:delimiter] || '')), {class: 'col-6 form-control2'}  %>
+	</div>
+	<div class='form-group2 row'>
+	  <%= label_tag 'attrs[gene_name_col]', "Gene name column", {'class' => 'col-6 col-form-label'} %>
+	  <% l = [['First column', 'first'], ['None', 'none'], ['Last column', 'last']] %>
+	  <%= select_tag 'attrs[gene_name_col]', options_for_select(l, (params[:gene_name_col] || 'first')), {class: 'col-6 form-control2'}  %>
+	</div>
+	<div class='form-group2 row' style='white-space:nowrap'>
+	  <%= check_box_tag 'attrs[has_header]', 1, ((params[:has_header] and params[:has_header] == '1') or !params[:has_header]), {:class => 'form_checkbox'}  %>
+	  <%= label_tag 'attrs[has_header]', "Cell names header is present in line 1", {'class' => 'form-label', 'data-toggle' => "tooltip", 'title' => "If the cell names header is not present, cell names are generated and contain the column index."} %>
+	</div>
+	<!--      </form>-->
+      </div>
+    </div>
+    <% end %>
+  </div> 
+  
+  <div id='preview' class='card'>
+    <div class='card-header'>
+      Data preview (first <span><%= nb_genes %> x <%= nb_cells %></span> matrix)
+    </div>
+    <div class='card-body'>
+      <table id='preview_table' class='datatable hover' width='100%'>
+	<thead>
+	  <th><span class='gene_label'>Genes</span> \ <span class='cell_label'>Cells</span></th>
+	  <% (0 .. (nb_cells-1)).each do |ci| %> 
+	  <% c = (@current_dataset['cells']) ? @current_dataset['cells'][ci] : ('Cell_' + (ci + 1).to_s) %> 
+	  <th class='cell_name <%= 'imputed_name' if !@current_dataset['cells'] %>' title='<%= c %>'><%= c %></th>
+	  <% end %>
+	</thead>
+	<tbody>
+	  <% (0 .. (nb_genes-1)).each do |gi| %>
+	  <% g = (@current_dataset['genes']) ? @current_dataset['genes'][gi] : ('Gene_' + (gi + 1).to_s) %>
+	  <tr>
+	    <td class='gene_name bold <%= 'imputed_name' if !@current_dataset['genes'] %>' title='<%= g %>'><%= g %></td>
+	    <% (0 .. (nb_cells-1)).each do |ci| %>
+	    <%# c = @current_dataset['cells'][ci] %>
+	    <td><%= (@current_dataset['is_count'] == 1) ? @current_dataset['matrix'][gi][ci].to_i : @current_dataset['matrix'][gi][ci] %></td>
+	    <% end %>
+	  </tr>
+	  <% end %>
+	</tbody>
+      </table>
+      <% if (!@current_dataset['genes'] and nb_genes > 0) or (!@current_dataset['cells'] and nb_cells > 0) %>
+      <span class='imputed_name bold'>* Imputed names</span> 
+      <% end %>
+    </div>
+  </div>
+  <% end %>
+  
+</div>
+
+
+<%= javascript_tag do %>
+
+/* check if the project name field is still empty */
+if ($("#project_name").val().trim() == ''){
+$("#project_name").css("border", "1px solid red");
+$("#project_name").css("background-color", "#FFFAFA");
+}
+
+<% if @current_dataset %>
+$("#preview_table").dataTable({
+"sDom": 'Wsrt',
+"ordering": false,
+"columnDefs": [
+    { "width": "20%", "sortable": false, "targets": 0 },
+    { "width": "8%", "className": 'dt-body-right', "sortable": false, "targets": [<%= raw (1 .. nb_cells).to_a.join(",") %>] }
+  ]
+});
+
+
+$("#nb_cells").val(<%= @current_dataset['nb_cells'] %>);
+$("#nb_genes").val(<%= @current_dataset['nb_genes'] %>);
+// activate the create project button if project name is not empty  and number of cells > 1 and number of genes > 0
+$("#nb_cells_preview").val(<%= nb_cells %>);
+$("#nb_genes_preview").val(<%= nb_genes %>);
+validate_form(true);
+
+<% end %>
+
+function upd_preparsing(e){
+  $("#list_datasets").addClass("hidden");
+  $("#preparsing_error").addClass("hidden");
+  $("#dataset_details").addClass("hidden");
+  $("#loading_dataset").removeClass("hidden");
+ 
+  var p = [];
+ <% if @current_dataset and @current_dataset['detected_format'] == 'RAW_TEXT' %>
+  if (e == 'upd'){  
+   p = [
+   {name : 'delimiter', value : $("#attrs_delimiter").val()},
+   {name : 'gene_name_col', value : $("#attrs_gene_name_col").val()},
+   //{name : 'skip_line', value : $("#attrs_skip_line").val()},
+   {name : 'has_header', value : ($("#attrs_has_header").prop("checked") == true) ? '1' : '0'}
+  ];
+  }
+  <% end %>
+  p.push({name : 'organism', value : $("#project_organism_id").val()})
+  if ($("#sel_name") && $("#sel_name").val() != ''){
+   //  alert($("#sel_name").val())
+   p.push({name : 'sel', value : $("#sel_name").val()})
+  }
+  
+  refresh_post("preparsing", "<%= preparsing_fu_path(@fu) %>", p, 'post');
+}
+
+$("#dataset_details input").change(function(){
+ upd_preparsing('upd')
+})
+$("#dataset_details select").change(function(){
+ upd_preparsing('upd')
+})
+
+$("#cancel_sel").click(function(){
+ $("#list_datasets").removeClass("hidden");
+ $("#dataset_details").addClass("hidden");
+ $("#preparsing_error").addClass("hidden"); 
+})
+
+$("#list_datasets a").click(function(){
+ $("#sel_name").val($(this).html());
+// alert($(this).html());
+ upd_preparsing('new')
+})
+<% end %>

@@ -1,0 +1,181 @@
+  <div id='project_header'>
+    <div id='project_title' title='<%= @project.name || 'No name' %>'>
+      <% organism_name = (@project.organism) ? @project.organism.short_name : 'No name' %>
+      <b><%= @project.name || 'No name' %></b> <i>(<%= organism_name %>)</i>
+    </div>
+    <div id='project_details'>
+      <% if !(@project.sandbox == true or (current_user and current_user.id == @project.user_id)) %>
+      <div id='shared_by'>
+	<% if s = @project.shares.select{|s| s.email == current_user.email}.first %>
+        <% h_title = {'eye-open' => 'View', 'stats' => 'Analyze', 'export' => 'Export'} %>
+        <%= raw [s.view_perm && 'eye-open', s.analyze_perm && 'stats', s.export_perm && 'export'].select{|e| e}.map{|e|
+            "<i title='#{h_title[e]}' class='glyphicon glyphicon-" + e + "'></i>"
+            }.join(" ") %>
+	<% end %>
+	Shared by
+        <span class='bold' title='<%= @project.user.email %>'><%= @project.user.email %></span>
+      </div>
+<!--      <div style='display:block;float:left;margin-left:10px'>
+        <% if s = @project.shares.select{|s| s.email == current_user.email}.first %>
+        <% h_title = {'eye-open' => 'View', 'stats' => 'Analyze', 'export' => 'Export'} %>
+        <%= raw [s.view_perm && 'eye-open', s.analyze_perm && 'stats', s.export_perm && 'export'].select{|e| e}.map{|e|
+            "<i title='#{h_title[e]}' class='glyphicon glyphicon-" + e + "'></i>"
+            }.join(" ") %>
+        <% end %>
+      </div>-->
+      <% elsif @project.sandbox == true %>
+      <div id='shared_by'>
+        <span style='' title='anonymous'>Anonymous</span>
+      </div>
+      <% end %>
+    </div>
+    <div style='color:#DDDDDD;float:right; margin-right:15px; margin-top:10px'><h4>
+      <% if editable? @project %> 
+       <span id='edit_project' title='Edit project'><i class='fa fa-cog'></i></span>   
+      <% end %>       
+      <% if exportable?(@project) %>   
+      <span id='clone_button' title='Clone'><i class='fa fa-files-o'></i></span> 
+      <% end %>                          
+</h4>
+    </div>
+    <div style='clear:both'></div>
+  </div>
+<div id="step-menu" class="nav-side-menu">
+  <i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-content"></i>
+
+        <div class="menu-list">
+  
+            <ul id="menu-content" class="menu-content collapse out list-group">
+	  <!--    <li class='list-group-item list-group-item-action active'>Dummy</li>-->
+	      <% Step.all.sort{|a,b| a.rank <=> b.rank }.select{|s| ProjectStep.where(:project_id => @project.id, :step_id => s.id).first}.each do |step| %>
+	      <% img =  image_tag('', :width => '15px', :class => 'hidden', :style => 'margin-top:-10px;') %>
+	      <% status = ProjectStep.where(:project_id => @project.id, :step_id => step.id).first.status %>
+	      <% img = image_tag(status.name + "." + status.img_extension, :width => '15px', :style => 'margin-top:-10px;') if status and step.name == 'parsing' %>
+	      <% class_names = ['pipeline_step', 'list-group-item', 'list-group-item-action'] %>
+	      <li <%= raw "data-toggle='tooltip' title=''" if step.name == 'de' %> 
+		  <%= raw "data-toggle='collapse' data-target='#visualization_submenu' class='collapsed active'" if step.name == 'visualization' %>
+		  id="step_<%= step.id %>" class="<%= class_names.join(" ") %>" >
+		  <%= raw step.label.capitalize %>
+                  <span class='step_status'>
+		  <% if step.name == 'visualization' %>
+		   <%= raw "<span style='font-color:grey' class='fa fa-caret-down'></span>" %>
+		  <% else %>
+		   <span class='nber_pending label label-default badge badge-secondary'><%= '0' if step.id > 1 %></span>
+		   <span class='nber_running label label-default badge badge-running'><%= '0' if step.id > 1 %></span>
+		   <span class='nber_failed label label-default badge badge-danger'><%= '0' if step.id > 1 %></span>
+		   <span class='nber_success label label-default badge badge-success'><%= '0' if step.id > 1 %></span> 
+		   <%= img %>
+		  <% end %>
+                  </span>
+	      </li>
+	      <% if step.name == 'visualization' %>
+	        <ul class="sub-menu collapse" id='visualization_submenu'>
+		  <li id='viz_item_dim_reductions'>Dimension reductions</li>
+		  <% DimReduction.where(:dim_reduction => false).all.sort{|a,b| a.rank <=> b.rank}.each do |dr| %>
+		  <li id='viz_item_<%= dr.id %>'><%= dr.label %></li>
+		  <% end %>
+		</ul>
+	      <% end %>
+	      
+	      <% end %>
+<!--
+                <li>
+                  <a href="#">
+                  <i class="fa fa-dashboard fa-lg"></i> Dashboard
+                  </a>
+                </li>
+
+                <li  data-toggle="collapse" data-target="#products" class="collapsed active">
+                  <a href="#"><i class="fa fa-gift fa-lg"></i> UI Elements <span class="arrow"></span></a>
+                </li>
+                <ul class="sub-menu collapse" id="products">
+                    <li class="active"><a href="#">CSS3 Animation</a></li>
+                    <li><a href="#">General</a></li>
+                    <li><a href="#">Buttons</a></li>
+                    <li><a href="#">Tabs & Accordions</a></li>
+                    <li><a href="#">Typography</a></li>
+                    <li><a href="#">FontAwesome</a></li>
+                    <li><a href="#">Slider</a></li>
+                    <li><a href="#">Panels</a></li>
+                    <li><a href="#">Widgets</a></li>
+                    <li><a href="#">Bootstrap Model</a></li>
+                </ul>
+
+                <li data-toggle="collapse" data-target="#service" class="collapsed">
+                  <a href="#"><i class="fa fa-globe fa-lg"></i> Services <span class="arrow"></span></a>
+                </li>  
+                <ul class="sub-menu collapse" id="service">
+                  <li>New Service 1</li>
+                  <li>New Service 2</li>
+                  <li>New Service 3</li>
+                </ul>
+
+
+                <li data-toggle="collapse" data-target="#new" class="collapsed">
+                  <a href="#"><i class="fa fa-car fa-lg"></i> New <span class="arrow"></span></a>
+                </li>
+                <ul class="sub-menu collapse" id="new">
+                  <li>New New 1</li>
+                  <li>New New 2</li>
+                  <li>New New 3</li>
+                </ul>
+
+
+                 <li>
+                  <a href="#">
+                  <i class="fa fa-user fa-lg"></i> Profile
+                  </a>
+                  </li>
+
+                 <li>
+                  <a href="#">
+                  <i class="fa fa-users fa-lg"></i> Users
+                  </a>
+                </li>
+-->
+            </ul>
+	</div>
+</div>
+
+<div style='position:fixed;bottom:10px;left:5px;z-index:10000'>
+<%= link_to( image_tag('youtube.svg', {:width => '45px'}), 'https://www.youtube.com/embed/Qk3fwXt3RSM?autoplay=1', {:target => '_blank', :class => 'youtube_link'}) %>
+<%= link_to 'To cite us', citation_home_index_path(), :class => 'btn btn-info btn-sm', :style => 'margin-right:10px' %>
+<button type='button' class='btn btn-warning btn-sm' onclick="location.href='mailto:webmaster.bbcf@epfl.ch?subject=ASAP feedback'">Feedback</button>
+</div>
+
+<%= javascript_tag do %>
+
+$("#edit_project").click(function(){
+refresh("form_container", "<%= edit_project_path(@project.key) %>?global=1");
+$("#ontop_window").removeClass("hidden");
+});
+
+$(".pipeline_step").click(function(){
+var step_id = this.id.split("_")[1];
+for (var i=1; i<=<%= Step.count %>; i++){
+ $("#step_" + i).removeClass("active");
+}
+if (!$(this).hasClass("disabled")){
+ $(this).addClass("active");
+ $("#popup_window").addClass('hidden');
+ refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>&active_step=" + step_id);
+}
+$("#popup_window").addClass('hidden');
+});
+
+<% if @h_steps[session[:active_step]].name == 'visualisation' %>
+ var pdrs = <%= raw @project.project_dim_reductions.map{|pdr| [pdr.dim_reduction_id, ((pdr.status_id) ? raw(image_url(@h_statuses[pdr.status_id].name + "." + @h_statuses[pdr.status_id].img_extension)) : '')]}.to_json %>;
+ for (var i=0; i<pdrs.length; i++){
+  $("#dr_" + pdrs[i][0] + " img").attr("src", pdrs[i][1]);
+ }
+ $('#dim_reduction_tabs li.active').removeClass('active');
+<% if  session[:active_dr_id] %>
+ $("#dr_" + <%= session[:active_dr_id] %>).parent().addClass("active");
+<% end %>
+<% end %>
+
+$("#clone_button").click(function(){
+window.location = "<%= clone_project_path(@project.key) %>";
+});
+
+<% end %>

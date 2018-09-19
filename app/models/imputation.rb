@@ -1,0 +1,2 @@
+class Imputation < ApplicationRecord
+end

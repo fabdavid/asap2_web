@@ -16,7 +16,7 @@
 <% list_p = ["input_gene", "ensembl_id", "gene_name", "alt_names", "logFC", "pval", "FDR", "AvCountG1", "AvCountG2", "AvNormG1", "AvNormG2"]
 #list_p.push(["AvNormG1", "AvNormG2"]).flatten! if @diff_expr.diff_expr_method.creates_av_norm == true %>
 
-<table id='list_of_genes'>
+<table id='list_of_genes' width=100%>
 <thead>
 <% list_p.select{|k| @results[k]}.each do |k| %>
 <th><%= h[k] %></th>

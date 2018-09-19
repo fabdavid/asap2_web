@@ -1,0 +1,133 @@
+<h2>Example project & sandbox</h2>
+
+<div class='alert alert-info'>
+<b>Figure S1. Initial login screen</b><br/>
+When the user is not logged in, he can see the example project from Dueck et al. [1]. If the user wishes only to look at the project without modifying anything, then the "View (read-only)" button allows viewing the project without being able to modify any part of the analysis. The other option is to "Clone to sandbox" which will create a perfect copy of the project that the user will be able to modify. Finally, the user can create a "New sandbox project" with her/his own dataset. The main restriction of not being logged in is that all the Sandbox projects are erased once the user's session ends.
+</div>
+<br/>
+<div class='tutorial-img''>
+<%= image_tag 'image001.png' %>
+</div>
+<h2>Case Study on the dataset by Dueck et al. [1] (5 cell types from <i>Mus musculus</i>)</h2>
+
+<div class='alert alert-info'>
+<b>Figure S2. Login screen for registered user</b><br/>
+List of created project for this user ("My projects") and projects that are made public ("Public project"). Of note, the public projects contain the Example project and are not directly editable (should be cloned). This screen shows info and the current status of the project and the last step that was performed.
+</div>
+<br>
+<div class='tutorial-img'>
+<%= image_tag 'image002.png' %>
+</div>
+
+<div class='alert alert-info'>
+<b>Figure S3. New project screen</b><br/>
+Here the user can name his project and upload a dataset (count matrix or already normalized matrix). The Organism specification is used for mapping to Ensembl IDs and for the functional enrichment. It is possible as an option to upload a file for batch effect correction.
+</div>
+<br>
+<div class='tutorial-img'>
+<%= image_tag 'image003.png' %>
+</div>
+
+<div class='alert alert-info'>
+<b>Figure S4. Parsing results</b><br/>
+Display of statistics on the uploaded dataset as well as the utilized options / parameters. These parameters are shown in grey boxes and define how the file was parsed (according to the user's specifications when uploading the file): contains gene names, has headers and the delimiter string used (here Tab). Then ASAP provides the results of the parsing such as the number of genes and cells, and the percentage of zeros. The parser also checks if the source file is a count table (which allows all tools to be used) or not (which restrict the possible tools). Similarly, the parser checks for duplicated gene names (if there are gene names) and remove any duplicates. Finally, the parser extract ERCC names from the main dataset which allows further tools to perform specific actions (such as extra normalization using scLVM [2]) ASAP also automatically checks in its databases for connection with gene symbols and Ensembl Ids and count the number of genes that could not be mapped. Here 7.07% could not be found/mapped to the database, which raises a warning but still allow full pipeline usability
+</div>
+<br>
+<div class='tutorial-img'>
+<%= image_tag 'image004.png' %>
+</div>
+
+<div class='alert alert-info'>
+<b>Figure S5. Filtering results</b><br/>
+First part of the Figure displays the utilized options / parameters. Below: Different plots are available and can be shown depending on the method that was used for the filtering step (here Pagoda [3]). Visualized are the gene expression distribution per sample (top plot) and number of expressed genes per cell (bottom plot). The latter plot recapitulates the results in the Dueck et al. paper (Fig. 1C, although here it is visualized per sample and not per group).
+</div>
+<br>
+<div class='tutorial-img'>
+<%= image_tag 'image005.png' %>
+</div>
+
+
+<div class='alert alert-info'>
+<b>Figure S6. Normalization results</b></br/>
+First part of the Figure displays the utilized options / parameters. Below: Different plots are available and can be shown depending on the method that was used for data normalization (here Voom [4]). Here, a graph indicating the gene expression distribution per sample after normalization is shown.
+</div>
+<br>
+<div class='tutorial-img'>
+<%= image_tag 'image006.png' %>
+</div>
+
+<div class='alert alert-info'>
+<b>Figure S7. Visualization</b><br/>
+The shown panels are generated automatically after normalization. Both 2D and 3D plots are available and are fully interactive (zooming, rotating, coloring, selection of cells). The PC on the axis can also be changed. Coloring can be done according to clustering, selection, or gene expression. The orange dot next to the ZIFA [5] tab indicates that the analysis is still running. Once completed, it will be automatically displayed. Also, the 3D plot is very similar (if not better given the clearer separation of the clusters) to the 3D PCA plot shown in Fig. 1A of the Dueck et al. paper. See Figure S13 & S14 for additional coloring options for these plots.
+</div>
+<br>
+<div class='tutorial-img'>
+<%= image_tag 'image007.png' %>
+</div>
+
+<div class='alert alert-info'>
+<b>Figure S8. Clustering results</b><br/>
+The user can select different clustering methods that can be applied on the data (after filtering or after normalization) or on the 5 first components of the dimension reduction methods used for visualization. If the user inputs "Auto" in the Number of clusters box, then a silhouette analysis is performed to determine the optimal number of clusters (the silhouette plot corresponding to the optimal number of cluster can be downloaded by clicking the "Silhouette" button). Thereafter, the user can see which cells belong to which cluster by clicking on each of the respective clusters. In addition, the user can specifically select a cluster, which will appear at the bottom of the screen, along with the manual selection of cells that can be done on the visualization output. The selection can further be renamed and modified through the Selections pane by clicking on a selection of interest (blank box).
+</div>
+<br>
+<div class='tutorial-img'>
+<%= image_tag 'image008.png' %>
+</div>
+
+<div class='alert alert-info'>
+<b>Figure S9. Differential gene expression results</b><br/> 
+In this window, the user can search for differentially expressed genes between two groups of previously selected cells. The user can also select one group only, and the other, comparative group will then automatically contain all the remaining cells. This option may be useful to find specific marker genes for one cluster of interest. The listed results show the number of up- and down-regulated genes in the first compared to the second cluster. The user can click on one of the two to see the list of differentially expressed genes (see Figure S10). Note that the orange icons visible in the "status" column of the SCDE [3] and DESeq2 [6] rows (#3 & #4) indicate that the analysis is still running. Once completed, the results will be automatically displayed (the user can still interact with the rest of the website/analysis in the meantime).
+</div>
+<br>
+<div class='tutorial-img'>
+<%= image_tag 'image009.png' %>
+</div>
+
+<div class='alert alert-info'>
+<b>Figure S10. List of differentially expressed genes</b></br/>
+As shown in Figure S9, the user can click on the results from the differential gene expression analysis to display the list of up- or down-regulated genes. This result table is sortable and can be downloaded as a tab-separated matrix for further analysis. This screenshot shows the result table that is provided to the user. In this example, the list corresponds to up-regulated genes as detected by DESeq2 in the BAT (brown adipocytes) cluster compared to the other cells. Adipoq, Fabp4, and Cfd are known marker genes of adipocytes. Of note, all the differentially expressed genes shown in Fig. 1B of the Dueck et al. paper were detected here as well. Most of them are in the top 20 up-regulated genes, and all of them are in the top 500 differentially expressed genes (ranked by Fold Change).
+</div>
+<br>
+<div class='tutorial-img'>
+<%= image_tag 'image010.png' %>
+</div>
+
+<div class='alert alert-info'>
+<b>Figure S11. Functional gene enrichment results</b><br/>
+The user can analyze the differentially expressed genes (top list or full list) that were found in the previous step for enrichment in particular GO, KEGG or Gene Atlas gene sets. This is useful to functionally characterize a particular cluster. The number in green corresponds to the number of gene sets in which the selected genes are significantly enriched. Upon clicking this green tag, the list of enriched gene sets appears in a sortable table (see Figure S12).
+</div>
+<br>
+<div class='tutorial-img'>
+<%= image_tag 'image011.png' %>
+</div>
+
+<div class='alert alert-info'>
+<b>Figure S12. List of enriched pathways</b><br/>
+As shown in Figure S11, the user can click on a list of enriched gene sets for a given list of differentially expressed genes. This screenshot shows the result table that is provided to the user. Two lists are shown as examples. The top one corresponds to Gene Atlas cell types that are enriched for the top 100 differentially expressed genes. We can see that the genes unveiled in the BAT group are indeed markers of adipocytes, and more significantly for brown adipocytes. In the second panel (bottom), we can see the enrichment results in Gene Ontology (GO) Biological Processes for the top 1000 differentially expressed genes in the BAT group. The top results also are concordant with lipid accumulation and more specifically with brown fat cell differentiation.
+</div>
+<br>
+<div class='tutorial-img'>
+<%= image_tag 'image012.png' %>
+</div>
+
+<div class='alert alert-info'>
+<b>Figure S13. Coloring by selection/cluster</b><br/>
+The plots can be colored according to clusters or selections.
+</div>
+<br>
+<div class='tutorial-img'>
+<%= image_tag 'image013.png' %>
+</div>
+
+<div class='alert alert-info'>
+<b>Figure S14. Coloring by gene expression</b><br/> 
+The plots can be colored according to the expression level of specific genes (here according to Adiponectin expression, which highlights the Brown Adipocyte (BAT) cells).
+</div>
+<br>
+<div class='tutorial-img'>
+<%= image_tag 'image014.png' %>
+</div>
+
+
+ 
+

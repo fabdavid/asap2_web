@@ -27,7 +27,7 @@
     </div>
 
     <% if current_user %>
-    <span class='h3'>
+    <span class='h5'>
       <% if admin? %>
       All projects
       <%= image_tag 'info.svg', {:width => '20px', :style=> 'margin-top:-20px', 'data-toggle'=>"tooltip", 'data-placement'=>"right", :title=>""} %>
@@ -42,7 +42,7 @@
     </span>
     
     <% else %>
-    <span class='h3' style='margin-right:2em'>Sandbox
+    <span class='h5' style='margin-right:2em'>Sandbox
       <%= image_tag 'info.svg', {:width => '20px', :style=> 'margin-top:-20px', 'data-toggle'=>"tooltip", 'data-placement'=>"right", :title=>"Here you can create a single modifiable temporary project by uploading your own file or cloning an example project."} %></span>
     <% end %>
   </div>
@@ -76,7 +76,7 @@
       </div>
     </div>
     
-    <span class='h3'>
+    <span class='h5'>
       <% if current_user %>
       Public projects
       <%= image_tag 'info.svg', {:width => '20px', :style=> 'margin-top:-20px', 'data-toggle'=>"tooltip", 'data-placement'=>"right", :title=>"Here you can see all projects that were posted as public by any registered user. You can make any project public using the [Edit project] link"} %>

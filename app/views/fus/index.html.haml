@@ -1,0 +1,11 @@
+%h1 
+  All file uploads
+  = link_to 'Add a new file upload', new_fu_path, class: "btn btn-large btn-success"
+%hr
+.padding-bottom
+
+
+- @fus.each do |fu|
+  .row
+    = link_to fu.name, fu
+

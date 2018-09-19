@@ -1,7 +1,7 @@
 development:
  docker_call:
 #  'docker run -ti -p 5434:5433 -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --rm --entrypoint "/bin/sh" -v /data/asap2:/data/asap2 fabdavid/asap_run'
-  "docker run --network=asap2_asap_network -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2 fabdavid/asap_run -c" 
+  "docker run --network=asap2_asap_network -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2  -v /srv/asap_run/srv:/srv fabdavid/asap_run -c" 
  server_url:
   https://asap.epfl.ch
  data_dir:
@@ -9,16 +9,18 @@ development:
  user_data_dir:
   /data/asap2/users
  upload_data_dir:
-  /data/asap2/uploads
+  /data/asap2/fus
+ hdf5lib_path:
+  /srv/CMake-hdf5-1.10.2/HDF5-1.10.2-Linux/HDF_Group/HDF5/1.10.2/lib
 
 production:
  docker_call:
-  "docker run --network=asap2_asap_network -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2 fabdavid/asap_run -c"
+  "docker run --network=asap2_asap_network -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2 -v /srv/asap_run/srv:/srv fabdavid/asap_run -c"
  server_url:
   https://asap.epfl.ch
  data_dir:
-  /data
+  /data/asap2
  user_data_dir:
-  /data/users
+  /data/asap2/users
  upload_data_dir:
-  /data/uploads
+  /data/asap2/fus

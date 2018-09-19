@@ -1,5 +1,6 @@
 class StepsController < ApplicationController
   before_action :set_step, only: [:show, :edit, :update, :destroy]
+  before_action :check_access #, :only => [:new, :create, :destroy, :update]
 
   # GET /steps
   # GET /steps.json
@@ -62,13 +63,20 @@ class StepsController < ApplicationController
   end
 
   private
-    # Use callbacks to share common setup or constraints between actions.
-    def set_step
-      @step = Step.find(params[:id])
-    end
+  # Use callbacks to share common setup or constraints between actions.
+  def set_step
+    @step = Step.find(params[:id])
+  end
+  
+  # Never trust parameters from the scary internet, only allow the white list through.
+  def step_params
+    params.fetch(:step).permit(:obj_name, :name, :label, :description, :rank)
+  end
+  
+  protected
+  
+  def check_access
+    redirect_to root_path and return unless admin?
+  end
 
-    # Never trust parameters from the scary internet, only allow the white list through.
-    def step_params
-      params.fetch(:step, {})
-    end
 end

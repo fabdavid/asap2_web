@@ -1,0 +1,19 @@
+<ul id='about_menu' class="nav nav-pills">
+  <li role="presentation" class="about_item active"><a id='am_1' href="#">Current version</a></li>
+  <li role="presentation" class="about_item"><a id='am_2' href="#">History</a></li>
+  <li role="presentation" class="about_item"><a id='am_3' href="#">FAQ</a></li>
+  <li role="presentation" class="about_item"><a id='am_4' href="#">Tutorial</a></li>
+  <li role="presentation" class="about_item"><a id='am_5' href="#">Citation</a></li>
+  <!--  <li role="presentation"><a href="#">Contributions/Feedback</a></li>-->
+</ul>
+
+<%= javascript_tag do  %>
+
+$(".about_item a").click(function(){
+ var item_id = this.id.split("_")[1];
+ $('#about_menu li.active').removeClass('active');
+ $("#am_" + item_id).parent().addClass("active");
+ refresh(item_id);
+});
+
+<% end %>

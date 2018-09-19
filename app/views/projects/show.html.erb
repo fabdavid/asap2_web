@@ -38,9 +38,11 @@ Dear users, during a maintenance procedure on April 13th 2017, current sandbox p
   <div id='popup_container3'></div>
 </div><div class='clear'></div>
 
-<div id='pipeline_container'><%= render :partial => 'pipeline' %></div>
-<p id="notice"><%= notice %></p>
-<div id='step_container'></div>
+<div id='pipeline_container'><%= render :partial => 'pipeline2' %></div>
+<div id='project_container'>
+  <p id="notice"><%= notice %></p>
+  <div id='step_container'></div>
+</div>
 
 <% gene_set = GeneSet.new %>
 <%= form_for(gene_set, :url => gene_sets_path(:project_key => @project.key))  do |f| %>
@@ -52,7 +54,7 @@ Dear users, during a maintenance procedure on April 13th 2017, current sandbox p
 <% end %>
 
 <div id='cart'>
-  <%= render :partial => 'projects/cart' %>
+  <%# render :partial => 'projects/cart' %>
 </div>
 <div id='last_project_step' class='hidden'><%= raw @last_update %></div>
 
@@ -60,20 +62,22 @@ Dear users, during a maintenance procedure on April 13th 2017, current sandbox p
 <!--<nav id="cart" class="navbar navbar-fixed-bottom<%= other_classes %>">-->
 <%= javascript_tag do %>
 
-
-var timer = setInterval(function(){
-//alert('titi');
+// this is the original update
+/*var timer = setInterval(function(){
 refresh_pipeline();
 }, 5000);
+*/
 
 refresh_pipeline();
 
 //$( window ).unbind("resize");
 $( window ).resize(function() {
-set_margins()
+// remove set margins
+//set_margins()
 });
 
-set_margins();
+// no need to set margins in new design
+//set_margins();
 
 
 function refresh_pipeline(){

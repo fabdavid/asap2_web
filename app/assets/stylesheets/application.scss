@@ -1,0 +1,46 @@
+// Custom bootstrap variables must be set or imported *before* bootstrap.
+@import "variables";
+@import "bootstrap";
+
+#main {margin-bottom:100px; margin-left:10px; margin-right:10px; margin-top:95px;}
+
+label.col-form-label {margin-bottom:0px}
+.col-form-label {white-space:nowrap;overflow:ellipsis}
+.row {margin-right:0px;margin-left:0px}
+.form-group {margin-bottom:1rem}
+.form-group2 {
+@extend .form-group;
+margin-bottom:0.3rem}
+.form-control2 {
+@extend .form-control;
+margin-bottom:0rem}
+.form-label {margin-bottom:0}
+.card-deck {margin-right:0px;margin-left:0px}
+.alert {margin-right:15px; margin-left:15px}
+.youtube_link {margin-right:10px}
+.fullscreen_form {font-size:12px}
+
+#bold {font-weight:bold}
+.bold {font-weight:bold}
+.italic {font-style:italic}
+
+.datatable th {
+  overflow: hidden; /* this is what fixes the expansion */
+  text-overflow: ellipsis; /* not supported in all browsers, but I accepted the tradeoff */
+  white-space: nowrap;
+}
+
+.datatable td {
+  overflow: hidden; /* this is what fixes the expansion */
+  text-overflow: ellipsis; /* not supported in all browsers, but I accepted the tradeoff */
+  white-space: nowrap;
+}
+.datatable {
+  table-layout: fixed
+}
+
+/*.form-control {padding-top:0px;padding-bottom:0px;}*/
+.form_checkbox {
+  margin-left: 15px;
+  margin-right: 5px;
+}

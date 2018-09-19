@@ -18,12 +18,20 @@
  *= require jquery.fileupload-ui 
  *= require trajectory 
  *= require main
- *= require bootstrap
 */
 
 .wrappable::after { content: ' ' }
- 
-#main {margin-bottom:100px; margin-left:10px; margin-right:10px; margin-top:50px}
+
+.btn-group-xs > .btn, .btn-xs {
+    padding  : .25rem .4rem;
+    font-size  : .675rem;
+    line-height  : .5;
+    border-radius : .2rem;
+} 
+
+.badge-running {
+    background-color:orange
+}
 
 #infos {width:100%; margin-right:0px; margin-left:0px}
 #infos div {padding-left:5px; padding-right:5px}
@@ -60,22 +68,6 @@
     display:inline;
 }
 
-.job_list {margin-top:15px; width:100%; table-layout:fixed; border-collapse:collapse}
-
-.job_list tr th {vertical-align:top; padding-right:5px; overflow:hidden;text-align:center}
-.job_list tr td {vertical-align:top; padding-right:5px; border-top:1px solid #CCCCCC; padding-bottom:5px; padding-top:5px; overflow:hidden;text-align:center}
-
-table.job_list td.project_name{
-width:500px;
-white-space: nowrap;
-overflow:hidden;
-}
-table.job_list td.email{
-width:300px;
-white-space: nowrap;
-overflow:hidden;
-}
-
 #dim_reduction_tabs nav ul li a {cursor:pointer}
 #about_menu li a {cursor:pointer}
 
@@ -86,8 +78,8 @@ overflow:hidden;
 div.ontop_window_active {display:block;}
 div.ontop_window_inactive {display:none;}
 
-/*#ontop_window {position:absolute;top:200px;left:7px; right:7px; height:50em;\
- z-index:100; border:0px; background-color:white;}*/
+/*#ontop_window {position:absolute;top:200px;left:7px; right:7px; height:50em; z-index:100; border:0px; background-color:white;}*/
+
 #ontop_window.right-sided {height:auto; left:11em; right:0px; width:auto;}
 #ontop_window.reload {position:fixed;  top:10px; bottom:10px; left:10px; right:10px}
 .window_close {position:absolute; right:0px; top:0px; font-size:20px; margin-top:5px; margin-right:10px; cursor:pointer; z-index:100030}
@@ -138,14 +130,16 @@ div.ontop_window_inactive {display:none;}
 #visualization_form{ margin-bottom: 10px}
 #visualization_container{}
 
+
 /*#edit_project {color:blue; cursor:pointer}*/
+
 #pipeline {z-index:20000;}
 #project_label {vertical-align:top;margin-top:-10px}
 
-#navbar {z-index:30000}
+/*#navbar {z-index:30000}
 #navbar ul {z-index:30000}
 #navbar ul li {z-index:30000}
-
+*/
 .list_genes {cursor:pointer}
 .list_pathways {cursor:pointer}
 
@@ -156,9 +150,7 @@ div.ontop_window_inactive {display:none;}
 .de_selection {cursor:pointer}
 
 #js-file-container {width:100%}
-
-#clone_button {cursor:pointer}
-
+#js-file-container td {padding:15px}
 /*.btn-dark { color: #CCCCCC; border-color: #000000; background-color: #333333;
 .btn-dark:hover { color: #DDDDDD; border-color: #000000; background-color: #333333; }*/
 
@@ -214,7 +206,7 @@ display:inline-block;
 color:black;
 font-size:14px;
 font-weight:bold;
-//margin-top:30px
+/*margin-top:30px*/
 }
 
 #point_details {

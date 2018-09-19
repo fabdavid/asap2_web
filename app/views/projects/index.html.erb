@@ -88,7 +88,7 @@ var public_limit = $("#public_limit");
 
 
 
-App.projects.onConnected( function(){
+/*App.projects.onConnected( function(){
   console.log( <%= @projects.length %> );
   <% @projects.each do |project| %>
     App.projects.subscribeStatusChanges( <%= project.id %> );
@@ -98,7 +98,7 @@ App.projects.onConnected( function(){
 App.projects.onReceived( function(data){
   refresh_lists('');
   });
-
+*/
 <% if @projects.size > 0 %>
 
 <!--    var timer = setInterval(function(){-->

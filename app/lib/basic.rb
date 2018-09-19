@@ -61,6 +61,7 @@ module Basic
         end
       end
       
+      project.broadcast_new_status
       # end
     end
     
@@ -132,10 +133,14 @@ module Basic
       
       #      project_step = ProjectStep.where(:project_id => project.id, :step_id => step_id).first
       ### search potentially running script                                                                                                                    
-      
+      file = ''
+      if m = cmd.match(/-f ([^ ]+)/)
+        file = m[1]
+      end
+      logger.debug("CMD_ls : " + `ls -alt #{file}`)
       pid = spawn(cmd)
       logger.debug("CMD3: " + cmd)
-
+      logger.debug("CMD_ls2 : " + `ls -alt #{file}`)
       job = Job.find(job_id)
 
       h_job = {
@@ -187,6 +192,8 @@ module Basic
         end
         
       end
+      
+#       project.broadcast_new_status
       return job
       
     end

@@ -1,92 +1,207 @@
 <% h_nber = {5 => Cluster, 6 => DiffExpr, 7 => GeneEnrichment} %>
-<nav class="navbar navbar-light bg-faded  navbar-fixed-top" style='margin-top:50px;padding-top:10px; background-color:white;z-index:10000'>
-<!--<div class="col-md-12 text-center">-->
-<!--<div id='project_label'><p class="navbar-brand" href="#">Project '<%= @project.name || 'No name' %>' on <%= (@project.organism) ? @project.organism.short_name : 'No name' %>
-<button type='button' id='edit_project' class='btn btn-default'>Edit project <%= image_tag('edited.png', :width => '15px', :style => 'margin-top:-10px;') %></button>
+
+  <div class="container-fluid">
+    
+    <div class="row d-flex d-md-block flex-nowrap wrapper">
+      
+      <div class="col-md-3 float-left col-1 pl-0 pr-0 collapse width show" id="sidebar">
+	
+        <div class="list-group border-0 card text-center text-md-left">
+	  
+          <a href="#menu1" class="list-group-item d-inline-block collapsed" data-toggle="collapse" aria-expanded="false"><i class="fa fa-dashboard"></i> <span class="d-none d-md-inline">Item 1</span> </a>
+	  
+          <div class="collapse" id="menu1" data-parent="#sidebar">
+	    
+            <a href="#menu1sub1" class="list-group-item" data-toggle="collapse" aria-expanded="false">Subitem 1 </a>
+		    
+            <div class="collapse" id="menu1sub1" data-parent="#menu1">
+	      
+              <a href="#" class="list-group-item" data-parent="#menu1sub1">Subitem a</a>
+	      
+              <a href="#" class="list-group-item" data-parent="#menu1sub1">Subitem b</a>
+	      
+              <a href="#menu1sub1sub1" class="list-group-item" data-toggle="collapse" aria-expanded="false">Subitem c </a>
+	      
+              <div class="collapse" id="menu1sub1sub1">
+		
+                <a href="#" class="list-group-item" data-parent="#menu1sub1sub1">Subitem c.1</a>
+		
+                <a href="#" class="list-group-item" data-parent="#menu1sub1sub1">Subitem c.2</a>
+		
+              </div>
+	      
+              <a href="#" class="list-group-item" data-parent="#menu1sub1">Subitem d</a>
+	      
+              <a href="#menu1sub1sub2" class="list-group-item" data-toggle="collapse" aria-expanded="false">Subitem e </a>
+	      
+              <div class="collapse" id="menu1sub1sub2">
+		
+                <a href="#" class="list-group-item">Subitem e.1</a>
+		
+                <a href="#" class="list-group-item">Subitem e.2</a>
+		
+              </div>
+	      
+            </div>
+	    
+            <a href="#menu1sub2" class="list-group-item" data-toggle="collapse" aria-expanded="false">Subitem 2</a>
+	    
+            <div class="collapse" id="menu1sub2" data-parent="#menu1">
+	      
+              <a href="#" class="list-group-item" data-parent="#menu1sub1">Subitem 1 a</a>
+	      
+              <a href="#" class="list-group-item" data-parent="#menu1sub1">Subitem 2 b</a>
+	      
+              <a href="#menu1sub1sub1" class="list-group-item" data-toggle="collapse" aria-expanded="false">Subitem 3 c </a>
+	      
+              <div class="collapse" id="menu1sub1sub1">
+		
+                <a href="#" class="list-group-item" data-parent="#menu1sub1sub1">Subitem 3 c.1</a>
+		
+                <a href="#" class="list-group-item" data-parent="#menu1sub1sub1">Subitem 3 c.2</a>
+		
+              </div>
+	      
+              <a href="#" class="list-group-item" data-parent="#menu1sub1">Subitem 4 d</a>
+	      
+              <a href="#menu1sub1sub2" class="list-group-item" data-toggle="collapse" aria-expanded="false">Subitem 5 e </a>
+	      
+              <div class="collapse" id="menu1sub1sub2">
+		
+                <a href="#" class="list-group-item" data-parent="#menu1sub1sub2">Subitem 5 e.1</a>
+		
+                <a href="#" class="list-group-item" data-parent="#menu1sub1sub2">Subitem 5 e.2</a>
+		
+              </div>
+	      
+            </div>
+	  </div>
+	</div>
+      </div>
+    </div>
+  </div>
+<!--
+<div class="nav-side-menu" style='z-index:10000'>
+  <div class="brand">
+    <div style='float:left;display:block;width:200px;overflow:hidden;white-space:nowrap;margin-left:15px' title='<%= @project.name || 'No name' %>'>
+      <% organism_name = (@project.organism) ? @project.organism.short_name : 'No name' %>
+      <span class='label label-info'><%= organism_name %></span>
+      <%= @project.name || 'No name' %>
+    </div>
+    <div style='position: fixed; font-weight:bold; font-size:12px;top:78px;left:15px'>
+      <% if !(@project.sandbox == true or (current_user and current_user.id == @project.user_id)) %>
+      <div style='color:#204d74;display:block;float:left;width:150px;overflow:hidden;font-size:12px;font-weight:bold;white-space:nowrap'>Shared by
+        <span style='' title='<%= @project.user.email %>'><%= @project.user.email %></span>
+      </div>
+      <div style='display:block;float:left;margin-left:10px'>
+        <% if s = @project.shares.select{|s| s.email == current_user.email}.first %>
+        <% h_title = {'eye-open' => 'View', 'stats' => 'Analyze', 'export' => 'Export'} %>
+        <%= raw [s.view_perm && 'eye-open', s.analyze_perm && 'stats', s.export_perm && 'export'].select{|e| e}.map{|e|
+            "<i title='#{h_title[e]}' class='glyphicon glyphicon-" + e + "'></i>"
+            }.join(" ") %>
+        <% end %>
+      </div>
+      <% elsif @project.sandbox == true %>
+      <div style='color:#204d74;display:block;float:left;width:150px;overflow:hidden;font-size:12px;font-weight:bold;white-space:nowrap'>
+        <span style='' title='anonymous'>Anonymous</span>
+      </div>
+      <% end %>
+    </div>
+    <div style='clear:both'></div>
+  </div>
+
+<i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-content"></i>
+  
+  <div class="menu-list">
+    
+    <ul id="menu-content" class="menu-content collapse out">
+      <li>
+          <i class="fa fa-dashboard fa-lg"></i> Dashboard
+      </li>
+
+                <li  data-toggle="collapse" data-target="#products" class="collapsed active">
+                  <a href=''><i class="fa fa-gift fa-lg"></i> UI Elements <span class="arrow"></span>
+                </li>
+                <ul class="sub-menu collapse" id="products">
+                    <li class="active"><a href="#">CSS3 Animation</a></li>
+                    <li><a href="#">General</a></li>
+                    <li><a href="#">Buttons</a></li>
+                    <li><a href="#">Tabs & Accordions</a></li>
+                    <li><a href="#">Typography</a></li>
+                    <li><a href="#">FontAwesome</a></li>
+                    <li><a href="#">Slider</a></li>
+                    <li><a href="#">Panels</a></li>
+                    <li><a href="#">Widgets</a></li>
+                    <li><a href="#">Bootstrap Model</a></li>
+                </ul>
+
+
+                <li data-toggle="collapse" data-target="#service" class="collapsed">
+                  <i class="fa fa-globe fa-lg"></i> Services <span class="arrow"></span>
+                </li>  
+                <ul class="sub-menu collapse" id="service">
+                  <li>New Service 1</li>
+                  <li>New Service 2</li>
+                  <li>New Service 3</li>
+                </ul>
+
+            </ul>
+     </div>
+</div>
 -->
-<!--<sup><span id='edit_project_name' class='link'>edit</span></sup>
-</p>
-<span id='form_project_name' class='navbar-brand hidden'></span>
-</span>
-<span id= 'project_organism'><p class="navbar-brand" href="#">on <%= (@project.organism) ? @project.organism.name : 'No name' %> 
-<sup><span id='edit_project_organism' class='link'>edit</span></sup>
-</p>
-<span id='form_project_organism' class='navbar-brand hidden'></span>
-</div>-->
+<!--
+<nav class="navbar navbar-light bg-faded  navbar-fixed-top" style='margin-top:50px;padding-top:10px; background-color:white;z-index:10000'>
+  <div id='pipeline' class="nav nav-pills">
+   <div style='float:right;margin-right:15px'>
+      <% if editable? @project %>
+      <button type='button' id='edit_project' class='btn btn-default'><i class='fa fa-cog'></i> Settings<%# image_tag('edited.png', :width => '15px', :style => 'margin-top:-10px;') %></button>
+      <% end %>
+      <% if exportable?(@project) %>
+      <span id='clone_button' class='btn btn-success'><i class='glyphicon glyphicon-duplicate'></i> Clone</span>
+      <% end %>
+    </div>
+    
+    <div style='float:left;display:block;width:200px;overflow:hidden;white-space:nowrap;margin-left:15px' title='<%= @project.name || 'No name' %>'>
+      <% organism_name = (@project.organism) ? @project.organism.short_name : 'No name' %>
+      <span class='label label-info'><%= organism_name %></span>
+      <%= @project.name || 'No name' %>
+    </div>
+    <div style='position: fixed; font-weight:bold; font-size:12px;top:78px;left:15px'>
+      <% if !(@project.sandbox == true or (current_user and current_user.id == @project.user_id)) %>
+      <div style='color:#204d74;display:block;float:left;width:150px;overflow:hidden;font-size:12px;font-weight:bold;white-space:nowrap'>Shared by 
+	<span style='' title='<%= @project.user.email %>'><%= @project.user.email %></span> 
+      </div>
+      <div style='display:block;float:left;margin-left:10px'>
+	<% if s = @project.shares.select{|s| s.email == current_user.email}.first %>
+	<% h_title = {'eye-open' => 'View', 'stats' => 'Analyze', 'export' => 'Export'} %>
+	<%= raw [s.view_perm && 'eye-open', s.analyze_perm && 'stats', s.export_perm && 'export'].select{|e| e}.map{|e|
+	    "<i title='#{h_title[e]}' class='glyphicon glyphicon-" + e + "'></i>"
+	    }.join(" ") %>
+	<% end %>
+      </div>
+      <% end %>
+    </div>
 
-<div id='pipeline' class="nav nav-pills">
-<div style='float:right;margin-right:15px'>
-<% if editable? @project %>
-<button type='button' id='edit_project' class='btn btn-default'><i class='fa fa-cog'></i> Settings<%# image_tag('edited.png', :width => '15px', :style => 'margin-top:-10px;') %></button>
-<% end %>
-<% if exportable?(@project) %>
- <span id='clone_button' class='btn btn-success'><i class='glyphicon glyphicon-duplicate'></i> Clone</span>
-<% end %>
-</div>
+    <div style='float:left;padding-left:10px'>
+      <% Step.all.sort.select{|s| ProjectStep.where(:project_id => @project.id, :step_id => s.id).first}.each do |step| %>
+      <% img =  image_tag('', :width => '15px', :class => 'hidden', :style => 'margin-top:-10px;') %>
+      <% status = ProjectStep.where(:project_id => @project.id, :step_id => step.id).first.status %>
+      <% img = image_tag(status.name + "." + status.img_extension, :width => '15px', :style => 'margin-top:-10px;') if status and step.id < 5 %>
+	<% class_names = ['btn', 'btn-primary', 'pipeline_step', 'disabled'] %>
+	<button type='button' <%= raw "data-toggle='tooltip' title=''" if step.id == 6 %> id="step_<%= step.id %>" class="<%= class_names.join(" ") %>" ><%= raw step.label.capitalize %> <span class='nber label label-default'><%= '0' if step.id > 4 %></span> <%= img %></button>
 
-<div style='float:left;display:block;width:200px;overflow:hidden;white-space:nowrap;margin-left:15px' title='<%= @project.name || 'No name' %>'>
- <% organism_name = (@project.organism) ? @project.organism.short_name : 'No name' %>
-<span class='label label-info'><%= organism_name %></span>
-<%= @project.name || 'No name' %>
-
-<!--<div style='float:left;display:block;width:100px;overflow:hidden;white-space:nowrap' title='<%= organism_name %>'>
- on <%= organism_name %>
-</div>-->
-</div>
-<div style='position: fixed; font-weight:bold; font-size:12px;top:78px;left:15px'>
-<% if !(@project.sandbox == true or (current_user and current_user.id == @project.user_id)) %>
-<div style='color:#204d74;display:block;float:left;width:150px;overflow:hidden;font-size:12px;font-weight:bold;white-space:nowrap'>Shared by 
- <span style='' title='<%= @project.user.email %>'><%= @project.user.email %></span> 
-</div>
-<div style='display:block;float:left;margin-left:10px'>
-<% if s = @project.shares.select{|s| s.email == current_user.email}.first %>
-   <% h_title = {'eye-open' => 'View', 'stats' => 'Analyze', 'export' => 'Export'} %>
-   <%= raw [s.view_perm && 'eye-open', s.analyze_perm && 'stats', s.export_perm && 'export'].select{|e| e}.map{|e|
-   "<i title='#{h_title[e]}' class='glyphicon glyphicon-" + e + "'></i>"
-   }.join(" ") %>
-<% end %>
-</div>
-<% end %>
-</div>
-<div style='float:left;padding-left:10px'>
-<% Step.all.sort.select{|s| ProjectStep.where(:project_id => @project.id, :step_id => s.id).first}.each do |step| %>
- <% img =  image_tag('', :width => '15px', :class => 'hidden', :style => 'margin-top:-10px;') %>
- <% status = ProjectStep.where(:project_id => @project.id, :step_id => step.id).first.status %>
- <% img = image_tag(status.name + "." + status.img_extension, :width => '15px', :style => 'margin-top:-10px;') if status and step.id < 5 %>
-
- <% class_names = ['btn', 'btn-primary', 'pipeline_step', 'disabled'] %>
- <%# class_names.push('active') if step.id == session[:active_step] %>
- <%# class_names.push('disabled') if @project.step_id < 3 and (step.id > @project.step_id + 1 or ( step.id == @project.step_id+1 and @project.status.id != 3)) %> 
-<!-- <button type='button' id="step_<%= step.id %>" class="<%= class_names.join(" ") %>" ><%= raw step.label.capitalize %> <span class='nber label label-default'><%= h_nber[step.id].where(:project_id => @project.id, :status_id => 3).count || 0 if step.id > 4 %></span> <%= img %></button>-->
-<button type='button' <%= raw "data-toggle='tooltip' title=''" if step.id == 6 %> id="step_<%= step.id %>" class="<%= class_names.join(" ") %>" ><%= raw step.label.capitalize %> <span class='nber label label-default'><%= '0' if step.id > 4 %></span> <%= img %></button>
-<!-- data-toggle="tooltip" data-placement="bottom" title="Tooltip on bottom" -->
-<% end %>
-</div>
-</div>
-<!--</div>-->
+	<% end %>
+    </div>
+  </div>
+ 
 </nav>
-
+-->
 <%= javascript_tag do %>
-
-//$(".pipeline_step").tooltip();
 
 $("#edit_project").click(function(){
 refresh("form_container", "<%= edit_project_path(@project.key) %>?global=1");
 $("#ontop_window").removeClass("hidden");
 });
-
-
-/*
-$("#edit_project_name").click(function(){
-$("#project_name p").addClass('hidden');
-$("#form_project_name").removeClass('hidden');
-});
-
-$("#edit_project_organism").click(function(){
-$("#project_organism p").addClass('hidden');
-$("#form_project_organism").removeClass('hidden');
-});
-*/
 
 $(".pipeline_step").click(function(){
 var step_id = this.id.split("_")[1];
@@ -115,8 +230,6 @@ $("#popup_window").addClass('hidden');
 $("#clone_button").click(function(){
 window.location = "<%= clone_project_path(@project.key) %>";
 });
-
-//$('[data-toggle="tooltip"]').tooltip();
 
 <% end %>
 

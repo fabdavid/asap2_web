@@ -20,6 +20,9 @@ module Asap2
 
     config.middleware.delete Rack::Lock
 
+#    Rails.application.middleware.use Rack::Timeout
+#    Rack::Timeout.timeout = 20  # seconds
+    
     # Log to STDOUT because Docker expects all processes to log here. You could
     # then redirect logs to a third party service on your own such as systemd,
     # or a third party host such as Loggly, etc..

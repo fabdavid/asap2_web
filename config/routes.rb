@@ -1,17 +1,25 @@
 Rails.application.routes.draw do
+  resources :comments
+  resources :figures
+  resources :filterings
+  resources :normalizations
+  resources :imputations
+  resources :imputation_methods
   resources :genes do
     collection do
       get :autocomplete
     end
   end
 
-  resources :courses do
+  resources :fus do
     member do
-      get 'upload', to: 'courses#upload'
-      patch 'upload', to: 'courses#do_upload'
-      get 'resume_upload', to: 'courses#resume_upload'
-      patch 'update_status', to: 'courses#update_status'
-      get 'reset_upload', to: 'courses#reset_upload'
+      get 'upload', to: 'fus#upload'
+      patch 'upload', to: 'fus#do_upload'
+      get 'resume_upload', to: 'fus#resume_upload'
+      patch 'update_status', to: 'fus#update_status'
+      get 'reset_upload', to: 'fus#reset_upload'
+      post 'retrieve_data_from_url'
+      post 'preparsing'
     end
   end
 
@@ -61,6 +69,7 @@ Rails.application.routes.draw do
   end
   resources :home do
     collection do
+      get :test
       get :about
       get :file_format
       get :tutorial

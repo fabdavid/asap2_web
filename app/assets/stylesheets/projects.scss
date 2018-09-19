@@ -1,3 +1,327 @@
-// Place all the styles related to the Projects controller here.
-// They will automatically be included in application.css.
-// You can use Sass (SCSS) here: http://sass-lang.com/
+/* General */
+.loading {text-align:center;vertical-align:middle}
+.loading_text {font-style: italic; margin:10px}
+
+#project_header {
+ z-index:1000;
+ background-color:#2e353d;
+ position:fixed;
+ top:50px;
+ left:0px;
+ width:300px;
+ height:60px;
+ text-align:left
+}
+
+.step_title {position:fixed; z-index:10000; top:45px; width:100%; background-color:#ECECEC;margin-bottom:15px;margin-left:-10px; margin-right:-10px;padding:10px; font-size: 16px;border-left:5px solid #999999}
+
+/* New project */
+
+.box_icon{
+ width: 100%;
+ height: 80px;
+ fill: #92b0b3;
+ display: block;
+/* margin-bottom: 40px*/
+}
+
+#dropzone {
+    background:#c8dadf;
+    color:#0f3c4b;
+    height:300px;
+    margin-left:0px;
+    margin-right:0px;
+    border: 2px dashed #0f3c4b;
+    line-height: 50px;
+    text-align: center;
+    vertical-align:middle;
+    font-weight: bold;
+}
+#dropzone.in {
+ border: 2px solid #0f3c4b;
+}
+/*#dropzone.hover {
+ border: 2px solid #0f3c4b;
+}
+*/
+#dropzone.fade {
+    -webkit-transition: all 0.3s ease-out;
+    -moz-transition: all 0.3s ease-out;
+    -ms-transition: all 0.3s ease-out;
+    -o-transition: all 0.3s ease-out;
+    transition: all 0.3s ease-out;
+    opacity: 1;
+}
+
+#list_datasets {}
+
+#summary_dataset {border-collapse:collapse}
+#summary_dataset td {padding:5px;border-bottom:1px solid #DDDDDD; border-top:1px solid #DDDDDD}
+#preview {margin-top:15px;margin-right:15px;margin-left:15px}
+#preview_table{}
+.imputed_name {font-style:italic;color:grey}
+.datatable {}
+.datatable td.gene_name {background-color:#feebd0}
+.datatable th.cell_name {background-color:#eed0fe}
+
+.gene_label {color:#fb9b11}
+.cell_label {color:#b411fb}
+
+/* Project menu */
+
+#project_details {color:#DDDDDD;position: fixed; font-size:11px;top:80px;left:15px}
+#project_title {color:#DDDDDD;float:left;display:block;width:200px;margin-top:10px;overflow:hidden;white-space:nowrap;margin-left:15px}
+#shared_by {color:#d0dd74;display:block;float:left;width:230px;overflow:hidden;white-space:nowrap}
+
+.step_status {float:right; margin-right:10px}
+
+#project_container {
+margin-left:300px;
+margin-top:50px;
+width: calc(100% - 300px)
+}
+
+/* Place all the styles related to the Projects controller here.
+ They will automatically be included in application.css.
+ You can use Sass (SCSS) here: http://sass-lang.com/
+*/
+.nav-side-menu {
+  overflow: auto;
+/*  font-family: verdana;*/
+  font-size: 12px;
+  font-weight: 200;
+  background-color: #2e353d;
+  position: fixed;
+  top: 45px;
+  left:0px;
+  width: 300px;
+  height: 100%;
+  color: #e1ffff;
+}
+.nav-side-menu .brand {
+  background-color: #23282e;
+  line-height: 50px;
+  display: block;
+  text-align: center;
+  font-size: 14px;
+}
+.nav-side-menu .toggle-btn {
+  display: none;
+}
+
+.nav-side-menu ul,
+.nav-side-menu li.list-group-item {
+  list-style: none;
+  padding: 0px;
+/*  border:0px;
+  border-left:3px solid #2e353d;*/
+  margin: 0px;
+  line-height: 35px;
+  cursor: pointer;
+   color: #e1ffff;
+  background-color: #4f5b69;
+  /*    
+    .collapsed{
+       .arrow:before{
+                 font-family: FontAwesome;
+                 content: "\f053";
+                 display: inline-block;
+                 padding-left:10px;
+                 padding-right: 10px;
+                 vertical-align: middle;
+                 float:right;
+            }
+     }
+*/
+}
+
+#step-menu.nav-side-menu li.list-group-item {
+  padding-left:10px;
+}
+
+#step-menu.nav-side-menu li.list-group-item.disabled {
+  color:#aaaaaa
+}
+
+#step-menu.nav-side-menu li.list-group-item.disabled:hover {
+   border-left: 3px solid grey;
+}
+
+
+.nav-side-menu ul,
+.nav-side-menu li.list-group-item:disabled {
+   color: #aaaaaa;
+background-color: #4f5b69;
+  -webkit-transition: all 1s ease;
+  -moz-transition: all 1s ease;
+  -o-transition: all 1s ease;
+  -ms-transition: all 1s ease;
+  transition: all 1s ease;
+}
+
+
+.nav-side-menu ul :not(collapsed) .arrow:before,
+.nav-side-menu li.list-group-item :not(collapsed) .arrow:before {
+  font-family: FontAwesome;
+  content: "\f078";
+  display: inline-block;
+  padding-left: 10px;
+  padding-right: 10px;
+  vertical-align: middle;
+  float: right;
+}
+.nav-side-menu ul .active,
+.nav-side-menu li.list-group-item .active {
+  color: #e1ffff;
+  padding-left:10px;
+  background-color: #4f5b69;
+  border:1px solid #2e353d;
+  border-top:1px solid #4f5b69;
+   border-left: 3px solid yellow;
+}
+.nav-side-menu ul .sub-menu li.active,
+.nav-side-menu li.list-group-item .sub-menu li.active {
+/*  color: #d19b3d;*/
+}
+.nav-side-menu ul .sub-menu li.active a,
+.nav-side-menu li.list-group-item .sub-menu li.active a {
+/*  color: #d19b3d;*/
+}
+.nav-side-menu ul .sub-menu li,
+.nav-side-menu li.list-group-item .sub-menu li {
+  background-color: #181c20;
+  border: none;
+  line-height: 28px;
+  border-bottom: 1px solid #23282e;
+  margin-left: 0px;
+}
+/*.nav-side-menu ul .sub-menu li:hover,
+.nav-side-menu li.list-group-item .sub-menu li:hover {
+  background-color: #020203;
+}*/
+.nav-side-menu ul .sub-menu li:before,
+.nav-side-menu li.list-group-item .sub-menu li:before {
+  font-family: FontAwesome;
+  content: "\f105";
+  display: inline-block;
+  padding-left: 10px;
+  padding-right: 10px;
+  vertical-align: middle;
+}
+.nav-side-menu li.list-group-item {
+  padding-left: 0px;
+  border-left: 3px solid #2e353d;
+  border-bottom: 1px solid #23282e;
+}
+.nav-side-menu li.list-group-item a {
+  text-decoration: none;
+  color: #e1ffff;
+}
+.nav-side-menu li.list-group-item a i {
+  padding-left: 10px;
+  width: 20px;
+  padding-right: 20px;
+}
+.nav-side-menu li.list-group-item:hover {
+  border-left: 3px solid #d19b3d;
+   color: #e1ffff;
+  background-color: #4f5b69;
+  -webkit-transition: all 1s ease;
+  -moz-transition: all 1s ease;
+  -o-transition: all 1s ease;
+  -ms-transition: all 1s ease;
+  transition: all 1s ease;
+}
+.nav-side-menu li.list-group-item:disabled:hover {
+  border-left: 3px solid #dddddd;
+   color: #e1ffff;
+background-color: #4f5b69;
+  -webkit-transition: all 1s ease;
+  -moz-transition: all 1s ease;
+  -o-transition: all 1s ease;
+  -ms-transition: all 1s ease;
+  transition: all 1s ease;
+}
+
+
+.menu-list {
+ margin-top:60px
+}
+
+/* buttons */
+
+#clone_button {cursor:pointer}
+#edit_project {cursor:pointer}
+
+/* Index of projects */
+
+.job_list {margin-top:50px; width:100%; border-collapse:collapse}
+
+.job_list tr th {vertical-align:top; padding-right:5px; overflow:hidden;text-align:center}
+.job_list tr td {vertical-align:top; padding-right:5px; border-top:1px solid #CCCCCC; padding-bottom:5px; padding-top:5px; overflow:hidden;text-align:center}
+
+table.job_list td.project_name{
+width:500px;
+white-space: nowrap;
+overflow:hidden;
+}
+table.job_list td.email{
+width:300px;
+white-space: nowrap;
+overflow:hidden;
+}
+
+
+
+
+@media (max-width: 767px) {
+  .nav-side-menu {
+    position:relative;
+    top:35px;
+    width: 100%;
+    margin-bottom: 10px;
+  }
+  .nav-side-menu .toggle-btn {
+    display: block;
+    cursor: pointer;
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    z-index: 10 !important;
+    padding: 3px;
+    background-color: #ffffff;
+    color: #000;
+    width: 40px;
+    text-align: center;
+  }
+  .brand {
+    text-align: left !important;
+    font-size: 22px;
+    padding-left: 20px;
+    line-height: 50px !important;
+  }
+#project_container {
+top:0px;
+left:0px;
+position:relative;
+margin-left:0px;
+margin-top:50px;
+width:100%
+}
+
+#project_header {
+ position:fixed;
+ top:50px;
+ left:0px;
+ width:100%;
+  height:60px;
+ text-align:left
+}
+
+
+}
+@media (min-width: 767px) {
+  .nav-side-menu .menu-list .menu-content {
+    display: block;
+  }
+}

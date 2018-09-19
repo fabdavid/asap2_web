@@ -19,6 +19,7 @@ obj_name text,
 name text,
 label text,
 description text,
+rank int,
 primary key (id)
 );
 
@@ -198,7 +199,7 @@ status_id int references statuses default 1,
 duration int,
 error_message text,
 pid int,
-extension varchar(3) default 'txt',
+extension varchar(6) default 'txt',
 public bool default false,
 user_id int references users (id),
 cloned_project_id int,
@@ -231,7 +232,7 @@ updated_at timestamp,
 primary key (id)
 );
 
-create table courses(
+create table fus(
 id serial,
 project_id int references projects,
 project_key text,
@@ -240,8 +241,9 @@ name text,
 status text,
 upload_file_name text,
 upload_content_type text,
-upload_file_size int,
+upload_file_size bigint,
 upload_updated_at timestamp,
+url text,
 visible bool,
 created_at timestamp,
 updated_at timestamp,
@@ -253,10 +255,12 @@ id serial,
 name text,
 label text,
 description text,
+rank int,
 program text,
 link text,
 speed_id smallint references speeds,
 attrs_json text,
+dim_reduction bool,
 created_at timestamp,
 updated_at timestamp,
 primary key (id)
@@ -274,6 +278,81 @@ pid int,
 created_at timestamp,
 primary key (id)
 );
+
+create table normalizations(
+id serial,
+project_id int references projects (id),
+norm_id int references norms,
+attrs_json text,
+num int,
+job_id int references jobs,
+pid int,
+error text,
+status_id int references statuses,
+created_at timestamp,
+user_id int references users,
+primary key (id)
+);
+
+create table filterings(
+id serial,
+project_id int references projects (id),
+filter_method_id int references norms,
+attrs_json text,
+num int,
+job_id int references jobs,
+pid int,
+error text,
+status_id int references statuses,
+created_at timestamp,
+user_id int references users,
+primary key (id)
+);
+
+create table imputation_methods(
+id serial,
+name text,
+label text,
+description  text,
+program text,
+speed_id smallint references speeds,
+is_parallelized bool,
+attrs_json text,
+hidden bool default false,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create table imputations(
+id serial,
+project_id int references projects (id),
+imputation_method_id int references imputation_methods,
+attrs_json text,
+num int,
+job_id int references jobs,
+pid int,
+error text,
+status_id int references statuses,
+created_at timestamp,
+user_id int references users,
+primary key (id)
+);
+
+--create table visualizations(
+--id serial,
+--project_id int references projects (id),
+--dim_reduction_id int references dim_reductions,
+--attrs_json text,
+--num int,
+--job_id int references jobs,
+--pid int,
+--error text,
+--created_at timestamp,
+--user_id int references users,
+--primary key (id)
+--);
+
 
 create table clusters(
 id serial,
@@ -310,7 +389,7 @@ attrs_json text,
 nber_up_genes int,
 nber_down_genes int,
 status_id int references statuses (id),
-<§duration int,
+duration int,
 label text,
 num int,
 job_id int references jobs,
@@ -441,3 +520,9 @@ primary key (id)
 --updated_at timestamp,
 --primary key (id)
 --);
+
+create table figures(
+);
+
+create table comments(
+);

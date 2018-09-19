@@ -14,18 +14,17 @@
     <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track': 'reload' %>
     <%= javascript_include_tag 'application', 'data-turbolinks-track': 'reload' %>
     <% if !(controller_name == 'projects' and action_name == 'index') and !(controller_name == 'sessions') %>
-    <%= javascript_include_tag 'project', 'data-turbolinks-track': 'reload' %>
+    <%# javascript_include_tag 'project', 'data-turbolinks-track': 'reload' %>
     <% end %>
-    <%# javascript_include_tag 'heatmapcore.js' %>
-    <%# stylesheet_link_tag 'heatmapcore.css' %>
-    <%# javascript_include_tag 'cssify.js' %>
-    <%# javascript_include_tag 'XPath.js' %>
   </head>
 
-  <body id='body_container'>
+  <body id='body_container' style=''>
 
     <%# current_user.email if current_user %>
-    <nav class="navbar navbar-inverse navbar-fixed-top">
+
+
+    <%= render :partial => 'layouts/header_nav' %>
+<!--    <nav class="navbar navbar-inverse navbar-fixed-top">
       <div class="container-fluid">
         <div class="navbar-header">
           <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
@@ -53,16 +52,18 @@
         </div>
       </div>
     </nav>
+-->
 
-<!--    <div class="container-fluid" style='margin-top:<%= (controller_name == 'projects' and action_name == 'show') ? 150 : 50 %>px;margin-bottom:<%= (controller_name == 'projects' and action_name == 'show') ? "-50px" : 0 %>'>-->
-<div class="container-fluid">
+
+    <!--    <div class="container-fluid" style='margin-top:<%= (controller_name == 'projects' and action_name == 'show') ? 150 : 50 %>px;margin-bottom:<%= (controller_name == 'projects' and action_name == 'show') ? "-50px" : 0 %>'>-->
+    <div class="container-fluid">
       <div>
 	<div class="row">
-<!--	  <div class="col-sm-3 col-md-2 sidebar" style="margin-left:0.2em; margin-right:0.2em;">
-            <div id="leftbar"></div>
-            <div id="leftbar2"></div>
-           <div style="margin:auto; display:block; padding-left: 2em; font-size: 0.6em;" class="navbar-fixed-bottom">2016 - Adrian Shajkofci - EPFL</div>
-</div>-->
+	  <!--	  <div class="col-sm-3 col-md-2 sidebar" style="margin-left:0.2em; margin-right:0.2em;">
+		  <div id="leftbar"></div>
+		  <div id="leftbar2"></div>
+		  <div style="margin:auto; display:block; padding-left: 2em; font-size: 0.6em;" class="navbar-fixed-bottom">2016 - Adrian Shajkofci - EPFL</div>
+	  </div>-->
 	</div>
       </div>
       <div id="info" style="margin-top: 10px"></div>
@@ -73,9 +74,11 @@
 	<div id='form_container'></div>
       </div><div class='clear'></div>
     </div>
+ 
     <div id="main" class="main">
       <%= yield %>
     </div>
+
 
     <% if controller_name == 'projects' and action_name == 'index' %>
     <div id="main_footer">      
@@ -95,7 +98,7 @@
 	    </td>
       </tr></tbody></table>
     </div>
-   <% else %>
+   <% elsif controller_name != 'projects' %>
    <div id='footer'>
        &copy;2016-2018 EPFL, 1015 Lausanne<br>
        <a href="mailto:bioinfo.epfl@gmail.com@epfl.ch?subject=ASAP feedback">Contact</a>
@@ -106,7 +109,8 @@
     
 
 <%= javascript_tag do %>
-$("#home_link").on('click',function(event){
+
+/*$("#home_link").on('click',function(event){
 var href = this.href;
 event.preventDefault();
 if (typeof timer !== 'undefined')
@@ -114,7 +118,7 @@ if (typeof timer !== 'undefined')
 //window.clearTimeout(timer);
 window.location = href;
 });
-
+*/
 
 
 /*$("#button-nav").click(function(){

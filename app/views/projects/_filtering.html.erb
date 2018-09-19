@@ -1,20 +1,20 @@
 <% if (@project.status_id == 3 or @project.step_id > 2)  and !@results['displayed_error'] %>
-<div class="display-none panel panel-default results" id="realtime" style="display: block;">
-  <div class="panel-heading">Filtering result summary
+<div class="card" id="result_summary">
+  <div class="card-header">Filtering result summary
 <% if editable?(@project) %>
-<div style='float:right'><button id='reset_filtering' class="btn btn-primary" style="margin-top:-7px">Reset</button></div>
+<div style='float:right'><button id='reset_filtering' class="btn btn-primary btn-sm" style="margin-top:-7px">Reset</button></div>
 <% end %>
 </div>
-  <div class="panel-body" id="realtimedata">
+  <div class="card-body">
     <% if @results %>
-    <table class="table table-hover"><tbody>
+    <table class="table-hover"><tbody>
 	<tr><td>Parameters</td><td>
 	    <% if @project.filter_method_id %>
 	    <% attrs = JSON.parse(@project.filter_method.attrs_json) %>
 	    <% h_attrs = JSON.parse(@project.filter_method_attrs_json) %>
-	    <span class="label label-info"><%= @project.filter_method.label %></span>
+	    <span class="badge badge-info"><%= @project.filter_method.label %></span>
 	    <% attrs.select{|attr| attr['widget']}.each do |attr| %>
-	    <span class="label label-default"><%= (attr['label'] || 'NA') + ": " + ((attr['type'] == 'bool') ? (( h_attrs[attr['name']]== '1') ? 'Yes' : 'No' ) : (h_attrs[attr['name']] || 'NA')) || 'NA' %></span> 
+	    <span class="badge badge-default"><%= (attr['label'] || 'NA') + ": " + ((attr['type'] == 'bool') ? (( h_attrs[attr['name']]== '1') ? 'Yes' : 'No' ) : (h_attrs[attr['name']] || 'NA')) || 'NA' %></span> 
 
 	    <% end %>
             <% else %>
@@ -23,40 +23,40 @@
 	    </td></tr>
         <tr><td width='30%'>Genes (rows)</td><td><%= (@results['nber_genes']) ?  @results['nber_genes'] : 'NA' %>              
 <% if @results['nber_genes'] < 3 %>
- <span class="glyphicon glyphicon-warning-sign"></span> <span class='label label-danger'>For many steps of the pipeline at least three genes are required</span>
+ <span class="fa fa-warning"></span> <span class='badge badge-danger'>For many steps of the pipeline at least three genes are required</span>
 <% end %>
 </td></tr>
 
         <tr><td>Cells (columns)</td><td><%= (@results['nber_cells']) ? @results['nber_cells'] : 'NA' %>
 <% if @results['nber_cells'] < 3 %>
- <span class="glyphicon glyphicon-warning-sign"></span> <span class='label label-danger'>For many steps of the pipeline at least three cells are required</span>
+ <span class="fa fa-warning"></span> <span class='badge badge-danger'>For many steps of the pipeline at least three cells are required</span>
 <% end %>
 </td></tr>
 
 	 <tr><td><span data-toggle="tooltip" title="The input data are detected as count tables if all numbers are integers. Some functions only work with count tables.">
-            Original file is a count table</span></td><td><%= raw (@all_results[:parsing]['is_count_table']==1) ? "true <span class='glyphicon glyphicon-ok'></span>" : "false <span class='glyphicon glyphicon-warning-sign'></span> <span class='label label-warning'>Many methods will NOT be available if your original file is not a count matrix</span>" %></td></tr>
+            Original file is a count table</span></td><td><%= raw (@all_results[:parsing]['is_count_table']==1) ? "true <span class='fa fa-check'></span>" : "false <span class='fa fa-warning'></span> <span class='badge badge-warning'>Many methods will NOT be available if your original file is not a count matrix</span>" %></td></tr>
 	 <tr><td><span data-toggle="tooltip" title="Percentage of genes with zero expression.">Percentage of zeros</span></td><td><%= ((@results['nber_zeros'].to_f * 100) / (@results['nber_genes'] * @results['nber_cells'])).round(2) %>%</td></tr>
         <tr><td><span data-toggle="tooltip" title="Number of detected ERCC (they are removed from the result datatable)">Number of ERCC</span></td><td>
    <% if File.exist?( Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key + 'parsing' + 'ercc.tab') and @all_results[:parsing]['nber_ercc'] > 0 %>
-   <%= link_to raw("<button class='btn btn-primary btn-xs'>#{@all_results[:parsing]['nber_ercc']} ERCC</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'ercc.tab') %>
+   <%= link_to raw("<button class='btn btn-primary btn-sm'>#{@all_results[:parsing]['nber_ercc']} ERCC</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'ercc.tab') %>
       <% else %>
      0
       <% end %>
-<span class='label label-info'>ERCCs are automatically detected as genes starting with "ERCC-"</span>
+<span class='badge badge-info'>ERCCs are automatically detected as genes starting with "ERCC-"</span>
 </td></tr>
 <%= display_batch_file() %>
 <% if nber_not_found_genes = @results['nber_not_found_genes'] and nber_not_found_genes > 0 %>
 <tr><td><span data-toggle="tooltip" title="Unmapped genes.">Unmapped genes</span></td><td>
 <%= nber_not_found_genes %>, <%= (nber_not_found_genes.to_f * 100 / @results['nber_genes']).round(2) %>%
-<span class="glyphicon glyphicon-warning-sign"></span>
-<%= link_to raw("<button class='btn btn-primary btn-xs'>Details</button>"), get_file_project_path(@project.key, :step => 'filtering', :filename => 'not_found_genes.txt', :content_type => 'plain/text') %>
+<span class="fa fa-warning"></span>
+<%= link_to raw("<button class='btn btn-primary btn-sm'>Details</button>"), get_file_project_path(@project.key, :step => 'filtering', :filename => 'not_found_genes.txt', :content_type => 'plain/text') %>
 </td></tr>
 <% end %>
     </tbody></table>
 
 <%= display_warnings(@results['warnings']) %>
 
-    <%= link_to(raw("<button class='btn btn-primary btn-xs'>Download ouput file</button>"), get_file_project_path(@project.key, :step => 'filtering'), :target => '_blank') if exportable?(@project) %>
+    <%= link_to(raw("<button class='btn btn-primary btn-sm'>Download ouput file</button>"), get_file_project_path(@project.key, :step => 'filtering'), :target => '_blank') if exportable?(@project) %>
 </div>
 </div>
 
@@ -66,7 +66,7 @@
      <div class="panel panel-default" style="display: block;">
       <% url =  get_file_project_path(@project.key, :step => 'filtering', :filename => e['name'], :content_type => 'image/png', :display => 1) %>
       <% download_url =  get_file_project_path(@project.key, :step => 'filtering', :filename => e['name'], :content_type => 'image/png') %>
-      <div class='panel-heading'><%= e['description'] %><div style='float:right'><%= link_to raw("<button class='btn btn-primary btn-xs'>Download</button>"), download_url %></div></div>
+      <div class='panel-heading'><%= e['description'] %><div style='float:right'><%= link_to raw("<button class='btn btn-primary btn-sm'>Download</button>"), download_url %></div></div>
       <div class='panel-body'> 
       <%= raw image_tag(url) %>
       </div>
@@ -76,9 +76,9 @@
     <% end %>
 
 <% else %>
-No results available. <%= raw ((status = @project.status) ? "<span class='label label-#{status.label}'>#{status.name}</span>" : 'NA') %>
+No results available. <%= raw ((status = @project.status) ? "<span class='badge badge-#{status.label}'>#{status.name}</span>" : 'NA') %>
 <% if @results %>
-<span class='label label-danger'><%= @results['displayed_error'] || '' %></span>
+<span class='badge badge-danger'><%= @results['displayed_error'] || '' %></span>
 <br/><span><%= @results['original_error'] || '' if admin? %></span>
 <% end %>
 <div style='float:right'><button id='reset_filtering' class="btn btn-primary" style="margin-top:-7px">Reset</button></div>
@@ -91,6 +91,7 @@ $("#reset_filtering").click(function(){
 refresh("step_container", "<%= edit_project_path(:key => @project.key, :nolayout => 1) %>");
 });
 
-set_margins()
+// remove set margins
+//set_margins()
 
 <% end %>

@@ -1,0 +1,22 @@
+<% if @valid_url == 0 %>
+ URL is not valid.
+<% else %>
+ <% if @fu.upload_file_size %> 
+ File downloaded (<%= (@fu.upload_file_size.to_f/1000).round(1).to_s + 'Mo' %>).
+ <% else %>
+ File not found
+ <% end %>
+
+
+<%= javascript_tag do  %>
+  $("#dropzone").addClass("hidden")
+  //visualize preparsing window
+  $("#preparsing").html("<div class='loading'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i><br/><span class='loading_text'>Loading...</span></div>")
+  $("#preparsing").removeClass("hidden")
+  //start preparsing the
+  var p = [];
+  refresh_post("preparsing", "<%= preparsing_fu_path(@fu) %>", p, 'post');
+
+<% end %>
+
+<% end %>

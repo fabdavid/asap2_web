@@ -1,0 +1,36 @@
+<ul id='about_menu' class="nav nav-pills">
+  <li role="presentation" class="about_item active"><a id='am_0'>Tutorial</a></li>
+  <li role="presentation" class="about_item"><a id='am_1'>FAQ</a></li>
+  <li role="presentation" class="about_item"><a id='am_2'>File formats</a></li>
+  <li role="presentation" class="about_item"><a id='am_3'>Current version</a></li>
+  <li role="presentation" class="about_item"><a id='am_4'>History</a></li>
+  <li role="presentation" class="about_item"><a id='am_5'>Citation</a></li>
+  <!--  <li role="presentation"><a href="#">Contributions/Feedback</a></li>-->
+</ul>
+
+<div id='about_container'></div>
+
+
+<%= javascript_tag do  %>
+
+var list_items=[
+' <%= tutorial_home_index_path(:nolayout => 1) %>',
+'<%= faq_home_index_path(:nolayout => 1) %>',
+'<%= file_format_home_index_path(:nolayout => 1) %>',
+'<%= last_version_versions_path(:nolayout => 1) %>', 
+'<%= versions_path(:nolayout => 1) %>',
+'<%= citation_home_index_path(:nolayout => 1) %>'
+];
+
+$(".about_item a").click(function(){
+ var item_idx = this.id.split("_")[1];
+ $('#about_menu li.active').removeClass('active');
+ $("#am_" + item_idx).parent().addClass("active");
+ refresh("about_container", list_items[item_idx]);
+});
+
+ var url = '<%= tutorial_home_index_path(:nolayout => '1') %>';
+ refresh("about_container", url);
+
+<% end %>
+

@@ -1,0 +1,57 @@
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top" style='z-index:100'>
+      <a class="navbar-brand" href="<%= root_path %>">ASAP <small style='color:grey;font-style:italic'>Automated Single-cell Analysis Pipeline</small></a>
+      <div style='position:fixed; top:10px;right:10px'><!-- class="navbar-nav ml-auto"> -->
+        <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+          <ul class="navbar-nav mr-auto">
+             <% if user_signed_in? %>
+	     <li class='nav-item'>
+               <%= link_to 'Projects', projects_path, {:class => 'nav-link'} %>
+             </li>
+	     <li class='nav-item'>
+               <%= link_to 'Uploads', fus_path, {:class => 'nav-link'} %>
+             </li>
+	     <% end %>
+	     
+	     <li class="nav-item dropdown">
+               <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink_infos" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                 Infos
+               </a>
+               <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink_infos">
+                 <a class="dropdown-item" href="<%= faq_home_index_path %>">FAQ</a>
+                 <a class="dropdown-item" href="<%= tutorial_home_index_path %>">Tutorial</a>
+                 <a class="dropdown-item" href="<%= file_format_home_index_path %>">File formats</a>
+               </div>
+             </li>
+	     
+	     <li class='nav-item'>
+	       <% if user_signed_in? %>
+	       <%= link_to current_user.email, edit_user_registration_path, {:class => 'nav-link'} %>  </li>
+             <li class='nav-item'>
+               <%= link_to 'Logout',  destroy_user_session_path, {:method => :delete, :class => 'nav-link'} %>
+	       <% else %>
+	       <%= link_to 'Login', new_user_session_path, {:class => 'nav-link'} %>
+	       <% end %>
+	     </li>
+<!--	     
+	     <li class='nav-item'>
+	       <%= link_to( image_tag('youtube.svg', {:width => '45px'}), 'https://www.youtube.com/embed/Qk3fwXt3RSM?autoplay=1', {:target => '_blank', :class => 'youtube_link'}) %>
+	     </li>
+            <li class='nav-item'>
+              <p class="navbar-btn">
+                <%= link_to 'To cite us', citation_home_index_path(), :class => 'btn btn-info btn-sm', :style => 'margin-right:10px' %>
+              </p>
+            </li>                                                                                                                                             
+            <li class='nav-item'>
+              <p class="navbar-btn">
+                <button type='button' class='btn btn-warning btn-sm' onclick="location.href='mailto:webmaster.bbcf@epfl.ch?subject=ASAP feedback'">Feedback</button>
+              </p>
+            </li>
+-->
+          </ul>
+        </div>
+      </div>
+    </nav>

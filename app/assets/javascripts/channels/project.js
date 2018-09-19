@@ -4,8 +4,8 @@
 //     }
 // });
 
-App.projects = App.cable.subscriptions.create("ProjectChannel", {
-    subscribeStatusChanges: function( project_id ) {
+App.project = App.cable.subscriptions.create("ProjectChannel", {
+/*    subscribeStatusChanges: function( project_id ) {
         this.perform('follow', {
             project_id: project_id
         });
@@ -19,12 +19,16 @@ App.projects = App.cable.subscriptions.create("ProjectChannel", {
     stopSubscriptions: function(){
       this.perform('unfollow');
     },
+*/
     connected: function(){
-
+	console.log("Connected to project_channel");
     },
     disconnected: function() {
-
+	console.log("Disconnected from project_channel");
     },
     received: function(data) {
+	console.log("Send " + data['message'])
+	alert('bla')
     }
 });
+

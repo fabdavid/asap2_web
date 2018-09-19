@@ -49,12 +49,13 @@ GEM
       minitest (~> 5.1)
       tzinfo (~> 1.1)
     arel (9.0.0)
-    autoprefixer-rails (9.0.0)
+    autoprefixer-rails (9.1.2)
       execjs
     bcrypt (3.1.12)
-    bootstrap-sass (3.3.7)
-      autoprefixer-rails (>= 5.2.1)
-      sass (>= 3.3.4)
+    bootstrap (4.1.3)
+      autoprefixer-rails (>= 6.0.3)
+      popper_js (>= 1.12.9, < 2)
+      sass (>= 3.5.2)
     builder (3.2.3)
     byebug (10.0.2)
     climate_control (0.2.0)
@@ -137,6 +138,7 @@ GEM
       mimemagic (~> 0.3.0)
       terrapin (~> 0.6.0)
     pg (1.0.0)
+    popper_js (1.14.3)
     puma (3.12.0)
     rack (2.0.5)
     rack-protection (2.0.3)
@@ -164,6 +166,7 @@ GEM
       loofah (~> 2.2, >= 2.2.2)
     rails4-autocomplete (1.1.1)
       rails (>= 3.0)
+    rails_refactor (1.4.4)
     railties (5.2.0)
       actionpack (= 5.2.0)
       activesupport (= 5.2.0)
@@ -256,7 +259,7 @@ PLATFORMS
 
 DEPENDENCIES
   activerecord-session_store
-  bootstrap-sass (~> 3.3)
+  bootstrap (~> 4.1.3)
   byebug
   daemons
   delayed_job_active_record
@@ -277,6 +280,7 @@ DEPENDENCIES
   rack-timeout (~> 0.4)
   rails (~> 5.2.0)
   rails4-autocomplete
+  rails_refactor
   redis-rails (~> 5.0)
   sass-rails (~> 5.0)
   sidekiq (~> 5.1)
