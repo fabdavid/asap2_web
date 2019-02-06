@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Covariates</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @covariates.each do |covariate| %>
+      <tr>
+        <td><%= link_to 'Show', covariate %></td>
+        <td><%= link_to 'Edit', edit_covariate_path(covariate) %></td>
+        <td><%= link_to 'Destroy', covariate, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Covariate', new_covariate_path %>

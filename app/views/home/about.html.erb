@@ -26,11 +26,11 @@ $(".about_item a").click(function(){
  var item_idx = this.id.split("_")[1];
  $('#about_menu li.active').removeClass('active');
  $("#am_" + item_idx).parent().addClass("active");
- refresh("about_container", list_items[item_idx]);
+ refresh("about_container", list_items[item_idx], {});
 });
 
  var url = '<%= tutorial_home_index_path(:nolayout => '1') %>';
- refresh("about_container", url);
+ refresh("about_container", url, {});
 
 <% end %>
 

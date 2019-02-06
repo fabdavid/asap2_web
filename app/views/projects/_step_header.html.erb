@@ -1,0 +1,10 @@
+  <div class='right-buttons'>
+    <% if analyzable?(@project) %>
+    <% if [3,4].include? @ps.status_id and ((@step_id == 1 and editable?(@project)) or @step_id != 1) %>
+    <button class="btn btn-primary btn-sm reset_parsing">Reset</button>
+    <% elsif ![14, 15].include? @step_id and @ps.status_id %>
+    <button class="btn btn-primary btn-sm new_job"><i class='fa fa-plus'></i></button>
+    <% end %>
+    <% end %>
+  </div>
+  <div class='title'><%= @h_steps[@step_id].label %></div>

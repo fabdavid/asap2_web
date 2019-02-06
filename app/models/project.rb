@@ -1,10 +1,11 @@
 class Project < ApplicationRecord
 
-  before_save :broadcast_new_status, if: :will_save_change_to_status_id?
+  #  before_save :broadcast_new_status, if: :will_save_change_to_status_id?
 
   belongs_to :user
   belongs_to :status
   belongs_to :step
+  belongs_to :version
   has_many :fus
   belongs_to :session, :optional => true
   has_many :clusters
@@ -13,6 +14,10 @@ class Project < ApplicationRecord
   belongs_to :norm, :optional => true
   belongs_to :filter_method, :optional => true
   belongs_to :organism
+  has_many :normalizations
+  has_many :imputations
+  has_many :gene_filterings
+  has_many :cell_filterings
   has_many :project_dim_reductions
   has_many :gene_enrichments
   has_many :project_steps
@@ -20,9 +25,10 @@ class Project < ApplicationRecord
   has_many :jobs
   has_many :gene_sets
   has_many :shares
+  has_many :runs
 
-  def broadcast_new_status
-    ProjectStatusBroadcastJob.perform_later self
+  def broadcast step_id
+    ProjectBroadcastJob.perform_later self, step_id
   end
 
   NewParsing = Struct.new(:project) do
@@ -77,9 +83,9 @@ class Project < ApplicationRecord
   def parse_files 
     job = Basic.create_job(self, 1, self, :parsing_job_id, 1)
     #    p[:filename]='input'
-     #     parse
-    delayed_job = Delayed::Job.enqueue NewParsing.new(self), :queue => 'fast'
-    job.update_attributes(:delayed_job_id => delayed_job.id) #job.id)
+             parse
+   # delayed_job = Delayed::Job.enqueue NewParsing.new(self), :queue => 'fast'
+   # job.update_attributes(:delayed_job_id => delayed_job.id) #job.id)
   end
 
   def parse_task
@@ -367,14 +373,40 @@ class Project < ApplicationRecord
     options.push("-sel '#{p['sel_name']}'") if p['sel_name']
     options.push("-col #{p['gene_name_col']}") if p['gene_name_col']
     options.push("-d '#{p['delimiter']}'") if p['delimiter'] and p['delimiter'] != ''
-    options.push("-header " + ((p['has_header'] and p['has_header'] == '1') ? 'true' : 'false')) if p['has_header']
+    options.push("-header " + ((p['has_header'] and p['has_header'].to_i == 1) ? 'true' : 'false')) if p['has_header']
     options.push("-ncells #{p['nb_cells']}")
     options.push("-ngenes #{p['nb_genes']}")
     options.push("-type #{p['file_type']}")
+    options.push("-project_key #{self.key}")
+    options.push("-step_id 1")
     options_txt = options.join(" ")
 
-    cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T Parsing -organism #{self.organism_id} -o #{tmp_dir} -f #{filepath} #{options_txt}\""
-    logger.debug("#{cmd}")
+    opts = []
+    opts.push({:opt => "-sel", :value => p['sel_name']}) if p['sel_name']
+    opts.push({:opt => "-col", :value => p["gene_name_col"]}) if p["gene_name_col"]
+    opts.push({:opt => "-d", :value => p["delimiter"]}) if p["delimiter"] and p['delimiter'] != ''
+    opts.push({:opt => "header", :value => ((p['has_header'] and p['has_header'].to_i == 1) ? 'true' : 'false')}) if  p['has_header']
+    opts += [
+             {:opt => "-ncells", :value => p['nb_cells']},
+             {:opt => "-ngenes", :value => p["ngenes"]},
+             {:opt => "-type", :value => p["file_type"]},
+             {:opt => "-project_key", :value => self.key},
+             {:opt => "-step_id", :value => 1},
+             {:opt => '-T', :value => "Parsing"},
+             {:opt => "-organism", :value => self.organism_id},
+             {:opt => "-o", :value => tmp_dir},
+             {:opt => "-f", :value => filepath}
+            ]
+    h_cmd = {
+      :docker_call => APP_CONFIG[:docker_call],
+      :program => 'java -jar /srv/ASAP.jar',
+      :opts => opts
+    }
+
+    opt_str = opts.map{|h_opt| h_opt[:opt] + " " + h_opt[:value].to_s}.join(" ")
+    cmd = "#{h_cmd[:docker_call]} \"#{h_cmd[:program]} #{opt_str}\""
+    #cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T Parsing -organism #{self.organism_id} -o #{tmp_dir} -f #{filepath} #{options_txt}\""
+    logger.debug("CMDxx #{cmd}")
 
     queue = 1
 
@@ -383,20 +415,54 @@ class Project < ApplicationRecord
     output_json = tmp_dir + "output.json"
     #    FileUtils.touch output_json if !File.exist?(output_json)
     job = Basic.run_job(logger, cmd, self, self, 1, output_file, output_json, queue, self.parsing_job_id, self.user)
+    run = Run.where(:project_id => self.id, :step_id => 1).first
     
+    h_outputs = {
+      :output_matrix => {:types => ["num_matrix"], :filename => "parsing/output.loom", :dataset => "matrix", :row_filter => nil, :col_filter => nil},
+      :output_json => {:types => ["json_file"], :filename => "parsing/output.json"}
+    }
+    
+    if !run
+      h_run = {
+        :project_id => self.id, 
+        :step_id => 1, 
+        :status_id => 2, 
+        :num => 1, 
+        :user_id => self.user_id, #() ? current_user.id : 1,
+      #  :job_id => job.id, 
+        :command_json => h_cmd.to_json,
+        #        :command_line => cmd,
+        :attrs_json => self.parsing_attrs_json,
+        :output_json => h_outputs.to_json
+      }
+      run = Run.new(h_run)
+      run.save
+    else
+      run.update_attributes({
+                           :status_id => 2, 
+                           :job_id => job.id, 
+                           :attrs_json => self.parsing_attrs_json,
+                           :output_json => h_outputs.to_json
+                           })
+    end
+
     #    cmd = "rails parse_batch_file[#{self.key}]"
     #    logger.debug("CMD: " + cmd)
     #    `#{cmd}`
     
-    content_json_file = File.read(output_json)
+    content_json_file = nil
     status_id = 3
     h_parsing={}
     begin
+      content_json_file = File.read(output_json)
       h_parsing = JSON.parse(content_json_file)
+
+      cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T ExtractMetadata -f #{output_file}\""
+      logger.debug("CMDyy: " + cmd)
       Basic.finish_step(logger, start_time, self, 1, self, output_file, output_json)
     rescue Exception => e
       status_id = 4
-      h_parsing['displayed_error']='Bad format for the input file.'
+      h_parsing['displayed_error']='Bad format for the input file or parsing error.'
       File.open(output_json, 'w') do |f|
         f.write(h_parsing.to_json)
       end
@@ -405,12 +471,22 @@ class Project < ApplicationRecord
     ### update duration                                                                                                                                                            
     #  Basic.finish_step(logger, start_time, self, 1, self, output_file, output_json)
     # h_parsing = JSON.parse(File.read(tmp_dir + 'output.json'))
+    
+    list_outputs = []
+    if status_id == 3
+      h_outputs[:output_matrix][:types] = (h_parsing['is_count_table'] == 1) ? ['int_matrix'] : ['num_matrix']
+      h_outputs[:output_json]={:types => ['file'], :format => 'json', :filename => "parsing/output.json"}
+      #      list_outputs.push({:type => "data_matrix", :filename => "output.loom", :name => "matrix"})
+    end
+    run.update_attributes({:status_id => status_id, :output_json => h_outputs.to_json})
+    
     self.update_attributes(
                            :duration => Time.now - start_time,
                            :status_id => status_id,
                            :nber_cells => h_parsing['nber_cells'] || nil,
                            :nber_genes => h_parsing['nber_genes'] || nil
                            )
+    
     project_step.update_attributes(:status_id => status_id)   
   end
   

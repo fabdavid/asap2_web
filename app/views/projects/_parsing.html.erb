@@ -2,9 +2,10 @@
 <% if (@project.status_id == 3 or @project.step_id > 1) and !@results['displayed_error'] %>
 <div class="card" id="result_summary">
   <div class="card-header">Parsing results
-<% if editable?(@project) and File.exist?(Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key + ('input.' + @project.extension)) %>
+<!--<% if editable?(@project) and File.exist?(Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key + ('input.' + @project.extension)) %>
 <div style='float:right'><button id='reset_parsing' class="btn btn-primary btn-sm" style="margin-top:-7px">Reset</button></div>
 <% end %>
+-->
 </div>
   <div class="card-body" id="realtimedata">
 
@@ -105,14 +106,14 @@ No results available. <%= raw ((status = @project.status) ? "<span class='badge 
  <span class='badge badge-danger'><%= @results['displayed_error'] || '' %></span>
  <br/><span><%= @results['original_error'] || '' if admin? %></span>
 <% end %>
-<div style='float:right'><button id='reset_parsing' class="btn btn-primary" style="margin-top:-7px">Reset</button></div>
+<div style='float:right'><button class="btn btn-primary reset_parsing" style="margin-top:-7px">Reset</button></div>
 
 <% end %>
 
 <%= javascript_tag do %>
 
-$("#reset_parsing").click(function(){
-refresh("step_container", "<%= edit_project_path(:key => @project.key, :nolayout => 1) %>");
+$(".reset_parsing").click(function(){
+refresh("step_content", "<%= parse_form_project_path(:key => @project.key, :nolayout => 1) %>", {});
 });
 
 // remove set margins

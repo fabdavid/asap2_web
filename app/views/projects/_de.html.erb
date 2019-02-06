@@ -53,7 +53,7 @@
   
   function upd_attributes(){
   var diff_expr_method_id = $("#diff_expr_diff_expr_method_id").val();
-  refresh('diff_expr_attributes', '<%= get_attributes_project_path(:key => @project.key) %>' + '?obj_name=diff_expr_method&obj_id=' + diff_expr_method_id);
+  refresh('diff_expr_attributes', '<%= get_attributes_project_path(:key => @project.key) %>' + '?obj_name=diff_expr_method&obj_id=' + diff_expr_method_id, {});
   }
   
   upd_attributes();
@@ -85,7 +85,7 @@ $("#diff_expr_diff_expr_method_id").change(function(){
 
 <% end %>
 
- refresh("list_des", '<%= diff_exprs_path(:project_key => @project.key) %>')
+ refresh("list_des", '<%= diff_exprs_path(:project_key => @project.key) %>', {})
 
  var de_method_id = $("#diff_expr_diff_expr_method_id").val();
  var img = $("#speed_" + h_de_methods[de_method_id][0])

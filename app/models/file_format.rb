@@ -1,0 +1,2 @@
+class FileFormat < ApplicationRecord
+end

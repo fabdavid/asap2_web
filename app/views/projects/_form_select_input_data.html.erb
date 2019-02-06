@@ -1,0 +1,82 @@
+<%# @attrs.to_json %>
+<%# @h_runs_by_step.to_json %>
+<% h_selected_runs = {} %>
+<%= session[:input_data_attrs].to_json %>
+<% if session[:input_data_attrs][params[:attr_name]] %>
+<% session[:input_data_attrs][params[:attr_name]].map{|e| h_selected_runs[e['run_id'].to_i]=[]; h_selected_runs[e['run_id'].to_i].push(e['attr_name'])} if session[:input_data_runs][params[:attr_name]] %>
+<% end %>
+<div> 
+<b>Select input data source</b> <!-- for <%= @attrs[params[:attr_name]]['type'] %>-->
+<br>
+<!-- <div class='card-deck'>-->
+<% valid_step_names = @attrs[params[:attr_name]]['source_steps'].select{|ssn| @h_runs_by_step[@h_steps[ssn].id]}.sort{|a,b| @h_steps[a].rank <=> @h_steps[b].rank} %>
+<%# @attrs[params[:attr_name]]['source_steps'].to_json %>
+<% default_step_name = valid_step_names.first %>
+<% valid_step_names.each do |source_step_name| %>
+<%# source_step_name %>
+<!--   <div class='card'>
+       <div class='card-body'>-->
+<button type='button' class='btn btn-primary'><%= @h_steps[source_step_name].label %></button>
+<!--     </div>
+	 </div>--> 
+<% end %>
+</div>
+<!-- if there are more than one -->
+<div id='pipeline_paths' class='hidden'>
+<b>Pipeline paths</b>
+
+<div id='pipeline_path'></div>
+</div>
+
+<div id='run_list'>
+<% if @h_runs_by_step[@h_steps[default_step_name].id] %> 
+ <% @h_runs_by_step[@h_steps[default_step_name].id].each do |run| %>
+  <% h_outputs = JSON.parse(run.output_json) %>
+  <%# h_outputs.to_json %>
+  <%= h_outputs.keys.map{|k| (@attrs[params[:attr_name]]['valid_types'] & h_outputs[k]['types']).size} %>
+  <% h_outputs.keys.select{|k| h_outputs[k]['types'] and @attrs[params[:attr_name]]['valid_types'] and ( intersect = @attrs[params[:attr_name]]['valid_types'] & h_outputs[k]['types']; intersect.size > 0)}.each do |output_attr_name| %>
+   bla
+   <div id='card-run-<%= run.id %>:<%= output_attr_name %>' class='card run_card<%= (h_selected_runs[run.id]) ? ' selected_run' : '' %>'>
+    <!--<div class='card-header'></div> -->
+    <div class='card-body'> 
+     <!--    <%# check_box_tag 'run_<%= run.id %>' %> -->
+     <% if default_step_name == 'parsing' %>
+      Parsing
+     <% else %>
+     <% end %>
+    </div>
+   </div> 
+  <% end %>
+ <% end %>
+<% end %>
+</div>
+
+ <button id='select_runs' type='button' class='btn btn-primary'>Select</button>
+
+<!-- for the selected pipeline path, one select field for each step (except if there is only one set of parameters => in this case just display the parameters) -->
+
+<%= javascript_tag do %>
+
+$(".run_card").click(function(){
+ var id = this.id.split("-")[2];
+ $(this).toggleClass("selected_run"); 
+})
+
+$("#select_runs").click(function(){
+
+ // get the list of selected cards
+ var list_run_ids = []
+ $(".run_card").each(function(i, obj){
+   if ($(obj).hasClass("selected_run")){
+     list_run_ids.push($(obj).attr("id").split("-")[2])
+     //console.log("add")
+   }
+
+ })
+ console.log(list_run_ids);
+ refresh_post("form-container_<%= params[:attr_name] %>", '<%= set_input_data_project_path(:key => @project.key) %>?attr_name=<%= params[:attr_name] %>&step_name=<%= @step.name %>&obj_id=<%= params[:obj_id] %>&list_attrs=' +  list_run_ids.join(","), {loading:'fa-2x'})
+ $("#ontop_window").addClass("hidden");
+})
+
+
+<% end %>

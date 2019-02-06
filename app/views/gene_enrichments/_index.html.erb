@@ -55,7 +55,7 @@ $(document).ready(function(){
 $(".list_pathways").click(function(){
 var t = this.id.split("_");
 //if ($(this).html() != '0'){
-refresh("step_container", '<%= gene_enrichments_path %>/' + t[1] + "/get_list");
+refresh("step_container", '<%= gene_enrichments_path %>/' + t[1] + "/get_list", {});
 //}
 });
 

@@ -3,8 +3,214 @@ module Basic
 #class Basic
 
   class << self
-    def t
-      puts 't'
+
+    def upd_run run, h_upd
+      run.update_attributes(h_upd)
+      if active_run = run.active_run and h_upd[:status_id] == 4
+        active_run.delete
+      end
+    end
+
+    def set_run h_p
+
+      h_res = {}
+
+      project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + h_p[:project].user_id.to_s + h_p[:project].key
+      run = h_p[:run] #list_of_runs[run_i][0]
+      p = h_p[:p] #list_of_runs[run_i][1]
+
+      docker_image = h_p[:h_cmd_params]['docker_image']
+      
+      h_var = {
+        'output_dir' => project_dir + h_p[:step].name + run.id.to_s,
+        'std_method_name' => h_p[:std_method].name
+      }
+      
+      run_parents = []
+      
+      p.each_key do |k|
+        #logger.debug("bly: #{k.to_s} #{@h_attrs.to_json} #{@h_attrs[k.to_s].to_json}")                                                                                                            
+        if h_p[:h_attrs][k.to_s] and h_p[:h_attrs][k.to_s]['valid_types']
+          if h_p[:h_attrs][k.to_s]['valid_types'].include?('num_matrix')
+            linked_run = Run.where(:id => p[k]['run_id']).first
+            h_linked_run_outputs = nil
+            if !linked_run
+              h_res[:error] = 'Linked run was not found!'
+            else
+              h_linked_run_outputs = JSON.parse(linked_run.output_json)
+              h_linked_run_outputs[p[k]['output_attr_name']].each_key do |k2|
+                h_var[k + "_" + k2] = h_linked_run_outputs[p[k]['output_attr_name']][k2]
+              end
+              run_parents.push({
+                                 :run_id => linked_run.id,
+                                 :type => 'num_matrix',
+                                 :output_attr_name => p[k]['output_attr_name'],
+                                 :filename => h_linked_run_outputs[p[k]['output_attr_name']]['filename'],
+                                 :dataset => h_linked_run_outputs[p[k]['output_attr_name']]['dataset'],
+                                 :output_json_filename => (oj = h_linked_run_outputs['output_json']) ? oj['filename'] : nil,
+                                 :input_attr_name => k.to_s 
+                               })
+            end
+          end
+        else
+          h_var[k] = p[k]
+        end
+      end
+      
+      ## define if predictable = there is one matrix as input                                                                                                                                      
+      matrix_runs = run_parents.select{|parent| parent[:type] == 'num_matrix'}
+      predictable = (matrix_runs.size == 1) ? true : false
+      if predictable
+        matrix_run = matrix_runs.first
+        h_output_json = JSON.parse(File.read(project_dir + matrix_run[:output_json_filename]))
+        h_var['nb_cols'] = h_output_json['nb_cols']
+        h_var['nb_rows'] = h_output_json['nb_rows']
+      end
+      
+      list_args = []
+      if h_p[:h_cmd_params]['args']
+          h_p[:h_cmd_params]['args'].each do |h_arg|
+          list_args.push({:param_key => h_arg['param_key'], :value => h_var[h_arg['param_key']] })
+        end
+      end
+      
+      list_opts = []
+      if h_p[:h_cmd_params]['opts']
+        h_p[:h_cmd_params]['opts'].each do |opt|
+          list_opts.push(opt)
+        end
+      end
+      
+      h_cmd = {
+        :docker_call => (docker_image) ? h_p[:h_env]['docker_images'][docker_image]['call'] : nil,
+        :time_call => h_p[:h_env]['time_call'].gsub(/(\#[\w_]+)/) { |var| h_var[var[1..-1]] },
+        :program =>  h_p[:h_cmd_params]['program'],
+        :args => list_args,
+        :opts => list_opts
+      }
+        
+        if predictable
+          
+        h_predict_params = {}
+        h_p[:h_cmd_params]['predict_params'].each do |pp|
+          h_predict_params[pp] = h_var[pp]
+        end
+        
+        h_cmd[:expected_duration] = Basic.predict_duration(h_predict_params)
+        h_cmd[:expected_ram] =  Basic.predict_ram(h_predict_params)
+      end
+      
+      run.update_attributes({:command_json => h_cmd.to_json, :run_parents_json => run_parents.to_json});
+      
+      return h_res
+      
+    end
+
+    def init_active_run run    
+      h_res = {}
+      h_active_run = run.as_json
+      h_active_run[:run_id] = run.id
+      ar = ActiveRun.new(h_active_run)
+      ar.save!
+      return h_res
+    end
+
+    def predict_ram h_predict_param
+      return nil
+    end
+
+    def predict_duration h_predict_param
+      return nil
+    end
+
+    def build_cmd h_cmd
+      cmd_core = [h_cmd['time_call'], h_cmd['program'], h_cmd['opts'].map{|e| "#{e['opt']} #{e['value']}"}.join(" "), h_cmd['args'].map{|e| e['value']}].compact.join(" ")
+      cmd = ""
+      if h_env['docker_call']
+        cmd = h_env['docker_call'] + "\"" + cmd_core + "\""
+      end
+      return cmd
+    end
+
+    def exec_run run
+      
+      start_time = Time.now
+      project = run.project      
+      version = project.version
+      step = run.step
+
+      project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + project.user_id.to_s + project.key 
+      step_dir = project_dir + step.name
+      Dir.mkdir step_dir if !File.exist? step_dir
+      output_dir = (step.multiple_runs == true) ? (step_dir + run.id.to_s) : step_dir
+      Dir.mkdir output_dir if step.multiple_runs == true and !File.exist? output_dir
+
+      h_env = JSON.parse(version.env_json)
+      
+      h_cmd = JSON.parse(run.command_json)
+      
+      cmd = build_cmd(h_cmd)
+      logger.debug("CMD:#{cmd}")
+      pid = spawn(cmd)
+      
+      h_run = {
+        :command_line => cmd,
+        :status_id => 2,
+        :pid => pid
+      }
+      run.update_attributes(h_run)
+      project.broadcast run.step_id
+
+      Process.waitpid(pid)
+
+      logger.debug "CMD_STATUS: #{$?.stopped?}"
+      
+      if ! $?.stopped?  #(job and ! $?.stopped?) or (results["original_error"] or results["displayed_error"])             
+
+        ## check if expected output files exist
+        h_output_json = JSON.parse(step.output_json)        
+        h_expected_outputs = (h_output_json) ? h_output_json['expected_outputs'] : nil
+        
+        results = {}
+        found_expected = true
+        h_expected_outputs.each_key do |k|
+          if !h_expected_outputs[k]['optional']
+            filename = output_dir + h_expected_outputs[k]['filename']
+            found_expected = false if !File.exist? filename
+            if h_expected_outputs[k]['type'] == 'json_file'
+              ### check if json results is parseable, if not write an error
+              begin
+                results = JSON.parse(File.read(filename))
+              rescue Exception => e
+                results['displayed_error']='Bad format'
+                File.open(filename, 'w') do |f|
+                  f.write(results.to_json)
+                end
+              end
+            end
+            break if found_expected == false
+          end
+        end
+
+        ### update duration    
+        duration = Time.now - start_time
+        if found_expected == true and !results["original_error"] and !results["displayed_error"]
+          run && run.update_attributes(:status_id => 3, :duration => duration)
+        else
+          run && run.update_attributes(:status_id => 4, :duration => duration)
+        end
+        
+      end
+      
+    end
+    
+    
+    def std_run(run)
+      h = {:project_id => project.id, :step_id => step_id,  :status_id => 1, :speed_id => speed_id}
+      job = Job.new(h)
+      job.save
+      o.update_attributes({job_id_key => job.id, :status_id => 1})
+      return job
     end
 
     def create_job(o, step_id, project, job_id_key, speed_id = 1)
@@ -61,7 +267,7 @@ module Basic
         end
       end
       
-      project.broadcast_new_status
+      project.broadcast step_id
       # end
     end
     
@@ -155,14 +361,14 @@ module Basic
 #      job = Job.new(h_job)
 #      job.save
       job.update_attributes(h_job)
-
+      project.broadcast step_id
 #      job_id_fields = [:parsing_job_id, :filtering_job_id, :normalization_job_id]
 #      if step_id < 4
 #        o.update_attribute(job_id_fields[step_id-1], job.id)
 #      else
 #        o.update_attribute(:job_id, job.id)
 #      end
-      logger.debug("BLABLABLA")
+      #logger.debug("BLABLABLA")
 
       Process.waitpid(pid)
       
@@ -247,6 +453,48 @@ module Basic
       return nil
     end
   end
+
+  def safe_download(url, filepath, max_size: nil)
+    require 'open-uri'
+    #    Error = Class.new(StandardError)                                                                                                                                                                                    
+    
+    #    DOWNLOAD_ERRORS = [                                                                                                                                                                                                 
+    #                       SocketError,                                                                                                                                                                                     
+    #                       OpenURI::HTTPError,                                                                                                                                                                              
+    #                       RuntimeError,                                                                                                                                                                                    
+    #                       URI::InvalidURIError,                                                                                                                                                                            
+    #                       Error,                                                                                                                                                                                           
+    #                      ]                                                                                                                                                                                                 
+    
+    url = URI.encode(URI.decode(url))
+    url = URI(url)
+    raise Error, "url was invalid" if !url.respond_to?(:open)
+    
+    options = {}
+    options["User-Agent"] = "MyApp/1.2.3"
+    options[:read_timeout] = 10000
+    options[:content_length_proc] = ->(size) {
+      if max_size && size && size > max_size
+        raise Error, "file is too big (max is #{max_size})"
+      end
+    }
+    
+    downloaded_file = url.open(options)
+    
+    if downloaded_file.is_a?(StringIO)
+      # tempfile = Tempfile.new("open-uri", binmode: true)                                                                                                                                                                
+      IO.copy_stream(downloaded_file, filepath)
+      # downloaded_file = tempfile                                                                                                                                                                                        
+      # OpenURI::Meta.init downloaded_file, stringio                                                                                                                                                                      
+    end
+    
+    #   downloaded_file                                                                                                                                                                                                     
+    
+    #  rescue *DOWNLOAD_ERRORS => error                                                                                                                                                                                
+    #    raise if error.instance_of?(RuntimeError) && error.message !~ /redirection/                                                                                                                                    
+    #    raise Error, "download failed (#{url}): #{error.message}"                                                                                                                                                           
+  end
+  
 
   def std_dev(t)
     t=t.select{|e| e}

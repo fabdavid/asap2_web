@@ -1,0 +1,17 @@
+<%= form_with(model: trajectory, local: true) do |form| %>
+  <% if trajectory.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(trajectory.errors.count, "error") %> prohibited this trajectory from being saved:</h2>
+
+      <ul>
+      <% trajectory.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

@@ -68,6 +68,8 @@ gem 'paperclip'
 gem 'multipart-parser'
 gem 'haml'
 gem 'activerecord-session_store'
+#gem 'hdf5'
+#gem 'get_process_mem'
 
 group :development, :test do
   # Call 'byebug' anywhere in your code to drop into a debugger console

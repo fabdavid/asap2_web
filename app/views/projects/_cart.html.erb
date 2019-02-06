@@ -135,7 +135,7 @@ var download_icon= '';
   refresh_post(container, "<%= replot_project_path(:key => @project.key) %>", p, 'post');
 }
 <% else %>
-refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>");
+//refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>", {});
 <% end %>
 
 <% if @project.diff_exprs.size == 0 and @project.selections.size == 0 %>

@@ -39,7 +39,7 @@ $(".pipeline_step").removeClass("disabled");
 <% end %>
 
 <% if @reload_step_container %>
-refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>");
+refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>", {});
 <% end %>
 
 <% if session[:active_step] == 4 %>

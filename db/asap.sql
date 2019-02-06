@@ -4,12 +4,44 @@ create table users(
 create table delayed_jobs(
 );
 
+create table user_types(
+id serial,
+name text,
+-- max_nber_jobs int,
+max_nber_cores int,
+max_total_memory int,
+primary key (id)
+);
+
 create table sessions(
 );
 
 create table tool_types(
 id serial,
 name text,
+primary key (id)
+);
+
+create table file_formats(
+id serial,
+label text,
+description text,
+child_format text,
+color text,
+many_files bool,
+parsing_mandatory_sel bool,
+primary key (id)
+);
+
+create table versions(
+id serial,
+release_date timestamp,
+description text,
+tools_json text,
+docker_json text,
+env_json text,
+created_at timestamp,
+updated_at timestamp,
 primary key (id)
 );
 
@@ -20,6 +52,18 @@ name text,
 label text,
 description text,
 rank int,
+multiple_runs bool default true,
+-- method_obj_name text,
+-- is_std_step bool,
+has_std_dashboard bool default true,
+has_std_form bool default true,
+has_std_view bool default true,
+attrs_json text default '{}', -- optional attributes for each step
+method_attrs_json text default '{}', -- global properties of standard method attributes
+method_output_json text default '{}', -- global properties of standard method outputs
+command_json default '{}',
+-- action_button_name text,
+version_id int references versions (id),
 primary key (id)
 );
 
@@ -36,21 +80,18 @@ primary key (id)
 );
 
 
-create table versions(
-id serial,
-release_date timestamp,
-description text,
-tools_json text,
-created_at timestamp,
-updated_at timestamp,
-primary key (id)
-);
-
 create table db_sets(
 id serial,
 tool_id int references tools,
 label text,
 tag text, -- used for filename (databases) 
+primary key (id)
+);
+
+create table ensembl_subdomains(
+id serial,
+name text,
+latest_ensembl_release int,
 primary key (id)
 );
 
@@ -62,6 +103,7 @@ go_short_name text,
 genrep_key text,
 tax_id int,
 tag text,
+ensembl_subdomain_id int references ensembl_subdomains (id),
 created_at timestamp,
 updated_at timestamp,
 primary key (id)
@@ -158,10 +200,11 @@ id serial,
 name text,
 label text,
 img_extension text,
+icon_class text, 
 primary key (id)
 );
 
-create table jobs(
+create table jobs( --keep history of all 
 id serial,
 project_id int,
 step_id int references steps(id),
@@ -211,6 +254,7 @@ nber_genes int,
 diff_expr_filter_json text,
 gene_enrichment_filter_json text,
 nber_clones int default 0,
+version_id int references versions,
 created_at timestamp,
 updated_at timestamp,
 primary key (id)
@@ -279,6 +323,184 @@ created_at timestamp,
 primary key (id)
 );
 
+create table pipelines(
+id serial,
+project_id int references projects (id),
+name text,
+created_at timestamp,
+primary key (id)
+);
+
+create table std_methods(
+id serial,
+name text,
+label text,
+step_id int references steps (id),
+description  text,
+short_label text,
+program text,
+link text,
+speed_id smallint references speeds,
+nber_cores int,
+async bool, -- async execution
+attrs_json text default '{}',
+attr_layout_json text default '[]',
+output_json text default '{}', -- describe the outputs (files, annotations)
+obj_attrs_json text default '{}', -- object attributes e.g. handles_log for most of methods, or creates_av_norm for de
+-- handles_log bool default false,
+version_id int references versions (id),
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create table reqs(
+id serial,
+project_id int references projects (id),
+step_id int references steps (id),
+std_method_id int references std_methods (id),
+-- run_id int references runs (id), -- data origin                                                 
+attrs_json text default '{}',
+-- output_json text default '{}', -- describe the outputs (files, annotations)                                                            
+num int,
+pid int,
+error text,
+created_at timestamp,
+user_id int references users,
+primary key (id)
+);
+
+create table runs( --can be deleted
+id serial,
+project_id int references projects (id),
+step_id int references steps (id),
+std_method_id int references std_methods (id),
+req_id int references reqs (id),
+-- run_id int references runs (id), -- data origin
+attrs_json text default '{}',
+output_json text default '{}', -- describe the outputs (files, annotations)
+num int,
+--job_id int references jobs,
+command_json text,
+duration int,
+pid int,
+--delayed_job_id int,
+--speed_id int references speeds,
+nber_cores int,
+max_ram float,
+error text,
+async bool default true,
+status_id int references statuses,
+-- run_path_json text, -- full path until this std_run
+run_parents_json text, -- list the parents with the link properties (which data from each parent is used) = data origin
+run_children_json text, -- list the children with the link properties (which data are used by children)
+created_at timestamp,
+user_id int references users,
+primary key (id)
+);
+
+create table active_runs( --only active runs (pending + running)              
+id serial,
+run_id int references runs (id),
+project_id int references projects (id),
+step_id int references steps (id),
+std_method_id int references std_methods (id),
+req_id int references reqs (id),
+-- run_id int references runs (id), -- data origin                                             
+attrs_json text default '{}',
+output_json text default '{}', -- describe the outputs (files, annotations)                       
+num int, --job_id int references jobs,                                                     
+command_json text,
+duration int,
+pid int,--delayed_job_id int,  
+--speed_id int references speeds,
+nber_cores int,
+max_ram float,
+error text,
+async bool default true,
+status_id int references statuses,
+-- run_path_json text, -- full path until this std_run                                           
+run_parents_json text, -- list the parents with the link properties (which data from each parent is used) = data origin 
+run_children_json text, -- list the children with the link properties (which data are used by children)  
+created_at timestamp,
+user_id int references users,
+primary key (id)
+);
+
+create table del_runs( -- deleted project runs, only failed + success
+id serial,
+run_id int,
+project_id, -- int references projects (id),
+step_id int references steps (id),
+std_method_id int references std_methods (id),
+req_id, --int references reqs (id),
+-- run_id int references runs (id), -- data origin                         
+attrs_json text default '{}',
+output_json text default '{}', -- describe the outputs (files, annotations)                                       
+num int,--job_id int references jobs,               
+command_json text,
+duration int,
+pid int,
+--delayed_job_id int,
+--speed_id int references speeds,
+nber_cores int,
+max_ram float,
+error text,
+async bool default true,
+status_id int references statuses,
+-- run_path_json text, -- full path until this std_run  
+run_parents_json text, -- list the parents with the link properties (which data from each parent is used) = data origin 
+run_children_json text, -- list the children with the link properties (which data are used by children)
+created_at timestamp,
+user_id int references users,
+primary key (id)
+)
+
+create index project_id_del_runs on del_runs (project_id);
+
+create table heatmaps(
+id serial,
+project_id int references projects (id),
+-- covariate_method_id int references covariate_methods,
+attrs_json text,
+num int,
+job_id int references jobs,
+pid int,
+error text,
+status_id int references statuses,
+created_at timestamp,
+user_id int references users,
+primary key (id)
+);
+
+create table trajectories(
+id serial,
+project_id int references projects (id),
+attrs_json text,
+num int,
+job_id int references jobs,
+pid int,
+error text,
+status_id int references statuses,
+created_at timestamp,
+user_id int references users,
+primary key (id)
+);
+
+create table correlations(
+id serial,
+project_id int references projects (id),
+attrs_json text,
+num int,
+job_id int references jobs,
+pid int,
+error text,
+status_id int references statuses,
+created_at timestamp,
+user_id int references users,
+primary key (id)
+);
+
 create table normalizations(
 id serial,
 project_id int references projects (id),
@@ -294,7 +516,21 @@ user_id int references users,
 primary key (id)
 );
 
-create table filterings(
+create table cell_filterings(
+id serial,
+project_id int references projects (id),
+attrs_json text,
+num int,
+job_id int references jobs,
+pid int,
+error text,
+status_id int references statuses,
+created_at timestamp,
+user_id int references users,
+primary key (id)
+);
+
+create table gene_filterings(
 id serial,
 project_id int references projects (id),
 filter_method_id int references norms,
@@ -328,6 +564,21 @@ create table imputations(
 id serial,
 project_id int references projects (id),
 imputation_method_id int references imputation_methods,
+attrs_json text,
+num int,
+job_id int references jobs,
+pid int,
+error text,
+status_id int references statuses,
+created_at timestamp,
+user_id int references users,
+primary key (id)
+);
+
+create table covariates(
+id serial,
+project_id int references projects (id),
+-- covariate_method_id int references covariate_methods,
 attrs_json text,
 num int,
 job_id int references jobs,
@@ -432,6 +683,7 @@ gene_length int,
 sum_exon_length int,
 organism_id int references organisms,
 alt_names text,
+latest_ensembl_release int,
 created_at timestamp,
 primary key (id)
 );

@@ -1,0 +1,2 @@
+class DelRun < ApplicationRecord
+end

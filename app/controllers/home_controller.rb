@@ -10,6 +10,9 @@ class HomeController < ApplicationController
     
   end
 
+  def support
+  end
+
   def citation
 #     render :layout => false if params[:nolayout]
   end

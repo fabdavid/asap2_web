@@ -12,6 +12,9 @@ development:
   /data/asap2/fus
  hdf5lib_path:
   /srv/CMake-hdf5-1.10.2/HDF5-1.10.2-Linux/HDF_Group/HDF5/1.10.2/lib
+ authorized_services:
+  asap_jar:
+   key: 'hB7sgKCjyiu123' 
 
 production:
  docker_call:

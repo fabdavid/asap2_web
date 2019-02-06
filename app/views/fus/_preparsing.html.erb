@@ -1,5 +1,7 @@
+<% if @h_formats and detected_format = @h_formats[@h_upload_details['detected_format']] %>
+
 <div class='alert alert-success'>
-  File <%= @fu.upload_file_name %> was successfully uploaded (<%= (@fu.upload_file_size.to_f/1000000).round(1).to_s %> Mo) and identified as a <%= @h_format[@h_upload_details['detected_format']][:description]  %> file<%= 's' if @h_format[@h_upload_details['detected_format']][:many] %>.
+  File <%= @fu.upload_file_name %> was successfully uploaded (<%= (@fu.upload_file_size.to_f/1000000).round(1).to_s %> Mo) and identified as a <%= detected_format.description  %> file<%= 's' if detected_format.many_files %>.
 </div>
 
 <div id='loading_dataset' class='loading hidden'>
@@ -24,9 +26,11 @@
   <% @list_datasets.each do |d| %>
   <a class="list-group-item list-group-item-action"><%= d['filename'] %></a>
   <% end %>
-  <%= hidden_field_tag 'sel_name', (params[:sel] || '') %>
+  <%= hidden_field_tag 'sel_name', (params[:sel] || (detected_format.parsing_mandatory_sel == true and @current_dataset and @current_dataset['group']) ||  '') %>
   <%= hidden_field_tag 'file_type', @h_upload_details['detected_format'] %>
 </div>
+
+<% child_format = @h_formats[@h_upload_details['detected_format']].child_format %>
 
 <div id='dataset_details'>
   <% if @current_dataset %>
@@ -38,7 +42,7 @@
     <div class='card'>
       <div class='card-body' style='overflow:hidden'>
 	<div>
-	  <i class='fa fa-file-o fa-3x'><div style='position:relative;top:-15px;left:5px;font-size:10px;font-weight:bold;background-color:<%= @h_format[@h_upload_details['detected_format']][:color] %>;color:white;padding:3px;border:2px solid white'><%= @h_format[@h_upload_details['detected_format']][:label] %></div></i>
+	  <i class='fa fa-file-o fa-3x'><div style='position:relative;top:-15px;left:5px;font-size:10px;font-weight:bold;background-color:<%= @h_formats[child_format].color %>;color:white;padding:3px;border:2px solid white'><%= @h_formats[child_format].label %></div></i>
 	  <div style='position:relative;top:-45px;left:40px;font-size:16px'>
 	    Dataset <span class='dataset_name'><%= @current_dataset['group'] %></span>
 	  </div>
@@ -58,7 +62,8 @@
 	</div>
       </div>
     </div>
-    <% if (@current_dataset or @error) and @h_json['detected_format'] == 'RAW_TEXT' %>
+    <% current_format = @h_json['detected_format'] %> 
+    <% if (@current_dataset or @error) and (child_format == 'RAW_TEXT') %> <!--#or @h_format[current_format][:child_format] == 'RAW_TEXT' -->
     <div class='card'>
       <div class='card-header'>
 	Parsing parameters
@@ -127,9 +132,11 @@
 <%= javascript_tag do %>
 
 /* check if the project name field is still empty */
-if ($("#project_name").val().trim() == ''){
-$("#project_name").css("border", "1px solid red");
-$("#project_name").css("background-color", "#FFFAFA");
+
+project_name = $("#project_name")
+if (project_name.val() && project_name.val().trim() == ''){
+project_name.css("border", "1px solid red");
+project_name.css("background-color", "#FFFAFA");
 }
 
 <% if @current_dataset %>
@@ -148,9 +155,12 @@ $("#nb_genes").val(<%= @current_dataset['nb_genes'] %>);
 // activate the create project button if project name is not empty  and number of cells > 1 and number of genes > 0
 $("#nb_cells_preview").val(<%= nb_cells %>);
 $("#nb_genes_preview").val(<%= nb_genes %>);
-validate_form(true);
-
+if (project_name.val()){
+ validate_form(true);
+}
 <% end %>
+
+
 
 function upd_preparsing(e){
   $("#list_datasets").addClass("hidden");
@@ -159,7 +169,7 @@ function upd_preparsing(e){
   $("#loading_dataset").removeClass("hidden");
  
   var p = [];
- <% if @current_dataset and @current_dataset['detected_format'] == 'RAW_TEXT' %>
+ <% if @current_dataset and child_format == 'RAW_TEXT' %>
   if (e == 'upd'){  
    p = [
    {name : 'delimiter', value : $("#attrs_delimiter").val()},
@@ -188,7 +198,7 @@ $("#dataset_details select").change(function(){
 $("#cancel_sel").click(function(){
  $("#list_datasets").removeClass("hidden");
  $("#dataset_details").addClass("hidden");
- $("#preparsing_error").addClass("hidden"); 
+ $("#preparsing_error").addClass("hidden");
 })
 
 $("#list_datasets a").click(function(){
@@ -196,4 +206,14 @@ $("#list_datasets a").click(function(){
 // alert($(this).html());
  upd_preparsing('new')
 })
+
+
+<% end %>
+
+<% else %>
+
+Format not detected:
+<%= @h_formats %>
+<%= @h_upload_details.to_json %>
+
 <% end %>

@@ -1,0 +1,2 @@
+module CellFilteringsHelper
+end

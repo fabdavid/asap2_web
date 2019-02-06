@@ -1,0 +1,23 @@
+<% if @runs.size > 0 %>
+
+List of runs
+
+<div>
+<% @runs.each do |run| %>
+
+<div class='card'>
+<div class='card-body'>
+<%= run.id %>
+<div id='run_status_<%= run.id %>' class='status_id'><i class='<%= @h_statuses[run.status_id].icon_class %>' /></div>
+</div>
+</div>
+
+<% end %>
+
+</div>
+
+<% else %>
+
+<div class='badge badge-warning'>No run created yet</div>
+
+<% end %>

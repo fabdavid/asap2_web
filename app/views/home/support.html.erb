@@ -1,0 +1,24 @@
+<div class='alert alert-success'>
+  Please send us a support message
+</div>
+
+<form id='support_message'>
+
+<div class='form-group col-12 col-sm-6'>
+  <%= label_tag 'My name (will be displayed)', 'My name', {'data-toggle' => "tooltip", 'title' => "Your name or initials."} %>
+  <%= f.text_field :name, {:class => "form-control", :placeholder => "Name / Initials / Pseudo"} %>
+</div>
+
+<div class='form-group col-12 col-sm-6'>
+  <%= label_tag 'My affiliation (will be displayed)', 'My affiliation', {'data-toggle' => "tooltip", 'title' => "Institution / Department"} %>
+  <%= f.text_field :affiliation, {:class => "form-control", :placeholder => "Institution / Department"} %>
+</div>
+
+<div class='form-group col-12 col-sm-6'>
+  <%= label_tag 'Message', 'Message', {'data-toggle' => "tooltip", 'title' => "Message"} %>
+  <%= f.text_field :message, {:class => "form-control", :placeholder => "Message"} %>
+</div>
+
+<span class='btn btn-primary'>Submit</span>
+
+</form>

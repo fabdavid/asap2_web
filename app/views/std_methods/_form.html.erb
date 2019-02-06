@@ -1,0 +1,34 @@
+<%= form_with(model: std_method, local: true) do |f| %>
+  <% if std_method.errors.any? %>
+    <div id="error_explanation">
+     <h2><%= pluralize(std_method.errors.count, "error") %> prohibited this std_method from being saved:</h2>
+
+      <ul>
+      <% std_method.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <table>
+    <% l = Step.all.map{|s| [s.label, s.id]} %>
+    <tr><td>Step</td><td><%= f.select :step_id, l %></td></tr>
+    <tr><td>Name</td><td><%= f.text_field :name %></td></tr>
+    <tr><td>Label</td><td><%= f.text_field :label %></td></tr>
+    <tr><td>Description</td><td><%= f.text_field :description %></td></tr>
+    <!--    <tr><td>Speed</td><td><%= f.select :speed_id, Speed.all.map{|s| [s.name, s.id]} %></td></tr>-->
+    <% l = (1 .. 25).to_a.map{|e| [e, e]} %>
+    <tr><td>Number of cores</td><td><%= f.select :nber_cores, l %></td></tr>
+    <tr><td>Link</td><td><%= f.text_field :link, :size => 100 %></td></tr>
+    <tr><td>Command line</td><td><%= f.text_area :command_json, :cols => 100, :rows => 30 %></td></tr>
+    <tr><td>Optional object attributes</td><td><%= f.text_area :obj_attrs_json, :cols => 100, :rows => 30 %></td></tr>
+    <tr><td>Attribute layout</td><td><%= f.text_area :attr_layout_json, :cols => 100, :rows => 30 %></td></tr>
+    <tr><td>Attributes</td><td><%= f.text_area :attrs_json, :cols => 100, :rows => 30 %></td></tr>
+  </table>
+  
+
+  <div class="actions">
+    <%= f.submit %>
+  </div>
+<% end %>

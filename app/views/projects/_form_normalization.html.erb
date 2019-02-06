@@ -57,7 +57,7 @@ $("#project_norm_id").change(function(){
  if ($(this).val()){
 //  refresh_attributes('norm', $(this).val());
   var url = '<%= get_attributes_project_path(:key => @project.key) %>' + '?obj_name=norm&obj_id=' + $(this).val();
-  refresh("attrs_container", url);
+  refresh("attrs_container", url, {});
   var img = $("#speed_" + h_norms[$(this).val()][0])
   if (img) {img.removeClass('hidden');}
   $("#method_desc").html(h_norms[$(this).val()][1] + ' ' + h_norms[$(this).val()][2]);
@@ -67,7 +67,7 @@ $("#project_norm_id").change(function(){
 });
 
 $("#cancel").click(function(){
-refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>");
+refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>", {});
 });
 
  
@@ -75,7 +75,7 @@ refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nola
  if (project_norm_id){
 // refresh_attributes('norm', project_norm_id);
   var url = '<%= get_attributes_project_path(:key => @project.key) %>' + '?obj_name=norm&obj_id=' + project_norm_id;
-  refresh("attrs_container", url);
+  refresh("attrs_container", url, {});
   var img = $("#speed_" + h_norms[project_norm_id][0])
   if (img) {img.removeClass('hidden');}
   $("#method_desc").html(h_norms[project_norm_id][1] + ' ' + h_norms[project_norm_id][2]);

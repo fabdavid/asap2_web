@@ -1,0 +1,2 @@
+class Trajectory < ApplicationRecord
+end

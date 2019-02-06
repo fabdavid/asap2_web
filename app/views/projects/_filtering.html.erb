@@ -88,7 +88,7 @@ No results available. <%= raw ((status = @project.status) ? "<span class='badge 
 <%= javascript_tag do %>
 
 $("#reset_filtering").click(function(){
-refresh("step_container", "<%= edit_project_path(:key => @project.key, :nolayout => 1) %>");
+refresh("step_container", "<%= edit_project_path(:key => @project.key, :nolayout => 1) %>", {});
 });
 
 // remove set margins

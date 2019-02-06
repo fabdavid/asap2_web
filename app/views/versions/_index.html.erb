@@ -8,7 +8,7 @@ ToolType.all.map{|tt| h_tool_types[tt.id]= tt}
 
 
 
-<ul id='version_list'>
+<ul id='version_container'>
 <% versions = @versions.sort{|a, b| b.created_at <=> a.created_at} %>
 <% versions.each do |version| %>
 <li>
@@ -27,7 +27,7 @@ ToolType.all.map{|tt| h_tool_types[tt.id]= tt}
 <% end %>
   
   <% h_tools = JSON.parse(version.tools_json)['tool_versions'] %>
-  <table id='version_list'>
+  <table id='version_list_<%= version.id %>' class='version_list'>
     <thead>
       <tr>
 	<th>Tool/DB</th>
@@ -51,13 +51,13 @@ ToolType.all.map{|tt| h_tool_types[tt.id]= tt}
 
 <%= javascript_tag do %>
 
- var oTable = $('#version_list').dataTable( {
+ $('#version_list_<%= version.id %>').dataTable( {
         "pageLength":<%= h_tools.keys.size %>,
         "order": [[ 1, "asc" ], [0, "asc"]]
-    });
+ });
 
 <% end %>
-  
+
 
 </div>
 </div>

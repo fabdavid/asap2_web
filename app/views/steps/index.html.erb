@@ -2,15 +2,19 @@
 
 <h1>Steps</h1>
 
-<table>
+<table id='list_steps'>
   <thead>
     <tr>
       <th>ID</th>
       <th>Rank</th>
       <th>Objet name</th>
       <th>Name</th>
-      <th>Label</th>
-      <th colspan="3"></th>
+      <th>Label</th>      
+      <th>Optional attributes</th>
+      <th>Method attributes</th>
+      <th></th>
+      <th></th>
+      <th></th>
     </tr>
   </thead>
 
@@ -22,6 +26,8 @@
         <td><%= step.obj_name %></td>
         <td><%= step.name %></td>
         <td><%= step.label %></td>
+	<td><%= step.attrs_json %></td>
+	<td><%= step.method_attrs_json %></td>
         <td><%= link_to 'Show', step %></td>
         <td><%= link_to 'Edit', edit_step_path(step) %></td>
         <td><%= link_to 'Destroy', step, method: :delete, data: { confirm: 'Are you sure?' } %></td>
@@ -34,3 +40,9 @@
 <br>
 
 <%= link_to 'New Step', new_step_path %>
+
+<%= javascript_tag do %>
+
+$("list_steps").dataTable({});
+
+<% end %>

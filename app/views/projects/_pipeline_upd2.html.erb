@@ -3,10 +3,10 @@
 <% else %>
  if ($("#last_project_step").html() != '<%= @last_update %>'){
  <% if session[:active_step] < 5 %>
-  refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>");
+  refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>", {});
  <% else %>
  <% h_obj = {5 => clusters_path(:project_key => @project.key), 6 => diff_exprs_path(:project_key => @project.key), 7 => gene_enrichments_path(:project_key => @project.key)} %>
-  refresh("list_<%= Step.find(session[:active_step]).name %>s", "<%= h_obj[session[:active_step]] %>");
+  refresh("list_<%= Step.find(session[:active_step]).name %>s", "<%= h_obj[session[:active_step]] %>", {});
  <% end %>
  $("#last_project_step").html('<%= @last_update %>');
  }
@@ -28,7 +28,7 @@
 
 // $(".pipeline_step").removeClass("disabled");
  <% h_nber = {} %>
- <% Step.where('rank > 1').all.map{|s| h_nber[s.id] = s.obj_name.classify.constantize} %>
+ <% Step.where("rank > 5").all.map{|s| h_nber[s.id] = s.obj_name.classify.constantize} %>
 
  <% project_steps = ProjectStep.where(:project_id => @project.id).all.sort{|a, b| a.step_id <=> b.step_id} %>
  <% last_step = project_steps.select{|ps| ps.status_id}.last %>
@@ -46,7 +46,7 @@
     $("#step_<%= ps.step_id %> img").attr('src', '<%= raw image_url(status.name + '.' + status.img_extension) %>');
    }
   <% end %>
-  <% if ps.step_id > 4 %>
+  <% if ps.step_id > 4 and h_nber[ps.step_id] %>
    $("#step_<%= ps.step_id %> .nber_success").html('<%= h_nber[ps.step_id].where(:project_id => @project.id, :status_id => 3).count || 0 %>');
    $("#step_<%= ps.step_id %> .nber_failed").html('<%= h_nber[ps.step_id].where(:project_id => @project.id, :status_id => 4).count || 0 %>');
    $("#step_<%= ps.step_id %> .nber_pending").html('<%= h_nber[ps.step_id].where(:project_id => @project.id, :status_id => 1).count || 0 %>');

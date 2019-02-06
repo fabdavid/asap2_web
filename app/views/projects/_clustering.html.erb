@@ -52,7 +52,7 @@ $("#clustering_button").click(function(){
 function upd_attributes(){
 
  var cluster_method_id = $("#cluster_cluster_method_id").val();
- refresh('cluster_attributes', '<%= get_attributes_project_path(:key => @project.key) %>' + '?obj_name=cluster_method&obj_id=' + cluster_method_id);
+ refresh('cluster_attributes', '<%= get_attributes_project_path(:key => @project.key) %>' + '?obj_name=cluster_method&obj_id=' + cluster_method_id, {});
  var img = $("#speed_" + h_cluster_methods[$("#cluster_cluster_method_id").val()][0])
  if (img) {img.removeClass('hidden');}
 
@@ -83,7 +83,7 @@ if ($("#cluster_cluster_method_id").val()!= null){
 */
 <% end %>
 
-refresh("list_clusterings", '<%= clusters_path(:project_key => @project.key) %>')
+refresh("list_clusterings", '<%= clusters_path(:project_key => @project.key) %>', {})
 
 
 <% end %>

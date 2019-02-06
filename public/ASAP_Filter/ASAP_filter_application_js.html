@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>ASAP Filter TEST</title>
+<!--<script type="text/javascript" src="plotly-1.41.0.js" charset="utf-8"></script>-->
+<script type="text/javascript" src="http://ptbbsrv3.epfl.ch:3000/assets/application-3f2e23c3a90496ef87bbec7c5c338301d08dfc578fff8463075567e37dc9306e.js" charset="utf-8"></script>
+<script type="text/javascript" src="ASAP_filter.js" charset="utf-8" defer="defer"></script>
+<style type="text/css">
+.modebar{
+      display: none !important;
+}
+#header {
+    border-bottom:1px solid #0000ff; 
+    background:#cccccc; 
+    padding:10px 10px; 
+    position:fixed; 
+    font-family: Arial;
+    top:0; 
+    left:0; 
+    z-index:1000; 
+    width:100%;
+}
+</style>
+</head>
+<body>
+
+	<div id="header">
+		<table>
+			<tr>
+				<td class="header">Filtered: </td>
+				<td id="filtered"></td>
+				<td id="result"></td>
+			</tr>
+		</table>
+	</div>
+	
+	<table border="1">
+		<tr>
+			<td><div id="expressionDistrib" style="width:500px;height:500px;"></div></td>
+			<td><div id="mitocondrial" style="width:500px;height:500px;"></div></td>
+		</tr>
+		<tr>
+			<td><div id="cellreads" style="width:500px;height:500px;"></div></td>
+			<td><div id="stackedbar" style="width:500px;height:500px;"></div></td>
+		</tr>
+	</table>
+</body>
+</html>
+

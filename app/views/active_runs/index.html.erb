@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Active Runs</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @active_runs.each do |active_run| %>
+      <tr>
+        <td><%= link_to 'Show', active_run %></td>
+        <td><%= link_to 'Edit', edit_active_run_path(active_run) %></td>
+        <td><%= link_to 'Destroy', active_run, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Active Run', new_active_run_path %>

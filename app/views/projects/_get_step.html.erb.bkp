@@ -1,0 +1,48 @@
+<!--STEP_ID <%= @step_id %>, <%= session[:active_step] %>, <%= params[:active_step] %>--> 
+<% if @h_steps[@step_id] %>
+ <% active_step_name = @h_steps[@step_id].name %>
+ <% @ps = ProjectStep.where(:project_id => @project.id, :step_id => @step_id).first %>
+
+ <div id='step_header_fixed' class='step_header'>
+   <%= render :partial => 'step_header' %>
+ </div>
+
+ <div id='step_header' class='step_header'>
+   <%= render :partial => 'step_header' %>
+ </div>
+
+ <p id="notice"><%= notice %></p>
+
+ <div id='step_content'>
+  <%# if !['summary', 'parsing'].include? @h_steps[@step_id].name %>
+  <%# if !ps.status_id and @step_id < 5 %>
+  <%# render :partial => "form_" + active_step_name %>
+  <%# else %>
+  <% if analyzable?(@project) and !['summary', 'parsing'].include?(@h_steps[@step_id].name) %>
+   <div id='new_analysis_form' class='<%= (!@ps.status_id) ? "" : "hidden" %>'>
+    <%= #render :partial => "form_" + active_step_name %>
+    <%= render :partial => "form_std_run" %> 
+   </div>
+  <% end %>
+
+  <%# render :partial => active_step_name %>
+ </div>
+
+ <%= javascript_tag do %>
+
+ $("#last_project_step").html('<%= @last_update %>');
+
+ $("#edit_project_link").click(function(){
+  refresh("form_container", "<%= edit_project_path(@project.key) %>?global=1", {});
+  $("#ontop_window").removeClass("hidden");
+ });
+
+ var table_width = $("div.results table").width();
+ var panel_width = ( $(window).width() > table_width) ? $(window).width() : table_width;
+  // alert(plot_width);
+  $("div.results").css({width: panel_width + 'px'});
+
+ <% end %>
+
+
+<% end %>

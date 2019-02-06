@@ -1,0 +1,2 @@
+class CellFiltering < ApplicationRecord
+end

@@ -95,7 +95,7 @@ $("#gene_enrichment_button").click(function(){
 /*
 function upd_attributes(){
 // var cluster_method_id = $("#cluster_cluster_method_id").val();
- refresh('cluster_attributes', '<%= get_attributes_project_path(:key => @project.key) %>' + '?obj_name=gene_enrichment_method');
+ refresh('cluster_attributes', '<%= get_attributes_project_path(:key => @project.key) %>' + '?obj_name=gene_enrichment_method', {});
 }
 */
 //upd_attributes();
@@ -108,7 +108,7 @@ if ($("#cluster_cluster_method_id").val()!= null){
 */
 <% end %>
 
-refresh("list_gene_enrichments", '<%= gene_enrichments_path(:project_key => @project.key) %>')
+refresh("list_gene_enrichments", '<%= gene_enrichments_path(:project_key => @project.key) %>', {})
 
 
 function upd_geneset_fields(el){

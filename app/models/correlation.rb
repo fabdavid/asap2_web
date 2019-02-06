@@ -1,0 +1,2 @@
+class Correlation < ApplicationRecord
+end

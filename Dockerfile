@@ -1,6 +1,7 @@
 FROM ruby:2.5-alpine
 
-RUN apk update && apk add build-base nodejs postgresql-dev bash emacs docker shadow
+RUN apk update && apk add build-base nodejs postgresql-dev bash emacs docker shadow wget
+RUN apk add openjdk8-jre #default-jre default-jdk
 
 WORKDIR /app
 

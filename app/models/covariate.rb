@@ -1,0 +1,2 @@
+class Covariate < ApplicationRecord
+end

@@ -9,6 +9,17 @@ Sorry for the inconvenience.
 -->
 <div id='infos' class='row row-eq-height'>
   <div class='col-xs-12'>
+    
+    <% if current_user %>
+    
+    <div id='support' class='alert alert-success'>
+      We need your support! If you like ASAP, please take a minute to send us a support message <%= link_to "here", new_support_path() %>.
+    </div>
+    <br/>
+    
+    <% end %>
+
+
     <div id='reference' class='alert alert-info' style='margin-bottom:0px;height:100%'>
       <!--<span class='glyphicon glyphicon-bullhorn'></span> This work has been published in <a href='https://doi.org/10.1093/bioinformatics/btx337'>Bioinformatics</a>.<br/>-->
       <span class='glyphicon glyphicon-fire'></span> <b>New sharing feature available.</b> Now you can share your project with other people and give specific permissions (view, analyze, or download/clone). To access this new feature, click on 'Settings' once you enter your project. Please let us know if you experience any problem.<!-- Current release (3) available. Check details <%= link_to 'here', last_version_versions_path() %>.--><br/>

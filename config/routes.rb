@@ -1,4 +1,18 @@
 Rails.application.routes.draw do
+  resources :del_runs
+  resources :active_runs
+  resources :reqs
+  resources :runs
+  resources :supports
+  resources :std_methods
+  resources :std_runs
+  resources :correlations
+  resources :trajectories
+  resources :covariates
+  resources :heatmaps
+  resources :cell_filterings
+  resources :gene_filterings
+  resources :file_formats
   resources :comments
   resources :figures
   resources :filterings
@@ -75,6 +89,7 @@ Rails.application.routes.draw do
       get :tutorial
       get :faq
       get :citation
+      get :support
     end
   end
   resources :organisms
@@ -83,8 +98,13 @@ Rails.application.routes.draw do
     collection do
       post :upload_file
       get :get_cart
+      get :form_select_input_data
     end
     member do
+      post :broadcast_on_project_channel
+      get :live_upd
+      get :parse_form
+      patch :parse
       get :get_cells
       get :upload_form
       get :get_step
@@ -92,14 +112,18 @@ Rails.application.routes.draw do
       get :edit_name
       get :get_pipeline
       get :get_attributes
+      get :get_attribute
+      get :set_input_data
       get :get_visualization
       get :clone
       post :replot
+ #     get :summary
       get :get_clusters
       get :get_selections
       get :set_viz_session
       post :delete_batch_file
       post :direct_download
+      
     end
   end
 

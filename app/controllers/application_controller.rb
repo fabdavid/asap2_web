@@ -66,7 +66,9 @@ class ApplicationController < ActionController::Base
     session[:settings]||={:limit => 5, :public_limit => 5, :free_text => '', :public_free_text => ''}
   end
 
-  #def create_job(o, step_id, project, job_id_key, speed_id = 1)
+   
+
+#def create_job(o, step_id, project, job_id_key, speed_id = 1)
   #  h = {:project_id => project.id, :step_id => step_id,  :status_id => 1, :speed_id => speed_id}
   #  job = Job.new(h)
   #  o.update_attributes({job_id_key => job.id, :status_id => 1})

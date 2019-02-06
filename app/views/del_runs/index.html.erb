@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Del Runs</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @del_runs.each do |del_run| %>
+      <tr>
+        <td><%= link_to 'Show', del_run %></td>
+        <td><%= link_to 'Edit', edit_del_run_path(del_run) %></td>
+        <td><%= link_to 'Destroy', del_run, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Del Run', new_del_run_path %>

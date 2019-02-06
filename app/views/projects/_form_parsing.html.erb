@@ -12,36 +12,26 @@
     </div>
   <% end %>
 
-<div class='form-group form-inline'>
-<%= label_tag 'attrs[delimiter]', "Delimiter", {'data-toggle' => "tooltip", 'title' => "Character delimiting the fields in the input text file."} %>
-<% l = [['Tabulation', "\\t"], ['Space', " "], ['Semicolon', ";"], ['Comma', ',']] %>
-<%= select_tag 'attrs[delimiter]', options_for_select(l, @h_attrs_parsing['delimiter'] || "\t"), {class: 'form-control'}  %>
-
-<%= label_tag 'attrs[gene_name_column]', "Gene name column" %>
-<% l = [['First column', 'first'], ['None', 'none'], ['Last column', 'last']] %>
-<%= select_tag 'attrs[gene_name_col]', options_for_select(l, @h_attrs_parsing['gene_name_col'] || '0'), {class: 'form-control'}  %>
-
-<%= label_tag 'attrs[lines_to_skip]', "Number of lines to skip" %>
-<% l = (1 .. 50).to_a.map{|e| [e, e]} %>
-<% l.unshift(['None', '0']) %>
-<%= select_tag 'attrs[skip_line]', options_for_select(l, @h_attrs_parsing['skip_line'] || 0), {class: 'form-control'}  %>
-
-<br/>
-<% h_check = {} %>
-<% h_check = {:checked => "checked"} if (!@h_attrs_parsing or @h_attrs_parsing['has_header'] == true) %>
-<%= check_box_tag 'attrs[has_header]', 1, h_check  %> 
-<%= label_tag 'attrs[has_header]', "Cell names header is present in line 1", {'data-toggle' => "tooltip", 'title' => "If the cell names header is not present, cell names are generated and contain the column index."} %>
-
+<div id='preparsing'>
 </div>
-<%# f.hidden_field :key  %>
+
+<%= hidden_field_tag 'nb_cells_preview', 0 %>
+<%= hidden_field_tag 'nb_genes_preview', 0 %>
+<%= hidden_field_tag 'nb_cells', 0 %>
+<%= hidden_field_tag 'nb_genes', 0 %>
+
+
+<%= f.hidden_field :key  %>
 <%= f.hidden_field :step_id, {:value => 1}  %>
-<%# f.hidden_field :input_filename  %>
-<%# f.hidden_field :group_filename  %>
+<%= hidden_field_tag :active_step, params[:active_step] %>
+
   <div class="actions">
-    <% button_name = "Parse" %>
-    <%= f.submit button_name, { :class => 'btn btn-primary', :id =>'parsing_button'} %>
-    <button id='cancel' type='button', class='btn btn-secondary'>Cancel</button>
+    <% button_name = "Parse again" %>
+    <%= f.submit button_name, {:class => 'btn btn-primary ladda-button', :id =>'parsing_button'} %>
+    <button id='cancel' type='button' class='btn btn-secondary'>Cancel</button>
   </div>
+
+
 <% end %>
 
 <%= javascript_tag do %>
@@ -52,52 +42,18 @@ $('#parsing_form').submit(false);
 $("#parsing_button").click(function(){
  var p = $('#parsing_form').serializeArray();
  p.push({'name' : 'render_nothing', 'value' : '1'});
- refresh_post(null, '<%= project_path(@project.key) %>', p, 'post')
+ $("#step_container").html("<div class='loading'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i><br/><span class='loading_text'>Refreshing...</span></div>")
+ refresh_post(null, '<%= parse_project_path(:key => @project.key) %>', p, 'post')
 });
-
 
 $("#cancel").click(function(){
-refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>");
+refresh("step_container", "<%= get_step_project_path(:key => @project.key, :step_id => 1, :nolayout => 1) %>", {});
 });
 
-/*
-$("#group_file").fileinput({
- uploadUrl: '<%= upload_file_projects_path(:type => 'group', :key => @project.key) %>', // server upload action
- uploadAsync: true,
- showPreview: false,
- allowedFileExtensions: ['tab', 'txt', 'csv'],
- showUpload: false,
- maxFileCount: 1,
- elErrorContainer: '#kv-error-2'
-}).on("filebatchselected", function(event, files) {
- // trigger upload method immediately after files are selected
- $("#group_file").fileinput("upload");
-}).on('filebatchpreupload', function(event, data, id, index) {
- $("#kv-success-2").html('<h4>Upload Status</h4><ul></ul>').hide();
-}).on('fileuploaded', function(event, data, id, index) {
- var fname = data.files[index].name;
- var out = '<li>' + 'Uploaded file # ' + (index + 1) + ' - '  + fname + ' successfully.' + '</li>';
- $("#kv-success-2 ul").append(out);
- $("#group_file").attr('loaded', "1");
- $("#kv-success-2").fadeIn('slow');
- $("#project_group_filename").val(fname);
+$("#preparsing").html("<div class='loading'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i><br/><span class='loading_text'>Please wait, loading preview...</span></div>")
+$("#preparsing").removeClass("hidden")
+//start preparsing the
+var p = [{'name' : 'organism', 'value' : $("#project_organism_id").val()}];
+refresh_post("preparsing", "<%= preparsing_fu_path(@fu_input) %>", p, 'post');
 
-}).on('fileclear', function(event, id){
- $("#kv-success-2").hide();
- $("#project_group_filename").val('');
-});
-*/
-
-/*
-function validate_form(){
-if ($("#project_name").val() != ''){
-  $("#create_project_button").removeAttr('disabled')
-}else{
-  $("#create_project_button").attr('disabled', 'disabled')
-}
-}
-
-$("#project_name").keypress(function(){validate_form()});
-$("#project_organism_id").change(function(){validate_form()});
-*/
 <% end %>

@@ -1,0 +1,2 @@
+class ActiveRun < ApplicationRecord
+end

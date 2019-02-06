@@ -1,0 +1,17 @@
+<%= form_with(model: req, local: true) do |form| %>
+  <% if req.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(req.errors.count, "error") %> prohibited this req from being saved:</h2>
+
+      <ul>
+      <% req.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

@@ -1,0 +1,108 @@
+<%# obj_name = @step.obj_name %>
+<% obj_name = 'req' %>
+<div class='alert alert-info'><%= raw @step.description %></div>
+
+<%= form_for(obj_name, :method => 'post', :html => {:id => @step.obj_name + '_form'}) do |f| %>
+  <% if @project.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(@project.errors.count, "error") %> prohibited this project from being saved:</h2>
+      <ul>
+      <% @project.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+<div class='alert alert-secondary'>
+<div class='form-group row'>
+  <%= label_tag 'std_method_id', "Method", {:class => 'col-sm-2 col-form-label', 'data-toggle' => 'tooltip', 'title' => ""} %>
+  <% l = StdMethod.where(:step_id => @step_id).all.map{|e| [e.label, e.id]}.sort %>
+  <% l.unshift(["None", nil]) %>
+  <div class='col-sm-10'>
+    <%= f.select :std_method_id, l, {}, {class: 'form-control'} %>
+  </div>
+</div>
+<div class='row'> 
+  <div class='col-md-1'>
+    <% Speed.all.each do |s| %>
+    <%= image_tag 'speed_' + s.name + '.png', :id => 'speed_' + s.id.to_s, :class => 'speed_image hidden', :width => '25px' %>
+    <% end %> 
+  </div>
+  <div class='col-md-11'>
+    <span id='method_desc' class=''></span>
+  </div>
+</div>
+</div>
+<div id='attrs_container'></div>
+
+<%= f.hidden_field :step_id, {:value => @step_id}  %>
+<%= hidden_field_tag :format, 'json' %>
+
+<div class="actions">
+  <%# button_name = @step.action_button_name %>
+  <%# f.submit button_name, { :class => 'btn btn-primary', :id =>'filtering_button'} %>
+  <button id='<%= @step.obj_name %>_button' type='button' class='btn btn-primary'><%= @h_attrs['action_button_label'] || 'Submit' %></button>
+  <button id='cancel' type='button' class='btn btn-secondary'>Cancel</button>
+</div>
+<% end %>
+
+<%= javascript_tag do %>
+
+$('#<%= @step.obj_name %>_form').unbind('submit');
+$('#<%= @step.obj_name %>_form').submit(false);
+
+$("#<%= @step.obj_name %>_button").click(function(){
+ var p = $('#<%= @step.obj_name %>_form').serializeArray();
+ p.push({'name' : 'project_key', 'value' : '<%= @project.key %>'});
+/* p.push({'name' : 'render_nothing', 'value' : '1'}); */
+// refresh_post('list_<%= @step.obj_name %>', '<%= reqs_path() %>', p, 'post', {loading: 'fa-2x'})
+
+ $.ajax({
+  url: "<%= reqs_path() %>",
+  type: "post",
+  data: p,
+  beforeSend: function(){
+   $("#step_container").html("<div style='vertical-align:middle;text-align:center'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i></div>")
+  },
+  success: function(returnData){
+  refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>&step_id=<%= @step_id %>", {loading: 'fa-2x loading-step'});  
+  },
+  error: function(e){
+  }
+ });
+
+
+// $("#<%= @step.obj_name %>").addClass("hidden")
+});
+
+var h_methods = <%= h ={}; StdMethod.where(:step_id => @step.id).all.map{|f| h[f.id] = [f.speed_id, f.description, f.link]}; raw h.to_json %>;
+
+$("#<%= obj_name %>_std_method_id").change(function(){
+ $(".speed_image").addClass('hidden');
+ if ($(this).val()){
+//  refresh_attributes('filter_method', $(this).val());
+  var url = '<%= get_attributes_project_path(:key => @project.key) %>' + '?step_name=<%= @step.name %>&obj_id=' + $(this).val();
+  refresh("attrs_container", url, {});
+  var img = $("#speed_" + h_methods[$(this).val()][0]);
+  if (img) {img.removeClass('hidden');}
+  $("#method_desc").html(h_methods[$(this).val()][1] + " " + h_methods[$(this).val()][2]);
+ }else{
+  $("#attrs_container").html("");
+ }
+});
+
+$("#cancel").click(function(){
+refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>", {});
+});
+
+ var project_std_method_id = $("#project_std_method_id").val();
+ if (project_std_method_id){
+//  refresh_attributes('filter_method', project_std_method_id);
+  var url = '<%= get_attributes_project_path(:key => @project.key) %>' + '?step_name=<%= @step.name %>&obj_id=' + project_std_method_id;
+  refresh("attrs_container", url, {});
+  var img = $("#speed_" + h_methods[project_std_method_id][0])
+  if (img) {img.removeClass('hidden');}
+  $("#method_desc").html(h_methods[project_std_method_id][1] + ' ' + h_methods[project_std_method_id][2]);
+ }
+<% end %>

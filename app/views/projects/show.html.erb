@@ -39,9 +39,19 @@ Dear users, during a maintenance procedure on April 13th 2017, current sandbox p
 </div><div class='clear'></div>
 
 <div id='pipeline_container'><%= render :partial => 'pipeline2' %></div>
+<!--<div id='split_header' class='hidden'><div class='title'></div></div>-->
+<!--<div id='right-menu' class='hidden'>
+      <ul>
+        <li>Cell annotations</li>
+        <li>Gene annotations</li>
+        <li>Commented figures</li>
+      </ul>
+    </div>
+-->
 <div id='project_container'>
-  <p id="notice"><%= notice %></p>
-  <div id='step_container'></div>
+ <!-- <p id="notice"><%= notice %></p>-->
+<!--  <div id='split_window_container' class='hidden'></div>-->
+  <div id='step_container'><%= render :partial => 'summary' %></div>
 </div>
 
 <% gene_set = GeneSet.new %>
@@ -62,14 +72,57 @@ Dear users, during a maintenance procedure on April 13th 2017, current sandbox p
 <!--<nav id="cart" class="navbar navbar-fixed-bottom<%= other_classes %>">-->
 <%= javascript_tag do %>
 
+$(document).ready(function(){
+
+App.project.subscribeStatusChanges( <%= @project.id %> );
+
+/*
+$(window).on('resize', function() {
+    if($(window).width() < 767) {
+        $('#split_window_container').addClass('col-12');
+        $('#split_header').addClass('fullscreen')
+    }else{
+        $('#split_window_container').removeClass('col-12');
+        $('#split_header').removeClass('fullscreen')
+    }
+})
+*/
+
+$(".annot-btn").click(function(){
+   $("#step_container").removeClass("col-12");
+  $("#step_container").addClass("col-6");
+  $("#split_window_container").addClass("col-6");
+  $("#split_header").removeClass("hidden")
+ $("#step_header").addClass("split");
+ $("#split_header .title").html("Gene annotations");
+$("#split_window_container").removeClass("hidden");
+$("#right-menu").addClass("hidden");
+
+});
+
+$("#right-menu-btn").click(function(){
+$("#right-menu").toggleClass("hidden")
+})
+
+$("#right-menu li").click(function(){
+  $("#step_container").removeClass("col-12");
+  $("#step_container").addClass("col-6");
+  $("#split_window_container").addClass("col-6");
+  $("#split_header").removeClass("hidden")
+ $("#step_header").addClass("split");
+ $("#split_header .title").html("Gene annotations");
+$("#split_window_container").removeClass("hidden");
+$("#right-menu").addClass("hidden");
+})
+
 // this is the original update
 /*var timer = setInterval(function(){
 refresh_pipeline();
 }, 5000);
 */
-
+/*
 refresh_pipeline();
-
+*/
 //$( window ).unbind("resize");
 $( window ).resize(function() {
 // remove set margins
@@ -107,10 +160,10 @@ try {
 // setTimeout(refresh_pipeline, 3000);
 }
 
-refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>");
+refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1, :step_id => 14) %>", {loading: 'fa-2x loading-step'});
 
 $("#selection_button").click(function(){
-refresh("ontop_window_content", "<%= get_clusters_project_path(:key => @project.key, :nolayout => 1) %>");
+refresh("ontop_window_content", "<%= get_clusters_project_path(:key => @project.key, :nolayout => 1) %>", {});
 });
 
 $(".timeout_reset").on('click',function(event){
@@ -151,7 +204,7 @@ if (returnData){
    div.RemoveChildrenFromDom();                  
    div.html(returnData);     
  */
-   refresh('cart', '<%= get_cart_projects_path(:project_key => @project.key) %>');    
+   refresh('cart', '<%= get_cart_projects_path(:project_key => @project.key) %>', {});    
    $("#popup_window2").addClass("hidden");                  
 }
   },      
@@ -161,6 +214,7 @@ if (returnData){
  });              
 });
 
+});
 
 <% end %>
 <% end %>

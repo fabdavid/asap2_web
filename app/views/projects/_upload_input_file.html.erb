@@ -1,0 +1,72 @@
+<div class='form-group2' style='margin-right:15px;margin-left:15px'>
+  <%= label_tag 'input_file', "Upload count / normalized gene expression matrix" %>
+  <span id='help_input_file'>
+    <span class='italic'>[10x(.h5 file), loom, text, zip, tar.gz formats supported]</span>
+    <%= link_to 'Help', file_format_home_index_path() + "#input_file" %> | <%= link_to 'Example txt file', "/data/input.tab" %>
+  </span>
+</div>
+<div id="dropzone" title="Drag and drop here!">
+  <div id='fu_input'>
+  </div>
+</div>
+
+<div id='preparsing'>
+</div>
+
+
+<%= hidden_field_tag 'nb_cells_preview', 0 %>
+<%= hidden_field_tag 'nb_genes_preview', 0 %>
+<%= hidden_field_tag 'nb_cells', 0 %>
+<%= hidden_field_tag 'nb_genes', 0 %>
+
+<%= javascript_tag do %>
+
+var $dropTarget = $("#dropzone");
+$(document).bind("dragenter", function(e) {
+    if (e.target == this) {
+         return;
+    }
+
+    $dropTarget.addClass("highlight");
+    $dropTarget.find("[name='drop']").show();
+    $dropTarget.find("[name='drag']").hide();
+}).bind("dragleave", function(e) {
+    if (e.originalEvent.pageX != 0 || e.originalEvent.pageY != 0) {
+        return false;
+    }
+
+    // Could use .trigger("drop") here.
+    $dropTarget.removeClass("highlight");
+    $dropTarget.find("[name='drop']").hide();
+    $dropTarget.find("[name='drag']").show();
+}).bind("drop", function(e) {
+    $dropTarget.removeClass("highlight");
+    $dropTarget.find("[name='drop']").hide();
+    $dropTarget.find("[name='drag']").show();
+});
+
+$(document).bind('dragover', function (e) {
+    var dropZone = $('#dropzone'),
+        timeout = window.dropZoneTimeout;
+    if (timeout) {
+        clearTimeout(timeout);
+    } else {
+        dropZone.addClass('in');
+    }
+    var hoveredDropZone = $(e.target).closest(dropZone);
+    dropZone.toggleClass('hover', hoveredDropZone.length);
+    window.dropZoneTimeout = setTimeout(function () {
+        window.dropZoneTimeout = null;
+        dropZone.removeClass('in hover');
+    }, 100);
+});
+
+$(document).bind('drop dragover', function (e) {
+    e.preventDefault();
+});
+
+<% h_opt = nil %>
+<% h_opt = {:url => params[:url]} if params[:url]  %>
+refresh("fu_input", "<%= upload_fu_path(@fu_input, h_opt) %>", {});
+
+<% end %>

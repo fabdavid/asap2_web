@@ -1,11 +1,58 @@
 class ProjectsController < ApplicationController
 #  before_action :authenticate_user!, except: [:index]
-  before_action :set_project, only: [:show, :edit, :update, :destroy, :get_step, :get_pipeline, :get_attributes, :get_visualization, :replot, :get_file, :upload_file, :delete_batch_file, :upload_form, :clone, :direct_download]
+  before_action :set_project, only: [:show, :edit, :update, :destroy, 
+                                     :broadcast_on_project_channel, :live_upd, 
+                                     :form_select_input_data,
+                                     :parse_form, :parse, :get_step, :get_pipeline, 
+                                     :get_attributes, :set_input_data, :get_visualization, :replot, :get_file, :upload_file, 
+                                     :delete_batch_file, :upload_form, :clone, :direct_download]
   before_action :empty_session, only: [:show]
 #  skip_before_action :verify_authenticity_token
   
   def empty_session
     session.delete(:selections)
+  end
+
+  def broadcast_on_project_channel
+    if APP_CONFIG['authorized_service_keys'].include? params[:service_key] and @project
+      @project.broadcast
+    end
+  end
+
+  def parse
+    ### delete all other subsequent analysis    
+    @project.parse_files
+#    render :partial => 'parsing'
+    render :body => nil
+  end
+  
+  def parse_form
+    @fu_input = Fu.where(:project_key => @project.key).first
+    render :partial => "form_parsing"
+  end
+  
+#  def summary
+#    render :partial => 'summary'
+#  end
+
+  def form_select_input_data
+    tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
+   # @step = Step.where(:name => params[:step_name]).first
+    get_attr(tmp_dir)
+    runs = @project.runs
+    @h_runs_by_step = {}
+    runs.each do |run|
+      ### add run only if the run has a compatible output
+      h_outputs = JSON.parse(run.output_json)
+      #@step.method_attrs_json
+      valid_types = @attrs[params[:attr_name]]['valid_types']
+      list_valid_outputs = h_outputs.keys.map{|k| valid_types.include? h_outputs[k]['type']}
+      if list_valid_outputs.size > 0
+        @h_runs_by_step[run.step_id] ||= []
+        @h_runs_by_step[run.step_id].push(run)
+      end
+    end
+    render :partial => 'form_select_input_data'
   end
 
   def direct_download
@@ -237,6 +284,10 @@ class ProjectsController < ApplicationController
     last_update = @project.status_id.to_s + ","
     last_update += [jobs.size, last_job.status_id, last_job.id, last_job.updated_at].join(",") if last_job
     return last_update
+  end
+
+  def live_upd
+    render :partial => 'live_upd'
   end
 
   def get_pipeline
@@ -608,7 +659,8 @@ class ProjectsController < ApplicationController
   def get_results
     
     t = [:parsing, :filtering, :normalization]
-    (1 .. session[:active_step].to_i).each do |i|
+#    step_id = params[:step_id].to_i || session[:active_step].to_i
+    (1 .. @step_id).each do |i|
       step_name = t[i-1]
       tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key + step_name.to_s              
       filename = tmp_dir + "output.json"       
@@ -620,7 +672,7 @@ class ProjectsController < ApplicationController
         end
       end
     end
-    @results = @all_results[t[session[:active_step]-1]]
+    @results = @all_results[t[@step_id-1]]
   
   end
   
@@ -656,6 +708,9 @@ class ProjectsController < ApplicationController
     @results_parsing={}
     @h_batches={}
     session[:active_step] = params[:active_step].to_i if params[:active_step]
+    @step_id = params[:step_id].to_i || session[:active_step]
+    @step = @h_steps[@step_id]
+    @h_attrs = (@step.attrs_json and !@step.attrs_json.empty?) ? JSON.parse(@step.attrs_json) : {}
     #jobs = Job.where(:project_id => @project.id, :step_id => session[:active_step], :status_id => [1, 2, 3, 4]).all.to_a.compact
     #jobs.sort!{|a, b| (a.updated_at.to_s || '0') <=> (b.updated_at.to_s || '0')} if jobs.size > 0
     #last_job = jobs.last
@@ -669,7 +724,9 @@ class ProjectsController < ApplicationController
   #    tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key + @h_steps[session[:active_step]].label.downcase
   #    filename = tmp_dir + "output.json"
   #    logger.debug("FILE: " + filename.to_s)
-      
+      @h_statuses = {}
+      Status.all.map{|s| @h_statuses[s.id] = s}
+      @runs = Run.where(:project_id => @project.id, :step_id => @step.id).all
       get_results()
       get_batch_file_groups()      
       #      if  session[:active_step] > 1
@@ -698,63 +755,124 @@ class ProjectsController < ApplicationController
       }
     end
   end
-  
-  def get_attributes
- 
-    h_obj = {
-      'filter_method' => FilterMethod,
-      'norm' => Norm,
-      'cluster_method' => ClusterMethod,
-      'diff_expr_method' => DiffExprMethod
-    }
 
-    h_step = {
-      'filter_method' => 2,
-      'norm' => 3,
-      'cluster_method' => 5,
-      'diff_expr_method' => 6
-
-    }
-
-    tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
+  def get_attr tmp_dir
     
+    @h_steps = {}
+    Step.all.map{|s| @h_steps[s.obj_name]=s}
+
     @attrs = []
 
-    step = Step.where(:id => h_step[params[:obj_name]]).first
-    @ps = ProjectStep.where(:project_id => @project.id, :step_id => step.id).first
+    @step = @h_steps[params[:step_name]] #Step.where(:id => h_step[params[:obj_name]]).first                                                                              
+    @ps = ProjectStep.where(:project_id => @project.id, :step_id => @step.id).first
 
     @div_class=nil
-    if ['diff_expr_method', 'cluster_method'].include? params[:obj_name]
+    if ['diff_expr', 'clustering'].include? params[:step_name]
       @div_class='attr_table'
-    elsif ['filter_method', 'norm'].include? params[:obj_name]
+    elsif ['gene_filtering', 'normalization'].include? params[:step_name]
       @div_class='form-inline'
     end
 
     @obj_inst = nil
-    if obj = h_obj[params[:obj_name]]
-      @obj_inst = obj.find(params[:obj_id])
-    end
-    
+    #    if obj = h_obj[params[:obj_name]]                                                                                                                             
+    #      @obj_inst = obj.find(params[:obj_id])                                                                                                                       
+    #    end                                                                                                                                                           
+    @obj_inst = StdMethod.find(params[:obj_id])
+
+    @h_global_params = JSON.parse(@step.method_attrs_json)
+
     @attrs = JSON.parse(@obj_inst.attrs_json)
+    ## complement attributes with global parameters - defined at the level of the step                                                                                 
+    @h_global_params.each_key do |k|
+      @attrs[k]={}
+      @h_global_params[k].each_key do |k2|
+        @attrs[k][k2] = @h_global_params[k][k2]
+      end
+    end
+    @attr_layout =  JSON.parse(@obj_inst.attr_layout_json)
+    
+  end
+  
+  def get_attributes
+ 
+#    h_obj = {
+#      'filter_method' => FilterMethod,
+#      'norm' => Norm,
+#      'cluster_method' => ClusterMethod,
+#      'diff_expr_method' => DiffExprMethod
+#    }
+
+#    h_step = {
+#      'filter_method' => 2,
+#      'norm' => 3,
+#      'cluster_method' => 5,
+#      'diff_expr_method' => 6
+#    }
+    tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
+    get_attr(tmp_dir)
+
     #   end
     
-    @h_attrs = {}
-    if params[:obj_name] == 'filter_method'
-      @h_attrs = JSON.parse(@project.filter_method_attrs_json || "{}")
-    elsif params[:obj_name] == 'norm'
-      @h_attrs = JSON.parse(@project.norm_attrs_json || "{}")
-    elsif params[:obj_name] == 'cluster_method'
-      @h_attrs = JSON.parse((c = Cluster.where(:project_id => @project.id, :cluster_method_id => @obj_inst.id).order("id desc").first && c && c.attrs_json) || "{}")
-    elsif params[:obj_name] == 'diff_expr_method'
-      @h_attrs = JSON.parse((de = DiffExpr.where(:project_id => @project.id, :diff_expr_method_id => @obj_inst.id).order("id desc").first && de && de.attrs_json) || "{}")
-    end
+#    @h_attrs = {}
+#    run = StdRun.where(:project_id => @project.id, :std_method_id => @obj_inst.id)
+
+#    if params[:step_name] == 'gene_filtering'
+#      @h_attrs = JSON.parse(@project.filter_method_attrs_json || "{}")
+#    elsif params[:step_name] == 'normalization'
+#      @h_attrs = JSON.parse(@project.norm_attrs_json || "{}")
+#    elsif params[:step_name] == 'clustering'
+#      @h_attrs = JSON.parse((c = Cluster.where(:project_id => @project.id, :cluster_method_id => @obj_inst.id).order("id desc").first && c && c.attrs_json) || "{}")
+#    elsif params[:step_name] == 'diff_expr'
+#      @h_attrs = JSON.parse((de = DiffExpr.where(:project_id => @project.id, :diff_expr_method_id => @obj_inst.id).order("id desc").first && de && de.attrs_json) || "{}")
+#    end
 
     @warning = @obj_inst.warning if @obj_inst.respond_to?(:warning)
     
     @batch_file_exists = 1 if File.exist?(tmp_dir + "parsing" + "group.tab") 
     @ercc_file_exists = 1 if File.exist?(tmp_dir + "parsing" + "ercc.tab")
 
-    render :partial => 'attributes', locals: {h_attrs: @h_attrs} 
+    render :partial => 'attributes' #, locals: {h_attrs: @h_attrs} 
+    
+  end
+
+  def set_input_data
+  
+    ## define input data
+    session[:input_data_attrs]||={}
+    session[:input_data_attrs][params[:attr_name]] = []
+    params[:list_attrs].split(",").each do |e|
+        e2 = e.split(":")
+        session[:input_data_attrs][params[:attr_name]].push({:run_id => e2[0], :output_attr_name => e2[1]})
+      #params[:list_runs].split
+    end
+
+    ## get attributes
+
+    tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
+    get_attr(tmp_dir)
+    @warning = @obj_inst.warning if @obj_inst.respond_to?(:warning)
+    
+    @batch_file_exists = 1 if File.exist?(tmp_dir + "parsing" + "group.tab")
+    @ercc_file_exists = 1 if File.exist?(tmp_dir + "parsing" + "ercc.tab")
+    
+    ## find the layout context
+    horiz_element = false
+    
+    @attr_layout.each do |tmp_vertical_el|
+      tmp_vertical_el["horiz_elements"].each do |tmp_horiz_element|
+        if  tmp_horiz_element['attr_list']
+          tmp_horiz_element['attr_list'].select{|k| attr = @attrs[k]; attr and attr['widget'] and !attr['obsolete']}.each do |attr_name| 
+            if attr_name == params[:attr_name]
+              horiz_element = tmp_horiz_element
+              break 
+            end
+          end
+        end
+      end
+    end
+
+    ## render the attribute
+    render :partial => 'attribute', :locals => {:attr_name => params[:attr_name], :horiz_element => horiz_element}
     
   end
 
@@ -901,6 +1019,9 @@ class ProjectsController < ApplicationController
     @error = ''
     if @project
       ### define the current project
+      if session[:current_project] != @project.key
+        session[:input_data_attrs]={}
+      end
       session[:current_project]=@project.key
       #    session[:reload_step]=0
       
@@ -921,13 +1042,14 @@ class ProjectsController < ApplicationController
           #        'heatmap_input_type' => 'normalization'
         }
         session[:cart_display]=nil
-        
+
         last_ps =  ProjectStep.where(:project_id => @project.id, :status_id => [1, 2, 3, 4]).order("updated_at desc").first
         last_step_id = (last_ps) ? last_ps.step_id : 1
         @last_update = get_last_update_status()
         session[:active_step]=last_step_id
         ### override active step if coming from update project form                                                                                                                     
         session[:active_step] = session[:override_active_step] if session[:override_active_step]
+        @step_id = params[:step_id].to_i || session[:active_step]
         session.delete(:override_active_step)
         
         params[:active_step]=last_step_id
@@ -1096,6 +1218,8 @@ class ProjectsController < ApplicationController
   def create
     @project = Project.new(project_params)
 
+    @h_formats = {}
+    FileFormat.all.map{|f| @h_formats[f.name] = f}
     #    tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s
     #    Dir.mkdir(tmp_dir) if !File.exist?(tmp_dir)
     #    tmp_dir += @project.key
@@ -1111,7 +1235,7 @@ class ProjectsController < ApplicationController
     [:file_type, :sel_name, :nb_cells, :nb_genes].each do |k|
       tmp_attrs[k] = params[k] if !params[k].strip.empty?
     end
-    if tmp_attrs[:file_type] != 'RAW_TEXT' ## delete the RAW_TEXT parsing options
+    if @h_formats[tmp_attrs[:file_type]].child_format != 'RAW_TEXT' ## delete the RAW_TEXT parsing options
       [:delimiter, :col_gene_name, :has_header].each do |k|
         tmp_attrs.delete(k)
       end
@@ -1121,6 +1245,7 @@ class ProjectsController < ApplicationController
     @project.user_id = (current_user) ? current_user.id : 1
     @project.sandbox = (current_user) ? false : true
     @project.session_id = (s = Session.where(:session_id => session.id).first) ? s.id : nil
+    @project.version_id = Version.last.id
 
     input_file = Fu.where(:project_key => @project.key).first
     @project.input_filename = input_file.upload_file_name
@@ -1238,26 +1363,26 @@ class ProjectsController < ApplicationController
     else ### update of project details 
       
       #@project.parse_batch_file()
-      cmd = "rails parse_batch_file[#{@project.key}]"
-      `#{cmd}`
+    #  cmd = "rails parse_batch_file[#{@project.key}]"
+    #  `#{cmd}`
       
       ### if organism changes, update the gene file                                                                                                                                                
       if @project.organism_id != params[:project][:organism_id].to_i
-        parsing_dir =  tmp_dir + 'parsing'
-        gene_names_file = parsing_dir + 'gene_names.json'
-        cmd = "java -jar #{Rails.root}/lib/ASAP.jar -T RegenerateNewOrganism -organism #{params[:project][:organism_id]} -j #{gene_names_file} -o #{parsing_dir}"
-        logger.debug("CMD: " + cmd)
-        `#{cmd}`
+        #    parsing_dir =  tmp_dir + 'parsing'
+        #    gene_names_file = parsing_dir + 'gene_names.json'
+        #    cmd = "java -jar #{Rails.root}/lib/ASAP.jar -T RegenerateNewOrganism -organism #{params[:project][:organism_id]} -j #{gene_names_file} -o #{parsing_dir}"
+        #    logger.debug("CMD: " + cmd)
+        #    `#{cmd}`
+        #    
+        #    ### rewrite download files
+        #    Step.where(["id <= ?", @project.step_id]).all.select{|e| e.id < 4}.each do |step|
+        #      output_dir =  tmp_dir + step.name 
+        #      output_file = output_dir + 'output.tab'
+        #      cmd = "java -jar #{Rails.root}/lib/ASAP.jar -T CreateDLFile -f #{output_file} -j #{gene_names_file} -o #{output_dir + 'dl_output.tab'}"
+        #      logger.debug("CMD: " + cmd)
+        #      `#{cmd}`
+        #    end
         
-        ### rewrite download files
-        Step.where(["id <= ?", @project.step_id]).all.select{|e| e.id < 4}.each do |step|
-          output_dir =  tmp_dir + step.name 
-          output_file = output_dir + 'output.tab'
-          cmd = "java -jar #{Rails.root}/lib/ASAP.jar -T CreateDLFile -f #{output_file} -j #{gene_names_file} -o #{output_dir + 'dl_output.tab'}"
-          logger.debug("CMD: " + cmd)
-          `#{cmd}`
-        end
-
         
         ### delete pending jobs on gene_enrichment and de                                                                                                                                                                     
         list_pending_jobs = @project.jobs.select{|j| [6, 7].include?(j.step_id) and j.status_id == 1}
@@ -1448,8 +1573,16 @@ class ProjectsController < ApplicationController
       list_pending_jobs = p.jobs.select{|j| j.status_id == 1}
       Delayed::Job.where(:id => p.jobs.map{|j| j.delayed_job_id}).all.destroy_all
       list_pending_jobs.map{|j| j.destroy}
-      
-      p.destroy
+    
+    ### delete fus
+    p.fus.map{|fu|
+      file_path = Pathname.new(APP_CONFIG[:upload_data_dir]) + fu.id.to_s + fu.upload_file_name
+      File.delete file_path if File.exist?(file_path)
+    }
+    p.fus.destroy_all
+    p.runs.destroy_all
+
+    p.destroy
 
   end
   

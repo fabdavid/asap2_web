@@ -1,0 +1,17 @@
+<%= form_with(model: correlation, local: true) do |form| %>
+  <% if correlation.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(correlation.errors.count, "error") %> prohibited this correlation from being saved:</h2>
+
+      <ul>
+      <% correlation.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

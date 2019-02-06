@@ -16,7 +16,13 @@
     <tr><td>Object name</td><td><%= f.text_field :obj_name %></td></tr>
     <tr><td>Name</td><td><%= f.text_field :name %></td></tr>
     <tr><td>Label</td><td><%= f.text_field :label %></td></tr>
+    <tr><td>Rank</td><td><%= f.text_field :rank %></td></tr>
+    <tr><td>Multiple runs allowed?</td><td><%= f.check_box :multiple_runs %></td></tr>
     <tr><td>Description</td><td><%= f.text_area :description %></td></tr>
+    <tr><td>Optional step attributes</td><td><%= f.text_area :attrs_json, {:cols => 60, :rows => 3} %></td></tr>
+    <tr><td>Standard method attribute global properties</td><td><%= f.text_area :method_attrs_json, {:cols => 60, :rows => 15} %></td></tr>
+    <tr><td>Standard outputs global properties</td><td><%= f.text_area :method_output_json, {:cols => 60, :rows => 15} %></td></tr>
+    <tr><td>Default command</td><td><%= f.text_area :command_json, {:cols => 60, :rows => 15} %></td></tr>
   </table>
   
   <div class="actions">

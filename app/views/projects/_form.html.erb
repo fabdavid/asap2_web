@@ -6,6 +6,7 @@
 <!--</div>
 <div class='card-body'>-->
 
+<div class='main_container'>
 <%= form_for(project, :url => projects_path, :html => {:class => 'fullscreen_form'}) do |f| %>
   <% if project.errors.any? %>
     <div id="error_explanation">
@@ -34,24 +35,7 @@
   </div>
 </div>
 
-<div class='form-group2' style='margin-right:15px;margin-left:15px'>
-  <%= label_tag 'input_file', "Upload count / normalized gene expression matrix" %> 
-  <span id='help_input_file'>
-    <span class='italic'>[10x(.h5 file), loom, text, zip, tar.gz formats supported]</span> 
-    <%= link_to 'Help', file_format_home_index_path() + "#input_file" %> | <%= link_to 'Example txt file', "/data/input.tab" %>
-  </span>
-</div>
-<div id="dropzone" title="Drag and drop here!">
-  <div id='fu_input'>
-  </div>
-</div>
-
-<div id='preparsing'>
-</div>
-<%= hidden_field_tag 'nb_cells_preview', 0 %>
-<%= hidden_field_tag 'nb_genes_preview', 0 %>
-<%= hidden_field_tag 'nb_cells', 0 %>
-<%= hidden_field_tag 'nb_genes', 0 %>
+<%= render :partial => 'upload_input_file' %>
 
 <div id='share_container'>
 <%# render :partial => 'shares' %>
@@ -61,59 +45,16 @@
 <%= f.hidden_field :key  %>
 <%= f.hidden_field :step_id, {:value => 1}  %>
 <%= hidden_field_tag :active_step, params[:active_step] %>
-<%= f.hidden_field :group_filename  %>
+<!--<%= f.hidden_field :group_filename  %>-->
 
   <div class="actions">
     <% button_name = (controller.action_name == 'new') ? "Create project" : "Update project" %>
     <%= f.submit button_name, {:disabled => 'disabled', :class => 'btn btn-primary ladda-button', :id =>'create_project_button'} %>
   </div>
 <% end %>
+</div>
 
 <%= javascript_tag do %>
-
-var $dropTarget = $("#dropzone");
-$(document).bind("dragenter", function(e) {
-    if (e.target == this) {
-         return;
-    }
-
-    $dropTarget.addClass("highlight");
-    $dropTarget.find("[name='drop']").show();
-    $dropTarget.find("[name='drag']").hide();
-}).bind("dragleave", function(e) {
-    if (e.originalEvent.pageX != 0 || e.originalEvent.pageY != 0) {
-        return false;
-    }
-
-    // Could use .trigger("drop") here.
-    $dropTarget.removeClass("highlight");
-    $dropTarget.find("[name='drop']").hide();
-    $dropTarget.find("[name='drag']").show();
-}).bind("drop", function(e) {
-    $dropTarget.removeClass("highlight");
-    $dropTarget.find("[name='drop']").hide();
-    $dropTarget.find("[name='drag']").show();
-});
-
-$(document).bind('dragover', function (e) {
-    var dropZone = $('#dropzone'),
-        timeout = window.dropZoneTimeout;
-    if (timeout) {
-        clearTimeout(timeout);
-    } else {
-        dropZone.addClass('in');
-    }
-    var hoveredDropZone = $(e.target).closest(dropZone);
-    dropZone.toggleClass('hover', hoveredDropZone.length);
-    window.dropZoneTimeout = setTimeout(function () {
-        window.dropZoneTimeout = null;
-        dropZone.removeClass('in hover');
-    }, 100);
-});
-
-$(document).bind('drop dragover', function (e) {
-    e.preventDefault();
-});
 
 /*
 $("#create_project_button")
@@ -121,11 +62,11 @@ $('#create_').unbind('submit');
 $('#clustering_form').submit(false);
 */
 
+/*
 $("#group_file").fileinput({
  uploadUrl: '<%= raw upload_file_projects_path(:type => 'group', :key => @project.key) %>', // server upload action
  uploadAsync: true,
  showPreview: false,
-// allowedFileExtensions: ['tab', 'txt', 'csv'],
  showUpload: false,
  maxFileCount: 1,
  elErrorContainer: '#kv-error-2'
@@ -146,6 +87,7 @@ $("#group_file").fileinput({
  $("#kv-success-2").hide();
  $("#project_group_filename").val('');
 });
+*/
 
 function validate_form(test){
 /*if (test === undefined){
@@ -178,9 +120,5 @@ validate_form()
 
 
 $("#project_organism_id").change(function(){validate_form()});
-<%# if @fu_input %>
-<% h_opt = nil %>
-<% h_opt = {:url => params[:url]} if params[:url]  %>
-refresh("fu_input", "<%= upload_fu_path(@fu_input, h_opt) %>");
-<%# end %>
+
 <% end %>

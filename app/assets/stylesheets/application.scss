@@ -2,15 +2,24 @@
 @import "variables";
 @import "bootstrap";
 
-#main {margin-bottom:100px; margin-left:10px; margin-right:10px; margin-top:95px;}
+#main {margin-bottom:100px; margin-top:105px;}
+.main_container {margin-right:10px;margin-left:10px}
+
+#method_desc a{
+color:blue;
+font-decoration:underline
+}
 
 label.col-form-label {margin-bottom:0px}
 .col-form-label {white-space:nowrap;overflow:ellipsis}
 .row {margin-right:0px;margin-left:0px}
 .form-group {margin-bottom:1rem}
+
 .form-group2 {
-@extend .form-group;
-margin-bottom:0.3rem}
+ @extend .form-group;
+ margin-bottom:0.3rem
+}
+
 .form-control2 {
 @extend .form-control;
 margin-bottom:0rem}
@@ -35,6 +44,7 @@ margin-bottom:0rem}
   text-overflow: ellipsis; /* not supported in all browsers, but I accepted the tradeoff */
   white-space: nowrap;
 }
+
 .datatable {
   table-layout: fixed
 }

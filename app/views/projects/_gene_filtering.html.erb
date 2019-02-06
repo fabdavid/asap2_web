@@ -1,0 +1,15 @@
+<% if analyzable?(@project) %>
+<!--<div id='new-gf' class='hidden'>
+<%= render :partial => 'form_gene_filtering' %> 
+</div>
+-->
+<% end %>
+<div id='list_gfs'>
+
+</div>
+
+<%= javascript_tag do %>
+
+refresh("list_gfs", '<%= gene_filterings_path(:project_key => @project.key) %>', {loading: 'fa-2x'})
+
+<% end %>

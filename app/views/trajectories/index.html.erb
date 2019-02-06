@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Trajectories</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @trajectories.each do |trajectory| %>
+      <tr>
+        <td><%= link_to 'Show', trajectory %></td>
+        <td><%= link_to 'Edit', edit_trajectory_path(trajectory) %></td>
+        <td><%= link_to 'Destroy', trajectory, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Trajectory', new_trajectory_path %>

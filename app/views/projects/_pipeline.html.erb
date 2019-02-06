@@ -199,7 +199,7 @@
 <%= javascript_tag do %>
 
 $("#edit_project").click(function(){
-refresh("form_container", "<%= edit_project_path(@project.key) %>?global=1");
+refresh("form_container", "<%= edit_project_path(@project.key) %>?global=1", {});
 $("#ontop_window").removeClass("hidden");
 });
 
@@ -211,7 +211,7 @@ for (var i=1; i<=<%= Step.count %>; i++){
 if (!$(this).hasClass("disabled")){
  $(this).addClass("active");
  $("#popup_window").addClass('hidden');
- refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>&active_step=" + step_id);
+ refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>&active_step=" + step_id, {});
 }
 $("#popup_window").addClass('hidden');
 });

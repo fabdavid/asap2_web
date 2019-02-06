@@ -1,7 +1,7 @@
 class ProjectChannel < ApplicationCable::Channel
   def follow(data)
-#    project = Project.find(data['project_id'])
-    stream_for "project"
+    project = Project.find(data['project_id'])
+    stream_from "project_#{project.id}"
 #    DirtyStatusChangeJob.perform_later project
   end
 

@@ -1,53 +1,38 @@
+<%# @h_global_params.to_json %>
+<%# @attrs.to_json %>
 <%# h_attrs.to_json %>
-<% h_attrs ||= {} %>
+<% @h_attrs ||= {} %>
 <%# h_attrs = @h_attrs %>
 <%= raw "<div class='form-inline'>" if @form_inline %>
 
-<% @attrs.select{|attr| attr['widget'] and !attr['obsolete']}.each do |attr| %>
-<div class='form-group <%= @div_class || '' %>'>
- <% attr_name = "attrs[" + attr['name'] + "]" %>
-<% if attr['widget']!='checkbox' and attr['widget']!='hidden' %> 
- <%= label_tag attr_name, attr['label'], {'data-toggle' => 'tooltip', 'title' => attr['description']} %>
-<% end %>
- <% if attr['widget']=='textfield' %>
-  <%= text_field_tag attr_name, h_attrs[attr['name']] || attr['default'] || '', {:class => "form-control", :placeholder => ""} %>
+<% @attr_layout.each do |vertical_el| %>
 
- <% elsif attr['widget']=='hidden' %>
-  <%= hidden_field_tag attr_name, h_attrs[attr['name']] || attr['default'] || '', {:class => "form-control", :placeholder => ""} %>
+<div class="vert_element row">
 
- <% elsif attr['widget']=='checkbox' %>
-  <% h_checkbox = {:placeholder => "", 'data-toggle' => 'tooltip', 'title' => attr['description']} %>
-  <%# h_checkbox[:checked] = false %>
-  <%# h_checkbox[:checked] = true if (h_attrs[attr['name']] and h_attrs[attr['name']] != false) or (!h_attrs[attr['name']] and attr['default'] != false) %>
-  <%# [(@ps.status_id != nil and h_attrs[attr['name']] and h_attrs[attr['name']] != false) , (!@ps.status_id and !h_attrs[attr['name']] and attr['default'] != false)].to_json %>
-  <%# h_attrs.to_json %>
-  <%#  h_checkbox.to_json %>
-  <%# ((h_attrs[attr['name']] and h_attrs[attr['name']] != false) or (!h_attrs[attr['name']] and attr['default'] != false)).to_json %>
-  <%= check_box_tag attr_name, '1', ((@ps.status_id != nil and h_attrs[attr['name']] and h_attrs[attr['name']] != false) or (!@ps.status_id and !h_attrs[attr['name']] and attr['default'] != false)),  h_checkbox %>
-  <%= label_tag attr_name, attr['label'], {'data-toggle' => 'tooltip', 'title' => attr['description']} %>
+<% vertical_el["horiz_elements"].each do |horiz_element| %>
 
-
- <% elsif attr['widget'] == 'select' %>
-  <% l = [] %>
-  <% if attr['min_val'] and attr['max_val'] %>
-   <% l = (attr['min_val'] .. attr['max_val']).to_a.map{|e| [e, e]}.sort %>
-  <% elsif attr['list'] %>
-   <% l = attr['list'] %>
-  <% end %> 
-  <% l.unshift([((attr['null_name']) ? attr['null_name'] : "None"), nil]) if !attr['not_null'] %>
-  <%= select_tag attr_name, options_for_select(l, h_attrs[attr['name']] || attr['default']), {class: 'form-control'} %>
- <% end %>
-
-<% if attr['name'] == 'batch_file_exists' %>
-<b>using <a href='https://www.bu.edu/jlab/wp-assets/ComBat/Abstract.html' target='_blank'>ComBat</a>.</b>
-<% end %>
-<% if (attr['name'] == 'batch_file_exists' or attr['name'] == 'batch_file') and editable? @project %>
-<span>To add a batch file <span id='edit_project_link' class='btn btn-default btn-xs' class='edit_project'>Edit project</span> </span>
+ <div class="horiz_element <%= horiz_element['container_class'] %>">
+  <div class="form_card <%= horiz_element['class'] %>">
+    <% if horiz_element['card-header'] %>
+     <div class="card-header"><%= horiz_element['card-header'] %></div>
+    <% end %>
+    <div class="card-body">
+   <% if  horiz_element['attr_list'] %> 
+   <% horiz_element['attr_list'].select{|k| attr = @attrs[k]; attr and attr['widget'] and !attr['obsolete']}.each do |attr_name| %>
+   <div id='form-container_<%= attr_name %>' class='form-group <%= @div_class || '' %>'>
+     <%= render :partial => 'attribute', :locals => {:attr_name => attr_name, :horiz_element => horiz_element} %> 
+   </div>
+   <% end %>
+   <% end %>
+  </div>
+  </div>
+ </div>
 <% end %>
 
 </div>
 
 <% end %>
+
 
 <%= raw @button || '' %>
 
@@ -97,19 +82,19 @@ if ($("#cluster_cluster_method_id").val()!= null){
  <% if attr['condition'] == 'batch_file_exists' %>
 
   <% if !@batch_file_exists %>   
-   $("#attrs_<%= attr['name'] %>").prop("checked", false );
-   $("#attrs_<%= attr['name'] %>").prop("disabled", true );
+   $("#attrs_<%= attr_name %>").prop("checked", false );
+   $("#attrs_<%= attr_name %>").prop("disabled", true );
   <% else %>
-//   $("#attrs_<%= attr['name'] %>").prop("checked", true );
-   $("#attrs_<%= attr['name'] %>").prop("disabled", false );
+//   $("#attrs_<%= attr_name %>").prop("checked", true );
+   $("#attrs_<%= attr_name %>").prop("disabled", false );
   <% end %>
  <% elsif attr['condition'] == 'ercc_file_exists' %>
   <% if !@ercc_file_exists %>
-   $("#attrs_<%= attr['name'] %>").prop("checked", false );
-   $("#attrs_<%= attr['name'] %>").prop("disabled", true );
+   $("#attrs_<%= attr_name %>").prop("checked", false );
+   $("#attrs_<%= attr_name %>").prop("disabled", true );
   <% else %>
-   $("#attrs_<%= attr['name'] %>").prop("checked", true );
-   $("#attrs_<%= attr['name'] %>").prop("disabled", false );
+   $("#attrs_<%= attr_name %>").prop("checked", true );
+   $("#attrs_<%= attr_name %>").prop("disabled", false );
   <% end %>
  <% end %>
 <% end %>
@@ -139,7 +124,7 @@ $('input:disabled').after(function (e) {
 
 if ($("#edit_project_link").html()){
 $("#edit_project_link").click(function(){
-refresh("form_container", "<%= edit_project_path(@project.key) %>?global=1");
+refresh("form_container", "<%= edit_project_path(@project.key) %>?global=1", {});
 $("#ontop_window").removeClass("hidden");
 });
 }

@@ -111,7 +111,7 @@ $(".de_selection").click(function(e){
 $(".list_genes").click(function(){
 var t = this.id.split("_");
 //if ($(this).html() != '0'){
-refresh("step_container", '<%= diff_exprs_path %>/' + t[1] + "/list_genes?type=" + t[2]);
+refresh("step_container", '<%= diff_exprs_path %>/' + t[1] + "/list_genes?type=" + t[2], {});
 //}
 });
 

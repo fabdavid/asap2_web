@@ -3,49 +3,60 @@ class FusController < ApplicationController
                                 :preparsing, :resume_upload, :update_status, :reset_upload]
   skip_before_action :verify_authenticity_token
 
+
   def retrieve_data_from_url
-    require 'open-uri'
 
-    filename = 'input_file'
-    @valid_url = 0
-    if !params[:url] =~ /\A#{URI::regexp(['http', 'https', 'ftp'])}\z/
-      params[:url] = "http://" + params[:url]
-    end
-    if params[:url] =~ /\A#{URI::regexp(['http', 'https', 'ftp'])}\z/
-      @valid_url = 1
-      if m = params[:url].match(/([^\/]+?\.)(tar|tgz|txt|loom|h5)/)
-        filename = m[1] + m[2]
-      end
-      ## update url and filename
-      @fu.update_attributes({
-                              :upload_file_name => filename, 
-                              :url => params[:url]
-                            })
-      
-      upload_dir = Pathname.new(APP_CONFIG[:data_dir]) + 'fus' + @fu.id.to_s
-      Dir.mkdir upload_dir if !File.exist? upload_dir 
-      filepath = upload_dir + @fu.upload_file_name
-      
-      IO.copy_stream(open(params[:url]), filepath)
-      if File.exist? filepath
-        @fu.update_attributes({:upload_file_size => File.size(filepath)})
-      end
+    
+    #delayed_job = 
+#    @fu.start_download
+    params[:url].gsub!(/\s+/, "")
+    Delayed::Job.enqueue Fu::NewDownload.new(@fu, params[:url]), :queue => 'fast'
 
-    end
-    render :partial => 'retrieve_data_from_url'
+#   @fu.download params[:url]
+    #    require 'open-uri'
+    
+    #    filename = 'input_file'
+    #    @valid_url = 0
+    #    if !params[:url] =~ /\A#{URI::regexp(['http', 'https', 'ftp'])}\z/
+    #      params[:url] = "http://" + params[:url]
+    #    end
+    #    if params[:url] =~ /\A#{URI::regexp(['http', 'https', 'ftp'])}\z/
+    #      @valid_url = 1
+#      if m = params[:url].match(/([^\/]+?\.)(tar|tgz|txt|loom|h5)/)
+    #        filename = m[1] + m[2]
+#      end
+    #      ## update url and filename
+    #      @fu.update_attributes({
+    #                              :upload_file_name => filename, 
+    #                              :url => params[:url]
+    #                            })
+    #      
+    #      upload_dir = Pathname.new(APP_CONFIG[:data_dir]) + 'fus' + @fu.id.to_s
+    #      Dir.mkdir upload_dir if !File.exist? upload_dir 
+    #      filepath = upload_dir + @fu.upload_file_name
+    #      
+    ##      IO.copy_stream(open(params[:url]), filepath)
+    #      safe_download(params[:url], filepath)
+    #      if File.exist? filepath
+    #        @fu.update_attributes({:upload_file_size => File.size(filepath)})
+    #      end
+    #
+    #    end
+        render :partial => 'retrieve_data_from_url'
   end
-
+  
 
   def preparsing
 
-    @h_format={
-      'RAW_TEXT' => {:color => 'green', :label => 'TXT', :description => 'raw text'}, 
-      'LOOM' => {:color => 'red', :label => 'Loom', :description => 'LOOM'},
-      'H5_10x' => {:color => 'orange', :label => '10x', :description => '10x (h5)'},
-      'ARCHIVE' => {:description => 'archive of raw text', :many => true},
-      'COMPRESSED' => {:description => 'compressed'},
-      'ARCHIVE_COMPRESSED' => {:description => 'compressed archive of raw text', :many => true}
-    }
+    @h_formats={}
+    FileFormat.all.map{|f| @h_formats[f.name] = f}
+#      'RAW_TEXT' => {:color => 'green', :label => 'TXT', :description => 'raw text', :child_format => 'RAW_TEXT'}, 
+#      'LOOM' => {:color => 'red', :label => 'Loom', :description => 'LOOM', :child_format => 'LOOM'},
+#      'H5_10x' => {:color => 'orange', :label => '10x', :description => '10x (h5)', :child_format => 'H5_10x'},
+#      'ARCHIVE' => {:description => 'archive of raw text', :many => true, :child_format => 'RAW_TEXT'},
+#      'COMPRESSED' => {:description => 'compressed', :child_format => 'RAW_TEXT'},
+#      'ARCHIVE_COMPRESSED' => {:description => 'compressed archive of raw text', :many => true, :child_format => 'RAW_TEXT'}
+#    }
     
     upload_dir = Pathname.new(APP_CONFIG[:data_dir]) +  'fus' + @fu.id.to_s
     filepath = upload_dir + @fu.upload_file_name
@@ -95,7 +106,8 @@ class FusController < ApplicationController
       @h_json = @current_dataset
       @error = @current_dataset['displayed_error'] if @current_dataset['displayed_error'] 
     else
-      cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T Preparsing #{options.join(" ")} -organism #{params['organism']} -f #{filepath} -o #{upload_dir}\""
+#      cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T Preparsing #{options.join(" ")} -organism #{params['organism']} -f #{filepath} -o #{upload_dir}\""
+      cmd = "java -jar lib/ASAP.jar -T Preparsing #{options.join(" ")} -organism #{params['organism']} -f #{filepath} -o #{upload_dir}"
       logger.debug "CMD #{cmd}"
       @res = `#{cmd}`
       @h_json = nil

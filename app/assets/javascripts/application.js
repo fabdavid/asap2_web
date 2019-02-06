@@ -15,15 +15,15 @@
 // https://github.com/rails/sprockets#sprockets-directives) for details
 // about supported directives.
 //
-//= require jquery3
-//= require jquery-ui
-//= require jquery_ujs
-//= require popper
-//= require bootstrap-sprockets
-//= require activestorage
-//= require turbolinks
-//= require dataTables/jquery.dataTables       
-//= require jquery-fileupload                                                                                  
+//= require jquery3                                                                                                                                                                              
+//= require jquery-ui                                                                                                                                                      
+//= require jquery_ujs                                                                                           
+//= require popper                                                                                                                                                            
+//= require bootstrap-sprockets                                                                                                                                                   
+//= require activestorage                                                                                                                                            
+//= require turbolinks                                                                                                                                                     
+//= require dataTables/jquery.dataTables                                                                                                                                    
+//= require jquery-fileupload                                                                                                                                                
 //= require jquery-fileupload/basic-plus 
 //= require_tree .
 
@@ -33,20 +33,25 @@ function sleep(delay) {
         while (new Date().getTime() < start + delay);
       }
 
-function refresh(container, url){
+function refresh(container, url, h){
 
  $.ajax({
   url: url,
   type: "get",
   dataType: "html",
   beforeSend: function(){
+      if (h.loading){
+          $("#" + container).html("<div style='vertical-align:middle;text-align:center'><i class='fa fa-spinner fa-pulse fa-fw fa-lg " + h.loading + "'></i></div>")
+      }
   },
   success: function(returnData){
 //  returnData = returnData.replace(/<!--\s*([\s\S]*?)\s*-->/, '$1')
    var div= $("#" + container);
 //   div.RemoveChildrenFromDom();
+   if (!h['step_id'] || $("li#step_" + h['step_id']).hasClass('active')){
    div.empty()
    div.html(returnData);
+   }
   },
   error: function(e){
  //  alert(e);
@@ -63,7 +68,6 @@ redirect = false
 if (multipart === undefined){
 multipart = false
 }
-
     var h = {
 	url: url,
 	type: method,
@@ -72,6 +76,9 @@ multipart = false
 	//     processData: false,                                                                                                                                                                       
 	//     contentType: false,                                                                                                                                                                       
 	beforeSend: function(){
+	    if (h.loading){
+		$("#" + container).html("<div style='vertical-align:middle;text-align:center'><i class='fa fa-spinner fa-pulse fa-fw fa-lg " + h.loading + "'></i></div>")
+	    }
 	},
 	success: function(returnData){
 //	    returnData = returnData.replace(/<!--\s*([\s\S]*?)\s*-->/, '$1')

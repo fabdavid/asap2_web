@@ -40,8 +40,9 @@
 
 :javascript
   $(document).ready(function () {
-    var fu_id = $('#js-data').data('fu');
-    var controller_name = $('body').data('controller');
+   var fu_id = $('#js-data').data('fu');
+   App.fu.subscribe(fu_id);
+   var controller_name = $('body').data('controller');
     var model_instance_path = $("#path").val();
     //    var model_instance_path = '/asap/fus/1';
     var resume_path = model_instance_path + '/resume_upload';
@@ -51,7 +52,7 @@
      var p = [];
      p.push({name : 'url', value : $("#url").val()});
      //     $("#status_url").removeClass("hidden");
-     $("#status_url").html("<i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i>Downloading")
+     $("#status_url").html("<i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i>Prepare to download")
      refresh_post("status_url", "#{retrieve_data_from_url_fu_path(@fu)}", p, 'post');
     })  
 

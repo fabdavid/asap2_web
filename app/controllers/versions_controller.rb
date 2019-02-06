@@ -37,7 +37,7 @@ class VersionsController < ApplicationController
     @version = Version.new(version_params)
 
     respond_to do |format|
-      if @version.save
+      if @version.save!
         format.html { redirect_to @version, notice: 'Version was successfully created.' }
         format.json { render :show, status: :created, location: @version }
       else
@@ -80,6 +80,6 @@ class VersionsController < ApplicationController
     # Never trust parameters from the scary internet, only allow the white list through.
     def version_params
 #      params.fetch(:version, {})
-      params.fetch(:version).permit(:release_date, :description, :tools_json)
+      params.fetch(:version).permit(:release_date, :description, :tools_json, :docker_json, :env_json)
     end
 end

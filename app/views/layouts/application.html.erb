@@ -87,7 +87,7 @@
 	  <tr><td width='20%'>
 	      <%= link_to image_tag('epfl_logo.svg', :height => '70px'), "http://epfl.ch" %>
 	    </td><td style="text-align:center">
-	      &copy;2016-2018 EPFL, 1015 Lausanne<br>
+	      &copy;2016-<%= Time.now.year %> EPFL, 1015 Lausanne<br>
 	      <a href="mailto:bioinfo.epfl@gmail.com?subject=ASAP feedback">Contact</a>
 	      |
 	       <a href="https://mediacom.epfl.ch/disclaimer">Disclaimer</a>
@@ -100,7 +100,7 @@
     </div>
    <% elsif controller_name != 'projects' %>
    <div id='footer'>
-       &copy;2016-2018 EPFL, 1015 Lausanne<br>
+       &copy;2016-<%= Time.now.year %> EPFL, 1015 Lausanne<br>
        <a href="mailto:bioinfo.epfl@gmail.com@epfl.ch?subject=ASAP feedback">Contact</a>
         |
        <a href="https://mediacom.epfl.ch/disclaimer">Disclaimer</a>
