@@ -4,6 +4,14 @@ module Basic
 
   class << self
 
+    def build_docker_cmd  docker_call, core_cmd
+      ps_cmd = core_cmd
+      if docker_call
+        ps_cmd = docker_call + "\"" + core_cmd + "\""
+      end
+      return ps_cmd
+    end
+
     def upd_run run, h_upd
       run.update_attributes(h_upd)
       if active_run = run.active_run and h_upd[:status_id] == 4
@@ -125,10 +133,10 @@ module Basic
 
     def build_cmd h_cmd
       cmd_core = [h_cmd['time_call'], h_cmd['program'], h_cmd['opts'].map{|e| "#{e['opt']} #{e['value']}"}.join(" "), h_cmd['args'].map{|e| e['value']}].compact.join(" ")
-      cmd = ""
-      if h_env['docker_call']
-        cmd = h_env['docker_call'] + "\"" + cmd_core + "\""
-      end
+      cmd = build_docker_cmd(h_env['docker_call'], cmd_core)
+      #      if h_env['docker_call']
+      #        cmd = h_env['docker_call'] + "\"" + cmd_core + "\""
+      #      end
       return cmd
     end
 
@@ -297,6 +305,52 @@ module Basic
       end
     end
 
+    def kill_pid(docker_call, pid)
+      cmd_core = "kill -9 #{pid}"
+      cmd = build_docker_cmd(docker_call, cmd_core)
+      `#{cmd}`
+    end
+    
+    def get_children_pids(docker_call, pid)
+      cmd_core = "pgrep -P #{pid}"
+      cmd = build_docker_cmd(docker_call, cmd_core)
+      return `#{cmd}`.split("\n")
+    end
+
+    def kill_run(logger, run, h_p)
+      
+      pid = (run) ? run.pid : nil
+      docker_image = h_p[:h_cmd_params]['docker_image']
+      docker_call = (docker_image) ? h_p[:h_env]['docker_images'][docker_image]['call'] : nil
+      ps_core_cmd = "ps -ef | egrep '^rvmuser +#{pid} +' | wc -l"
+      ps_cmd = build_docker_cmd(docker_call, ps_core_cmd)
+
+      if run
+        #  delayed_job = Delayed::Job.where(:id => job.delayed_job_id).first
+        ### delete the job and delayed job if they are pending                                                                                                                                    
+        if run.status_id == 1
+          #    delayed_job.destroy if delayed_job
+          run.destroy
+        else
+          if pid and `#{ps_cmd}`.to_i > 0
+            ## kill main process          
+            #     Process.kill('INT', pid) #Process::kill 0, job.pid           
+            kill_pid(docker_call, pid)
+            ## kill remaining children processes                                                  
+#            processes = Sys::ProcTable.ps.select{ |pe| pe.ppid == pid }
+            children_pids = get_children_pids(docker_call, pid)
+            logger.debug("KILL CHILDREN: #{children_pids.to_json}")
+            children_pids.each do |pe|
+              kill_pid(docker_call, pe)
+            end
+            run.update_attributes(:status_id => 5)
+         #   delayed_job.destroy if delayed_job
+          end
+        end
+      end
+
+    end
+    
     def kill_jobs(logger, project_id, step_id, o =nil)
       jobs = []
 #      if step_id < 5
