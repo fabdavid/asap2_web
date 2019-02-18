@@ -2,14 +2,16 @@ desc '####################### Execute runs'
 task exec_runs: :environment do
   puts 'Executing...'
 
-  require 'Basic'
+#  require 'Basic'
   now = Time.now
 #  project = Project.where(:key => 'xdlsz5').first  
   max_nber_cores = 5
   max_nber_memory = 5000000000
   run_timeout = 1.day
 
-  fake_list_jobs  = (0 .. 100).to_a
+  logger = Logger.new(STDOUT)
+
+#  fake_list_jobs  = (0 .. 100).to_a
 
   threads = []
   h_finished_runs = {}
@@ -36,7 +38,8 @@ task exec_runs: :environment do
   round = 0
 
   ### reinitialize runs/jobs that have running status and kill possible jobs
-
+  ###  CODE TO ADD!!! 
+  
   while(1)
     
     puts "Round #{round}..."
@@ -49,8 +52,8 @@ task exec_runs: :environment do
       ### check finished threads and remove them    
       threads.each do |t| 
         if t[:thread].status == false
-          h_finished_jobs[t[:job]] = 1 
-          puts "Finished job #{t[:job]}!"
+          h_finished_jobs[t[:run]] = 1 
+          puts "Finished run #{t[:run]}!"
         end
       end
       threads.reject!{|t| t[:thread].status == false}    
@@ -65,8 +68,8 @@ task exec_runs: :environment do
       end
       
       threads.push({
-      :job => job, 
-      :thread => Thread.new { Basic.exec_run(run) }
+      :run => run, 
+      :thread => Thread.new { Basic.exec_run(logger, run) }
       })
       puts "Added a thread"
       puts threads.map{|t| t[:thread].status}

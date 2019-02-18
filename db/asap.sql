@@ -229,13 +229,13 @@ input_status text,
 group_filename text,
 organism_id int references organisms (id) default 1,
 parsing_attrs_json text,
-parsing_job_id int  references jobs,
+parsing_job_id int, --  references jobs,
 norm_id int references norms default null,
 norm_attrs_json text,
-normalization_job_id int  references jobs,
+normalization_job_id int, --  references jobs,
 filter_method_id int references filter_methods default null,
 filter_method_attrs_json text,
-filtering_job_id int  references jobs,
+filtering_job_id int, -- references jobs,
 delayed_job_id int,
 step_id int references steps default 1,
 status_id int references statuses default 1,
@@ -276,11 +276,19 @@ updated_at timestamp,
 primary key (id)
 );
 
+create table upload_types(
+id serial,
+name text,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
 create table fus(
 id serial,
 project_id int references projects,
 project_key text,
-upload_type int,
+upload_type int references upload_types,
 name text,
 status text,
 upload_file_name text,
@@ -399,7 +407,37 @@ user_id int references users,
 primary key (id)
 );
 
-create table active_runs( --only active runs (pending + running)              
+create table data_types(
+id serial,
+name text, -- int, float, text
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create table annots(
+id serial,
+project_id int references projects,
+step_id int references steps,
+run_id int references runs,
+filename text,
+col bool, -- true col, false row
+data_type_id int references data_types,
+name text,
+nb_cat int, -- nber of categories (uniq values)
+nb_na int,
+nb_zero int,
+min_val float,
+max_val float,
+mean_val float,
+median_val float,
+attrs_json text,
+created_at timestamp,
+updated_at timestamp, 
+primary key (id)
+);
+
+create table active_runs( -- only active runs (pending + running)              
 id serial,
 run_id int references runs (id),
 project_id int references projects (id),
@@ -409,11 +447,11 @@ req_id int references reqs (id),
 -- run_id int references runs (id), -- data origin                                             
 attrs_json text default '{}',
 output_json text default '{}', -- describe the outputs (files, annotations)                       
-num int, --job_id int references jobs,                                                     
+num int, -- job_id int references jobs,                                                     
 command_json text,
 duration int,
-pid int,--delayed_job_id int,  
---speed_id int references speeds,
+pid int,-- delayed_job_id int,  
+-- speed_id int references speeds,
 nber_cores int,
 max_ram float,
 error text,
@@ -430,19 +468,19 @@ primary key (id)
 create table del_runs( -- deleted project runs, only failed + success
 id serial,
 run_id int,
-project_id, -- int references projects (id),
+project_id int, -- references projects (id),
 step_id int references steps (id),
 std_method_id int references std_methods (id),
-req_id, --int references reqs (id),
+req_id int, -- references reqs (id),
 -- run_id int references runs (id), -- data origin                         
 attrs_json text default '{}',
 output_json text default '{}', -- describe the outputs (files, annotations)                                       
-num int,--job_id int references jobs,               
+num int, -- job_id int references jobs,               
 command_json text,
 duration int,
 pid int,
---delayed_job_id int,
---speed_id int references speeds,
+-- delayed_job_id int,
+-- speed_id int references speeds,
 nber_cores int,
 max_ram float,
 error text,
@@ -454,7 +492,7 @@ run_children_json text, -- list the children with the link properties (which dat
 created_at timestamp,
 user_id int references users,
 primary key (id)
-)
+);
 
 create index project_id_del_runs on del_runs (project_id);
 

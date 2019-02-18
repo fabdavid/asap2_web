@@ -29,7 +29,27 @@
   border-left:5px solid #999999
 }
 
-/* New project */
+/* NEW PROJECT */
+
+#opt_input {width:100%; text-align:center;margin-bottom:15px;}
+#opt_input .btn-group .choice_btn{width:250px}
+
+ .ui-autocomplete {
+            max-height: 200px;
+            overflow-y: auto;
+            /* prevent horizontal scrollbar */
+            overflow-x: hidden;
+            /* add padding to account for vertical scrollbar */
+            padding-right: 20px;
+        } 
+.ui-autocomplete-category {
+    font-weight: bold;
+    padding: .2em .4em;
+    margin: .8em 0 .2em;
+    line-height: 1.5;
+  }
+.ui-menu-item .n {float:right}
+
 
 .box_icon{
  width: 100%;

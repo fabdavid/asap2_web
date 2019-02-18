@@ -13,13 +13,15 @@
 
  <div id='step_content'>
 
-   <% if analyzable?(@project) and !['summary', 'parsing'].include?(@step.name) %>
-   <div id='new_analysis_form' class='<%= (!@ps.status_id) ? "" : "hidden" %>'>     
-     <%= render :partial => (@step.has_std_form) ? "form_req" : ("form_" + @step.obj_name) %> 
-   </div>
-
+   <% if analyzable?(@project) %> 
+    <% if !['summary', 'parsing'].include?(@step.name) %>
+    <div id='new_analysis_form' class='<%= (!@ps.status_id) ? "" : "hidden" %>'>     
+      <%= render :partial => (@step.has_std_form) ? "form_req" : ("form_" + @step.obj_name) %> 
+    </div>
+    <% end %>
+     
    <div id='list_runs'>
-   <%= render :partial => (@step.has_std_dashboard) ? 'std_runs' : @step.name %>
+     <%= render :partial => (@step.has_std_dashboard) ? 'std_runs' : @step.name %>
    </div>
    <% end %>
    

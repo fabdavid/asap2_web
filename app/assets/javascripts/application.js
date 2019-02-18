@@ -27,11 +27,47 @@
 //= require jquery-fileupload/basic-plus 
 //= require_tree .
 
+jQuery.fn.extend({
+    union: function(array1, array2) {
+        var hash = {}, union = [];
+        $.each($.merge($.merge([], array1), array2), function (index, value) { hash[value] = value; });
+        $.each(hash, function (key, value) { union.push(key); } );
+        return union;
+    }
+});
+
+$.widget( "custom.catcomplete", $.ui.autocomplete, {
+    _create: function() {
+        this._super();
+	this.widget().menu( "option", "items", "> :not(.ui-autocomplete-category)" );
+    },
+    _renderMenu: function( ul, items ) {
+//      alert(items.size)
+      var that = this,
+        currentCategory = "";
+      $.each( items, function( index, item ) {
+        var li;
+        if ( item.c != currentCategory ) {
+          ul.append( "<li class='ui-autocomplete-category'>" + capitalize(item.c.replace(/([A-Z])/g, " $1")) + "</li>" );
+          currentCategory = item.c;
+        }
+        li = that._renderItemData( ul, item );
+        if ( item.c ) {
+          li.attr( "aria-label", item.c + "|" + item.label);
+          li.children().first().html(item.label + "<div class='n'>" +  item.n + "</div>");
+        }
+      });
+    }
+  });
+
+function capitalize(string){
+    return string[0].toUpperCase() + string.substring(1)
+}
 
 function sleep(delay) {
-        var start = new Date().getTime();
-        while (new Date().getTime() < start + delay);
-      }
+    var start = new Date().getTime();
+    while (new Date().getTime() < start + delay);
+}
 
 function refresh(container, url, h){
 
@@ -60,15 +96,15 @@ function refresh(container, url, h){
 
 }
 
-function refresh_post(container, url, data, method, redirect, multipart){
-// console.log(data)
-if (redirect === undefined){
-redirect = false
+function refresh_post(container, url, data, method, h){
+ console.log(container, url, data)
+if (h.redirect === undefined){
+h.redirect = false
 }
-if (multipart === undefined){
-multipart = false
+if (h.multipart === undefined){
+h.multipart = false
 }
-    var h = {
+    var h2 = {
 	url: url,
 	type: method,
 	dataType: "html",
@@ -83,7 +119,7 @@ multipart = false
 	success: function(returnData){
 //	    returnData = returnData.replace(/<!--\s*([\s\S]*?)\s*-->/, '$1')
 	    if (container){
-		if (redirect == false){
+		if (h.redirect == false){
 		    var div= $("#" + container);
 		    // alert(returnData);
 //		    div.RemoveChildrenFromDom();
@@ -99,11 +135,11 @@ multipart = false
 	}
     }
 
-    if (multipart == true){
+    if (h.multipart == true){
 	h.processData = false;
 	h.contentType = false;
     }
-    $.ajax(h);
+    $.ajax(h2);
     
 }
 

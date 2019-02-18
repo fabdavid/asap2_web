@@ -116,7 +116,7 @@ $("#projects .delete_item").click(function(){
  var t = this.id.split("_");
  var p = [];
  p.push({name : 'nolayout', value : 1})
- refresh_post("project_lists", '<%= projects_path() %>/' + t[1], p, 'delete');
+ refresh_post("project_lists", '<%= projects_path() %>/' + t[1], p, 'delete', {h_loading:'fa-2x'});
 });
 
 

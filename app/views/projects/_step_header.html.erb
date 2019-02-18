@@ -1,7 +1,9 @@
   <div class='right-buttons'>
     <% if analyzable?(@project) %>
     <% if [3,4].include? @ps.status_id and ((@step_id == 1 and editable?(@project)) or @step_id != 1) %>
-    <button class="btn btn-primary btn-sm reset_parsing">Reset</button>
+     <% if @step_id == 1 and Fu.where(:project_id => @project.id, :upload_type => 1).first %>
+     <button class="btn btn-primary btn-sm reset_parsing">Reset</button>
+     <% end %> 
     <% elsif ![14, 15].include? @step_id and @ps.status_id %>
     <button class="btn btn-primary btn-sm new_job"><i class='fa fa-plus'></i></button>
     <% end %>

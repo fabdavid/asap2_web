@@ -25,6 +25,9 @@ class Project < ApplicationRecord
   has_many :jobs
   has_many :gene_sets
   has_many :shares
+  has_many :reqs
+  has_many :active_runs
+  has_many :del_runs
   has_many :runs
 
   def broadcast step_id
@@ -83,9 +86,9 @@ class Project < ApplicationRecord
   def parse_files 
     job = Basic.create_job(self, 1, self, :parsing_job_id, 1)
     #    p[:filename]='input'
-             parse
-   # delayed_job = Delayed::Job.enqueue NewParsing.new(self), :queue => 'fast'
-   # job.update_attributes(:delayed_job_id => delayed_job.id) #job.id)
+   #          parse
+    delayed_job = Delayed::Job.enqueue NewParsing.new(self), :queue => 'fast'
+    job.update_attributes(:delayed_job_id => delayed_job.id) #job.id)
   end
 
   def parse_task
@@ -343,9 +346,8 @@ class Project < ApplicationRecord
   
   def parse
     
-    p = JSON.parse(self.parsing_attrs_json) if self.parsing_attrs_json
-    
     start_time = Time.now
+
     self.update_attributes(:status_id => 2)
     project_step = ProjectStep.where(:project_id => self.id, :step_id => 1).first
     project_step.update_attributes(:status_id => 2)
@@ -354,8 +356,18 @@ class Project < ApplicationRecord
     tmp_dir = project_dir + 'parsing'
     Dir.mkdir(tmp_dir) if !File.exist?(tmp_dir)
 
-    filepath = File.readlink(project_dir + ("input." + self.extension)) 
-    logger.debug("CMD_ls4 " + `ls -alt #{filepath}`)
+    filepath = project_dir + ("input." + self.extension)
+    #    filepath = File.readlink(project_dir + ("input." + self.extension))
+    
+    ### get parameters
+    project = Project.find(self.id)
+    p = JSON.parse(project.parsing_attrs_json) if project.parsing_attrs_json
+    logger.debug("h_params: " + p.to_json)
+    
+    ### write file from hca                     
+    cmd = "rails get_loom_from_hca[#{self.key}]"
+    `#{cmd}`
+    logger.debug("CMD: " + cmd)
 
     #    Options:
     #-col %s                 Name Column [none, first, last].
@@ -385,10 +397,10 @@ class Project < ApplicationRecord
     opts.push({:opt => "-sel", :value => p['sel_name']}) if p['sel_name']
     opts.push({:opt => "-col", :value => p["gene_name_col"]}) if p["gene_name_col"]
     opts.push({:opt => "-d", :value => p["delimiter"]}) if p["delimiter"] and p['delimiter'] != ''
-    opts.push({:opt => "header", :value => ((p['has_header'] and p['has_header'].to_i == 1) ? 'true' : 'false')}) if  p['has_header']
+    opts.push({:opt => "-header", :value => ((p['has_header'] and p['has_header'].to_i == 1) ? 'true' : 'false')}) if  p['has_header']
     opts += [
-             {:opt => "-ncells", :value => p['nb_cells']},
-             {:opt => "-ngenes", :value => p["ngenes"]},
+             {:opt => "-ncells", :value => p["nb_cells"]},
+             {:opt => "-ngenes", :value => p["nb_genes"]},
              {:opt => "-type", :value => p["file_type"]},
              {:opt => "-project_key", :value => self.key},
              {:opt => "-step_id", :value => 1},
@@ -399,27 +411,34 @@ class Project < ApplicationRecord
             ]
     h_cmd = {
       :docker_call => APP_CONFIG[:docker_call],
-      :program => 'java -jar /srv/ASAP.jar',
+      :program => 'java -jar /srv/ASAP-2.0.jar',
       :opts => opts
     }
+    
+    File.open("log/delayed_jobs.log", "a") do |log_f|
+      log_f.write("CMD_h: " + h_cmd.to_json + "\n")
+      opt_str = opts.map{|h_opt| h_opt[:opt] + " " + h_opt[:value].to_s}.join(" ")
+      cmd = "#{h_cmd[:docker_call]} \"#{h_cmd[:program]} #{opt_str}\""
+      #cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T Parsing -organism #{self.organism_id} -o #{tmp_dir} -f #{filepath} #{options_txt}\""
+      #logger.debug("CMDxx #{cmd}")
+      
+      queue = 1
+      
+      #logger.debug("CMD_ls4 " + `ls -alt #{filepath}`)
+      output_file = tmp_dir + "output.loom"
+      output_json = tmp_dir + "output.json"
+      #    FileUtils.touch output_json if !File.exist?(output_json)
+      #job = Basic.run_job(logger, cmd, self, self, 1, output_file, output_json, queue, self.parsing_job_id, self.user)
+      `#{cmd}`
+      
+      log_f.write("CMD: " + cmd + "\n")
+    end
 
-    opt_str = opts.map{|h_opt| h_opt[:opt] + " " + h_opt[:value].to_s}.join(" ")
-    cmd = "#{h_cmd[:docker_call]} \"#{h_cmd[:program]} #{opt_str}\""
-    #cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T Parsing -organism #{self.organism_id} -o #{tmp_dir} -f #{filepath} #{options_txt}\""
-    logger.debug("CMDxx #{cmd}")
-
-    queue = 1
-
-    logger.debug("CMD_ls4 " + `ls -alt #{filepath}`)
-    output_file = tmp_dir + "output.loom"
-    output_json = tmp_dir + "output.json"
-    #    FileUtils.touch output_json if !File.exist?(output_json)
-    job = Basic.run_job(logger, cmd, self, self, 1, output_file, output_json, queue, self.parsing_job_id, self.user)
     run = Run.where(:project_id => self.id, :step_id => 1).first
     
     h_outputs = {
-      :output_matrix => {:types => ["num_matrix"], :filename => "parsing/output.loom", :dataset => "matrix", :row_filter => nil, :col_filter => nil},
-      :output_json => {:types => ["json_file"], :filename => "parsing/output.json"}
+      :output_matrix => { project_dir + "parsing/output.loom" => {:types => ["num_matrix"], :dataset => "matrix", :row_filter => nil, :col_filter => nil}},
+      :output_json => { project_dir + "parsing/output.json" => {:types => ["json_file"]}}
     }
     
     if !run
@@ -429,7 +448,7 @@ class Project < ApplicationRecord
         :status_id => 2, 
         :num => 1, 
         :user_id => self.user_id, #() ? current_user.id : 1,
-      #  :job_id => job.id, 
+        #  :job_id => job.id, 
         :command_json => h_cmd.to_json,
         #        :command_line => cmd,
         :attrs_json => self.parsing_attrs_json,
@@ -445,7 +464,7 @@ class Project < ApplicationRecord
                            :output_json => h_outputs.to_json
                            })
     end
-
+    project.broadcast run.step_id
     #    cmd = "rails parse_batch_file[#{self.key}]"
     #    logger.debug("CMD: " + cmd)
     #    `#{cmd}`
@@ -453,20 +472,20 @@ class Project < ApplicationRecord
     content_json_file = nil
     status_id = 3
     h_parsing={}
-    begin
-      content_json_file = File.read(output_json)
-      h_parsing = JSON.parse(content_json_file)
-
-      cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T ExtractMetadata -f #{output_file}\""
-      logger.debug("CMDyy: " + cmd)
-      Basic.finish_step(logger, start_time, self, 1, self, output_file, output_json)
-    rescue Exception => e
-      status_id = 4
-      h_parsing['displayed_error']='Bad format for the input file or parsing error.'
-      File.open(output_json, 'w') do |f|
-        f.write(h_parsing.to_json)
-      end
-    end
+#    begin
+#      content_json_file = File.read(output_json)
+#      h_parsing = JSON.parse(content_json_file)
+#
+#      cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T ExtractMetadata -f #{output_file}\""
+#      logger.debug("CMDyy: " + cmd)
+#      Basic.finish_step(logger, start_time, self, 1, self, output_file, output_json)
+#    rescue Exception => e
+#      status_id = 4
+#      #     h_parsing['displayed_error']='Bad format for the input file or parsing error.'
+#      File.open(output_json, 'w') do |f|
+#        f.write(h_parsing.to_json)
+#      end
+#    end
     status_id = 4 if h_parsing['displayed_error'] or h_parsing['original_error']
     ### update duration                                                                                                                                                            
     #  Basic.finish_step(logger, start_time, self, 1, self, output_file, output_json)
@@ -474,8 +493,8 @@ class Project < ApplicationRecord
     
     list_outputs = []
     if status_id == 3
-      h_outputs[:output_matrix][:types] = (h_parsing['is_count_table'] == 1) ? ['int_matrix'] : ['num_matrix']
-      h_outputs[:output_json]={:types => ['file'], :format => 'json', :filename => "parsing/output.json"}
+      h_outputs[:output_matrix][project_dir + "parsing/output.loom"][:types] = (h_parsing['is_count_table'] == 1) ? ['int_matrix'] : ['num_matrix']
+     # h_outputs[:output_json]={:types => ['file'], :format => 'json', :filename => "parsing/output.json"}
       #      list_outputs.push({:type => "data_matrix", :filename => "output.loom", :name => "matrix"})
     end
     run.update_attributes({:status_id => status_id, :output_json => h_outputs.to_json})

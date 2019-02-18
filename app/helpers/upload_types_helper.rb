@@ -1,0 +1,2 @@
+module UploadTypesHelper
+end

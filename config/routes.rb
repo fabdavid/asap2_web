@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  resources :upload_types
   resources :del_runs
   resources :active_runs
   resources :reqs
@@ -99,6 +100,8 @@ Rails.application.routes.draw do
       post :upload_file
       get :get_cart
       get :form_select_input_data
+      post :hca_preview
+      post :hca_download
     end
     member do
       post :broadcast_on_project_channel

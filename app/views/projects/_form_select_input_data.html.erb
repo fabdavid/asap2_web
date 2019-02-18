@@ -33,10 +33,16 @@
  <% @h_runs_by_step[@h_steps[default_step_name].id].each do |run| %>
   <% h_outputs = JSON.parse(run.output_json) %>
   <%# h_outputs.to_json %>
-  <%= h_outputs.keys.map{|k| (@attrs[params[:attr_name]]['valid_types'] & h_outputs[k]['types']).size} %>
-  <% h_outputs.keys.select{|k| h_outputs[k]['types'] and @attrs[params[:attr_name]]['valid_types'] and ( intersect = @attrs[params[:attr_name]]['valid_types'] & h_outputs[k]['types']; intersect.size > 0)}.each do |output_attr_name| %>
+  <%# h_outputs.keys.map{|k| (@attrs[params[:attr_name]]['valid_types'] & h_outputs[k]['types']).size} %>
+  <% list_attr_files = []
+     h_outputs.each_key do |k| 
+      files = h_outputs[k].keys.select{|f| h_outputs[k][f]['types'] and @attrs[params[:attr_name]]['valid_types'] and (intersect = @attrs[params[:attr_name]]['valid_types'] & h_outputs[k][f]['types']) and intersect.size > 0} 
+      list_attr_files += files.map{|f| [k, f]}
+     end %>
+
+<% list_attr_files.each do |output_attr_name, output_filename| %>
    bla
-   <div id='card-run-<%= run.id %>:<%= output_attr_name %>' class='card run_card<%= (h_selected_runs[run.id]) ? ' selected_run' : '' %>'>
+   <div id='card-run-<%= run.id %>:<%= output_attr_name %>:<%= output_filename %>' class='card run_card<%= (h_selected_runs[run.id]) ? ' selected_run' : '' %>'>
     <!--<div class='card-header'></div> -->
     <div class='card-body'> 
      <!--    <%# check_box_tag 'run_<%= run.id %>' %> -->
@@ -74,7 +80,7 @@ $("#select_runs").click(function(){
 
  })
  console.log(list_run_ids);
- refresh_post("form-container_<%= params[:attr_name] %>", '<%= set_input_data_project_path(:key => @project.key) %>?attr_name=<%= params[:attr_name] %>&step_name=<%= @step.name %>&obj_id=<%= params[:obj_id] %>&list_attrs=' +  list_run_ids.join(","), {loading:'fa-2x'})
+ refresh("form-container_<%= params[:attr_name] %>", '<%= set_input_data_project_path(:key => @project.key) %>?attr_name=<%= params[:attr_name] %>&step_name=<%= @step.name %>&obj_id=<%= params[:obj_id] %>&list_attrs=' +  list_run_ids.join(","), {loading:'fa-2x'})
  $("#ontop_window").addClass("hidden");
 })
 

@@ -35,7 +35,30 @@
   </div>
 </div>
 
+
+
+<!-- <div id='opt_input_select' class="btn-group btn-group-toggle" data-toggle="buttons">
+  <label id='upload-choice_btn' class="btn btn-primary choice-btn active">
+    <input type="radio" name="options" autocomplete="off" checked> Upload file / Send URL
+  </label>
+  <label id='hca-choice_btn' class="btn btn-primary choice-btn">
+    <input type="radio" name="options" autocomplete="off"> Import from HCA
+  </label>
+</div>
+-->
+
+<div id='opt_input'>
+  <div class="btn-group" role="group" aria-label="Input">
+    <button id='upload-choice_btn' type="button" class="btn btn-primary choice_btn active">Upload file / Send URL</button>
+    <button id='hca-choice_btn' type="button" class="btn btn-primary choice_btn">Import from the Human Cell Atlas</button>
+  </div>
+</div>
+
+<div id='upload_container' class='opt_input_container'>
 <%= render :partial => 'upload_input_file' %>
+</div>
+<div id='hca_container' class='opt_input_container hidden'>
+</div>
 
 <div id='share_container'>
 <%# render :partial => 'shares' %>
@@ -45,6 +68,8 @@
 <%= f.hidden_field :key  %>
 <%= f.hidden_field :step_id, {:value => 1}  %>
 <%= hidden_field_tag :active_step, params[:active_step] %>
+<%= hidden_field_tag :hca_query, '{"file":{"fileFormat":{"is":["matrix"]}}}' %>
+<%= hidden_field_tag :sel_hca_projects, '{}' %>
 <!--<%= f.hidden_field :group_filename  %>-->
 
   <div class="actions">
@@ -55,6 +80,27 @@
 </div>
 
 <%= javascript_tag do %>
+
+function upd_hca_preview(){
+ var p = []
+ p.push({name : 'q', value : $("#hca_query").val()})
+ var url = "<%= hca_preview_projects_path() %>"
+ refresh_post("hca_container", url, p, "post", {loading: 'fa-2x'})
+}
+
+$(".choice_btn").click(function(){
+ var t = this.id.split("-")[0]
+ $(".opt_input_container").addClass("hidden")
+ $(".choice_btn").removeClass("active")
+ $("#" + t + "_container").removeClass("hidden")
+ $(this).addClass("active")
+})
+
+$("#hca-choice_btn").click(function(){
+ if ($("#hca_container").children().length == 0){
+  upd_hca_preview()
+ }
+})
 
 /*
 $("#create_project_button")
@@ -96,7 +142,7 @@ test = false
 <%# code_piece =" && $('#project_input_filename').val() != ''" : '' %>
 //alert( $('#js-file-container tbody tr td div.alert-success').html());
 //if ($("#project_name").val() != '' && ($('#js-file-container tbody tr td div.alert-success').html() || test == true)){
-if ($("#project_name").val() != '' && $("#nb_cells").val() > 1 && $("#nb_genes").val() > 0){
+if ($("#project_name").val() != '' && (($("#nb_cells").val() > 1 && $("#nb_genes").val() > 0) || $("#sel_hca_projects").val() != '[]')){
 $("#create_project_button").removeAttr('disabled')
 }else{
 $("#create_project_button").attr('disabled', 'disabled')

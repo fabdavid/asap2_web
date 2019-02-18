@@ -46,7 +46,7 @@ class ProjectsController < ApplicationController
       h_outputs = JSON.parse(run.output_json)
       #@step.method_attrs_json
       valid_types = @attrs[params[:attr_name]]['valid_types']
-      list_valid_outputs = h_outputs.keys.map{|k| valid_types.include? h_outputs[k]['type']}
+      list_valid_outputs = h_outputs.keys.map{|k| h_outputs[k].keys.map{|f| (valid_types & h_outputs[k][f]['types']).size}.sum}.sum
       if list_valid_outputs.size > 0
         @h_runs_by_step[run.step_id] ||= []
         @h_runs_by_step[run.step_id].push(run)
@@ -842,7 +842,7 @@ class ProjectsController < ApplicationController
     session[:input_data_attrs][params[:attr_name]] = []
     params[:list_attrs].split(",").each do |e|
         e2 = e.split(":")
-        session[:input_data_attrs][params[:attr_name]].push({:run_id => e2[0], :output_attr_name => e2[1]})
+        session[:input_data_attrs][params[:attr_name]].push({:run_id => e2[0], :output_attr_name => e2[1], :output_filename => e2[2]})
       #params[:list_runs].split
     end
 
@@ -1079,7 +1079,66 @@ class ProjectsController < ApplicationController
       @error = "The project doesn't exist or the session has expired. Please create a new project."
     end
   end
-  
+
+  def get_hca_data #h_p
+
+    @nber_hits_displayed = 200
+    @h_hca= {} #JSON.parse(h_p[:q])
+
+    #    @h_filters = {
+    #     'file' => {'fileFormat' => {"is" => ["matrix"]}}
+    #    }
+    
+    #    if h_p[:filters]
+    #      @h_filters.merge(h_p[:filters])
+    #    end
+    
+    #    @h_urls = {
+    #      :summary => "https://service.dev.explore.data.humancellatlas.org/repository/summary?filters=#{@h_filters.to_json}",
+    #      :projects => "https://service.dev.explore.data.humancellatlas.org/repository/projects?filters=#{@h_filters.to_json}&size=15"
+    #    }
+
+    @h_filters = JSON.parse(params[:q]) if params[:q]
+   
+    @h_urls = {
+      :summary => "https://service.staging.explore.data.humancellatlas.org/repository/summary?filters=#{params[:q]}",
+      :projects => "https://service.staging.explore.data.humancellatlas.org/repository/projects?filters=#{params[:q]}&size=#{@nber_hits_displayed}"
+    }
+
+    errors = []
+    @log = ""
+    @h_urls.each_key do |k|
+      cmd = "wget -O - '#{@h_urls[k]}'"
+      @log +="=>" +cmd + "<= " 
+      tmp_data = `#{cmd}`
+      @h_hca[k]= {}
+
+      if !tmp_data.empty?
+        begin
+          @h_hca[k] = JSON.parse(tmp_data)
+        rescue Exception => e
+          errors.push("Data from HCA is not accessible at this time.")
+        end
+      end
+    end
+  end
+
+  def hca_preview
+
+    h_p = {}
+    begin
+      h_p = JSON.params[:q] if params[:q]
+    rescue Exception => e
+    end
+    
+    get_hca_data()
+
+    render :partial => 'hca_preview'
+  end
+
+  def hca_download
+  end
+
   # GET /projects/new
   def new
     project_key = (current_user) ? create_key() : session[:sandbox]
@@ -1115,6 +1174,9 @@ class ProjectsController < ApplicationController
     @project.key = project_key
     @shares = @project.shares.to_a
   
+    ### get initial HCA data
+    get_hca_data()
+
   end
 
   # GET /projects/1/edit
@@ -1232,8 +1294,9 @@ class ProjectsController < ApplicationController
     
     tmp_attrs = params[:attrs] || {}
     tmp_attrs[:has_header] = 1 if tmp_attrs[:has_header]
-    [:file_type, :sel_name, :nb_cells, :nb_genes].each do |k|
-      tmp_attrs[k] = params[k] if !params[k].strip.empty?
+    tmp_attrs[:file_type] = 'LOOM' if !tmp_attrs[:file_type] ### HCA import case
+    [:file_type, :sel_name, :nb_cells, :nb_genes, :sel_hca_projects].each do |k|
+      tmp_attrs[k] = params[k] if params[k] and !params[k].strip.empty?
     end
     if @h_formats[tmp_attrs[:file_type]].child_format != 'RAW_TEXT' ## delete the RAW_TEXT parsing options
       [:delimiter, :col_gene_name, :has_header].each do |k|
@@ -1248,11 +1311,12 @@ class ProjectsController < ApplicationController
     @project.version_id = Version.last.id
 
     input_file = Fu.where(:project_key => @project.key).first
-    @project.input_filename = input_file.upload_file_name
-
-    file_path = Pathname.new(APP_CONFIG[:upload_data_dir]) + input_file.id.to_s + input_file.upload_file_name
-
-    logger.debug("CMD_ls0 " + `ls -alt #{file_path}`)
+    file_path = nil
+    if input_file and input_file.upload_file_name
+      @project.input_filename = input_file.upload_file_name      
+      file_path = Pathname.new(APP_CONFIG[:upload_data_dir]) + input_file.id.to_s + input_file.upload_file_name
+      logger.debug("CMD_ls0 " + `ls -alt #{file_path}`)
+    end
     
     default_diff_expr_filters = {
       :fc_cutoff => '2',
@@ -1267,44 +1331,53 @@ class ProjectsController < ApplicationController
 
 #    tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s
 #    File.delete tmp_dir + ('input.' + @project.extension) if File.exist?(tmp_dir + ('input.' + @project.extension))
-    logger.debug("1. File #{file_path} exists!") if File.exist?(file_path)
+    # logger.debug("1. File #{file_path} exists!") if File.exist?(file_path)
 
     respond_to do |format|
-      if input_file and @project.save
-
+      if ((input_file and input_file.upload_file_name) or params[:sel_hca_projects] != '{}' ) and @project.save
+        
         session[:active_dr_id] = 1
         
-        ### get extension
-        ext = input_file.upload_file_name.split(".").last
-        if !['zip', 'gz', 'h5', 'loom'].include? ext
-          ext = 'txt'
+        # initialize directory
+        tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s
+        Dir.mkdir(tmp_dir) if !File.exist?(tmp_dir)
+        tmp_dir += @project.key
+        Dir.mkdir(tmp_dir) if !File.exist?(tmp_dir)
+        
+        if input_file and input_file.upload_file_name
+          
+          ### get extension                                                                                                                                                   
+          ext = input_file.upload_file_name.split(".").last
+          if !['zip', 'gz', 'h5', 'loom'].include? ext
+            ext = 'txt'
+          end
+          
+          ### set the project id to the upload file
+          
+          input_file.update_attributes(:project_id => @project.id)
+          
+          ### link upload to working directory
+          upload_path =  Pathname.new(APP_CONFIG[:upload_data_dir]) + input_file.id.to_s + input_file.upload_file_name
+          #`dos2unix #{upload_path}`
+          #`mac2unix #{upload_path}`        
+          ### to be sure because normally it is already deleted
+          #          File.delete tmp_dir + ('input.' + ext) if File.exist?(tmp_dir + ('input.' + ext))
+          # ext = input_file.upload_file_name.split(".").last
+          # if ext != 'zip' and ext != 'gz'
+          #   ext = 'txt'
+          # end
+          
+          File.delete tmp_dir + ('input.' + ext) if File.exist?(tmp_dir + ('input.'+ ext))
+          File.symlink upload_path, tmp_dir + ('input.' + ext) 
+          #        logger.debug("2. File #{file_path} exists!") if File.exist?(file_path)
+          ### parse batch_file
+          
+          #        @project.parse_batch_file()
+        else
+          ext = 'loom'
         end
+
         @project.update_attribute(:extension, ext)
-
-        ### set the project id to the upload file
-        input_file.update_attributes(:project_id => @project.id)
-        
-        ### link upload to working directory
-        tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s 
-        Dir.mkdir(tmp_dir) if !File.exist?(tmp_dir)
-        tmp_dir += @project.key   
-        Dir.mkdir(tmp_dir) if !File.exist?(tmp_dir)
-        upload_path =  Pathname.new(APP_CONFIG[:upload_data_dir]) + input_file.id.to_s + input_file.upload_file_name
-        #`dos2unix #{upload_path}`
-        #`mac2unix #{upload_path}`        
-        ### to be sure because normally it is already deleted
-        File.delete tmp_dir + ('input.' + @project.extension) if File.exist?(tmp_dir + ('input.' + @project.extension))
-        # ext = input_file.upload_file_name.split(".").last
-        # if ext != 'zip' and ext != 'gz'
-        #   ext = 'txt'
-        # end
-        
-        File.delete tmp_dir + ('input.' + ext) if File.exist?(tmp_dir + ('input.'+ ext))
-        File.symlink upload_path, tmp_dir + ('input.' + ext) 
-#        logger.debug("2. File #{file_path} exists!") if File.exist?(file_path)
-        ### parse batch_file
-
-        #        @project.parse_batch_file()
 
         ### init project_steps
         
@@ -1315,14 +1388,14 @@ class ProjectsController < ApplicationController
             project_step.save
           end
         end
-
+        
         ### read_write access
 
         manage_access()
-        logger.debug("3. File #{file_path} exists!") if File.exist?(file_path)
+     #   logger.debug("3. File #{file_path} exists!") if File.exist?(file_path)
         
         @project.parse_files()
-        logger.debug("4. File #{file_path} exists!") if File.exist?(file_path)
+     #   logger.debug("4. File #{file_path} exists!") if File.exist?(file_path)
         
         #        @project.parse()
         session[:active_step]=1
@@ -1561,6 +1634,10 @@ class ProjectsController < ApplicationController
       
       # delete objects
       p.shares.destroy_all
+    p.del_runs.destroy_all
+    p.active_runs.destroy_all
+    p.runs.destroy_all
+    p.reqs.destroy_all
       #p.fus.destroy_all
       p.project_steps.destroy_all
       p.gene_enrichments.destroy_all
@@ -1580,7 +1657,7 @@ class ProjectsController < ApplicationController
       File.delete file_path if File.exist?(file_path)
     }
     p.fus.destroy_all
-    p.runs.destroy_all
+#    p.runs.destroy_all
 
     p.destroy
 

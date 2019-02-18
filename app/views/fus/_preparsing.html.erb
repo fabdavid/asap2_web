@@ -185,7 +185,7 @@ function upd_preparsing(e){
    p.push({name : 'sel', value : $("#sel_name").val()})
   }
   
-  refresh_post("preparsing", "<%= preparsing_fu_path(@fu) %>", p, 'post');
+  refresh_post("preparsing", "<%= preparsing_fu_path(@fu) %>", p, 'post', {});
 }
 
 $("#dataset_details input").change(function(){
