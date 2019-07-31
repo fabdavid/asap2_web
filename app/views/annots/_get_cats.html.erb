@@ -1,0 +1,49 @@
+<!--<div class=''>-->
+  <button id='select-all-cats' class='btn btn-sm btn-info'>Select all</button>
+  <button id='unselect-all-cats' class='btn btn-sm btn-info'>Unselect all</button>
+<!--</div>-->
+
+<span id='list_of_cats'>
+<% @h_list_indexes_by_cat.each_key do |cat| %>
+
+<span class='badge badge-secondary'>
+<%= check_box_tag 'select_cat[]', cat, false, {:id => 'sc_' + cat.to_s, :class => 'check_box_cat'} %>  
+<%= cat %> (<%= @h_list_indexes_by_cat[cat].size %> cells)
+</span>
+
+<% end %>
+</span>
+
+<%= javascript_tag do %>
+
+var h_cats = <%= raw @h_list_indexes_by_cat.to_json %>
+
+/*$("#discard_from_cat_btn").click(function(){
+ var list_of_indexes = {}
+ $('#list_of_cats input[type="checkbox"]').each(function(){
+            $(this).prop("checked", false)
+ })
+})*/
+
+$("#select-all-cats").click(function(){
+  // $(".checkbox_cat").prop("checked")=true
+  $('#list_of_cats input[type="checkbox"]').each(function(){
+         // If checkbox is checked
+         $(this).prop("checked", true)
+         var span = $(this).parent()
+         //span.addClass("badge-success")
+         //span.removeClass("badge-secondary")         
+  })  
+})
+
+$("#unselect-all-cats").click(function(){
+ $('#list_of_cats input[type="checkbox"]').each(function(){
+            $(this).prop("checked", false)
+ })
+})
+
+// add button for cell filtering
+if ($("#discard_from_cat_btn").length > 0){
+ $("#discard_from_cat_btn").removeClass("hidden")
+}
+<% end %>

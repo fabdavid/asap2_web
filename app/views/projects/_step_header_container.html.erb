@@ -1,0 +1,153 @@
+ <div id='step_header_fixed' class='step_header'>
+   <%= render :partial => 'projects/step_header', :locals => {:context => 'fixed'} %>
+ </div>
+
+ <div id='step_header' class='step_header'>
+   <%= render :partial => 'projects/step_header', :locals => {:context => ''} %>
+ </div>
+ <div id='step-margin' class='step_margin'>
+   &nbsp;
+ </div>
+ <%= hidden_field_tag 'step_id', @step.id %>
+
+<%= javascript_tag do %>
+
+
+
+ // header
+
+function add_margin_step_container(){
+ var  w = $(window).width()
+ var form_status = $("#new_analysis_form_window_status")
+ var form_window = $("#new_analysis_form")
+ if (!form_window.hasClass("hidden") && form_status.val() == 'fixed'){
+//  if (form_window.css("left") == w && form_status.val() == 'fixed'){
+ 
+  var ww = 600;
+  //  var right_margin = (w - ww < 1000 && <%= (@runs) ? @runs.size : 0 %> > 0) ? 0 : 600;
+  var right_margin = <%= (!@runs or @runs.size == 0) ? 'ww' : '0' %>;
+
+   $( "#step_container" ).animate({
+    'margin-right': right_margin
+   }, 200, function() {
+   });
+
+ }else{
+  $( "#step_container" ).animate({
+    'margin-right': 0
+   }, 200, function() {
+   });
+ }
+}
+
+function place_new_analysis_form_window(){
+
+ if ($("#new_analysis_form_window_status").val() == 'fixed'){
+  var w = $(window).width()
+  var ww = 600;
+
+  $("#new_analysis_form").removeClass("hidden")
+ 
+  $("#new_analysis_form").animate({
+   'top' : 100,
+   'width' : ww,
+   'left' : w - ww,
+   'bottom' : 10
+  }, 200, function(){
+  })
+ }
+  if (! $("#new_analysis_form").hasClass("hidden")){
+   add_margin_step_container()
+  }
+}
+
+function upd_job_popup(){
+   console.log("bla!!")
+   $("#new_job_main_btn").addClass('hidden')
+   place_new_analysis_form_window();
+   let url = "<%= form_new_analysis_project_path(@project.key, :step_id => @step.id) %>";
+   refresh("new_analysis_form_content", url, {loading:'fa-2x'})
+}
+
+ $(".new_job_popup").click(function(){
+  var window_status = $("#new_analysis_form_window_status").val()
+  if ($("#new_analysis_form").hasClass("hidden") || window_status != 'fixed'){
+    upd_job_popup()
+/*    $("#new_job_main_btn").addClass('hidden')
+    place_new_analysis_form_window();
+    let url = "<%= form_new_analysis_project_path(@project.key, :step_id => @step.id) %>";
+    refresh("new_analysis_form_content", url, {loading:'fa-2x'}) */
+  }else{
+   $("#new_analysis_form_close").click();
+  }
+ })
+
+ $(".delete_all_btn").click(function(){
+  refresh("form_container", "<%= confirm_delete_all_project_path(:key => @project.key, :step_id => @step.id) %>", {loading : 'fa-2x'})
+  $("#ontop_window").removeClass("hidden")  
+ })
+
+ $(".activate_filter-btn").click(function(){
+ //  var filter_status = this.id.split("_")[1]
+ var activated_filter = 1
+  if ($("#filter_box").length > 0){
+   activated_filter = 0
+  }
+   refresh("step_container", "<%= raw get_step_project_path(:key => @project.key, :nolayout => 1, :step_id => @step.id) %>&activated_filter=" + activated_filter, {loading: 'fa-2x loading-step'});
+ })
+
+ $(".new_job").click(function(){
+  let url = "<%= form_new_analysis_project_path(@project.key, :step_id => @step.id) %>";
+  refresh("step_content", url, {loading:'fa-2x'})
+ })
+
+ $(".info-btn_<%= @step.id %>").click(function(){
+  $("#step-info_<%= @step.id %>").toggleClass("hidden")
+  //  alert('<%= @context  %> ' + $("#step-info_<%= @step.id %>").hasClass("hidden"))
+ })
+
+ $(".step-title_<%= @step.id %>").click(function(){
+  var step_id = <%= @step.id %>; //this.id.split("_")[1];
+  for (var i=1; i<=<%= Step.count %>; i++){
+   $("#step_" + i).removeClass("active");
+  }
+
+  $("#popup_window").addClass('hidden');
+  refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>&step_id=" + step_id, {loading: 'fa-2x loading-step'});
+ 
+ });
+
+ if (!$("#new_analysis_form").hasClass('hidden') && $("#new_analysis_form_window_status").val() == 'fixed' && $("#req_step_id").val() != <%= @step.id %>){
+  //console.log("test")
+  if ($(".new_job_popup").length == 0){
+   $("#new_analysis_form").addClass('hidden')
+  }
+/* reset each time when the form is fixed */
+else{
+  upd_job_popup()
+  }
+/* */
+ }		     
+
+ var cur_dashboard = $("#dashboard").val()
+
+ $(".standard_dashboard_btn").each(function(){
+  console.debug("evaluate " + this.id)
+  if (this.id == 'dashboard-btn-' + cur_dashboard){
+    $(this).addClass("hidden")
+    console.debug("hide " + cur_dashboard)
+  }
+ })
+
+ $(".standard_dashboard_btn").click(function(){
+  var t = this.id.split("-")
+  refresh("step_container", "<%= get_step_project_path(:key => @project.key, :step_id => @step.id, :nolayout => 1) %>&dashboard=" + t[2], {loading: 'fa-2x loading-step'});
+ })		       
+
+ $(".add_metadata_btn").click(function(){
+   refresh("step_content", "<%= add_metadata_project_path(:key => @project.key) %>", {loading: 'fa-2x loading-step'});
+ })		       
+
+<% end %>
+
+

@@ -1,9 +1,138 @@
 // Custom bootstrap variables must be set or imported *before* bootstrap.
 @import "variables";
 @import "bootstrap";
+@import "bootstrap3-switch";
+@import 'fontawesome-all';
+//@import "./fontawesome/scss/fontawesome.scss";
+//@import "./fontawesome/scss/solid.scss";
+//@import "./fontawesome/scss/brands.scss";
+//@import 'font_awesome5.css';
 
-#main {margin-bottom:100px; margin-top:105px;}
-.main_container {margin-right:10px;margin-left:10px}
+@font-face {
+  font-family: "af";
+  src: url(/assets/af.woff) format("woff");
+}
+
+#main {margin-bottom:100px; margin-top:65px;}
+.main_container {margin-right:15px;margin-left:15px}
+#main_footer {position:fixed; bottom:0px; width:100%;background-color:#FAFAFA;}
+#main_footer table {width:100%}
+#footer {margin-bottom:50px;text-align:center}
+
+
+/* GENERAL PURPOSE */
+
+.hidden {display:none}
+.pointer {cursor:pointer} 
+.cursor-help {cursor:help}
+.clear {clear:both}
+
+.flex-container {
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.flex-container2 {
+    padding: 0;
+    margin: 0;
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* plotly */
+#dr_plot .modebar {z-index:9}
+
+/* Extension icons */
+
+.scatter_plot_icon {font-family: af; content: a;}
+/* scatter_plot_icon.svg */
+
+/* styling some fontawesome icons */
+
+.warning-icon {color:red;}
+
+/* VERSIONS */
+
+#version_list li {
+    list-style-type: none;
+}
+
+/* FAQ */
+
+.faqHeader {
+    font-size: 27px;
+    margin: 20px;
+}
+
+
+/* CARD DECKS */
+
+@each $name, $breakpoint in $grid-breakpoints {
+      @media (min-width: $breakpoint) {
+
+             .card-deck .card_std {
+                              flex: 0 0 calc(#{100/map-get($cards-per-line, $name)}% - #{$grid-gutter-width});
+                                    }             
+	}
+}
+
+@each $name, $breakpoint in $grid-breakpoints {
+#cell_filtering_card-deck .card {
+                              flex: 0 0 calc(#{100/map-get($plot_cards-per-line, $name)}% - #{$grid-gutter-width});
+                                    }
+}
+
+#cell_filtering_card-deck .card {border-color:red}
+
+#ontop_window {position:fixed;z-index:100020; top:50px; right:0px; left:0px; bottom:0px; border:1px solid grey;
+               background-image:url(/assets/grey_transparent.png);}
+#ontop_window .title {padding:15px}
+.window_close {position:absolute; right:0px; top:0px; font-size:20px; margin-top:5px; margin-right:10px; cursor:pointer; z-index:100030}
+
+#popup_window {
+    position: absolute;
+    z-index:100000;
+    margin-right:15px;
+    padding:15px;
+    display: none;
+    background: #ccc;
+    border: 1px solid;
+}
+#popup_window_close {float:right; font-size:20px; margin-top:-19px; margin-right:-10px; cursor:pointer}
+
+#form_container {margin:10px; height:calc(100% - 100px); padding:15px; overflow-y:scroll; background-color:white}
+
+.shadow-card {
+box-shadow: 0 19px 38px rgba(0,0,0,0.30), 0 15px 12px rgba(0,0,0,0.22);
+}
+
+/* .float-left {float:left} */
+
+.download_file_btn {width:130px;margin-bottom:3px}
+.download_btn_text {width: 100px;text-align: left;white-space: nowrap;text-overflow: ellipsis}
+
+.centered-card { /*padding: 10px 10px 10px 10px; */
+/*  box-shadow: 0 19px 38px rgba(0,0,0,0.30), 0 15px 12px rgba(0,0,0,0.22); */
+ margin: 0 auto; 
+   float: none; 
+   margin-bottom: 10px;
+}
+
+.nowrap {white-space:nowrap}
+.white-background-btn button{background-color:white; border-color:white}
 
 #method_desc a{
 color:blue;
@@ -53,4 +182,10 @@ margin-bottom:0rem}
 .form_checkbox {
   margin-left: 15px;
   margin-right: 5px;
+}
+
+@media (max-width: 767px) {
+
+#main {margin-bottom:100px; margin-top:105px;}
+
 }

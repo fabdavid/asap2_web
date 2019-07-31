@@ -6,6 +6,8 @@
 <%# @h_hca[:projects].keys %>
 <% if @h_hca[:projects]['termFacets'] %>
 
+<div class='alert alert-danger'><i class='fas fa-exclamation-triangle warning-ico fa-3x'/> The HCA data are currently not available. There is a data re-ingestion process ongoing.</div>
+
 <div class="row">
   <div class="col">
     <input id='search' type="text" class="form-control" placeholder="Search">
@@ -14,30 +16,33 @@
     <% discarded_facets = ['fileFormat'] %>
     <% displayed_facets = ['organ', 'method', 'donor', 'specimen'] %>
     
-    <% displayed_facets.each do |facet| %>
-    <button type="button" class="btn btn-outline-secondary">
-      <%= facet.gsub(/(?<=[a-z])(?=[A-Z])/, ' ').capitalize %>
-    </button>
-    <% end %>
-    <% remaining_facets = @h_hca[:projects]['termFacets'].keys - displayed_facets - discarded_facets %>
-    
-    <div class="btn-group" role="group">
-      <button id="btnGroupDrop1" type="button" class="btn btn-outline-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-	Others
-      </button>
-      <div class="dropdown-menu" aria-labelledby="btnGroupDrop1">
-	<% remaining_facets.sort.each do |facet| %>
-	 <a class="dropdown-item" href="#">
-	  <%= facet.gsub(/(?<=[a-z])(?=[A-Z])/, " ").capitalize %>
- 	 </a>
-  	<% end %>
-      </div>
-    </div>
+    <!-- CATEGORY BUTTONS - to implement later -->
+    <!--
+	<% displayed_facets.each do |facet| %>
+	<button type="button" class="btn btn-outline-secondary">
+	  <%= facet.gsub(/(?<=[a-z])(?=[A-Z])/, ' ').capitalize %>
+	      </button>
+	<% end %>
+	<% remaining_facets = @h_hca[:projects]['termFacets'].keys - displayed_facets - discarded_facets %>
+	
+	<div class="btn-group" role="group">
+	  <button id="btnGroupDrop1" type="button" class="btn btn-outline-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+	    Others
+	  </button>
+	  <div class="dropdown-menu" aria-labelledby="btnGroupDrop1">
+	    <% remaining_facets.sort.each do |facet| %>
+	    <a class="dropdown-item" href="#">
+	      <%= facet.gsub(/(?<=[a-z])(?=[A-Z])/, " ").capitalize %>
+ 		  </a>
+  	    <% end %>
+	  </div>
+	</div>
+	-->
   </div>
 </div>
 <div id='list_filters'>
 <% @h_filters['file'].each_key do |k| %>
-<span class='badge badge-light hca_filter_badge'><%= k %>: <%= @h_filters['file'][k]['is'].map{|e| e}.sort.join(",") %>
+<span class='badge badge-light <%= (k != 'fileFormat') ? 'hca_filter_badge' : '' %>'><%= k %>: <%= @h_filters['file'][k]['is'].map{|e| e}.sort.join(",") %>
 <% if k != 'fileFormat' %>
 <i class='fa fa-times'/>
 <% end %>
@@ -78,12 +83,12 @@
 <tr>
   <th><%= check_box_tag "hca-hit_#{i}", "1", false, {:class=> 'hca-hit'} %></th>
   <td><%= e['projects'].map{|e2| e2['projectTitle']}.join(", ") %></td>
-  <td><%= e['specimens'].map{|e2| e2['genusSpecies'].join(", ")}.join(", ") %></td>
+  <td><%= (e['projectSummary']['genusSpecies']) ? e['projectSummary']['genusSpecies'].join(", ") : 'NA' %></td>
   <td><%= e['specimens'].map{|e2| e2['organ'].join(", ")}.join(", ") %></td>
   <td><%= e['specimens'].map{|e2| e2['organPart'].join(", ")}.join(", ") %></td>
   <td><%= e['specimens'].map{|e2| e2['disease'].join(", ")}.join(", ") %></td>
   <td><%= e['projectSummary']['donorCount'].to_i %></td>
-  <td><%= (nb_cells = e['projectSummary']['totalCellCount'].to_i and nb_cells > 0) ? nb_cells : 'NA' %></td>
+  <td><%=  e['fileTypeSummaries'].select{|e| e['fileType'] == 'matrix'}.first['count'].to_json %><%# (nber_cols = e['fileType']['count'].to_i and nber_cols > 0) ? nber_cols : 'NA' %></td>
   <td><%= e['projectSummary']['libraryConstructionApproach'].join(", ") %></td>
   <td><%= e['protocols'].map{|e2| e2['instrumentManufacturerModel'] && e2['instrumentManufacturerModel'].join(", ")}.compact.join(", ") %></td>
 </tr>

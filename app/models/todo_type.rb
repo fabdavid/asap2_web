@@ -1,0 +1,2 @@
+class TodoType < ApplicationRecord
+end

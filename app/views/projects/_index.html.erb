@@ -58,15 +58,15 @@
 
 <% if !admin? %>
 <div class='panel panel-default' style='margin-top:10px'>
+
   <div class='panel-heading'>
+    <!--
     <div style='float:right'>
       <div style='float:right;margin-right:5px;width:220px'>
 	<div class="input-group stylish-input-group">
 	  <%= text_field_tag 'public_free_text', session[:settings][:public_free_text], {:size => 20, :class => "form-control", :placeholder => "Search by project name"} %>
 	  <span id ='public_search_btn' class="input-group-addon">
-	    <!-- <button type="submit"> -->
 	    <span class="search_btn glyphicon glyphicon-search"></span>
-	    <!--     </button>-->
 	  </span>
 	</div>
       </div>
@@ -88,6 +88,7 @@
       <%= image_tag 'info.svg', {:width => '20px', :style=> 'margin-top:-20px', 'data-toggle'=>"tooltip", 'data-placement'=>"right", :title=>"Here you can see Example projects (but you cannot modify them)."} %>
       <% end %>
     </span>
+-->
   </div>
   <div class='panel-body' id='public_project_list'>
     <%= render :partial => 'public_project_list' %>

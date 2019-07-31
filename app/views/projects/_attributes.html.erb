@@ -1,7 +1,7 @@
 <%# @h_global_params.to_json %>
 <%# @attrs.to_json %>
 <%# h_attrs.to_json %>
-<% @h_attrs ||= {} %>
+<% @h_attr_vals ||= {} %>
 <%# h_attrs = @h_attrs %>
 <%= raw "<div class='form-inline'>" if @form_inline %>
 
@@ -18,7 +18,7 @@
     <% end %>
     <div class="card-body">
    <% if  horiz_element['attr_list'] %> 
-   <% horiz_element['attr_list'].select{|k| attr = @attrs[k]; attr and attr['widget'] and !attr['obsolete']}.each do |attr_name| %>
+   <% horiz_element['attr_list'].select{|k| attr = @h_attrs[k]; attr and attr['widget'] and !attr['obsolete']}.each do |attr_name| %>
    <div id='form-container_<%= attr_name %>' class='form-group <%= @div_class || '' %>'>
      <%= render :partial => 'attribute', :locals => {:attr_name => attr_name, :horiz_element => horiz_element} %> 
    </div>
@@ -39,20 +39,62 @@
 <%= raw "</div>"  if @form_inline %>
 
 <%= javascript_tag do %>
-    $('[data-toggle="tooltip"]').tooltip();
 
-function get_infos(){
- var infos='';
- if ($("#attrs_nbclust").val() == ''){
-  infos += "<span class='label label-info'>Auto clustering will perform a Silhouette analysis with k in [2,20] and pick the best k as the optimal number of clusters</span>"
+// var h_attrs = <%= raw @h_attrs.to_json %>
+
+ $('[data-toggle="tooltip"]').tooltip();
+
+function validate_req(){
+ var valid_message = ""
+ var messages = []
+ var valid = true
+console.log("blou")
+ <% @h_attrs.each_key do |attr_name| %>
+  <% attr = @h_attrs[attr_name] %>
+  <% if attr['min_nber_items'] %>
+   console.log("min_nber_items set for <%= attr_name %>")
+   var size = 0  
+   if ($("#attrs_<%= attr_name %>").length > 0 ){
+   // console.log($("#attrs_<%= attr_name %>").val())
+    var l = JSON.parse($("#attrs_<%= attr_name %>").val())
+    // console.log(l)
+    size = l.length
+   }
+   if (size < <%= attr['min_nber_items'] %>){
+   //  messages.push("There should be at least <%= attr['min_nber_items'] %> item selected")
+    console.log("There should be at least <%= attr['min_nber_items'] %> item selected for <%= attr_name %>")
+    valid = false
+   }else{
+//   console.log(size + " - <%= attr['min_nber_items'] %> item selected for <%= attr_name %>")
+   }
+ <% end %>
+
+ $("#validation_<%= attr_name %>").html(messages.join("<br/>"))
+ <% end %>
+
+ if (valid == true){
+    console.log("the form is valid!")
+   $(".req_submit").removeAttr('disabled')
+ }else{
+   $(".req_submit").attr("disabled", "disabled")
+  console.log("something's wrong")
  }
- return infos
 }
 
-var infos = get_infos();
-$("#infos").html(infos);
+validate_req()
 
-$("#method_warning").html("<span class='label label-danger'><%= @warning || '' %></span>");
+ function get_infos(){
+  var infos='';
+  if ($("#attrs_nbclust").val() == ''){
+   infos += "<span class='label label-info'>Auto clustering will perform a Silhouette analysis with k in [2,20] and pick the best k as the optimal number of clusters</span>"
+  }
+  return infos
+ }
+
+ var infos = get_infos();
+ $("#infos").html(infos);
+
+ $("#method_warning").html("<span class='label label-danger'><%= @warning || '' %></span>");
 
 <% if @button %>
 $(".replot").click(function(){
@@ -66,9 +108,9 @@ $("#step_4 img").attr("src", "<%= raw image_url('pending.gif') %>");
 });
 <% end %>
 
-<% end %>
 
-<%= javascript_tag do %>
+<%# end %>
+<%# javascript_tag do %>
 
 <% if params[:obj_name] =='cluster_method' %>
 /*$("#cluster_cluster_method_id").change(function(){

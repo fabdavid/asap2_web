@@ -1,0 +1,20 @@
+<%# @h_attrs_by_run_id.to_json %>
+<!--<div id="dr_plot" style="width:800px;height:400px;"></div>-->
+<% if @run %>
+ <div id="dr_plot"  style="width:100%;height:100%;"></div>
+ <%# @cmd.to_json %>
+ <%# @h_data.to_json %>
+  
+ <%= javascript_tag do %>
+
+  console.log("nnn")
+
+  <%= render :partial => "dim_reduction_#{params[:nber_dims]}d_js" %>
+
+  $("#plot_options_btn").removeClass("hidden")
+ 
+  refresh("plot_options_content", "<%= raw get_dr_options_project_path(@project.key, :run_id => @run.id) %>" , {loading:"fa-2x"})
+ 
+ <% end %>
+
+<% end %>

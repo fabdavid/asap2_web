@@ -1,0 +1,342 @@
+<%# session[:dr_params][@project.id].to_json %>
+<%# @log4 %>
+<%# @h_annots["accesssion"] %>
+<%# @genes_annot.to_json %>
+<%# @annot.to_json %>
+<%# @cmd %>
+<%# @cmd2 %>
+<%# @h_attrs.to_json %>
+<%# @log %>
+<%# session[:dr_params][@project.id][:dataset_annot_id] %>
+<!--<div id='plot_opt_panel'>
+  <div id='plot_opt_container' class=''>
+    <div id='plot_opt_close'></div>
+    <div id='plot_opt_content'>-->
+
+<div class='plot_option_category mb-2'>General</div>
+
+<div class='row'>
+  <div class='col-6'>Dot opacity</div>
+  <div class='col-6'>
+    <input name='opt[dot_opacity]' type="range" value="<%= session[:dr_params][@project.id][:dot_opacity] %>" min="0.1" max="1" step="0.1" oninput="opacityChange()" id="dot_opacity" class="slider"/>
+    <span id="op_value"><%= session[:dr_params][@project.id][:dot_opacity] %></span>
+  </div>
+</div>
+<!-- <div width="300px" align="left">
+     <input type="range" value="1" min="0.1" max="1" step="0.1" oninput="opacityChange()" id="opacity" class="slider"/>
+      </div>-->
+<!--  Coloring
+      <% l = [["None", 0], ["Cluster list", 1], ["Gene expression", 2], ["Selections", 3]] %>
+      <%= select_tag 'plot[coloring_type]', options_for_select(l) %>-->
+<!--  <select id="coloringList" name="coloringList" onchange="coloring(this)">                                                                                                    
+      <option value="0" selected="selected">No Coloring</option>                                                                                                                  
+      <optgroup id="optgroup1" label="Cluster list"></optgroup>                                                                                                                   
+      <optgroup id="optgroup2" label="Gene expression list"></optgroup>                                                                                                           
+      <optgroup id="optgroup3" label="Custom groups"></optgroup>                                                                                                                  
+</select>-->
+
+<div class='row'>
+  <div class='col-6'>Dot size</div>
+  <div class='col-6'>
+    <input name='opt[dot_size]' type="range" value="<%= session[:dr_params][@project.id][:dot_size] %>" min="1" max="15" step="1" oninput="sizeChange()" id="dot_size" class="slider"/>
+    <span id="size_value"><%= session[:dr_params][@project.id][:dot_size] %> px</span>
+  </div>
+</div>
+
+<div class='plot_option_category mb-2'>Coloring</div>
+
+<%# session[:dr_params][@project.id].to_json %>
+
+<% coloring_type = session[:dr_params][@project.id][:coloring_type] %>
+<div class='row flex-container2 mb-2'>
+  <div class="btn-group" role="group">	  
+    <button id='coloring_type_0_btn' type="button" class="btn btn-<%= (coloring_type == "0") ? 'primary' : 'secondary' %> coloring_type_btn">None</button>
+    <button id='coloring_type_1_btn' type="button" class="btn btn-<%= (coloring_type == "1") ? 'primary' : 'secondary' %> coloring_type_btn">Single gradient</button>
+    <button id='coloring_type_2_btn' type="button" class="btn btn-<%= (coloring_type == "2") ? 'primary' : 'secondary' %> coloring_type_btn">3-Channels</button>
+    <button id='coloring_type_3_btn' type="button" class="btn btn-<%= (coloring_type == "3") ? 'primary' : 'secondary' %> coloring_type_btn">Categorical</button> 
+  </div>
+  <%= hidden_field_tag 'opt[coloring_type]', coloring_type %> 
+</div>
+
+<div id='coloring_type_1_container' class='coloring_type_container <%= (coloring_type == "1") ? '' : 'hidden' %>'>
+  <%= render :partial => 'form_num_gradient', :locals => {:occ => 1} %>
+</div>
+
+<div id='coloring_type_2_container' class='coloring_type_container <%= (coloring_type == "2") ? '' : 'hidden' %>'>
+  <div class='col-6 bold'>Red channel</div>
+  <%= render :partial => 'form_num_gradient', :locals => {:occ => 2} %>
+  <div class='col-6 bold'>Green channel</div>
+  <%= render :partial => 'form_num_gradient', :locals => {:occ => 3} %>
+  <div class='col-6 bold'>Blue channel</div>
+  <%= render :partial => 'form_num_gradient', :locals => {:occ => 4} %>
+  <div class='fake' style='margin-bottom:200px'></div>
+</div>
+
+
+<div id='coloring_type_3_container' class='coloring_type_container <%= (coloring_type == "3") ? '' : 'hidden' %>'>
+  <div class='row'>
+    <div class='col-6' style='padding-top:5px'>Data source</div>
+    <% if @annot and @cat_annots %>
+    <% l = @cat_annots.map{|a| [a.name, a.id]} %>
+    <% l.unshift(["Select an annotation", '']) %>
+    <%= select_tag "opt[cat_annot_id]", options_for_select(l, session[:dr_params][@project.id][:cat_annot_id] || ''), {:class => 'custom-select col-6 sel_cat_annot_id'} %>
+    <% end %>
+  </div>
+</div>
+
+<!--    </div>
+	</div>
+</div>
+-->
+<!--<button id='save_plot_options-btn' type='button' class='btn btn-primary'>Save</button> -->
+
+<%= javascript_tag do %>
+
+
+<% h_headers = {};  @num_annots.select{|a| a.headers_json}.map{|a| h_headers[a.id] = JSON.parse(a.headers_json)} %>
+
+var h_headers = <%= raw h_headers.to_json %>
+
+function upd_headers(i){
+ console.log(h_headers)
+ console.log(<%= raw @num_annots.to_json %>)
+ console.log("#opt_num_annot_id_" + i)
+ var sel_annot = $("#opt_num_annot_id_" + i).val()
+ console.log(sel_annot)
+ var headers = $("#opt_header_i_" + i)
+ headers.empty()
+ console.log(h_headers[sel_annot])
+ var list_values = h_headers[sel_annot]
+ if (list_values){
+  for (var j=0; j<list_values.length; j++){
+   headers.append('<option value="' + j + '">' + list_values[j] + '</option>');
+  }
+  if (list_values.length == 1){
+   headers.addClass("hidden")
+   $("#field_label_" + i).addClass("hidden")
+  }else{
+   headers.removeClass("hidden")
+   $("#field_label_" + i).removeClass("hidden")
+  }
+ }
+}
+
+//$("#opt_num_annot_id_1").change(function(){
+//upd_headers()
+//})
+
+//$("#opt_dot_opacity").mousemove(function(){
+//console.log("bla")
+//
+
+function opacityChange(){
+        opacity = document.getElementById("dot_opacity").value;
+        op_value.innerHTML = opacity
+        upd_params()
+        plotly_graph.updateOpacity(opacity);
+}
+
+
+function sizeChange(){
+        size = document.getElementById("dot_size").value;
+        size_value.innerHTML = size + "px";
+        upd_params()
+        plotly_graph.updateSize(size);
+}
+
+
+function upd_params(){
+  $.ajax({
+      url: '<%= save_plot_settings_project_path(:key => @project.key) %>?dot_opacity=' + $("#dot_opacity").val() + "&dot_size=" + $("#dot_size").val(),
+           dataType: "json",
+           success: function(data){
+           }
+       })
+}
+
+// make hash for gene search
+
+// var gene_idx = []
+// var labels = []
+// var symbols = <%= raw @h_annots['gene'] %>
+// var ensembl_ids = <%= raw @h_annots['accession'] %>
+
+// console.log("generating labels...")
+// for(var i=0; i<symbols.values.length; i++){
+//  // h_gene_idx[symbols.values[i]]=i
+//  labels.push(symbols.values[i] + " (" + ensembl_ids.values[i] + ")")
+// }
+// console.log("saving search index...")
+// for(var i=0; i<symbols.values.length; i++){
+//  gene_idx.push({label : labels[i], value : labels[i], idx : i})
+//  // h_gene_idx[ensembl_ids.values[i]]=i
+// }
+
+console.log("1---")
+
+var h_autocomplete = <%= raw @autocomplete_json %>
+
+function upd_plot(i){
+    var gene_str = $("#gene_selected_" + i).html()
+    var data_type = $("#opt_data_type_" + i).val()				          
+    var coloring_type = $("#opt_coloring_type").val()
+    var rx = /\{(\d+)\}$/gm
+    var gene_i = null
+    if (gene_str){
+     gene_i = rx.exec(gene_str)[1]
+     $("#opt_row_i_" + i).val(h_autocomplete["h_indexes"][gene_i])
+    }
+    var header_i = $("#opt_header_i_" + i).val()
+    var num_annot_id = $("#opt_num_annot_id_" + i).val()					 
+    var cat_annot_id =  $("#opt_cat_annot_id").val()					 
+    var occ_txt = (i == null) ? '' : '&occ=' + i
+    $.ajax({
+      url: '<%= get_rows_project_path(:key => @project.key, :annot_id => @annot.id, :format => 'json') %>&coloring_type=' + coloring_type + occ_txt + '&row_i=' + h_autocomplete["h_indexes"][gene_i] + "&dataset_annot_id="  + $("#opt_dataset_" + i).val() + "&gene_selected=" + gene_str + "&data_type=" + data_type + "&num_annot_id=" + num_annot_id + "&header_i=" + header_i + "&cat_annot_id=" + cat_annot_id,
+           dataType: "json",
+           success: function(data){
+             console.log(data)
+             plotly_graph.addGeneExpression('name', data)
+           }
+       })
+}   
+
+$(".sel_num_annot_id").change(function(){
+  var i = this.id.split("_")[4]
+  upd_headers(i)
+  upd_plot(i)
+})
+
+$(".sel_cat_annot_id").change(function(){
+  upd_plot(null)
+})
+
+$(".sel_header_i").change(function(){
+ var i = this.id.split("_")[3]
+ upd_plot(i)
+})
+
+$(".dataset").change(function(){
+ var i = this.id.split("_")[2]
+ console.log("blaaaaa" + i)
+ upd_plot(i)
+})
+
+
+// initialize all the numerical gradient occurences
+for (var i=1; i<5; i++){
+// if ($("#opt_num_annot_id_" + i).val() != ''){
+   upd_headers(i)
+// }
+}
+if ($("#opt_coloring_type").val() == "3" && $("#opt_cat_annot_id").val() != ''){
+ upd_plot(null)
+}
+for (var i=1; i<3; i++){
+ if ($("#opt_coloring_type").val() == i && i < 3){
+  if ($("#opt_row_i_" + i).val() != ''){
+   upd_plot(i)
+  }
+  if ($("#opt_num_annot_id_" + i).val() != ''){
+ //  upd_headers(i)
+   upd_plot(i)
+  }
+ }else{
+   if ($("#opt_cat_annot_id").val() != ''){
+    upd_plot(null)
+   }
+ }
+}
+
+//for (var j=1; j<5; j++){
+<% (1 .. 4).each do |j| %>
+ $("#gene_free_text_<%= j %>").autocomplete({
+  minLength: 1,
+/*  appendTo: function(){
+   var j = this.id.split("_")[3];
+   console.log('#list_genes_container_' + j)
+   return '#list_genes_container_' + j
+  },
+*/
+  appendTo: '#list_genes_container_<%= j %>',
+  classes: {
+   "ui-autocomplete": "test_ui",
+  },
+  position: {
+   offset: '0 0' // Shift 0px left, 4px down.
+  },
+  //  source: h_autocomplete['search'],  //Object.keys(<%= raw @autocomplete_json %>).sort(), #gene_idx.sort((a,b) => (a.label > b.label) ? 1 : ((b.label > a.label) ? -1 : 0)), //Object.keys(h_gene_idx)
+
+  source: function(request, response) {   
+            var t0 = performance.now();
+            // filter array to only entries you want to display limited to 10
+            var outputArray = new Array();
+            for (var i = 0; i < h_autocomplete['search'].length; i++ ) {
+                var re = new RegExp(request.term, 'i');
+                if ( h_autocomplete['search'][i].match(re) ) {
+                   outputArray.push(h_autocomplete['search'][i]);
+                }
+            }
+	    var t1 = performance.now();
+            console.log("Time to process autocomplete <%= j %>: " + (t1-t0) + "ms")
+            response(outputArray.slice(0,10));
+      },
+// source: function( request, response ) {
+//        $.ajax({
+//          url: '<%= autocomplete_genes_project_path(:key => @project.key, :annot_id => @annot.id, :format => 'json') %>',
+//          dataType: "json",
+//          beforeSend: function(){
+//          //  var last_exp = $("#free_text").val().split(" and ").pop()
+//          //  return (last_exp.match(/,/)) ? false : true
+//         },
+//          data: {
+//                 q: request.term,
+//             //    list_genes: $("#list_genes").val()
+//          },
+//          success: function( data ) {
+//            response( data );
+//          }
+//        });
+//      },
+
+      select: function( event, ui ) {
+         var j = this.id.split("_")[3]
+         if (ui.item){
+           console.log(ui.item)
+	   console.log("field " + j)
+           $("#gene_selected_" + j).html(ui.item.label)
+           upd_plot(j)
+         }
+          
+        $(this).val(''); return false;
+       }
+      
+ });
+//}
+<% end %>
+
+console.log("2...")
+
+$(".data_type").change(function(){
+ var v = $(this).val()
+ var i = this.id.split("_")[3]
+ $(".data_type_container_" + i).addClass("hidden")
+ $("#data_type_" + v + "_container_" + i).removeClass("hidden")
+ upd_plot(i)
+})
+
+$(".coloring_type_btn").click(function(){
+ var v = this.id.split("_")[2]
+ $("#opt_coloring_type").val(v)
+ $(".coloring_type_btn").removeClass("btn-primary")
+ $(".coloring_type_btn").addClass("btn-secondary")
+ $(this).addClass("btn-primary") 
+ $(this).removeClass("btn-secondary")
+ 
+ $(".coloring_type_container").addClass("hidden")
+ $("#coloring_type_" + v + "_container").removeClass("hidden")
+ upd_plot((v == 1) ? 1 : 2)
+})
+
+
+
+<% end %>

@@ -1,274 +1,203 @@
-<div id="filtering_header">
-  <table>
-    <tr>
-      <td class="header">Filtered: </td>
-      <td id="filtered"></td>
-      <td id="result"></td>
-    </tr>
-  </table>
+<%# raw @h_data.to_json %>
+
+<%# raw @h_data.keys.to_json %>
+<%# raw @h_data[:depth] %>
+<%# raw @h_data[:detected_genes] %>
+<%# raw @h_data[:protein_coding] %>
+<%# raw @h_data[:mito] %>
+<%# raw @h_data[:ribo] %>
+
+<pre><%= @error %></pre>
+<% if  @h_method_details %>
+<% @h_attrs = @h_method_details[:attrs] %>
+
+<%# @h_data[:depth] %>
+<div id='forced_margin' class='mt-5'></div>
+<div id='step-info_<%= @step.id %>' class='alert alert-info hidden'><%= @step.description %></div>
+<div id="cell_filtering_form_container">
+<div id="cell_filtering_header">
+<!--  <div class="float-left"></div>-->
+  <div class="float-left badge badge-success mr-4"><span id="result">Selected : <i class='fa fa-spinner fa-pulse' /></span></div> 
+  <div class="float-left badge badge-secondary mr-4"><span id="filtered" class="">Discarded : 0</span> <span id='cancel_discarded' class='pointer' title='Reset to original parameters'><i class='fa fa-times-circle'></i></span></div>
+  <div class="float-left badge badge-secondary mr-4"><span id="manually_filtered" class="">Manually discarded : 0</span> <span id='cancel_manually_discarded' class='pointer' title='Reset manually discarded cells'><i class='fa fa-times-circle'></i></span></div>
+<!--  <div class='float-left'><button class='btn btn-primary btn-sm' type='button' onclick="sendValues()">Save Filters</button></div> -->
+<!--  <div class='float-right'><button class='btn btn-primary btn-sm' type='button' onClick="return resetFilters()">Reset manual selection</button></div> -->
+
+  <div class='float-left hidden'>Cells In:<input style="height:13px;" type="color" id="color_in" name="color_in" value="#009933" onChange="updateColors()"/></div>
+  <div class='float-left hidden'>Cells Out:<input style="height:13px" type="color" id="color_out" name="color_out" value="#cccccc" onChange="updateColors()"/></div>
+
+  <div class='clear'></div>
 </div>
 
-<table border="1">
-  <tr>
-    <td><div id="expressionDistrib" style="width:500px;height:500px;"></div></td>
-    <td><div id="mitocondrial" style="width:500px;height:500px;"></div></td>
-  </tr>
-  <tr>
-    <td><div id="cellreads" style="width:500px;height:500px;"></div></td>
-    <td><div id="stackedbar" style="width:500px;height:500px;"></div></td>
-  </tr>
-</table>
+<!--<div class="container">
+    <div id='cell_filtering_card-deck' class='card-deck'>-->
+<%# @h_cmd.to_json %>
+<%# @h_data.to_json %>
+
+<!-- add filter by annotation -->
+<div class='mb-3'>
+ <%# render :partial => 'attribute', :locals => {:attr_name => 'group_annot', :horiz_element => {}} %>
+  <%# annotations = Annot.where(:project_id => @project.id, :data_type_id => 3, :dim => 1).all %>
+  <% if @annots.size > 0 %>
+   <%# h_runs = {} %>
+   <%# Run.where(:id => @annots.map{|a| a.run_id}).all.map{|r| h_runs[r.id] = r} %>
+   <%# h_runs.to_json %>
+   <%# l = annotations.map{|a| [display_run(h_runs[a.run_id]) + " " + a.name, a.id]} %> 
+   <%# l = annotations.map{|a| [a.name + " " + display_run(@h_runs[a.run_id]), a.id]} %>
+   <% l = @annots.map{|a| [a.name + " ", a.id]} %>
+   <% l.unshift ["Select an annotation to be used to discard cells", nil] %>
+   <%= select_tag 'annot_id', options_for_select(l, nil),  {:class => 'form-control mr-4 mb-2'} %>
+  <% end %>
+  <div id='annot_categories'></div>
+  <div class='float-right'>
+    <button id='discard_from_cat_btn' type='button' class='btn btn-primary btn-sm hidden'>Discard cells from selected categories</button>
+  </div>
+  <div class='clear'></div>
+</div>
+
+<% if @project.nber_cols > 20000 %>
+ <%= render :partial => 'form_cell_filtering_scalable' %>
+<% else %>
+
+<% if @h_data["depth"] %>
+<div class="card float-left">
+  <div class="card-body">
+    <div id="cellreads" style="width:500px;height:500px"><div class='waiting' style='text-align:center;vertical-align:middle'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i></div></div>
+    <div id="cellreads_box" class="overLay cellreads">
+      Filter out cells that have LESS than <input id="cellreads_value" name="attrs[depth]" type="text" style="width:60px" onchange="changeCutoff(this)"/> UMI/reads
+    </div>
+  </div>
+</div>
+<% end %>
+
+<% if @h_data["detected_genes"] %>
+<div class="card float-left">
+  <div class="card-body">
+    <div id="detectedGenes" style="width:500px;height:500px;"></div>
+    <div id="detectedGenes_box" class="overLay detectedGenes">
+      Filter out cells that have LESS than <input id="detectedGenes_value" name="attrs[detected_genes]" type="text" style="width:60px" onchange="changeCutoff(this)"/> detected genes
+    </div>
+  </div>
+</div>
+<% end %>
+
+<% if @h_data["mito"] %>
+<div class="card float-left">
+  <div class="card-body">
+    <div id="mitochondrial" style="width:500px;height:500px;"></div>
+    <div id="mitochondrial_box" class="overLay mitochondrial">
+      Filter out cells that have MORE than <input id="mitochondrial_value" name="attrs[mito_content]" type="text" style="width:45px" onchange="changeCutoff(this)"/>% mitochondrial genes
+    </div>
+  </div>
+</div>
+<% end %>
+
+<% if @h_data["protein_coding"] %>
+<div class="card float-left">
+  <div class="card-body">
+    <div id="proteinCoding" style="width:500px;height:500px;"></div>
+    <div id="proteinCoding_box" class="overLay proteinCoding">
+      Filter out cells that have LESS than <input id="proteinCoding_value" name="attrs[protein_coding_content]" type="text" style="width:45px" onchange="changeCutoff(this)"/>% protein coding genes
+    </div>
+  </div>
+</div>
+<% end %>
+
+<% if @h_data["ribo"] %>
+<div class="card float-left">
+  <div class="card-body">
+    <div id="ribosomal" style="width:500px;height:500px;"></div>
+    <div id="ribosomal_box" class="overLay ribosomal">
+      Filter out cells that have MORE than <input id="ribosomal_value" name="attrs[ribo_content]" type="text" style="width:45px" onchange="changeCutoff(this)"/>% ribosomal genes
+    </div>
+  </div>
+</div>
+<% end %>
+
+<div id="group" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div id="close" class="close" onclick="closePopup(this)">&times;</div>
+      <div class="smallHeader">Filter Selection</div>
+    </div>
+    <div class="modal-body">
+      <table>
+           <tr><td>Add to filtered cells:</td><td><button style="width:130px" onclick="filter(false)">Filter out!</button></td></tr>
+      </table>
+    </div>
+    <div class="modal-footer">
+    </div>
+  </div>
+</div>
+</div>
+<!--<input type="hidden" name="cellreads_value"/>
+<input type="hidden" name="detectedGenes_value"/>
+<input type="hidden" name="mitochondrial_value"/>
+<input type="hidden" name="proteinCoding_value"/>
+<input type="hidden" name="ribosomal_value"/>
+-->
+<input id='attrs_manually_discarded_cols' type="hidden" name="attrs[manually_discarded_cols]"/>
+<input id='attrs_nber_manually_discarded_cols' type="hidden" name="attrs[nber_manually_discarded_cols]"/>
+<input id='attrs_discarded_cols' type="hidden" name="attrs[discarded_cols]"/>
+
+<% parsing_run = Run.where(:project_id => @project.id, :step_id => 1).first %>
+<% h_run = {:run_id => parsing_run.id, :output_attr_name => "output_matrix",:output_filename => "parsing/output.loom", :output_dataset => "/matrix"} %>
+<%= hidden_field_tag 'attrs[input_matrix]', "[#{h_run.to_json}]" %>
+</div>
+<div class='clear'></div> 
+<%# @h_cmd.to_json %>
+<%# @h_data.to_json %>
+
+<%= javascript_tag do %>
+<%= render :partial => 'form_cell_filtering_js' %>
+
+$("#discard_from_cat_btn").click(function(){
+//  var h_manually_discarded = {}
+//  discardByCat(this)
+ updateResult()
+})
+
+<% end %>
+
+
+<% end %>
 
 <%= javascript_tag do %>
 
-$(document).ready(function(){
 
-var exp = document.getElementById("expressionDistrib"),
-mito = document.getElementById("mitocondrial"),
-cellreads=document.getElementById("cellreads"),
-summJson,contentJson,
-totalCell=0,filteredList=[],
-layoutTemp = {
-				margin: { t: 120 },
-				xaxis: {title: "X"},
-				yaxis: {title: "Y"},
-				showlegend: false,
-				hovermode: "closest",
-				hoverdistance: 20
-			};
+$( document ).ready(function(){
 
-init();
+$("#annot_id").change(function(){
+ if ($(this).val()){
+  refresh("annot_categories", "<%= annots_path() %>/" + $(this).val() + "/get_cats", {loading:'fa-2x'})
+ }else{
+  // hide button for cell filtering
+  $("#discard_from_cat_btn").addClass("hidden")
+  $("#annot_categories").empty()
+ }
+})
 
 
-function init(){
-	stackedBar();	
-	loadGeneExpressionSum();
-	setTimeout( function(){
-		loadMitocondrialContent();
-		loadGeneExpressionLog();
-	},500);
-}
+$("#cancel_manually_discarded").click(function(){
+ resetFilters()
+})
 
-function loadGeneExpressionSum(){
-	Plotly.d3.json("/filtering_geneExpressionSumTest.json", function(err, json) {
-		summJson = json;
-		drawing2D(exp, prepareData(json), getLayout(json));
-		setListener(exp,json);
-		updateResult();
-	});
-}
+$("#cancel_discarded").click(function(){
+ resetParams()
+})
 
-function prepareData(json, min, max){
-	t0 = performance.now();
-	x = json[json.datamodel.x];
-	y = json[json.datamodel.y];
-	cutoff = json.datamodel.cutoff;
-	color=json.datamodel.color;
-	totalCell = x.length;
-	var x1=[],y1=[],x2=[],y2=[],text1=[],text2=[],custom1=[],custom2=[];
-	maxValue = Math.max(...y);
-	(min==null)?min=maxValue*cutoff.min:null;
-	(max==null)?max=maxValue*cutoff.max:null;
-	for(var i = 0; i < totalCell; i++){
-		value = y[i];
-		if(value<min||value>max){
-			y1.push(value);
-			text1.push("Cutoff value: " + value + "<br><span style='color:"+color.out+";'>" + getFilteredCount(y,value,min,max) + "</span> / " + totalCell + " Cells<br>Click to set!");
-			x1.push(i+1);
-			custom1.push([min,max,x[i]]);
-		}else{		
-			y2.push(value);
-			text2.push("Cutoff value: " + value + "<br><span style='color:"+color.out+";'>" + getFilteredCount(y,value,min,max) + "</span> / " + totalCell + " Cells<br>Click to set!");
-			x2.push(i+1);
-			custom2.push([min,max,x[i]]);
-		}				
-	};
-	y1[y1.length]=y2[0], text1[text1.length]="", x1[x1.length]=x2[0], custom1[custom1.length]=custom2[0];
-	data = [getTrace(x1,y1,text1,custom1,color.in),getTrace(x2,y2,text2,custom2,color.out)];
-	t1 = performance.now();
-	console.log("Data preparation " + (t1 - t0) + " milliseconds.");
-	return data;
-}
+$("#attrs_discarded_cols").change(function(){
+ if ($(this).val()){
+  $("#cell_filtering_button").removeAttr('disabled')
+ }else{
+  $("#cell_filtering_button").attr("disabled", "disabled")
+ }
+})
 
-function getFilteredCount(y,cutoffValue,min,max){
-	(max==100)?min = cutoffValue:null;
-	(min==0)?max = cutoffValue:null;
-	countInLimits = 0;
-	for(var i=0;i<y.length;i++){
-		((max==100&&y[i]>=min)||(min==0&&y[i]<=max))?countInLimits++:null;
-	}
-	return countInLimits;
-}
-
-function setListener(element, json){
-	element.on("plotly_click", function(eventData) {
-		maxValue = Math.max(...json[json.datamodel.y]);
-		cutOff=eventData.points[0].y/maxValue;
-		min=null, max = null;
-		if(eventData.points[0].customdata[0]==0){
-			max = eventData.points[0].y;
-		}else{
-			min = eventData.points[0].y;
-		}
-		update = prepareData(json,min,max);
-		if(element===cellreads){
-			update[0].type="scatter";
-			update[0].fillcolor=undefined;
-		}
-		drawing2D(element,update,element.layout);
-		updateResult();
-	});
-}
-
-function getTrace(x, y, text, customData, color){
-	return {
-			fill: "tozeroy",
-			fillcolor:color,
-		 	type: "scattergl",
-		 	opacity:0.5,
-		 	mode: "lines",
-		 	line: {width:2,color:color},
-	        customdata:customData,
-			x: x,
-			y: y,
-			text: text,
-			hoverinfo: "text",
-			hoverlabel: {bgcolor:"lightgrey", font:{size:10}}
-		};
-}
-
-function getLayout(json){
-	return {
-		margin: { t: 120 },
-		title:"Filter on "+json.datamodel.y_label,
-		xaxis: {
-			title: json.datamodel.x_label,
-			showspikes: true,
-			spikemode:"across+marker",
-			spikesnap:"data",
-			spikedash:"solid",
-			spikethickness:2,
-			spikecolor:"#dd6633"
-			},
-		yaxis: {
-			title: json.datamodel.y_label},
-		showlegend: false,
-		hovermode: "closest",
-		hoverdistance: 20,
-	}
-}
-
-function drawing2D(div, data, layout){
-	t0 = performance.now();
-	Plotly.react(div, data, layout);
-	t1 = performance.now();
-	console.log("2D Render took " + (t1 - t0) + " milliseconds.");
-}
-
-
-function loadMitocondrialContent(){
-	Plotly.d3.json("/filtering_mitocondrialContentTest.json", function(err, json) {
-		contentJson = json;
-		layout = getLayout(json);
-		layout.yaxis.range=[0,100];
-		layout.yaxis.ticksuffix="%";
-		drawing2D(mito, prepareData(json), layout);
-		setListener(mito,json);
-		updateResult();
-	});
-}
-
-function cleanArray(a) {
-    var seen = {};
-    var out = [];
-    var len = a.length;
-    var j = 0;
-    for(var i = 0; i < len; i++) {
-         var item = a[i];
-         if(seen[item] !== 1) {
-               seen[item] = 1;
-               out[j++] = item;
-         }
-    }
-    return out;
-}
-
-function updateResult(){
-	result = document.getElementById("result");
-	filtered = document.getElementById("filtered");
-	filteredList = [];
-	for(i=0;i<exp.data[1].customdata.length;i++){
-		filteredList[i]=exp.data[1].customdata[i][2];
-	}
-	if(mito.data){
-		for(i=0;i<mito.data[1].customdata.length;i++){
-			filteredList.push(mito.data[1].customdata[i][2]);
-		}
-	}	
-	filteredList = cleanArray(filteredList);	
-	filtered.innerHTML = "<span style='color:red'>" + filteredList.length + "</span> / " + totalCell;
-	result.innerHTML = " Active Cells: <span style='color:green'>" + (totalCell-filteredList.length + "</span>");
-}
-
-function stackedBar(){
-	Plotly.d3.json("/filtering_biotypes.json", function(err, json) {
-		data = [];
-		json.forEach(function(bar){
-				data.push(createBarTrace(bar));
-		});
-		data[0].fill="tozeroy";
-		var layout = {
-				title: "Filter ",
-				showlegend: false, 
-				xaxis:{title: "Cells"},
-				yaxis:{ticksuffix:"%", range:[1,100]}
-			};
-		Plotly.newPlot('stackedbar', stackedArea(data), layout);
-	});			
-}
-
-function createBarTrace(data){
-	x=[];
-	text = [];
-	for(var i = 0; i < data.y.length; i++){
-		x.push(i);
-		if(data.y[i]!==0){
-			text[i]=data.name + ": <span style='font-weight:900'>" + data.y[i].toFixed(2) + "%</span>";
-		}
-	}
-	trace = {
-			x:x,
-			y:data.y,
-			text:text,
-			name:data.name,
-			line: {width:0.5},
-			fill:"tonexty",
-			hoverinfo: "text",
-			hoverlabel: {bgcolor:"lightgrey", font:{size:10}}
-	};
-	return trace;
-}
-
-function stackedArea(traces) {
-	for(var i=1; i<traces.length; i++) {
-		for(var j=0; j<(Math.min(traces[i]['y'].length, traces[i-1]['y'].length)); j++) {
-			traces[i]['y'][j] += traces[i-1]['y'][j];
-		}
-	}
-	return traces;
-}
-
-function loadGeneExpressionLog(){
-	layout = getLayout(summJson);
-	data=prepareData(summJson);
-	data[0].type="scatter";
-	data[0].fillcolor=undefined;
-	layout.xaxis.type="log";
-	layout.yaxis.type="log";
-	drawing2D(cellreads, data, layout);
-	setListener(cellreads,summJson);
-}
+//$("#cell_filtering_button").attr("disabled", "disabled")
 
 });
+
+<% end %>
 
 <% end %>

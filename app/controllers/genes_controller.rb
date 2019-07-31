@@ -70,7 +70,7 @@ class GenesController < ApplicationController
     @gene = Gene.new(gene_params)
 
     respond_to do |format|
-      if @gene.save
+      if admin? and @gene.save
         format.html { redirect_to @gene, notice: 'Gene was successfully created.' }
         format.json { render :show, status: :created, location: @gene }
       else
@@ -84,7 +84,7 @@ class GenesController < ApplicationController
   # PATCH/PUT /genes/1.json
   def update
     respond_to do |format|
-      if @gene.update(gene_params)
+      if admin? and @gene.update(gene_params)
         format.html { redirect_to @gene, notice: 'Gene was successfully updated.' }
         format.json { render :show, status: :ok, location: @gene }
       else
@@ -97,10 +97,12 @@ class GenesController < ApplicationController
   # DELETE /genes/1
   # DELETE /genes/1.json
   def destroy
-    @gene.destroy
-    respond_to do |format|
-      format.html { redirect_to genes_url, notice: 'Gene was successfully destroyed.' }
-      format.json { head :no_content }
+    if admin?
+      @gene.destroy
+      respond_to do |format|
+        format.html { redirect_to genes_url, notice: 'Gene was successfully destroyed.' }
+        format.json { head :no_content }
+      end
     end
   end
 

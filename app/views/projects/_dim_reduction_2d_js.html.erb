@@ -1,0 +1,353 @@
+function Graph(config){
+        var w = $(window).width();
+        var h = $(window).height();
+	this.config = config;
+	this.shown = 0; //0 - default; 1 - custom groups; 2 - gene expression; 3 - clusters
+	this.data = [];
+	this.json = config.json;
+	this.selectData = [];
+	this.groupData = [];
+	this.defaultConf = { modeBarButtonsToRemove: ["hoverClosest3d","sendDataToCloud", "toggleSpikelines", "hoverClosestCartesian", "hoverCompareCartesian"],
+			     displaylogo: false,
+			     displayModeBar: true,
+			     showLink: false,
+			     doubleClick: 'reset+autosize',
+			     showTips: false };
+
+	this.layout = {
+             height : h-150,
+             //             width: 'w-300,
+             width : (($("#plot_options_window").hasClass("hidden")) ? w-300 : w-900),
+             margin : {t : 40},
+	     //  title : "Dataset Visualisation",
+	     xaxis : {title : this.config.x_label},
+	     yaxis : {title : this.config.y_label},
+								showlegend		:true,
+								legend			:{	x			:1,
+													y			:1,
+													bordercolor	:'#eee',
+												    borderwidth	:2} //,
+			//					dragmode		:"select",
+			//					hovermode		:"closest",
+			//					hoverdistance	:10
+							};
+/*
+    <% if @rows %>
+       var rows = <%= raw @rows.to_json %>
+       if (rows.length == 1){
+        geneExpression = rows[0]
+        this.layout.marker = {
+              size : this.config.size,
+              blend : true,
+              opacity : this.config.opacity,
+              color : rows,
+              colorbar : {xanchor:"right",x:1.1,ticks:"outside",thickness:10,tickfont:{size:8}},
+              //colorscale : "Hot"
+              colorscale : [[0,"rgb(5,5,5)"],[geneExpression.sort(function(a, b){return a-b})[geneExpression.length-1],"rgb(255,5,5)"]]
+         }
+       }
+    <% end %> 
+*/
+
+	this.init				= function(){
+								var o = this;
+								//Plotly.d3.json(o.config.file, function(err, json) {
+								//	o.json = json;
+									o.prepare();
+								//});
+							};
+	this.prepare			= function(){
+								var c = this.config;
+								this.data = [this.getTrace(this.json[c.x_json],this.json[c.y_json],c.text_vector,c.text_vector,this.config.color,null)];
+                                                                console.log("data")
+                                                                console.log(this.data)
+								this.draw();
+							};
+	this.draw				= function(){
+								t0 = performance.now();
+								Plotly.react(this.config.target, this.data, this.layout,this.defaultConf);
+								t1 = performance.now();
+								console.log("2D Render took " + (t1 - t0) + " milliseconds.");
+							};
+	this.getTrace			= function(x, y, text, ids, color, name){
+								return {
+									 	type		: "scattergl",
+									 	mode		: this.config.mode,
+									 	visible		: true,
+									 	marker		: {color:color, size:this.config.size, blend:true, opacity:this.config.opacity},
+								                ids			: ids,
+										x			: x,
+										y			: y,
+										text		: (name!=null)?name:text,
+										name		: name,
+										showlegend	: (name!=null)?true:false,
+									//	hoverinfo	: "none"
+									};
+							};
+	this.updateOpacity		= function(opacity){
+								this.config.opacity = opacity;
+								var update = {"marker.opacity":opacity};
+								Plotly.restyle(this.config.target, update);
+							};
+	this.updateSize			= function(size){
+								this.config.size = size;
+								var update = {"marker.size":size};
+								Plotly.restyle(this.config.target, update);
+							};
+        this.updatePlotWidth = function(width){
+         console.log(width)
+         this.layout.width = width
+         this.draw()
+        };
+	this.addGeneExpression	= function(name, data){
+         var o = this.config;
+         var update = {}
+
+         if (data.length == 0){
+          update = {
+             marker: {
+               size : o.size,
+               blend : true,
+               opacity : o.opacity,
+               color : "#0000FF"
+             }
+           }     
+         }else{
+          if (data.length > 1){
+           var colors = []
+           var max = []
+           var min = []
+           var diff = [] 
+           for (var i=0; i<data.length; i++){
+            max[i] = Math.max(...(data[i]) ? data[i] : [0])
+            min[i] = Math.min(...(data[i]) ? data[i] : [0])
+            diff[i] = max[i] - min[i]
+           }
+           for (var i=0; i<data[0].length; i++){
+            var rgb = [((data[0] && diff[0] > 0) ? 230 - Math.round((data[0][i]-min[0]) * 230 / diff[0]) : 255), 
+             ((data[1] && diff[1] > 0) ? 230 - Math.round((data[1][i]-min[1]) * 230 / diff[1]) : 255), 
+             ((data[2] && diff[2] > 0) ? 230 - Math.round((data[2][i]-min[2]) * 230 / diff[2]) : 255)]
+
+            var alpha = (rgb[0] >= 230 && rgb[1] >= 230 && rgb[2] >= 230) ? ",0" : "" 
+            colors.push("rgb(" + rgb.join(",") + alpha + ")")
+           }
+      
+           console.log(colors)
+           update = {
+             marker: {              
+               size : o.size,
+               blend : true,
+               opacity : o.opacity,
+               color : colors
+             }
+           }				 
+          }else{
+           if ($("#opt_coloring_type").val()< 3){ 
+
+            var geneExpression = data[0]
+            var max = Math.max(...geneExpression) //.sort(function(a, b){return a-b})[geneExpression.length-1]
+            var min = Math.min(...geneExpression)
+            console.log("test here!!!" + min + "-" + max)
+            // rescale because of bug with plotly
+            
+//            var colorscale = []
+//            if (min >= 0){
+              colorscale = [[0, "rgb(230,230,230)"], [1, "rgb(255,5,5)"]]
+//  	    }
+/*
+            if (max <= 0){
+              colorscale = [[0, "rgb(230,230,230)"], [1, "rgb(5,5,255)"]]
+            }
+            if (min < 0 && max > 0){
+             // abs_max = Math.max(...[max, -min])
+             // min = -abs_max
+             // max = abs_max
+              colorscale = [[0, "rgb(5,5,255)"], [-min/(max-min),"rgb(230,230,230)"],[1,"rgb(255,5,5)"]]			     
+              console.log(colorscale, min, max) 
+            }		
+*/			      
+ 	    update = {	
+             marker: {
+               size : o.size,
+               blend : true, 
+ 	       opacity : o.opacity,
+	       color : geneExpression,
+	       colorbar : {xanchor:"right",x:1.1,ticks:"outside",thickness:10,tickfont:{size:8}},
+	       //colorscale : "Hot"
+               colorscale : colorscale
+             }
+	    }
+           }else{
+            var colors = []
+            var palette = Plotly.d3.scale.category10().range();
+            var h_cats = {}
+            var c_i = 0
+            for (var i=0; i<data[0].length; i++){
+              console.log(data)
+              console.log(i + ":" + c_i + ":" + (c_i % 10))
+	      if(!h_cats[data[0][i]]){
+                c_i += 1
+                h_cats[data[0][i]]=c_i
+              }	
+              colors[i] = palette[h_cats[data[0][i]] % 10]			    
+            }
+            update = {
+             marker: {
+              size : o.size,
+              blend : true,
+              opacity : o.opacity,
+              color : colors
+             }
+            }
+           }
+          }
+        }
+
+ 	 Plotly.restyle(o.target, update,0);    
+ 	 // this.shown=2;
+        };
+	this.clearColors		= function(clean){
+								var update = {marker : {color:this.config.color, size:this.config.size, blend:true, opacity:this.config.opacity}};
+								if(clean){
+									Plotly.restyle(this.config.target, update,0);
+								}
+							};
+	this.addClusters		= function(name, file){
+								var o = this.config;
+								Plotly.d3.json(file+".json", function(err, json) {
+									var colors = palette("mpn65",json[o.c_list].length);
+									var cScale = [];
+									var tickvals = [];
+									var ticktext = [];
+									for(c=0;c<colors.length;c++){
+										var r = parseInt(colors[c].slice(0, 2), 16),
+								        g = parseInt(colors[c].slice(2, 4), 16),
+								        b = parseInt(colors[c].slice(4, 6), 16);
+										var a = c/colors.length;
+										var a1 = (c+1)/colors.length;
+										cScale.push([a,"rgb("+r+","+g+","+b+")"]);
+										cScale.push([a1,"rgb("+r+","+g+","+b+")"]);
+										tickvals.push(c);
+										tickvals.push((c+c+1)/2);
+										var text = json[o.c_list][c];
+										if(text.length>18){
+											ticktext.push(text.substring(0,14)+"...");
+										}else{
+											ticktext.push(text);
+										}
+										ticktext.push("");
+									}
+									var update = {	marker: {size			:o.size,
+															blend			:true,
+															opacity			:o.opacity,
+															cauto			:false,
+															cmin			:-0.5,
+															cmax			:colors.length-0.5,
+															color			:json[o.c_value],
+															autocolorscale	:false,
+															showscale		:true,
+															colorscale		:cScale,
+															colorbar		: {
+																			ticks		:"",
+																			thickness	:10,
+																			tickmode	:"array",
+																			ticktext	:ticktext,
+																			tickvals	:tickvals,
+																			tickfont	: {size:8}
+																			}
+															}
+									};
+									Plotly.restyle(o.target, update,0);
+								});
+								this.shown=3;
+							};
+}
+
+
+function tooltip(text){
+	console.log(text);
+	return false;
+}
+
+var json_data = <%= raw @h_json_data %>
+
+console.log("row!!")
+//console.log(<%= raw @row.to_json %>)
+<%# if @row %>
+//console.log(@row.to_json)
+<%# end %>
+
+var conf2D = {
+		target		: document.getElementById("dr_plot"),
+		//file		: "224k_cells.json",
+		//file		: "91cells.json",
+//		file		: "74689cells.json",
+                json            : json_data.values,
+		x_json		: 0,
+		y_json		: 1,
+		text_vector     : json_data.cells,
+		x_label		: "PC1",
+		y_label		: "PC2",
+		c_label		: "label",
+		c_list		: "clusters",
+		c_value		: "values",
+		mode		: "markers",
+		color		: "#0000ff",
+		size		: (($("#dot_size").length > 0) ? $("#dot_size").val() : <%= session[:dr_params][@project.id][:dot_size] %>),
+		opacity		: (($("#dot_opacity").length > 0) ? $("#dot_opacity").val() : <%= session[:dr_params][@project.id][:dot_opacity] %>)
+	};
+
+
+plotly_graph = null;
+//loadColoringSelection();
+init();
+
+function init(){
+	plotly_graph = new Graph(conf2D);
+	plotly_graph.init();
+}
+
+function loadColoringSelection(){
+	Plotly.d3.json("geneList.json", function(err, json) {
+		json.forEach(function(gene){
+			var option = document.createElement("option");
+			option.value=gene.id;
+			option.innerHTML = gene.label;
+			document.getElementById("optgroup2").appendChild(option);
+		});
+	});
+	Plotly.d3.json("clusterGroups.json", function(err, json) {
+		json.forEach(function(cluster){
+			var option = document.createElement("option");
+			option.value=cluster.cluster_id;
+			option.innerHTML = cluster.cluster_name;
+			document.getElementById("optgroup1").appendChild(option);
+		});
+	});
+}
+
+
+
+function coloring(colorType){
+	//console.log(colorType.name + ": " +colorType.value);
+	if(colorType.value==0){
+		plotly_graph.clearColors(true);
+		return;
+	}
+
+	if(colorType.selectedOptions[0].parentNode.id=="optgroup2"){
+		if(plotly_graph.shown==3){
+			plotly_graph.clearColors(false);
+		}
+		plotly_graph.addGeneExpression(colorType.name, colorType.value);
+	}
+
+	if(colorType.selectedOptions[0].parentNode.id=="optgroup1"){
+		if(plotly_graph.shown==2){
+			plotly_graph.clearColors(false);
+		}
+		plotly_graph.addClusters(colorType.name, colorType.value);
+	}
+}
+
+

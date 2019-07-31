@@ -1,3 +1,4 @@
+<!--<div class='alert alert-warning'>Currently, we experience problems sending email.</div> -->
 <label>Permissions</label>
 
 <table id='share_table'>
@@ -58,7 +59,7 @@
 $(".delete_share").click(function(){
   let t = this.id.split("_")
   let url = "<%= shares_path %>/" + t[1]
-  refresh_post("share_container", url, [], 'delete');
+  refresh_post("share_container", url, [], 'delete', {loading:''});
 })
 
 
@@ -124,7 +125,7 @@ $("#invite_button").click(function(){
    p.push({name : 'share[' + t[i] + '_perm]', value : ($("#share_" + t[i] + "_perm").prop("checked") == true) ? true : false});
   }
   p.push({name : 'project_key', value : '<%= @project.key %>'})
-  refresh_post("share_container", url, p, 'post');
+  refresh_post("share_container", url, p, 'post', {loading:''});
  } else{
   alert("Current email is not valid.")
  }

@@ -1,0 +1,110 @@
+<!--SESSION
+<%# session[:activated_filter].to_json %>
+<%# session[:filter_lineage_run_ids].to_json %>
+
+FILTER <%# @filter_lineage_run_ids.to_json %>
+IMPLICIT FILTER <%# @implicit_filter_lineage_run_ids.to_json %>
+
+<%# @all_lineage_run_ids.to_json %>
+<%# @h_lineage_run_ids_by_step_id.to_json %>
+
+LOG <%= @log %>
+-->
+
+<!--<%#  @current_run_ids.map{|run_id| @h_all_lineage_run_ids[run_id].size }.join(",") %>
+<%# @filter_lineage_run_ids.to_json %>
+<%# @list_filter_run_ids.to_json %>
+SESSION
+<%# session[:activated_filter].to_json %>
+<%# @disable_filter.to_json %>
+<%# @current_run_ids.to_json %>
+t<%# @log %>u
+-->
+<%# if @h_union_lineage_run_ids_by_step_id.keys.size > 0 %>
+<% if session[:activated_filter][@project.id] == true and !@disable_filter #and !@flag_nothing_to_filter == true %>
+<div id='filter_box' class='alert alert-info <%# (session[:activated_filter] == true and !@disable_filter) ? "hidden" : '' %>'>
+  <div class='row'>
+    <%# label_tag "bla", "Filter runs having in their lineage one of these runs", {:class=>'col-md-6'} %>
+    <%# l = @h_lineage_run_ids.keys.reject{|k| k=='Parsing'}.map{|k| [k, @h_lineage_runs[k].map{|r| [display_run(r), r.id]}]} %>
+    <%# @h_all_lineage_run_ids.to_json %>
+    <%# @h_lineage_run_ids_by_step_id.to_json %>
+    <div class='col-md-6'>
+     <!-- <div class='row'>
+	<div class='col-md-2'>
+	  <%= radio_button_tag "apply_filter", 1 %>
+	</div>
+	<div class='col-md-10'>-->
+
+     <% steps = @h_lineage_run_ids_by_step_id.keys.map{|step_id| @h_steps[step_id]}.sort %>
+     <% l = steps.map{|step| [step.label, @h_lineage_run_ids_by_step_id[step.id].map{|run_id| @h_all_runs[run_id]}.select{|r| r}.map{|r| [display_run(r), r.id]}]} %>
+     <% l.unshift(["", [["Select runs from previous steps to filter", ""]]]) %>
+     <%= select_tag 'possible_lineage_runs', grouped_options_for_select(l), {:class => 'custom-select'} %>
+     <!--	</div>
+		</div>
+  <div class='row'>
+    <div class='col-md-2'>
+      <%= radio_button_tag "apply_filter", 1 %>
+    </div>
+    <div class='col-md-10'>
+      View all
+    </div>
+  </div>-->
+    </div>
+    <div id='lineage_run_ids' class='col-md-6'>
+      <div class='float-right'>
+	<div class='btn btn-info deactivate_filter-btn pointer'>
+	<span class="fa-stack fa-lg">
+	  <i class="fa fa-filter fa-stack-1x"></i>
+	  <i class="fa fa-ban fa-stack-2x fa-flip-horizontal text-danger"></i>      
+	</span>   
+	Deactivate filter
+	</div>
+      </div>
+      <%# @h_all_lineage_run_ids.to_json %>
+<!--      <% @implicit_filter_lineage_run_ids.each do |run_id| %>
+      <span id='del_lineage_run_id-<%= run_id %>' class='badge badge-success del_lineage_run_id pointer'><%= display_run(@h_all_runs[run_id]) %> <i class='fa fa-times-circle'></i></span>
+      <% end %>
+      <% @filter_lineage_run_ids.each do |run_id| %> 
+      <span id='del_lineage_run_id-<%= run_id %>' class='badge badge-success del_lineage_run_id pointer'><%= display_run(@h_all_runs[run_id]) %> <i class='fa fa-times-circle'></i></span>
+      <% end %> -->
+      <% @list_filter_run_ids.each do |run_id| %>
+      <span id='del_lineage_run_id-<%= run_id %>' class='badge badge-success del_lineage_run_id pointer'>
+	<%= display_run(@h_all_runs[run_id]) %> <i class='fa fa-times-circle'></i>
+      </span>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<%= javascript_tag do %>
+
+$(document).ready(function(){
+var h_children_run_ids = <%= raw @h_children_run_ids.to_json %>
+$("#possible_lineage_runs option").each(function() {
+ if (this.value == ''){
+  $(this).attr("disabled", "disabled")
+ }else{
+  if (h_children_run_ids[this.value]){
+    $(this).addClass("children_lineage_run")
+  }
+ }
+});
+
+
+$(".deactivate_filter-btn").click(function(){
+  refresh("step_container", "<%= raw get_step_project_path(:key => @project.key, :nolayout => 1, :step_id => @step.id) %>&activated_filter=0", {loading: 'fa-2x loading-step'});
+})
+
+$("#possible_lineage_runs").change(function(){
+var run_id = $(this).val()
+refresh("step_container", "<%= raw get_step_project_path(:key => @project.key, :nolayout => 1, :step_id => @step.id) %>&add_lineage_run_ids=" + run_id, {loading: 'fa-2x loading-step'});
+});
+
+$(".del_lineage_run_id").click(function(){
+var run_id = this.id.split("-")[1]
+refresh("step_container", "<%= raw get_step_project_path(:key => @project.key, :nolayout => 1, :step_id => @step.id) %>&del_lineage_run_ids=" + run_id, {loading: 'fa-2x loading-step'});
+});
+
+});
+<% end %>
+<% end %>

@@ -34,40 +34,45 @@ class VersionsController < ApplicationController
   # POST /versions
   # POST /versions.json
   def create
-    @version = Version.new(version_params)
-
-    respond_to do |format|
-      if @version.save!
-        format.html { redirect_to @version, notice: 'Version was successfully created.' }
-        format.json { render :show, status: :created, location: @version }
-      else
-        format.html { render :new }
-        format.json { render json: @version.errors, status: :unprocessable_entity }
+      @version = Version.new(version_params)
+      
+      respond_to do |format|
+        if admin? and @version.save!
+          format.html { redirect_to @version, notice: 'Version was successfully created.' }
+          format.json { render :show, status: :created, location: @version }
+        else
+          format.html { render :new }
+          format.json { render json: @version.errors, status: :unprocessable_entity }
+        end
       end
-    end
+
   end
 
   # PATCH/PUT /versions/1
   # PATCH/PUT /versions/1.json
   def update
-    respond_to do |format|
-      if @version.update(version_params)
-        format.html { redirect_to @version, notice: 'Version was successfully updated.' }
-        format.json { render :show, status: :ok, location: @version }
-      else
-        format.html { render :edit }
-        format.json { render json: @version.errors, status: :unprocessable_entity }
+
+      respond_to do |format|
+        if admin? and @version.update(version_params)
+          format.html { redirect_to @version, notice: 'Version was successfully updated.' }
+          format.json { render :show, status: :ok, location: @version }
+        else
+          format.html { render :edit }
+          format.json { render json: @version.errors, status: :unprocessable_entity }
+        end
       end
-    end
+
   end
 
   # DELETE /versions/1
   # DELETE /versions/1.json
   def destroy
-    @version.destroy
-    respond_to do |format|
-      format.html { redirect_to versions_url, notice: 'Version was successfully destroyed.' }
-      format.json { head :no_content }
+    if admin?
+      @version.destroy
+      respond_to do |format|
+        format.html { redirect_to versions_url, notice: 'Version was successfully destroyed.' }
+        format.json { head :no_content }
+      end
     end
   end
 

@@ -31,7 +31,7 @@
         <td><%= project.key %></td>
 <% end %>
         <td class='project_name' title='<%= project.name %>'><%= project.name %></td>
-        <td><%= @h_organisms[project.organism_id].short_name.capitalize %></td>
+        <td><%= (@h_organisms[project.organism_id].short_name) ? @h_organisms[project.organism_id].short_name.capitalize : 'NA' %></td>
         <td><%= project.nber_cells %></td>
         <td><%= project.nber_genes %></td>
 <!--        <td><%= ((step = project.step) ? step.label : 'NA') %></th>

@@ -27,7 +27,7 @@ class ActiveRunsController < ApplicationController
     @active_run = ActiveRun.new(active_run_params)
 
     respond_to do |format|
-      if @active_run.save
+      if admin? and @active_run.save
         format.html { redirect_to @active_run, notice: 'Active run was successfully created.' }
         format.json { render :show, status: :created, location: @active_run }
       else
@@ -41,7 +41,7 @@ class ActiveRunsController < ApplicationController
   # PATCH/PUT /active_runs/1.json
   def update
     respond_to do |format|
-      if @active_run.update(active_run_params)
+      if admin? and @active_run.update(active_run_params)
         format.html { redirect_to @active_run, notice: 'Active run was successfully updated.' }
         format.json { render :show, status: :ok, location: @active_run }
       else
@@ -54,10 +54,12 @@ class ActiveRunsController < ApplicationController
   # DELETE /active_runs/1
   # DELETE /active_runs/1.json
   def destroy
-    @active_run.destroy
-    respond_to do |format|
-      format.html { redirect_to active_runs_url, notice: 'Active run was successfully destroyed.' }
-      format.json { head :no_content }
+    if admin?
+      @active_run.destroy
+      respond_to do |format|
+        format.html { redirect_to active_runs_url, notice: 'Active run was successfully destroyed.' }
+        format.json { head :no_content }
+      end
     end
   end
 

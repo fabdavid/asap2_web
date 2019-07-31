@@ -16,6 +16,10 @@ module Asap2
 
     # Set up logging to be the same in all environments but control the level
     # through an environment variable.
+    config.action_dispatch.default_headers = {
+      'X-Frame-Options' => 'ALLOW-FROM http://net-kiosk.com'
+    }
+
     config.log_level = ENV['LOG_LEVEL']
 
     config.middleware.delete Rack::Lock
@@ -31,20 +35,24 @@ module Asap2
     config.log_tags  = %i[subdomain uuid]
     config.logger    = ActiveSupport::TaggedLogging.new(logger)
 
+    config.assets.paths << Rails.root.join("app", "assets", "fonts") 
+
     # Action mailer settings.
     config.action_mailer.delivery_method = :smtp
     config.action_mailer.smtp_settings = {
       address:              ENV['SMTP_ADDRESS'],
       port:                 ENV['SMTP_PORT'].to_i,
-      domain:               ENV['SMTP_DOMAIN'],
-      user_name:            ENV['SMTP_USERNAME'],
-      password:             ENV['SMTP_PASSWORD'],
-      authentication:       ENV['SMTP_AUTH'],
+      #  domain:               ENV['SMTP_DOMAIN'],
+      #  user_name:            ENV['SMTP_USERNAME'],
+      #  password:             ENV['SMTP_PASSWORD'],
+      #  authentication:       ENV['SMTP_AUTH'],
       enable_starttls_auto: ENV['SMTP_ENABLE_STARTTLS_AUTO'] == 'true'
     }
 
     config.action_mailer.default_url_options = {
-      host: ENV['ACTION_MAILER_HOST']
+      #   host: ENV['ACTION_MAILER_HOST']
+      :host => "mail.epfl.ch",
+      :port => 25
     }
     config.action_mailer.default_options = {
       from: ENV['ACTION_MAILER_DEFAULT_FROM']
@@ -58,6 +66,7 @@ module Asap2
     config.active_job.queue_name_prefix =
       "#{ENV['ACTIVE_JOB_QUEUE_PREFIX']}_#{Rails.env}"
 
+    config.action_cable_mount_path = ENV['ACTION_CABLE_MOUNT_PATH']
     # Action Cable setting to de-couple it from the main Rails process.
     config.action_cable.url = ENV['ACTION_CABLE_FRONTEND_URL']
 

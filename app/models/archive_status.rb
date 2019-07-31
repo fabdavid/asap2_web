@@ -1,0 +1,2 @@
+class ArchiveStatus < ApplicationRecord
+end

@@ -28,7 +28,7 @@ class StepsController < ApplicationController
     @step = Step.new(step_params)
 
     respond_to do |format|
-      if @step.save
+      if admin? and @step.save
         format.html { redirect_to @step, notice: 'Step was successfully created.' }
         format.json { render :show, status: :created, location: @step }
       else
@@ -42,7 +42,7 @@ class StepsController < ApplicationController
   # PATCH/PUT /steps/1.json
   def update
     respond_to do |format|
-      if @step.update(step_params)
+      if admin? and @step.update(step_params)
         format.html { redirect_to @step, notice: 'Step was successfully updated.' }
         format.json { render :show, status: :ok, location: @step }
       else
@@ -55,10 +55,14 @@ class StepsController < ApplicationController
   # DELETE /steps/1
   # DELETE /steps/1.json
   def destroy
-    @step.destroy
-    respond_to do |format|
-      format.html { redirect_to steps_url, notice: 'Step was successfully destroyed.' }
-      format.json { head :no_content }
+    if admin?
+      @step.project_steps.destroy_all
+      @step.std_methods.destroy_all
+      @step.destroy
+      respond_to do |format|
+        format.html { redirect_to steps_url, notice: 'Step was successfully destroyed.' }
+        format.json { head :no_content }
+      end
     end
   end
 
@@ -70,7 +74,11 @@ class StepsController < ApplicationController
   
   # Never trust parameters from the scary internet, only allow the white list through.
   def step_params
-    params.fetch(:step).permit(:obj_name, :name, :label, :description, :rank, :multiple_runs, :attrs_json, :method_attrs_json, :method_output_json, :command_json, :has_std_dashboard, :has_std_view, :has_std_form)
+    params.fetch(:step).permit(:obj_name, :name, :label, :description, :rank, 
+                               :multiple_runs, :attrs_json, :method_attrs_json, :output_json, 
+                               :command_json, :has_std_dashboard, :has_std_view, :has_std_form,
+                               :dashboard_card_json, :show_view_json, :hidden
+                               )
   end
   
   protected

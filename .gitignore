@@ -16,6 +16,9 @@
 !/tmp/.keep
 *~
 *#
+*.old
+*.bkp
+*.bak
 
 # Ignore Byebug command history file.
 .byebug_history
@@ -23,4 +26,5 @@
 /vendor/bundle
 /public/assets/*
 .env
+.env_website
 .idea/*

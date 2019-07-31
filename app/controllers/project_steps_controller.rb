@@ -27,7 +27,7 @@ class ProjectStepsController < ApplicationController
     @project_step = ProjectStep.new(project_step_params)
 
     respond_to do |format|
-      if @project_step.save
+      if admin? and @project_step.save
         format.html { redirect_to @project_step, notice: 'Project step was successfully created.' }
         format.json { render :show, status: :created, location: @project_step }
       else
@@ -41,7 +41,7 @@ class ProjectStepsController < ApplicationController
   # PATCH/PUT /project_steps/1.json
   def update
     respond_to do |format|
-      if @project_step.update(project_step_params)
+      if admin? and @project_step.update(project_step_params)
         format.html { redirect_to @project_step, notice: 'Project step was successfully updated.' }
         format.json { render :show, status: :ok, location: @project_step }
       else
@@ -54,10 +54,12 @@ class ProjectStepsController < ApplicationController
   # DELETE /project_steps/1
   # DELETE /project_steps/1.json
   def destroy
-    @project_step.destroy
-    respond_to do |format|
-      format.html { redirect_to project_steps_url, notice: 'Project step was successfully destroyed.' }
-      format.json { head :no_content }
+    if admin?
+      @project_step.destroy
+      respond_to do |format|
+        format.html { redirect_to project_steps_url, notice: 'Project step was successfully destroyed.' }
+        format.json { head :no_content }
+      end
     end
   end
 

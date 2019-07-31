@@ -1,33 +1,46 @@
 <% if @step %>
- <% @ps = ProjectStep.where(:project_id => @project.id, :step_id => @step_id).first %>
+ <%# @ps = ProjectStep.where(:project_id => @project.id, :step_id => @step_id).first %>
 
- <div id='step_header_fixed' class='step_header'>
-   <%= render :partial => 'step_header' %>
- </div>
+<div id='step_header_container'>
+  <%= render :partial => 'step_header_container' %>
+</div>
 
- <div id='step_header' class='step_header'>
-   <%= render :partial => 'step_header' %>
- </div>
+ <% if params[:errors] %>
+ <div class='alert alert-danger'><%= params[:errors] %></div>
+ <% end %>
 
- <p id="notice"><%= notice %></p>
+<% if notice and !notice.empty? %>
+<p id="notice"><%= notice %></p>
+<% end %>
 
  <div id='step_content'>
+   <%# @h_attrs_by_run_id.to_json %>
 
    <% if analyzable?(@project) %> 
-    <% if !['summary', 'parsing'].include?(@step.name) %>
-    <div id='new_analysis_form' class='<%= (!@ps.status_id) ? "" : "hidden" %>'>     
-      <%= render :partial => (@step.has_std_form) ? "form_req" : ("form_" + @step.obj_name) %> 
-    </div>
+    <% if @step.description and ! @step.description.empty? %>
+     <div id='step-info_<%= @step.id %>' class='alert alert-info <%= (@ps.status_id) ? 'hidden' : '' %>'>
+       <%= raw @step.description %>
+     </div>
     <% end %>
-     
-   <div id='list_runs'>
-     <%= render :partial => (@step.has_std_dashboard) ? 'std_runs' : @step.name %>
-   </div>
+    
+    <div id='list_runs'>
+      <%# dashboard_name = (@step.has_std_dashboard) ? 'std_runs' : session[:current_dashboard][@project.id][@step.id]  %>  
+      <%# partial = (dashboard_name) ? dashboard_name :  @step.name  #(@step.has_std_dashboard) ? 'std_runs' : ((dashboard_name) ? dashboard_name : @step.name) %>
+      <%# session[:current_dashboard] %>
+      <%# session[:current_dashboard][@project.id][@step.id] %>
+      <% if dashboard_name = session[:current_dashboard][@project.id][@step.id] %> 
+      <%= hidden_field_tag('dashboard', dashboard_name) %>
+      <%# dashboard_name %>
+      <%= render :partial => dashboard_name %>
+      <% end %>
+    </div>
    <% end %>
-   
- </div>
 
+ </div>
+ 
  <%= javascript_tag do %>
+
+ // other
 
  $("#last_project_step").html('<%= @last_update %>');
 
@@ -38,10 +51,43 @@
 
  var table_width = $("div.results table").width();
  var panel_width = ( $(window).width() > table_width) ? $(window).width() : table_width;
-  $("div.results").css({width: panel_width + 'px'});
+ $("div.results").css({width: panel_width + 'px'});
+
+// console.log("bla");
+ if (!$("#new_analysis_form").hasClass('hidden')){
+  $("#new_job_main_btn").addClass("hidden");
+ }
+
+// if (!$("#new_analysis_form").hasClass("hidden")){
+  add_margin_step_container()
+// }
+
+ 
+// var menu_step_id = ($("li#step_" + data['step_id']).hasClass('active')
+ if (!$("li#step_<%= @step.id %>").hasClass('active')){
+//  $("#menu_" + h_steps[<%= @step.id %>].group_name).addClass("active")
+//  $(".pipeline_step")
+
+  var new_menu_name = h_steps[<%= @step.id %>].group_name.toLowerCase().replace(" ", "_")
+  //  $("#menu_" + new_menu_name).click();
+  $(".menu_item.active").removeClass("active");
+  $("#menu_" + new_menu_name).addClass("active");
+  
+  $(".menu_nav.show").removeClass("show");
+  $("#" + new_menu_name + "_nav").addClass("show");
+
+  $(".pipeline_step.active").removeClass("active")
+  $("li#step_<%= @step.id %>").addClass("active")
+
+//  var new_menu_name = h_steps[<%= @step.id %>].group_name.toLowerCase().replace(" ", "_")
+//  $(".menu_item.active").removeClass("active")
+//  $("#menu_" + new_menu_name).addClass("active")
+
+ /* $(".menu_nav.active").addClass("collapsed")
+  $("#" + new_menu_name + "_nav").removeClass("collapsed")
+  $("#step_<%= @step.id %>").click() //.addClass("active")
+*/
+ }
 
  <% end %>
-
-
-
 <% end %>

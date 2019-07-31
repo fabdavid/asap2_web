@@ -1,25 +1,30 @@
- <% attr = @attrs[attr_name] %>
+ <% attr = @h_attrs[attr_name] %>
+ <% @h_attr_vals ||= {} %>
+ <% attr_val = @h_attr_vals[attr_name] %>
  <% form_attr_name = "attrs[" + attr_name + "]" %>
  <% if attr['widget']!='checkbox' and attr['widget']!='hidden' %>
   <%= label_tag form_attr_name, attr['label'], {'data-toggle' => 'tooltip', 'title' => attr['description'], 'class' => horiz_element['label_class'] || 'col-md-6'} %>
  <% end %>
  <% if attr['widget']=='input_data' %>
   <%= render :partial => 'input_data', :locals => {:attr_name => attr_name, :attr => attr} %>
+ <% elsif attr['widget']=='select_input_data' %>
+  <%= render :partial => 'select_input_data', :locals => {:attr_name => attr_name, :attr => attr} %>
  <% elsif attr['widget']=='textfield' %>
-  <%= text_field_tag form_attr_name, @h_attrs[attr_name] || attr['default'] || '', {:class => "form-control", :placeholder => ""} %>
+  <%= text_field_tag form_attr_name, attr_val || attr['default'] || '', {:size => attr['widget_size'] || nil, :class => "form-control", :placeholder => ""} %>
  <% elsif attr['widget']=='hidden' %>
-  <%= hidden_field_tag form_attr_name, @h_attrs[attr_name] || attr['default'] || '', {:class => "form-control", :placeholder => ""} %>
+  <%= hidden_field_tag form_attr_name, attr_val || attr['default'] || '', {:class => "form-control", :placeholder => ""} %>
  <% elsif attr['widget']=='checkbox' %>
  <% h_checkbox = {:placeholder => "", 'data-toggle' => 'tooltip', 'title' => attr['description'], 'class' => 'std_form_checkbox'} %>
  <%# h_checkbox[:checked] = false %>
- <%# h_checkbox[:checked] = true if (@h_attrs[attr_name] and @h_attrs[attr_name] != false) or (!@h_attrs[attr_name] and attr['default'] != false) %>
- <%# [(@ps.status_id != nil and @h_attrs[attr_name] and @h_attrs[attr_name] != false) , (!@ps.status_id and !@h_attrs[attr_name] and attr['default'] != false)].to_json %>
+ <%# h_checkbox[:checked] = true if (attr_val and attr_val != false) or (!attr_val and attr['default'] != false) %>
+ <%# [(@ps.status_id != nil and attr_val and attr_val != false) , (!@ps.status_id and !attr_val and attr['default'] != false)].to_json %>
  <%# @h_attrs.to_json %>
  <%# h_checkbox.to_json %>
- <%# ((@h_attrs[attr_name] and @h_attrs[attr_name] != false) or (!@h_attrs[attr_name] and attr['default'] != false)).to_json %>
- <%= check_box_tag attr_name, '1', ((@ps.status_id != nil and @h_attrs[attr_name] and @h_attrs[attr_name] != false) or (!@ps.status_id and !@h_attrs[attr_name] and attr['default'] != false)),  h_checkbox %>
+ <%# ((attr_val and attr_val != false) or (!attr_val and attr['default'] != false)).to_json %>
+ <%# check_box_tag attr_name, '1', ((@ps.status_id != nil and attr_val and attr_val != false) or (!@ps.status_id and !attr_val and attr['default'] != false)),  h_checkbox %>
+ <%= check_box_tag attr_name, '1', ((attr_val and @attr_val != false) or (!attr_val and attr['default'] != false)),  h_checkbox %>
  <%= label_tag form_attr_name, attr['label'], {'data-toggle' => 'tooltip', 'title' => attr['description']} %>
- <% elsif attr['widget'] == 'select' %>
+ <% elsif attr['widget'] == 'select' and !attr['grouped_list'] %>
  <% l = [] %>
  <% if attr['min_val'] and attr['max_val'] %>
  <% l = (attr['min_val'] .. attr['max_val']).to_a.map{|e| [e, e]}.sort %>
@@ -27,7 +32,9 @@
  <% l = attr['list'] %>
  <% end %>
  <% l.unshift([((attr['null_name']) ? attr['null_name'] : "None"), nil]) if !attr['not_null'] %>
- <%= select_tag form_attr_name, options_for_select(l, @h_attrs[attr_name] || attr['default']), {class: 'form-control'} %>
+ <%= select_tag form_attr_name, options_for_select(l, attr_val || attr['default']), {class: 'custom-select'} %>
+ <% elsif attr['widget'] == 'select' and attr['grouped_list'] %>
+   <%= select_tag form_attr_name, grouped_options_for_select(attr['grouped_list'], attr_val || attr['default']), {class: 'custom-select'} %>
  <% end %>
  
  <% if attr_name == 'batch_file_exists' %>
@@ -36,4 +43,44 @@
  <% if (attr_name == 'batch_file_exists' or attr_name == 'batch_file') and editable? @project %>
   <span>To add a batch file <span id='edit_project_link' class='btn btn-default btn-xs' class='edit_project'>Edit project</span> </span>
  <% end %>
-    
+
+<div id='validation_<%= attr_name %>'></div>
+
+<%= javascript_tag do %>    
+
+/*
+function validate_req_<%=attr_name %>(){
+ var valid_message = ""
+ var messages = []
+ var valid = true
+
+ <% if attr['min_nber_items'] %>
+   console.log("min_nber_items set for <%= attr_name %>")
+   var size = 0
+   if ($("#attrs_<%= attr_name %>").length > 0 ){
+    var l = JSON.parse($("#attrs_<%= attr_name %>").val())   
+    size = l.length
+   }
+   if (size < <%= attr['min_nber_items'] %>){
+   //  messages.push("There should be at least <%= attr['min_nber_items'] %> item selected")
+    valid = false
+   }
+ <% end %>
+ 
+ if (valid == false){
+  $(".req_submit").attr("disabled", "disabled")
+ }
+
+ $("#validation_<%= attr_name %>").html(messages.join("<br/>"))
+}
+*/
+
+$("#attrs_<%= attr_name %>").change(function(){
+  validate_req()
+  console.log("changed value of <%= attr_name %>")
+})
+<% if params[:validate_form] %>
+validate_req()
+<% end %>
+
+<% end %>

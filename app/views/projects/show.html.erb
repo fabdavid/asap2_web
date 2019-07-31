@@ -1,3 +1,5 @@
+<%# @log %>
+
 <%# readable @project %>
 <% if @error and @error != '' %>
 
@@ -18,10 +20,11 @@ Dear users, during a maintenance procedure on April 13th 2017, current sandbox p
  <span class='label label-danger'> Cannot read this project! </span>
 <% else %>
  <div id='popup_window' class='hidden'>
-  <div id='popup_window_close'><span onclick="$('#popup_container').html('');$('#popup_window').addClass('hidden'); $('#popup_container').attr('showed','');"><i class='fa fa-times-circle'></i></span></div>
-  <% if authorized? %>
+  <div id='popup_window_close'><span onclick="$('#popup_container').html('');$('#popup_window').addClass('hidden'); $('#popup_window').css({display : 'none'}); $('#popup_container').attr('showed','');"><i class='fa fa-times-circle'></i></span></div>
+<!--  <% if authorized? %>
   <span class='title_popup'>List of cells <button id='add_selection' class='btn btn-primary btn-xs'>Add to selections</button></span><br/>
   <% end %>
+-->
   <div id='popup_container'></div>
 </div><div class='clear'>
 </div>
@@ -48,10 +51,30 @@ Dear users, during a maintenance procedure on April 13th 2017, current sandbox p
       </ul>
     </div>
 -->
+
+<div id='new_analysis_form' class='card hidden'>
+  <div class='card-header'>    
+    <div class='top-right-buttons'>
+      <input type='hidden' id="new_analysis_form_window_status" value='fixed'/>
+      <span id='new_analysis_form_close' class='pointer'>
+	<i class='fa fa-times-circle'></i>
+      </span>
+    </div>
+    <div>
+      <span id='new_analysis_form_detach' class='pointer'>
+        <small><i class="fa fa-window-restore" aria-hidden="true"></i></small>
+      </span>
+      <span id='new_analysis_form_title'></span>
+    </div>
+  </div>
+  <div id='new_analysis_form_content' class='card-body'>
+  </div>
+</div>
+
 <div id='project_container'>
  <!-- <p id="notice"><%= notice %></p>-->
 <!--  <div id='split_window_container' class='hidden'></div>-->
-  <div id='step_container'><%= render :partial => 'summary' %></div>
+  <div id='step_container'></div>
 </div>
 
 <% gene_set = GeneSet.new %>
@@ -70,11 +93,127 @@ Dear users, during a maintenance procedure on April 13th 2017, current sandbox p
 
 <% other_classes = ((@project.status_id == 3 and @project.step_id ==3) or @project.step_id > 3) ? "" : " hidden" %>
 <!--<nav id="cart" class="navbar navbar-fixed-bottom<%= other_classes %>">-->
+
 <%= javascript_tag do %>
+
+ var project_id = <%= @project.id %>;
+ // var step_by_name_json = JSON.stringify(<%= raw @h_step_id_by_name.to_json %>);
+ var h_step_id_by_name = <%= raw @h_step_id_by_name.to_json %>;
+ var h_steps = <%= raw @h_steps.to_json %>
+ var h_statuses = <%= raw @h_statuses.to_json %>;
+ var h_types = <%= raw @h_env['types'].to_json %>
+
+// prevent clicking on back
+/*
+(function(window, location) {
+    history.replaceState(null, document.title, location.pathname+"#!/stealingyourhistory");
+    history.pushState(null, document.title, location.pathname);
+
+    window.addEventListener("popstate", function() {
+      if(location.hash === "#!/stealingyourhistory") {
+            history.replaceState(null, document.title, location.pathname);
+            setTimeout(function(){
+              location.replace("<%= APP_CONFIG[:server_url] %>/projects/<%= @project.key %>");
+            },0);
+      }
+    }, false);
+}(window, location));
+*/
+
+function upd_summary(){
+refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1, :step_id => @h_steps_by_name['summary'].id) %>", {loading: 'fa-2x loading-step'});
+}
+
+var timers = [];
+var run_timer = null;
+var last_update = new Date();
+var d = new Date();
+var time_zone_offset = d.getTimezoneOffset() * 60; // in seconds
 
 $(document).ready(function(){
 
-App.project.subscribeStatusChanges( <%= @project.id %> );
+ // Enable message when leaving the page
+/*window.onbeforeunload = function() {
+    alert("bla");
+    return true;
+};
+*/
+
+ <%= render :partial => 'channel_js' %>
+
+ $("#new_analysis_form_detach").click(function(){
+  var h = $(window).height()
+  var window_status = $("#new_analysis_form_window_status").val()
+  if (window_status == 'fixed'){
+   $("#new_analysis_form_window_status").val('float')
+   $("#step_container").animate({'margin-right' : 0}, 200, function(){
+   })
+   var current_left_pos = parseInt($("#new_analysis_form").css("left")) 
+   $("#new_analysis_form").css({cursor : 'grab', left : current_left_pos - 10});
+   console.log(current_left_pos -10)
+   $("#new_analysis_form_detach").html("<small><i class='fa fa-window-maximize' aria-hidden='true'></i></small>")
+   $("#new_analysis_form").resizable().draggable()
+  // place_new_analysis_form_window();
+  }else{
+   if ($("#req_step_id").val() != $("#step_id").val()){ 
+    if ($(".new_job_popup").length == 0){
+  /*   new_job_poup()
+    }else{ */
+     $("#new_analysis_form").addClass("hidden")
+    }
+   }
+   $("#new_analysis_form").resizable('destroy')
+   $("#new_analysis_form").css({'height' : h - 110, cursor : 'default'})
+   $("#new_analysis_form_detach").html("<small><i class='fa fa-window-restore' aria-hidden='true'></i></small>")
+   $("#new_analysis_form").draggable('destroy')
+   $("#new_analysis_form_window_status").val('fixed')
+   place_new_analysis_form_window();
+  }
+ })
+
+ function adjust_windows(){
+  var h = $(window).height()
+  var w = $(window).width()
+  if ($("#plot_options_window").length > 0 && !$("#plot_options_window").hasClass("hidden")){
+   // $("#plot_options_window").css({'height' : h - 440})
+     place_plot_options_window();
+  }
+  if (!$("#new_analysis_form").hasClass("hidden")){
+   if ($("#new_analysis_form_window_status").val() == 'fixed'){
+    $("#new_analysis_form").css({'height' : h - 110}) 
+   }
+   place_new_analysis_form_window();
+  } 
+ }
+
+ $(window).resize(
+   function() {
+     adjust_windows();
+  })
+
+ //alert(<%= @project.id  %>);
+ //  App.project_channel = App.project.subscribe( <%= @project.id %> );
+
+//  var ws = new WebSocket("ws://asap-beta.epfl.ch:28080");
+
+//  $("#subscribe").click(function(){
+/*
+ws.onopen = function() {
+    ws.send(JSON.stringify({
+      command: "subscribe",
+      identifier: "{\"channel\":\"ProjectChannel\"}"
+    }));
+    console.log("Connection opened on project_<%= @project.id %>...");
+ }
+ws.onmessage = function (event) {
+                        console.log(event.data);
+    d = JSON.parse(event.data);
+   if (d.type == "confirm_subscription"){
+    upd_summary();
+   }
+  };
+*/
+//  });
 
 /*
 $(window).on('resize', function() {
@@ -87,6 +226,26 @@ $(window).on('resize', function() {
     }
 })
 */
+
+// NEW ANALYSIS
+
+ $( function() {
+//$("#new_analysis_form").draggable().resizable();
+})
+
+$("#new_analysis_form_close").click(function(){
+
+ $("#step_container").animate({'margin-right' : 0}, 200, function(){})
+ var w = $(window).width();
+ $("#new_analysis_form").animate({'left' : w}, 200, function(){
+   $("#new_job_main_btn").removeClass('hidden');
+   $("#new_analysis_form").addClass("hidden");   
+ });
+ $("#new_analysis_form_window_status").val('fixed') 
+
+})
+
+ upd_summary();
 
 $(".annot-btn").click(function(){
    $("#step_container").removeClass("col-12");
@@ -160,7 +319,7 @@ try {
 // setTimeout(refresh_pipeline, 3000);
 }
 
-refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1, :step_id => 14) %>", {loading: 'fa-2x loading-step'});
+//refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1, :step_id => 14) %>", {loading: 'fa-2x loading-step'});
 
 $("#selection_button").click(function(){
 refresh("ontop_window_content", "<%= get_clusters_project_path(:key => @project.key, :nolayout => 1) %>", {});
@@ -216,6 +375,7 @@ if (returnData){
 
 });
 
+ 
 <% end %>
 <% end %>
 

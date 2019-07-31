@@ -1,0 +1,18 @@
+<% if @step and @ps and @run %>
+ <div id='step_header_container'>
+  <%= render :partial => 'step_header_container' %>
+</div>
+
+ <% if params[:errors] %>
+ <div class='alert alert-danger'><%= params[:errors] %></div>
+ <% end %>
+
+ <% if  @step.description and ! @step.description.empty? %>
+ <div id='step-info_<%= @step.id %>' class='alert alert-info <%= (@ps.status_id) ? 'hidden' : '' %>'><%= raw @step.description %></div>
+ <% end %>
+
+ <p id="notice"><%= notice %></p>
+
+Plot!
+
+<% end %>

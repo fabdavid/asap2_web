@@ -1,8 +1,16 @@
 /* General */
-.loading {text-align:center;vertical-align:middle}
+
+.margin {margin-left:15px;margin-right:15px}
+
+.loading {display: table-cell;vertical-align:middle; align-items: center}
+.loading-content {display:inline-block; text-align:center; width:100%}
 .loading_text {font-style: italic; margin:10px}
 
-.loading-step{margin-top:100px}
+.loading-step{margin-top:200px}
+
+.info-btn {margin-top:-10px; cursor:pointer}
+
+.show_link {color:blue;text-decoration:underline}
 
 #project_header {
  z-index:10;
@@ -15,7 +23,7 @@
  text-align:left
 }
 
-.step_title {
+.step_title_fixed {
   position:fixed; 
   z-index:10; 
   top:50px; 
@@ -28,11 +36,30 @@
   font-size: 16px;
   border-left:5px solid #999999
 }
+.step_title {
+  width:100%;
+  background-color:#ECECEC;
+  margin-top:-15px;
+  margin-bottom:15px;
+  margin-left:0px;
+  margin-right:0px;
+  padding:10px;
+  font-size: 16px;
+  border-left:5px solid #999999
+}
 
 /* NEW PROJECT */
 
+#js-file-container {width:100%}
+#js-file-container td {padding:15px}
+
+#project_name {
+	      border-color:#dc3545;
+	      }
+
 #opt_input {width:100%; text-align:center;margin-bottom:15px;}
 #opt_input .btn-group .choice_btn{width:250px}
+.hca_filter_badge {cursor:pointer}
 
  .ui-autocomplete {
             max-height: 200px;
@@ -74,10 +101,14 @@
 #dropzone.in {
  border: 2px solid #0f3c4b;
 }
-/*#dropzone.hover {
+
+
+/*COMMENTED 
+#dropzone.hover {
  border: 2px solid #0f3c4b;
 }
 */
+
 #dropzone.fade {
     -webkit-transition: all 0.3s ease-out;
     -moz-transition: all 0.3s ease-out;
@@ -101,6 +132,58 @@
 .gene_label {color:#fb9b11}
 .cell_label {color:#b411fb}
 
+/* Project Summary */
+
+/* NEW analysis btn */
+
+#card_new_analysis {border:0}
+
+
+/* FILTER runs */
+
+
+#possible_lineage_runs optgroup option {font-style:italic}
+.children_lineage_run {background-color:#b5fa75;font-style:normal}
+
+/* NEW CELL FILTERING FORM */
+
+#cell_filtering_header {background-color:#EEEEEE; border-color:grey; position:fixed; top:89px; left:300px; right:0px; z-index:100; padding:10px }
+
+#cell_filtering_form_container .modebar{
+  z-index:1
+}
+
+/* NEW ANALYSIS FORM */
+
+.unavailable_method{
+color:red
+}
+
+#new_analysis_form_detach{ padding:5px}
+
+#new_analysis_form {
+z-index:10001;
+position:fixed;
+width:600px;
+max-width:1000px;
+min-width:300px;
+max-height:calc(100% - 110px);
+/*min-height:200px; */
+height:calc(100% - 110px);
+top:100px;
+right:-600px;
+border-color:grey
+}
+
+#new_analysis_form_content {
+overflow-y:scroll;
+overflow-x:hidden
+}
+
+/*#new_analysis_form_content .actions {
+margin-bottom:10px
+}
+*/
 /* Project menu */
 
 #project_details {color:#DDDDDD;position: fixed; font-size:11px;top:90px;left:15px;}
@@ -108,15 +191,21 @@
 #shared_by {color:#d0dd74;display:block;float:left;width:230px;overflow:hidden;white-space:nowrap}
 #annotation_buttons {position: fixed; top:100px;left:15px}
 .step_status {float:right; margin-right:10px}
-.success-icon {color:white;background-color:green}
-
+.success-icon {color:white;background-color:rgb(40, 167, 69);}
+.failed-icon {color:white;background-color:#dc3545}
+.running-icon {color:white}
+.success-icon2 {color:rgb(40, 167, 69);}
+.running-icon2 {color:rgb(23, 162, 184);}
+.failed-icon2 {color:#dc3545;}
 
 #project_container {
 margin-left:300px;
 margin-top:-55px;
 width: calc(100% - 300px)
 }
+
 /*
+COMMENTED
 #split_header{
 position:fixed;
 z-index:10;
@@ -140,6 +229,7 @@ padding:5px;
 }
 */
 
+
 #step_header{
 border-left:3px solid grey;
 padding:5px;
@@ -147,7 +237,6 @@ padding-right:15px;
 background-color:#eaeaea;
 z-index:10
 }
-
 
 #step_header_fixed{
 position:fixed;
@@ -161,7 +250,6 @@ background-color:#DDDDDD;
 width: calc(100% - 280px) 
 }
 
-
 .step_header .right-buttons {
 float:right;
 margin-right:10px
@@ -172,12 +260,18 @@ left:calc(300px + (100% - 280px) / 4);
 width: calc((100% - 280px) * 3 / 4)
 }
 
-
 .step_header .title{
 font-size:14px;
 font-weight:bold;
 vertical-align:middle;
 padding:5px;
+}
+
+#step_header{
+display:none;
+}
+#step-margin{
+margin-top:140px
 }
 
 #right-menu-btn_container{
@@ -207,10 +301,12 @@ z-index:10;
 
 #right-menu ul li {padding-left:10px}
 
-/* Place all the styles related to the Projects controller here.
+
+/* COMMENT Place all the styles related to the Projects controller here.
  They will automatically be included in application.css.
  You can use Sass (SCSS) here: http://sass-lang.com/
 */
+
 
 #left_menu .menu_item{
 padding:8px;
@@ -222,7 +318,8 @@ border-top:1px solid #2e353d;
 
 #menu_pre-treatment {margin-top:10px}
 
-/*#menu-content {background-color:#2e353d}*/
+
+/* COMMENT #menu-content {background-color:#2e353d} */
 
 .nav-side-menu {
   overflow: auto;
@@ -258,10 +355,11 @@ border-top:1px solid #2e353d;
   cursor: pointer;
    color: white;
   background-color: #4f5b69;
-  /*    
+
+  /* COMMENT    
     .collapsed{
        .arrow:before{
-                 font-family: FontAwesome;
+                 font-family: 'Font Awesome 5 Free';
                  content: "\f053";
                  display: inline-block;
                  padding-left:10px;
@@ -271,8 +369,11 @@ border-top:1px solid #2e353d;
             }
      }
 */
+
 }
-/*
+
+
+/* COMMENT
 #left_menu.nav-side-menu li.list-group-item {
   padding-left:10px;
 }
@@ -285,6 +386,7 @@ border-top:1px solid #2e353d;
    border-left: 3px solid grey;
 }
 */
+
 .menu_report.active {border-left-color: #6bc9fe; background-color:  #356b71 }
 .menu_metadata.active {border-left-color: #fca854 }
 .menu_parsing.active {border-left-color: #bf4ffa}
@@ -293,7 +395,9 @@ border-top:1px solid #2e353d;
 .menu_analysis.active { border-left-color:  #fe6b75; background-color:  #71353d }
 .report_submenu li { border-left-color: #6bc9fe }
 
-/*
+/*#left_menu .menu-item { cursor:pointer} */
+
+/* COMMENT ?
 .nav-side-menu ul,
 .nav-side-menu li.list-group-item:disabled {
    color: #aaaaaa;
@@ -302,25 +406,24 @@ background-color: #4f5b69;
   -moz-transition: all 1s ease;
   -o-transition: all 1s ease;
   -ms-transition: all 1s ease;
-  transition: all 1s ease;
+  transition: all 1s ease
 }
-*/
-/*
+
 .nav-side-menu ul li:before,
 .nav-side-menu li:before {
-  font-family: FontAwesome;
+  font-family: 'Font Awesome 5 Free';
   color:#CCCCCC;
-  content: "\f111";
+  content: "\f054";
   display: inline-block;
   padding-left: 10px;
   padding-right: 10px;
   vertical-align: middle;
 }
 */
-/*
+/* COMMENT
 .nav-side-menu ul :not(collapsed) .arrow:before,
 .nav-side-menu li.list-group-item :not(collapsed) .arrow:before {
-  font-family: FontAwesome;
+  font-family: 'Font Awesome 5 Free';
   content: "\f078";
   display: inline-block;
   padding-left: 10px;
@@ -329,14 +432,11 @@ background-color: #4f5b69;
   float: right;
 }
 */
+
 .nav-side-menu ul .active,
 .nav-side-menu li.list-group-item .active {
   padding-left:10px;
-/*  background-color: #4f5b69;*/
-/*  border:1px solid #2e353d;*/
-/*  border-top:1px solid #4f5b69;
   border-left-width:3px
-/*   border-left: 3px solid yellow;*/
 }
 .sub-menu li.active,
 .sub-menu li.active {
@@ -349,7 +449,6 @@ background-color: #4f5b69;
 .sub-menu li {
   background-color: #eaeaea;
   color:black; 
-/*  border: none; */
   border-left:3px solid;
   line-height: 28px;
   border-bottom: 1px solid #23282e;
@@ -358,8 +457,9 @@ background-color: #4f5b69;
 
 .sub-menu li:before,
 .sub-menu li:before {
-  font-family: FontAwesome;
-  content: "\f105";
+  font-family: 'Font Awesome 5 Free';
+  font-weight:900;
+  content: "\f054";
   display: inline-block;
   padding-left: 10px;
   padding-right: 10px;
@@ -373,7 +473,7 @@ background-color: #4f5b69;
   border-bottom: 1px solid #23282e;
 }
 
-/*
+/* COMMENT
 .nav-side-menu li.list-group-item a {
   text-decoration: none;
   color: #e1ffff;
@@ -405,7 +505,9 @@ background-color: #4f5b69;
 }
 */
 
-/*.menu-list {
+/*
+COMMENT ?
+.menu-list {
  margin-top:0px;
  z-index:100
 }*/
@@ -415,47 +517,64 @@ background-color: #4f5b69;
 #clone_button {cursor:pointer}
 #edit_project {cursor:pointer}
 
+/* list of runs */
+
+.top-right-buttons {float:right}
+
+
 /* Index of projects */
 
-.job_list {margin-top:50px; width:100%; border-collapse:collapse}
+.job_list {margin-top:50px; width:100%; border-collapse:collapse; table-layout:fixed;}
 
 .job_list tr th {vertical-align:top; padding-right:5px; overflow:hidden;text-align:center}
 .job_list tr td {vertical-align:top; padding-right:5px; border-top:1px solid #CCCCCC; padding-bottom:5px; padding-top:5px; overflow:hidden;text-align:center}
 
-table.job_list td.project_name{
-width:500px;
-white-space: nowrap;
-overflow:hidden;
+table.job_list td.status_cell{
+ text-align:left;padding-left:5px
 }
+
+table.job_list td.project_name{
+width:50px;
+white-space: nowrap;
+overflow:ellipsis;
+}
+
+/* COMMENT
 table.job_list td.email{
 width:300px;
 white-space: nowrap;
-overflow:hidden;
+overflow:ellipsis;
 }
-
+*/
 /* FORM - select datasets */
 
+.select_input_data-btn {margin-right:15px;vertical-align:top}
 #run_list {margin-top:10px}
+#run_list .card {margin-bottom:10px}
+
 .selected_run {background-color:green}
 .nber_runs {font-size:18px; color:green}
 
 /* FORM */
 
 .vert_element {margin-top:10px; width:100%}
+.form-inline label {justify-content:left}
 #attrs_container {width:100%}
 
 .std_form_checkbox {margin-right:5px}
 .actions {margin-top:10px; margin-left:15px}
 
-/* LIST_RUNS */
+/* LIST_RUNS - DASHBOARD */
 
-#list_runs {margin-left:15px; margin-top:10px}
+.btn_destroy-run {cursor:pointer}
+#list_runs {margin-top:10px}
 
 /* FILTERING */
 
-.modebar{
+#gene_filtering_step_container.modebar{
       display: none !important;
 }
+
 #filtering_header {
     border-bottom:1px solid #0000ff;
     background:#cccccc;
@@ -472,6 +591,38 @@ overflow:hidden;
 margin:15px
 }
 
+/* DIMENSION REDUCTION */
+
+.list_genes_container {position:relative}
+
+#plot_container {height:100%}
+
+#plot_options_btn { position:fixed; bottom:35px; right:35px; z-index:500}
+
+#plot_options_window {
+z-index:10000;
+position:fixed;
+width:600px;
+max-width:1000px;
+min-width:300px;
+max-height:calc(100% - 110px);
+/* min-height:200px; */
+/* height:calc(100% - 110px); */
+top:150px;
+bottom:10px;
+right:-600px;
+border-color:grey
+}
+
+#plot_options_content {
+overflow-y:scroll;
+overflow-x:hidden
+}
+
+.plot_option_category {
+font-weight:bold;
+padding:5px
+}
 
 @media (max-width: 767px) {
 #project_details {color:#DDDDDD;position: fixed; font-size:11px;top:55px;left:100px;}
@@ -523,7 +674,14 @@ width:100%
 #step_header_fixed{
 display:none
 }
-/*
+#step_header{
+display:block;
+}
+#step-margin{
+display:none
+}
+
+/* COMMENT
 #step_header{
 position:fixed;
 z-index:10;

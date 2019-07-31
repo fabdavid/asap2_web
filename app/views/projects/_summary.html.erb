@@ -1,6 +1,34 @@
 <div id="summary_graph"></div>
 
+<%# @project.project_steps.to_json %>
+
+<%# Redis.new.pubsub("channels") %>
+<%# Redis.new.pubsub("NUMPAT") %>
+
+<%# ActionCable.server.connections.to_json %>
+<%# Run.where(:project_id => @project.id, :step_id => 1).first.to_json %>
+
+<%= link_to 'List of commands', get_commands_project_path(@project.key), {:class => 'btn btn-primary mb-4'} %>
+
+<%= render :partial => 'display_card_deck', :locals => {:cards => @list_cards} %>
+
 <%= javascript_tag do %>
+
+$(".summary_step_card").mouseover(function(){
+ $(this).css("border-color", 'rgba(0,0,0,0.425)')
+})
+$(".summary_step_card").mouseout(function(){
+ $(this).css("border-color", 'rgba(0,0,0,0.125)')
+})
+$(".summary_step_card").click(function(){
+ var step_id = this.id.split("-")[1]
+ console.log(h_steps[step_id])
+// $("#menu_" + h_steps[step_id].group_name.toLowerCase()).click()
+// $("#step_" + step_id).click()
+ refresh("step_container", "<%= raw get_step_project_path(:key => @project.key, :nolayout => 1) %>&step_id=" + step_id, {loading: 'fa-2x loading-step'})
+})
+
+
 
 var treeData =
   {

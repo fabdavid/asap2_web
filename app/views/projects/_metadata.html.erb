@@ -1,0 +1,109 @@
+<%= @error %>
+<%# @h_stored_run_id.to_json %>
+<%# @annots.to_json %>
+<%# @bla %>
+<%# @annot_runs.to_json %>
+<%# @h_outputs.to_json %>
+
+<% mt = session[:metadata_type][@project.id] %>
+
+<% l= Fo.where(:project_id => @project.id, :ext => 'loom').all.map{|fo| [display_run_short_txt(fo.run) + " (#{display_mem(fo.filesize)})", fo.run_id]} %>
+<% l.unshift(["Select a Loom file to restrict the list of #{(mt!=3) ? 'metadata' : 'expression matrices'} [All Loom files by default]", nil]) %>
+<%= select_tag 'sel_loom_file', options_for_select(l, (session[:store_run_id][@project.id] || '')), {:class => "custom-select mb-4"} %>
+<%= hidden_field_tag 'metadata_type', mt %>
+
+<div id='opt_input'>
+  <div class="btn-group" role="group" aria-label="Input">
+    <button id='cell_metadata_btn' type="button" class="btn btn-<%= (mt == 1) ? 'primary' : 'secondary' %> choice_btn <%= (mt == 1) ? 'active' : '' %>">Cell metadata</button>
+    <button id='gene_metadata_btn' type="button" class="btn btn-<%= (mt == 2) ? 'primary' : 'secondary' %> choice_btn <%= (mt == 2) ? 'active' : '' %>">Gene metadata</button>
+    <button id='expression_matrices_btn' type="button" class="btn btn-<%= (mt == 3) ? 'primary' : 'secondary' %> choice_btn <%= (mt == 3) ? 'active' : '' %>">Expression matrices</button>
+  </div>
+</div>
+
+<%# @h_annot.to_json %>
+<%# @log5.to_json %>
+<%# Annot.where(@h_annot).all.to_a %>
+
+<% if @annots %>
+<table id='annotations'>
+  <thead>
+    <tr>
+      <th>Produced by</th>
+      <th>Stored in</th>
+      <th>Name</th>
+      <!--      <th>Type</th>-->
+      <th># cols</th>
+      <th># rows</th>
+      <% if mt !=3 %>
+      <th>Data type</th>
+      <th>Categories (first 10)</th>
+      <% end %>
+      <th>Size</th>
+      <th>User</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @annots.each do |annot| %>
+    <tr>
+      <td><%= (run = annot.run) ? raw(display_run_short(run)) : 'NA' %></td>
+      <td>
+	<%= (store_run = @h_store_runs[annot.store_run_id]) ? raw(display_run_short(store_run)) : 'NA' %>
+      </td>
+      <td><%# annot.name %><%= annot.label || ((annot.dim == 3) ? annot.name : annot.name.split("/")[2]) %></td>
+      <!--  <td><%= (annot.dim == 1) ? 'Cell' : 'Gene' %></td> -->
+      <td><%= annot.nber_cols %></td>
+      <td><%= annot.nber_rows %></td>
+      <% if mt != 3 %>
+      <td><%= (dt = @h_data_types[annot.data_type_id]) ? dt.name : 'NA' %></td>
+      <td>
+	<%# annot[:categories_json] %>
+	<% if annot[:categories_json] %>
+          <% h_cat = JSON.parse(annot[:categories_json]) %>
+	  <% if h_cat.is_a? Hash %>
+	   <% list_cat = h_cat.keys.sort{|a, b| h_cat[b] <=> h_cat[a]} %>
+  	   <%= (annot[:categories_json]) ? list_cat.first(10).map{|k| k + " (" + h_cat[k].to_s + ")"}.join(", ") : 'NA' %>
+          <% end %>
+	<% end %>
+      </td>
+      <% end %>
+      <td><%= display_mem(annot.mem_size) %></td>
+      <td><%= (u = annot.user) ? ((u == current_user) ? 'me' : u.email) : 'admin' %></td>
+      <td><button id='annot_<%= annot.id %>_btn' class='btn btn-primary btn-sm annot_btn'>Details</button></td>
+    </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<% end %>
+
+<%= javascript_tag do %>
+
+function upd_metadata(){
+ var store_run_id = $("#sel_loom_file").val()
+ var metadata_type = $("#metadata_type").val()
+ refresh("step_container", "<%= raw get_step_project_path(:key => @project.key, :step_id => 16, :nolayout => 1) %>&store_run_id=" + store_run_id + "&metadata_type=" + metadata_type, {loading:'fa-2x'})
+}
+
+$("#sel_loom_file").change(function(){
+ //var store_run_id = $("#sel_loom_file").val()
+ //var h_metadata = {'cell_metadata_btn' : 1, 'gene_metadata_btn' : 2, 'expression_matrices_btn' : 3} 
+ // refresh("step_container", "<%= raw get_step_project_path(:key => @project.key, :step_id => 16, :nolayout => 1) %>&store_run_id=" +  + "metadata_type=" + h_metadata[this.id], {loading:'fa-2x'}) 
+ upd_metadata()
+})
+
+$(".choice_btn").click(function(){ 
+ var h_metadata = {'cell_metadata_btn' : 1, 'gene_metadata_btn' : 2, 'expression_matrices_btn' : 3}
+ $("#metadata_type").val(h_metadata[this.id]) 
+ upd_metadata()
+})
+
+$(".annot_btn").click(function(){
+ refresh("step_container", "<%= annots_path() %>/" + this.id.split("_")[1], {loading:'fa-2x'})
+})
+
+$("#annotations").dataTable({
+"pageLength": 100
+})
+
+<% end %>

@@ -1,0 +1,6 @@
+<%= javascript_tag do %>
+
+refresh("step_container", "<%= raw get_step_project_path(:key => @project.key, :nolayout => 1) %>&step_id=<%= params[:step_id] %>", {loading: 'fa-2x loading-step'})
+$("#ontop_window").addClass("hidden")
+
+<% end %>

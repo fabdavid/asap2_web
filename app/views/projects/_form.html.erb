@@ -2,6 +2,7 @@
 <div class='card-header'>
 -->
 
+<div class='step_title_fixed'>Create project</div>
 <div class='step_title'>Create project</div>
 <!--</div>
 <div class='card-body'>-->
@@ -23,14 +24,18 @@
 <div class='row'>
 
   <div class='form-group col-12 col-sm-6'>
-    <%= label_tag 'project_name', 'Project Name', {'data-toggle' => "tooltip", 'title' => "If you let the name blank, the project name will be automatically generated with an identifier."} %>
-    <%= f.text_field :name, {:class => "form-control", :placeholder => "Name of the project / input file"} %>
+    <%= label_tag 'project_name', 'Project Name', {'data-toggle' => "tooltip"} %>
+    <%= f.text_field :name, {:class => "form-control is-invalid", :placeholder => "Name of the project"} %>
+    <div class="invalid-feedback">
+      Mandatory
+    </div>
   </div>
   
   <div class='form-group col-12 col-sm-6'>
     <%= label_tag 'organism_id', "Organism" %>
     <% l = {'Most popular species' => Organism.where(:id => [1, 2, 35]).map{|o|  [o.short_name.capitalize + " - #{o.name} [TaxID:#{o.tax_id}]", o.id]}, 
-    'All species' => Organism.all.map{|o|  [o.short_name.capitalize + " - #{o.name} [TaxID:#{o.tax_id}]", o.id]}.sort} %>
+    'All species' => Organism.all.select{|o| o.short_name}.map{|o|  [o.short_name.capitalize + " - #{o.name} [TaxID:#{o.tax_id}]", o.id]}.sort} %>
+    <%# l = [] %>
     <%= f.select :organism_id, grouped_options_for_select(l), {}, {class: 'form-control', divider: '---------'} %>
   </div>
 </div>
@@ -50,12 +55,19 @@
 <div id='opt_input'>
   <div class="btn-group" role="group" aria-label="Input">
     <button id='upload-choice_btn' type="button" class="btn btn-primary choice_btn active">Upload file / Send URL</button>
-    <button id='hca-choice_btn' type="button" class="btn btn-primary choice_btn">Import from the Human Cell Atlas</button>
+    <button id='hca-choice_btn' type="button" class="btn btn-secondary choice_btn">Import from the Human Cell Atlas</button>
   </div>
 </div>
 
 <div id='upload_container' class='opt_input_container'>
-<%= render :partial => 'upload_input_file' %>
+  <div class='form-group2' style='margin-right:15px;margin-left:15px'>
+    <%= label_tag 'input_file', "Upload count / normalized gene expression matrix" %>
+    <span id='help_input_file'>
+      <span class='italic'>[10x(.h5 file), loom, text, zip, tar.gz formats supported]</span>
+      <%= link_to 'Help', file_format_home_index_path() + "#input_file" %> | <%= link_to 'Example txt file', "/data/input.tab" %>
+    </span>
+  </div>
+  <%= render :partial => 'upload_input_file' %>
 </div>
 <div id='hca_container' class='opt_input_container hidden'>
 </div>
@@ -75,6 +87,7 @@
   <div class="actions">
     <% button_name = (controller.action_name == 'new') ? "Create project" : "Update project" %>
     <%= f.submit button_name, {:disabled => 'disabled', :class => 'btn btn-primary ladda-button', :id =>'create_project_button'} %>
+  <!--  <span class='alert alert-danger'>Write a project name</span> -->
   </div>
 <% end %>
 </div>
@@ -92,8 +105,12 @@ $(".choice_btn").click(function(){
  var t = this.id.split("-")[0]
  $(".opt_input_container").addClass("hidden")
  $(".choice_btn").removeClass("active")
+ $(".choice_btn").removeClass("btn-primary")
+ $(".choice_btn").addClass("btn-secondary")
  $("#" + t + "_container").removeClass("hidden")
  $(this).addClass("active")
+ $(this).addClass("btn-primary")
+ $(this).removeClass("btn-secondary")
 })
 
 $("#hca-choice_btn").click(function(){
@@ -142,7 +159,7 @@ test = false
 <%# code_piece =" && $('#project_input_filename').val() != ''" : '' %>
 //alert( $('#js-file-container tbody tr td div.alert-success').html());
 //if ($("#project_name").val() != '' && ($('#js-file-container tbody tr td div.alert-success').html() || test == true)){
-if ($("#project_name").val() != '' && (($("#nb_cells").val() > 1 && $("#nb_genes").val() > 0) || $("#sel_hca_projects").val() != '[]')){
+if ($("#project_name").val() != '' && (($("#nber_cols").val() > 1 && $("#nber_rows").val() > 0) || $("#sel_hca_projects").val() != '{}')){
 $("#create_project_button").removeAttr('disabled')
 }else{
 $("#create_project_button").attr('disabled', 'disabled')
@@ -152,13 +169,13 @@ $("#create_project_button").attr('disabled', 'disabled')
 
 $("#project_name").keyup(function(){
  if ($(this).val().trim() != ''){
-$(this).css("border", "1px solid rgb(206, 212, 218)");
-$(this).css("background-color", "white");
+  $(this).css("border", "1px solid rgb(206, 212, 218)");
+//  $(this).css("background-color", "white");
  }else{
- if ($("#nb_cells_preview") && $("#nb_cells_preview").val() != 0){
-  $(this).css("border", "1px solid red");
-  $(this).css("background-color", "#FFFAFA");
- }
+  // if ($("#nber_cols_preview") && $("#nber_cols_preview").val() != 0){
+  $(this).css("border", "1px solid #dc3545");
+//  $(this).css("background-color", "#FFFAFA");
+  // }
  }
 validate_form()
 
@@ -166,5 +183,11 @@ validate_form()
 
 
 $("#project_organism_id").change(function(){validate_form()});
+
+// reload the page if there is something in the project name
+if ($("#project_name").val() != ''){
+ $(".main_container").html("<div class='loading'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i><br/><span class='loading_text'>Reloading...</span></div>")
+ window.location.href = "<%= new_project_path() %>"
+}
 
 <% end %>

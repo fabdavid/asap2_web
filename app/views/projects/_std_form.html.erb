@@ -1,0 +1,7 @@
+<%# render :partial => (@step.has_std_form) ? "form_req" : ("form_" + @step.obj_name) %>
+<%= render :partial => "form_req" %>
+<%= javascript_tag do %>
+
+$("#new_analysis_form_title").html("New <%= @step.label.capitalize %>")
+
+<% end %>

@@ -1,8 +1,9 @@
+<%# raw @log %>
+<%# @h_unavailable_methods.to_json %>
 <%# obj_name = @step.obj_name %>
 <% obj_name = 'req' %>
-<div class='alert alert-info'><%= raw @step.description %></div>
 
-<%= form_for(obj_name, :method => 'post', :html => {:id => @step.obj_name + '_form'}) do |f| %>
+<%= form_for(@req, :method => 'post', :html => {:id => @step.name + '_form'}) do |f| %>
   <% if @project.errors.any? %>
     <div id="error_explanation">
       <h2><%= pluralize(@project.errors.count, "error") %> prohibited this project from being saved:</h2>
@@ -14,13 +15,22 @@
     </div>
   <% end %>
 
+
+ <% available_methods = @std_methods.select{|s| !@h_unavailable_methods[s.id]} %>
+ <% default_methods = @h_step_attrs['default_std_method'].map{|method_name| @h_std_methods_by_name[method_name]} & available_methods %>
+<%# available_methods.first.id.to_json %>
+<%# default_methods.first.id.to_json %>
+
+<% if !@h_step_attrs['hide_method'] %>
+
 <div class='alert alert-secondary'>
 <div class='form-group row'>
   <%= label_tag 'std_method_id', "Method", {:class => 'col-sm-2 col-form-label', 'data-toggle' => 'tooltip', 'title' => ""} %>
-  <% l = StdMethod.where(:step_id => @step_id).all.map{|e| [e.label, e.id]}.sort %>
-  <% l.unshift(["None", nil]) %>
+  <% l = @std_methods.map{|e| [e.label, e.id]}.sort %>
+  <%# l.unshift(["None", nil]) %>
   <div class='col-sm-10'>
-    <%= f.select :std_method_id, l, {}, {class: 'form-control'} %>
+    <%# @h_unavailable_methods.to_json %>
+    <%= f.select :std_method_id, options_for_select(l, ((d = default_methods.first) ?  d.id : ((d = available_methods.first) ?  d.id : nil))), {}, {class: 'custom-select'} %>
   </div>
 </div>
 <div class='row'> 
@@ -34,75 +44,131 @@
   </div>
 </div>
 </div>
+
+<% else %>
+<%= f.hidden_field :std_method_id, :value => (d = default_methods.first) ?  d.id : ((d = available_methods.first) ?  d.id : nil) %>
+<% end %>
+
 <div id='attrs_container'></div>
+
+<% if !@step.has_std_form %>
+<%= render :partial => ("form_" + @step.name) %>
+<% end %>
 
 <%= f.hidden_field :step_id, {:value => @step_id}  %>
 <%= hidden_field_tag :format, 'json' %>
 
-<div class="actions">
+<div class="actions mb-4">
   <%# button_name = @step.action_button_name %>
   <%# f.submit button_name, { :class => 'btn btn-primary', :id =>'filtering_button'} %>
-  <button id='<%= @step.obj_name %>_button' type='button' class='btn btn-primary'><%= @h_attrs['action_button_label'] || 'Submit' %></button>
-  <button id='cancel' type='button' class='btn btn-secondary'>Cancel</button>
+  <button id='<%= @step.name %>_button' type='button' class='btn btn-primary req_submit'><%= @h_step_attrs['action_button_label'] || 'Submit' %></button>
+  <button id='form_req_cancel' type='button' class='btn btn-secondary'>Cancel</button>
 </div>
 <% end %>
 
 <%= javascript_tag do %>
 
-$('#<%= @step.obj_name %>_form').unbind('submit');
-$('#<%= @step.obj_name %>_form').submit(false);
+//var h_attrs = <%= raw @h_step_attrs.to_json %>;
 
-$("#<%= @step.obj_name %>_button").click(function(){
- var p = $('#<%= @step.obj_name %>_form').serializeArray();
+$('#<%= @step.name %>_form').unbind('submit');
+$('#<%= @step.name %>_form').submit(false);
+
+/*
+function validate_req_form(){
+ var valid = true
+ <%# @h_step_attrs.each_key do |k| %>
+  var $("#attrs_<%# k %>").val()
+ <%# end %>
+ return valid 
+}
+*/
+
+
+function change_method(){
+ var smid = $("#req_std_method_id").val()
+ if (smid && h_methods[smid]){
+  $("#<%= @step.name %>_button").prop("disabled", ((h_unavailable_method_ids[smid]) ? "disabled" : false))
+  var url = '<%= get_attributes_project_path(:key => @project.key) %>' + '?step_id=<%= @step.id %>&obj_id=' + smid;
+  refresh("attrs_container", url, {});
+  var img = $("#speed_" + h_methods[smid][0]);
+  if (img) {img.removeClass('hidden');}
+  $("#method_desc").html(h_methods[smid][1] + " " + h_methods[smid][2]);
+ }else{
+  $("#attrs_container").html("");
+ }
+}
+
+var h_unavailable_method_ids = <%= raw @h_unavailable_methods.to_json %> 
+$("#req_std_method_id > option").each(function() {
+ if (h_unavailable_method_ids[this.value]){
+  $(this).addClass("unavailable_method") 
+ }
+});
+
+$("#<%= @step.name %>_button").click(function(){
+ var p = $('#<%= @step.name %>_form').serializeArray();
  p.push({'name' : 'project_key', 'value' : '<%= @project.key %>'});
 /* p.push({'name' : 'render_nothing', 'value' : '1'}); */
-// refresh_post('list_<%= @step.obj_name %>', '<%= reqs_path() %>', p, 'post', {loading: 'fa-2x'})
+// refresh_post('list_<%= @step.name %>', '<%= reqs_path() %>', p, 'post', {loading: 'fa-2x'})
 
  $.ajax({
   url: "<%= reqs_path() %>",
   type: "post",
   data: p,
   beforeSend: function(){
-   $("#step_container").html("<div style='vertical-align:middle;text-align:center'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i></div>")
+   if ($("#dashboard").length > 0 && $("#dashboard").val() == 'standard'){
+    $("#step_container").html("<div class='loading'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i></div>")
+   }
   },
   success: function(returnData){
-  refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>&step_id=<%= @step_id %>", {loading: 'fa-2x loading-step'});  
+  other_params = ''
+  if (returnData.errors){
+   other_params += "&errors=" + returnData.errors 
+  }
+
+
+  if ($("#dashboard").length > 0 && $("#dashboard").val() == 'std_runs'){
+   refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>&step_id=<%= @step_id %>" + other_params, {loading: 'fa-2x loading-step'});  
+  }else{
+   //if ($("#dashboard").length > 0 && $("#dashboard").val() == 'dim_reduction'){
+    refresh("step_header_container", "<%= raw get_step_project_path(:key => @project.key, :nolayout => 1, :step_id => @step.id, :partial => 'step_header_container') %>" + other_params, {});    
+  // }
+  } 
   },
   error: function(e){
   }
  });
 
 
-// $("#<%= @step.obj_name %>").addClass("hidden")
+// $("#<%= @step.name %>").addClass("hidden")
 });
 
-var h_methods = <%= h ={}; StdMethod.where(:step_id => @step.id).all.map{|f| h[f.id] = [f.speed_id, f.description, f.link]}; raw h.to_json %>;
+var h_methods = <%= h ={}; @std_methods.map{|f| h[f.id] = [f.speed_id, f.description, f.link]}; raw h.to_json %>;
 
 $("#<%= obj_name %>_std_method_id").change(function(){
  $(".speed_image").addClass('hidden');
- if ($(this).val()){
-//  refresh_attributes('filter_method', $(this).val());
-  var url = '<%= get_attributes_project_path(:key => @project.key) %>' + '?step_name=<%= @step.name %>&obj_id=' + $(this).val();
-  refresh("attrs_container", url, {});
-  var img = $("#speed_" + h_methods[$(this).val()][0]);
-  if (img) {img.removeClass('hidden');}
-  $("#method_desc").html(h_methods[$(this).val()][1] + " " + h_methods[$(this).val()][2]);
- }else{
-  $("#attrs_container").html("");
- }
+// if ($(this).val()){
+  //  refresh_attributes('filter_method', $(this).val());
+//  var url = '<%= get_attributes_project_path(:key => @project.key) %>' + '?step_id=<%= @step.id %>&obj_id=' + $(this).val();
+//  refresh("attrs_container", url, {});
+  change_method();
+// }else{
+//  $("#attrs_container").html("");
+// }
 });
 
-$("#cancel").click(function(){
-refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>", {});
+$("#form_req_cancel").click(function(){
+ //refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>", {});
+ if ($(".new_job").length ==0){ 
+ $("#new_analysis_form_close").click() //.addClass("hidden");
+}else{
+ console.log($(".new_job"))
+ refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>&step_id=<%= @step_id %>", {});
+}
 });
 
- var project_std_method_id = $("#project_std_method_id").val();
- if (project_std_method_id){
-//  refresh_attributes('filter_method', project_std_method_id);
-  var url = '<%= get_attributes_project_path(:key => @project.key) %>' + '?step_name=<%= @step.name %>&obj_id=' + project_std_method_id;
-  refresh("attrs_container", url, {});
-  var img = $("#speed_" + h_methods[project_std_method_id][0])
-  if (img) {img.removeClass('hidden');}
-  $("#method_desc").html(h_methods[project_std_method_id][1] + ' ' + h_methods[project_std_method_id][2]);
- }
+    change_method()
+ 
+
+
 <% end %>

@@ -5,3 +5,48 @@ $body-bg: #ffffff;
 $font-size-base: 9px; // this changes the font-size throughout bootstrap
 $font-size-base: 0.9rem;
 $line-height-base: 1.3;
+
+// Fontawesome
+
+//$fa-css-prefix:               fa !default;
+//$fa-font-path:        "../fontawesome/webfonts";
+
+// Bootstrap 4 breakpoints & gutter
+$grid-breakpoints: (
+    xs: 0,
+    sm: 576px,
+    md: 768px,
+    lg: 992px,
+    xl: 1200px,
+    xxl: 1400px,
+    xxxl: 1600px,
+    xxxxl: 1800px,
+) !default;
+
+$grid-gutter-width: 30px !default;
+
+// number of cards per line for each breakpoint
+$cards-per-line: (
+    xs: 1,
+    sm: 1,
+    md: 2,
+    lg: 2,
+    xl: 3,
+    xxl: 4,
+    xxxl: 5,
+    xxxxl: 6
+);
+
+// number of cards per line for each breakpoint for plots
+$plot_cards-per-line: (
+    xs: 1,
+    sm: 1,
+    md: 1,
+    lg: 1,
+    xl: 2,
+    xxl: 2,
+    xxxl: 3,
+    xxxxl: 3
+);
+
+

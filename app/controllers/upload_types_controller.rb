@@ -27,7 +27,7 @@ class UploadTypesController < ApplicationController
     @upload_type = UploadType.new(upload_type_params)
 
     respond_to do |format|
-      if @upload_type.save
+      if admin? and @upload_type.save
         format.html { redirect_to @upload_type, notice: 'Upload type was successfully created.' }
         format.json { render :show, status: :created, location: @upload_type }
       else
@@ -41,7 +41,7 @@ class UploadTypesController < ApplicationController
   # PATCH/PUT /upload_types/1.json
   def update
     respond_to do |format|
-      if @upload_type.update(upload_type_params)
+      if admin? and @upload_type.update(upload_type_params)
         format.html { redirect_to @upload_type, notice: 'Upload type was successfully updated.' }
         format.json { render :show, status: :ok, location: @upload_type }
       else
@@ -54,10 +54,12 @@ class UploadTypesController < ApplicationController
   # DELETE /upload_types/1
   # DELETE /upload_types/1.json
   def destroy
-    @upload_type.destroy
-    respond_to do |format|
-      format.html { redirect_to upload_types_url, notice: 'Upload type was successfully destroyed.' }
-      format.json { head :no_content }
+    if admin?
+      @upload_type.destroy
+      respond_to do |format|
+        format.html { redirect_to upload_types_url, notice: 'Upload type was successfully destroyed.' }
+        format.json { head :no_content }
+      end
     end
   end
 

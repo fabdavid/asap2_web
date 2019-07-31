@@ -40,6 +40,10 @@ workers ENV.fetch('WEB_CONCURRENCY') { 2 }
 # is coded into the config rather than being an environment variable.
 worker_timeout 30
 
+#ssl_key = File.expand_path '/etc/pki/tls/private/asap-beta.epfl.ch.key', __FILE__
+#ssl_cert = File.expand_path '/etc/pki/tls/certs/asap-beta.epfl.ch.pem', __FILE__
+#bind "ssl://127.0.0.1:28080?key=#{ENV['SSL_KEY']}&cert=#{ENV['SSL_CERT']}"
+
 # The path to the puma binary without any arguments.
 restart_command 'puma'
 

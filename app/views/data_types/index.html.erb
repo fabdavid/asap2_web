@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Data Types</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @data_types.each do |data_type| %>
+      <tr>
+        <td><%= link_to 'Show', data_type %></td>
+        <td><%= link_to 'Edit', edit_data_type_path(data_type) %></td>
+        <td><%= link_to 'Destroy', data_type, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Data Type', new_data_type_path %>

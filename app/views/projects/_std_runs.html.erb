@@ -1,23 +1,62 @@
-<% if @runs.size > 0 %>
+<%# @runs.size %>
+<% if @runs and @runs.size > 0 %>
 
-List of runs
+<%= render :partial => 'filter_runs' %>
 
-<div>
-<% @runs.each do |run| %>
+<%= render :partial => 'display_card_deck', :locals => {:cards => @list_cards} %>
 
-<div class='card'>
-<div class='card-body'>
-<%= run.id %>
-<div id='run_status_<%= run.id %>' class='status_id'><i class='<%= @h_statuses[run.status_id].icon_class %>' /></div>
-</div>
-</div>
+<%= javascript_tag do %>
+
+//reset timer
+if (run_timer){
+clearTimeout(run_timer) 
+}
+
+var waiting_run_ids = <%= raw @runs.select{|r| r.status_id == 1}.map{|r| r.id}.to_json %>
+var running_run_ids = <%= raw @runs.select{|r| r.status_id == 2}.map{|r| r.id}.to_json %>
+//console.log("waiting: " + waiting_run_ids)
+//console.log("running: " + running_run_ids)
+
+run_timer = upd_time2(waiting_run_ids, running_run_ids, time_zone_offset)
+
+
+/*
+for (var i = 0; i< waiting_run_ids.length; i++){
+ var created_time_el = "#created_time_" + waiting_run_ids[i]
+ var duration_el = "#ongoing_wait_" + waiting_run_ids[i]
+ timers.push(upd_time("Wait ", created_time_el, duration_el, time_zone_offset))
+}
+
+for (var i = 0; i< running_run_ids.length; i++){
+ var start_time_el = "#start_time_" + running_run_ids[i]
+ var duration_el = "#ongoing_run_" + running_run_ids[i]
+ timers.push(upd_time("Run ", start_time_el, duration_el, time_zone_offset))
+}
+*/
+
+$(".show_link").click(function(){
+//console.log($(this).parent().parent())
+ var t = $(this).parent().parent().parent().attr('id').split("_")
+ refresh("step_container", "<%= get_run_project_path(:key => @project.key, :nolayout => 1) %>&run_id=" + t[2], {loading: 'fa-2x loading-step'})
+})
+$(".show_link").mouseover(function(){
+ $(this).parent().parent().css("border-color", 'rgba(0,0,0,0.425)')
+})
+$(".show_link").mouseout(function(){
+ $(this).parent().parent().css("border-color", 'rgba(0,0,0,0.125)')
+})
 
 <% end %>
-
-</div>
 
 <% else %>
 
-<div class='badge badge-warning'>No run created yet</div>
-
+<!--<div class='badge badge-warning'>No run created yet</div> -->
+<div class="container-fluid">
+ <div id='card_new_analysis' class='card text-md-center col-md-4 centered-card'>
+    <div class='card-body'>
+      <button id='new_job_main_btn' type='button' class='btn btn-primary btn-lg centered-card <%= @h_attrs['new_analysis_btn_class'] || 'new_job_popup' %>' <%= (@project.runs.select{|r| r.status_id == 3}.size == 0) ? "disabled='disabled'" : "" %>><i class='fa fa-plus'></i> New <%= @step.label.uncapitalize %></button>
+    </div>
+ </div>
+</div>
 <% end %>
+

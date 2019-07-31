@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>ASAP</title>
+    <title>ASAP2</title>
 <!--    <meta http-equiv="no-cache"> 
 <meta http-equiv="expires" content="0" />
 <meta http-equiv="cache-control" content="max-age=0" />
@@ -70,7 +70,17 @@
       <div id='loading' class='hidden'><%= image_tag('loading.gif') %></div>
 
       <div id='ontop_window' class='hidden'>
-	<div id='ontop_window_close' class='window_close'><span onclick="$('#ontop_window').addClass('hidden');"><i class='fa fa-times-circle'></i></span></div>
+	<div class='header'>
+	  <div class='title'></div>
+	  <div class='top-right-buttons'>
+	    <div class='other_buttons'></div>
+	    <div id='ontop_window_close' class='window_close'>
+	      <span onclick="$('#ontop_window').addClass('hidden');">
+	      <i class='fa fa-times-circle'></i>
+	      </span>
+	    </div>
+	  </div>
+	</div>
 	<div id='form_container'></div>
       </div><div class='clear'></div>
     </div>
@@ -85,7 +95,7 @@
       <table>
 	<tbody>
 	  <tr><td width='20%'>
-	      <%= link_to image_tag('epfl_logo.svg', :height => '70px'), "http://epfl.ch" %>
+	      <%= link_to image_tag('epfl-logo.svg', :height => '70px'), "http://epfl.ch" %>
 	    </td><td style="text-align:center">
 	      &copy;2016-<%= Time.now.year %> EPFL, 1015 Lausanne<br>
 	      <a href="mailto:bioinfo.epfl@gmail.com?subject=ASAP feedback">Contact</a>
@@ -110,6 +120,12 @@
 
 <%= javascript_tag do %>
 
+/*$("#ontop_window_close").click(function(){
+alert("bla")
+ $('#ontop_window').addClass('hidden');
+})
+*/
+
 /*$("#home_link").on('click',function(event){
 var href = this.href;
 event.preventDefault();
@@ -132,7 +148,7 @@ alert("titi");
   m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
   })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
 
-  ga('create', 'UA-24167610-29', 'auto');
+  ga('create', 'UA-131156225-4', 'auto');
   ga('set', 'anonymizeIp', true); 
   ga('send', 'pageview');
 

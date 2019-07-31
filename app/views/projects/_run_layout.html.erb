@@ -1,0 +1,27 @@
+<% @layout.each do |vertical_el| %>
+
+<div class="vert_element row">
+
+<% vertical_el["horiz_elements"].each do |horiz_element| %>
+
+ <div class="horiz_element <%= horiz_element['container_class'] %>">
+  <div class="form_card <%= horiz_element['class'] %>">
+    <% if horiz_element['card-header'] %>
+     <div class="card-header"><%= horiz_element['card-header'] %></div>
+    <% end %>
+    <div class="card-body">
+   <% if  horiz_element['attr_list'] %>
+   <% horiz_element['attr_list'].select{|k| attr = @attrs[k]; attr and attr['widget'] and !attr['obsolete']}.each do |attr_name| %>
+   <div id='form-container_<%= attr_name %>' class='form-group <%= @div_class || '' %>'>
+     <%= render :partial => 'attribute', :locals => {:attr_name => attr_name, :horiz_element => horiz_element} %>
+   </div>
+   <% end %>
+   <% end %>
+  </div>
+  </div>
+ </div>
+<% end %>
+
+</div>
+
+<% end %>

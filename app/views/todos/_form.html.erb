@@ -1,0 +1,31 @@
+
+<%= form_with(model: todo, local: true) do |form| %>
+  <% if todo.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(todo.errors.count, "error") %> prohibited this todo from being saved:</h2>
+
+      <ul>
+      <% todo.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <table>
+
+    <% l = TodoType.all.map{|tt| [tt.label, tt.id]} %>
+    <tr><td>Type</td><td><%= form.select :todo_type_id, l, {}, {:class => 'form-control'} %></td></tr>
+    <tr><td>Title</td><td><%= form.text_field :title, :size => 60, :class => 'form-control' %></td></tr>
+    <tr><td>Description</td><td><%= form.text_area :description, :cols => 60, :rows => 15, :class => 'form-control' %></td></tr>
+    <% if admin? %>
+    <% l= [["Pending", 1], ["Ongoing", 2], ["Done", 3]] %>
+    <tr><td>Status</td><td><%= form.select :status_id, l, {}, {:class => 'form-control'} %></td></tr>
+    <% end %>
+  </table>
+
+  <div class="actions">
+    <%= form.submit (action_name == 'new') ? "Stack on the pile" : "Update", {:class => 'btn btn-primary'} %>
+  </div>
+<% end %>
+

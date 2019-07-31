@@ -27,7 +27,7 @@ class OrganismsController < ApplicationController
     @organism = Organism.new(organism_params)
 
     respond_to do |format|
-      if @organism.save
+      if admin? and @organism.save
         format.html { redirect_to @organism, notice: 'Organism was successfully created.' }
         format.json { render :show, status: :created, location: @organism }
       else
@@ -41,7 +41,7 @@ class OrganismsController < ApplicationController
   # PATCH/PUT /organisms/1.json
   def update
     respond_to do |format|
-      if @organism.update(organism_params)
+      if admin? and @organism.update(organism_params)
         format.html { redirect_to @organism, notice: 'Organism was successfully updated.' }
         format.json { render :show, status: :ok, location: @organism }
       else
@@ -54,10 +54,12 @@ class OrganismsController < ApplicationController
   # DELETE /organisms/1
   # DELETE /organisms/1.json
   def destroy
-    @organism.destroy
-    respond_to do |format|
-      format.html { redirect_to organisms_url, notice: 'Organism was successfully destroyed.' }
-      format.json { head :no_content }
+    if admin?
+      @organism.destroy
+      respond_to do |format|
+        format.html { redirect_to organisms_url, notice: 'Organism was successfully destroyed.' }
+        format.json { head :no_content }
+      end
     end
   end
 

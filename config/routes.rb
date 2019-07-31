@@ -1,4 +1,22 @@
 Rails.application.routes.draw do
+  resources :archive_statuses
+  resources :fos
+  resources :todo_types
+  resources :todo_votes
+  resources :todos do
+    collection do
+      get :get_roadmap
+      post :add_del_thumb
+    end
+  end
+  resources :annots do
+    member do
+      get :get_cats
+    end
+    collection do
+    end
+  end
+  resources :data_types
   resources :upload_types
   resources :del_runs
   resources :active_runs
@@ -104,13 +122,20 @@ Rails.application.routes.draw do
       post :hca_download
     end
     member do
+      get :get_commands
+      get :form_new_analysis
       post :broadcast_on_project_channel
       get :live_upd
       get :parse_form
       patch :parse
+      post :set_lineage_run_ids
       get :get_cells
       get :upload_form
+      get :add_metadata
       get :get_step
+      get :get_step_header
+      get :get_run
+      get :get_lineage
       get :get_file
       get :edit_name
       get :get_pipeline
@@ -118,7 +143,16 @@ Rails.application.routes.draw do
       get :get_attribute
       get :set_input_data
       get :get_visualization
+      get :get_dim_reduction_form
+      post :dr_plot
+      get :get_dr_options
+      get :autocomplete_genes
+      get :extract_row
+      get :get_rows
+      get :extract_metadata
       get :clone
+      post :delete_all_runs_from_step
+      get :confirm_delete_all
       post :replot
  #     get :summary
       get :get_clusters
@@ -126,12 +160,17 @@ Rails.application.routes.draw do
       get :set_viz_session
       post :delete_batch_file
       post :direct_download
-      
+      get :save_plot_settings
     end
   end
 
 
   resources :project_steps
   resources :jobs
+
+  match '/roadmap' => 'todos#index', :via => [:get]
+
   root 'projects#index'
+
+
 end

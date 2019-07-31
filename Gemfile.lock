@@ -56,6 +56,7 @@ GEM
       autoprefixer-rails (>= 6.0.3)
       popper_js (>= 1.12.9, < 2)
       sass (>= 3.5.2)
+    bootstrap-switch-rails (3.3.4)
     builder (3.2.3)
     byebug (10.0.2)
     climate_control (0.2.0)
@@ -79,16 +80,12 @@ GEM
     erubi (1.7.1)
     execjs (2.7.0)
     ffi (1.9.25)
-    font-awesome-rails (4.7.0.4)
-      railties (>= 3.2, < 6.0)
+    fontawesome5-rails (5.2.0.0)
     globalid (0.4.1)
       activesupport (>= 4.2.0)
     haml (5.0.4)
       temple (>= 0.8.0)
       tilt
-    hdf5 (0.3.5)
-      ffi
-      narray
     i18n (1.0.1)
       concurrent-ruby (~> 1.0)
     jbuilder (2.7.0)
@@ -130,7 +127,6 @@ GEM
     minitest (5.11.3)
     multi_json (1.13.1)
     multipart-parser (0.1.1)
-    narray (0.6.1.2)
     nio4r (2.3.1)
     nokogiri (1.8.4)
       mini_portile2 (~> 2.3.0)
@@ -256,6 +252,7 @@ GEM
     websocket-driver (0.7.0)
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.3)
+    zlib (1.0.0)
 
 PLATFORMS
   ruby
@@ -263,14 +260,14 @@ PLATFORMS
 DEPENDENCIES
   activerecord-session_store
   bootstrap (~> 4.1.3)
+  bootstrap-switch-rails
   byebug
   daemons
   delayed_job_active_record
   descriptive_statistics
   devise
-  font-awesome-rails (~> 4.7)
+  fontawesome5-rails
   haml
-  hdf5
   jbuilder (~> 2.5)
   jquery-datatables-rails
   jquery-fileupload-rails
@@ -294,6 +291,7 @@ DEPENDENCIES
   tzinfo-data
   uglifier (>= 1.3.0)
   web-console (~> 3.3.0)
+  zlib
 
 BUNDLED WITH
-   1.16.2
+   1.17.2

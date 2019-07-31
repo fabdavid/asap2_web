@@ -1,10 +1,13 @@
+<%= @cmd.to_json %>
+<%# @res.to_json %>
+
 <% if @h_formats and detected_format = @h_formats[@h_upload_details['detected_format']] %>
 
 <div class='alert alert-success'>
   File <%= @fu.upload_file_name %> was successfully uploaded (<%= (@fu.upload_file_size.to_f/1000000).round(1).to_s %> Mo) and identified as a <%= detected_format.description  %> file<%= 's' if detected_format.many_files %>.
 </div>
 
-<div id='loading_dataset' class='loading hidden'>
+<div id='loading_dataset' class='hidden'>
   <i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i><br/><span class='loading_text'>Please wait, loading preview...</span>
 </div>
 
@@ -33,37 +36,48 @@
 <% child_format = @h_formats[@h_upload_details['detected_format']].child_format %>
 
 <div id='dataset_details'>
-  <% if @current_dataset %>
+  <% if @current_dataset and @current_dataset['matrix'] and @current_dataset['matrix'][0] %>
   
-  <% nb_genes = @current_dataset['matrix'].size %>
-  <% nb_cells = @current_dataset['matrix'][0].size %>
+  <% nber_rows = @current_dataset['matrix'].size %>
+  <% nber_cols = @current_dataset['matrix'][0].size %>
   
   <div class='card-deck'>
     <div class='card'>
-      <div class='card-body' style='overflow:hidden'>
-	<div>
-	  <i class='fa fa-file-o fa-3x'><div style='position:relative;top:-15px;left:5px;font-size:10px;font-weight:bold;background-color:<%= @h_formats[child_format].color %>;color:white;padding:3px;border:2px solid white'><%= @h_formats[child_format].label %></div></i>
-	  <div style='position:relative;top:-45px;left:40px;font-size:16px'>
+      <div class='card-body' style='overflow:hidden;margin:10px'>
+	<div class='float-left'>
+	  <h4 class='card-title'>
+	    <i class='far fa-file fa-3x'>
+              <div style='position:relative;top:-30px;left:6px;width:35px;font-size:10px;font-weight:bold;text-align:center;background-color:<%= @h_formats[child_format].color %>;color:white;padding:3px;border:2px solid white'><%= @h_formats[child_format].label %></div></i>
+	  </h4>
+	</div>
+<!--	  <div class="position:relative;top:-45px;left:40px;font-size:16px"> 
 	    Dataset <span class='dataset_name'><%= @current_dataset['group'] %></span>
 	  </div>
-          <div style='margin-top:-30px'>
-	    <table id='summary_dataset'><tbody>
-		<tr><td>Number cells</td><td><%= @current_dataset['nb_cells'] %></td></tr>
-		<tr><td>Number genes</td><td><%= @current_dataset['nb_genes'] %></td></tr>
-		<tr><td>Count matrix?</td><td><%= (@current_dataset['is_count'] == 1) ? 'Yes' : 'No' %></td></tr>
-            </tbody></table>
-	  </div>
-	  <% if (@current_dataset or @error) and  @list_datasets.size > 1 %>
-          <div style='float:right'>
-            <div id='cancel_sel'  class='btn btn-outline-secondary'>Select other dataset</div>
-          </div>
-          <% end %>
-	  
+-->
+	
+        <div class='float-left' style='margin:10px'>
+	  <h4 class='card-title'>
+	    <p>Dataset <span class='dataset_name'><%= @current_dataset['group'] %></span></p>
+	  </h4>
+	  <table id='summary_dataset'><tbody>
+	      <tr><td>Number cells</td><td><%= @current_dataset['nber_cols'] %></td></tr>
+	      <tr><td>Number genes</td><td><%= @current_dataset['nber_rows'] %></td></tr>
+	      <tr><td>Count matrix?</td><td><%= (@current_dataset['is_count'] == 1) ? 'Yes' : 'No' %></td></tr>
+          </tbody></table>
 	</div>
+	<div class='clear'></div>
+	<% if (@current_dataset or @error) and  @list_datasets.size > 1 %>
+        <div style='float:right'>
+          <div id='cancel_sel'  class='btn btn-outline-secondary'>Select other dataset</div>
+        </div>
+        <% end %>
+	
       </div>
     </div>
+   
     <% current_format = @h_json['detected_format'] %> 
     <% if (@current_dataset or @error) and (child_format == 'RAW_TEXT') %> <!--#or @h_format[current_format][:child_format] == 'RAW_TEXT' -->
+
     <div class='card'>
       <div class='card-header'>
 	Parsing parameters
@@ -90,28 +104,29 @@
 	<!--      </form>-->
       </div>
     </div>
+
     <% end %>
   </div> 
   
   <div id='preview' class='card'>
     <div class='card-header'>
-      Data preview (first <span><%= nb_genes %> x <%= nb_cells %></span> matrix)
+      Data preview (first <span><%= nber_rows %> x <%= nber_cols %></span> matrix)
     </div>
     <div class='card-body'>
       <table id='preview_table' class='datatable hover' width='100%'>
 	<thead>
 	  <th><span class='gene_label'>Genes</span> \ <span class='cell_label'>Cells</span></th>
-	  <% (0 .. (nb_cells-1)).each do |ci| %> 
+	  <% (0 .. (nber_cols-1)).each do |ci| %> 
 	  <% c = (@current_dataset['cells']) ? @current_dataset['cells'][ci] : ('Cell_' + (ci + 1).to_s) %> 
 	  <th class='cell_name <%= 'imputed_name' if !@current_dataset['cells'] %>' title='<%= c %>'><%= c %></th>
 	  <% end %>
 	</thead>
 	<tbody>
-	  <% (0 .. (nb_genes-1)).each do |gi| %>
+	  <% (0 .. (nber_rows-1)).each do |gi| %>
 	  <% g = (@current_dataset['genes']) ? @current_dataset['genes'][gi] : ('Gene_' + (gi + 1).to_s) %>
 	  <tr>
 	    <td class='gene_name bold <%= 'imputed_name' if !@current_dataset['genes'] %>' title='<%= g %>'><%= g %></td>
-	    <% (0 .. (nb_cells-1)).each do |ci| %>
+	    <% (0 .. (nber_cols-1)).each do |ci| %>
 	    <%# c = @current_dataset['cells'][ci] %>
 	    <td><%= (@current_dataset['is_count'] == 1) ? @current_dataset['matrix'][gi][ci].to_i : @current_dataset['matrix'][gi][ci] %></td>
 	    <% end %>
@@ -119,7 +134,7 @@
 	  <% end %>
 	</tbody>
       </table>
-      <% if (!@current_dataset['genes'] and nb_genes > 0) or (!@current_dataset['cells'] and nb_cells > 0) %>
+      <% if (!@current_dataset['genes'] and nber_rows > 0) or (!@current_dataset['cells'] and nber_cols > 0) %>
       <span class='imputed_name bold'>* Imputed names</span> 
       <% end %>
     </div>
@@ -139,22 +154,22 @@ project_name.css("border", "1px solid red");
 project_name.css("background-color", "#FFFAFA");
 }
 
-<% if @current_dataset %>
+<% if @current_dataset and nber_cols %>
 $("#preview_table").dataTable({
 "sDom": 'Wsrt',
 "ordering": false,
 "columnDefs": [
     { "width": "20%", "sortable": false, "targets": 0 },
-    { "width": "8%", "className": 'dt-body-right', "sortable": false, "targets": [<%= raw (1 .. nb_cells).to_a.join(",") %>] }
+    { "width": "8%", "className": 'dt-body-right', "sortable": false, "targets": [<%= raw (1 .. nber_cols).to_a.join(",") %>] }
   ]
 });
 
 
-$("#nb_cells").val(<%= @current_dataset['nb_cells'] %>);
-$("#nb_genes").val(<%= @current_dataset['nb_genes'] %>);
+$("#nber_cols").val(<%= @current_dataset['nber_cols'] %>);
+$("#nber_rows").val(<%= @current_dataset['nber_rows'] %>);
 // activate the create project button if project name is not empty  and number of cells > 1 and number of genes > 0
-$("#nb_cells_preview").val(<%= nb_cells %>);
-$("#nb_genes_preview").val(<%= nb_genes %>);
+$("#nber_rows_preview").val(<%= nber_rows %>);
+$("#nber_cols_preview").val(<%= nber_cols %>);
 if (project_name.val()){
  validate_form(true);
 }
@@ -213,7 +228,11 @@ $("#list_datasets a").click(function(){
 <% else %>
 
 Format not detected:
+1--
 <%= @h_formats %>
+2--
+<br/>
+3--
 <%= @h_upload_details.to_json %>
 
 <% end %>

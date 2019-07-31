@@ -100,20 +100,22 @@ class FusController < ApplicationController
 
     @error = nil
     @current_dataset = nil
-
+    @log = ''
     if @h_datasets[options_txt]
       @current_dataset = @h_datasets[options_txt]
       @h_json = @current_dataset
       @error = @current_dataset['displayed_error'] if @current_dataset['displayed_error'] 
     else
 #      cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T Preparsing #{options.join(" ")} -organism #{params['organism']} -f #{filepath} -o #{upload_dir}\""
-      cmd = "java -jar lib/ASAP.jar -T Preparsing #{options.join(" ")} -organism #{params['organism']} -f #{filepath} -o #{upload_dir}"
-      logger.debug "CMD #{cmd}"
-      @res = `#{cmd}`
+      @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T Preparsing #{options.join(" ")} -organism #{params['organism']} -f #{filepath} -o #{upload_dir} -h localhost:5434/asap2_development"
+     @log += output_file.to_s
+      logger.debug "CMD #{@cmd}"
+      @res = `#{@cmd}`
       @h_json = nil
       if File.exist? output_file
         output_json = File.read output_file
         output_json.gsub!(/\s+/, ' ')
+        @log+= output_json
 
         if !output_json.empty?
           logger.debug output_json
@@ -237,7 +239,7 @@ class FusController < ApplicationController
   # PATCH/PUT /fus/1.json
   def update
     @fu.assign_attributes(status: 'new', upload: nil) if params[:delete_upload] == 'yes'
-
+    
     respond_to do |format|
       if @fu.update(fu_params)
         format.html { redirect_to @fu, notice: 'Fu was successfully updated.' }
@@ -252,10 +254,12 @@ class FusController < ApplicationController
   # DELETE /fus/1
   # DELETE /fus/1.json
   def destroy
-    @fu.destroy
-    respond_to do |format|
-      format.html { redirect_to fus_url, notice: 'Fu was successfully destroyed.' }
-      format.json { head :no_content }
+    if admin?
+      @fu.destroy
+      respond_to do |format|
+        format.html { redirect_to fus_url, notice: 'Fu was successfully destroyed.' }
+        format.json { head :no_content }
+      end
     end
   end
 

@@ -27,7 +27,7 @@ class FileFormatsController < ApplicationController
     @file_format = FileFormat.new(file_format_params)
 
     respond_to do |format|
-      if @file_format.save
+      if admin? and @file_format.save
         format.html { redirect_to @file_format, notice: 'File format was successfully created.' }
         format.json { render :show, status: :created, location: @file_format }
       else
@@ -41,7 +41,7 @@ class FileFormatsController < ApplicationController
   # PATCH/PUT /file_formats/1.json
   def update
     respond_to do |format|
-      if @file_format.update(file_format_params)
+      if admin? and @file_format.update(file_format_params)
         format.html { redirect_to @file_format, notice: 'File format was successfully updated.' }
         format.json { render :show, status: :ok, location: @file_format }
       else
@@ -54,10 +54,12 @@ class FileFormatsController < ApplicationController
   # DELETE /file_formats/1
   # DELETE /file_formats/1.json
   def destroy
-    @file_format.destroy
-    respond_to do |format|
-      format.html { redirect_to file_formats_url, notice: 'File format was successfully destroyed.' }
-      format.json { head :no_content }
+    if admin?
+      @file_format.destroy
+      respond_to do |format|
+        format.html { redirect_to file_formats_url, notice: 'File format was successfully destroyed.' }
+        format.json { head :no_content }
+      end
     end
   end
 

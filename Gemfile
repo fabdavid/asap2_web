@@ -6,6 +6,7 @@ git_source(:github) do |repo_name|
 end
 
 # Looking to use the Edge version? gem 'rails', github: 'rails/rails'
+#gem 'rails', '~> 5.2.0', github: "palkan/rails", branch: "fix/actioncable-confirmation-race-condition"
 gem 'rails', '~> 5.2.0'
 
 # Use Puma as the app server
@@ -47,9 +48,11 @@ gem 'turbolinks', '~> 5'
 # Use Bootstrap SASS for Bootstrap support
 #gem 'bootstrap-sass', '~> 3.3'
 gem 'bootstrap', '~> 4.1.3'
+gem "bootstrap-switch-rails"
 
 # Use Font Awesome Rails for Font Awesome icons
-gem 'font-awesome-rails', '~> 4.7'
+#gem 'font-awesome-rails', '~> 4.7'
+gem 'fontawesome5-rails'
 
 # Use Bootsnap to improve startup times
 # gem 'bootsnap', '>= 1.1.0', require: false
@@ -70,6 +73,7 @@ gem 'haml'
 gem 'activerecord-session_store'
 #gem 'hdf5'
 #gem 'get_process_mem'
+gem 'zlib'
 
 group :development, :test do
   # Call 'byebug' anywhere in your code to drop into a debugger console

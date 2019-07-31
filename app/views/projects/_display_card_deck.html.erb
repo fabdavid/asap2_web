@@ -1,0 +1,97 @@
+<%# @list_steps.to_json %>
+<%# @h_project_steps.to_json %>
+<%# cards.to_json %>
+<div class="card-deck">
+ <% cards.each_index do |i| %>
+  <% card = cards[i] %>
+  <div id='<%= card[:card_id] %>' class="card <%= card[:card_class] %> card_std mb-4">
+    <div class="card-body">
+      <%= raw card[:body] %>
+    </div>
+    <% if card[:footer] %>
+    <div class="card-footer">
+      <%= raw card[:footer] %>
+    </div>
+    <% end %>
+  </div>
+  <% j = i+1 %>
+  <!--  <% if j % 2 == 0 %>
+	<div class="w-100 d-none d-sm-block d-md-none"></div>
+	<% end %>
+	<% if j % 2 == 0 %>
+	<div class="w-100 d-none d-md-block d-lg-none"></div>
+	<% end %>
+	<% if j % 2 == 0 %>
+	<div class="w-100 d-none d-lg-block d-xl-none"></div>
+	<% end %>
+	<% if j % 3 == 0 %>
+	<div class="w-100 d-none d-xl-block d-xxl-none"></div>
+	<% end %>
+	-->
+  <% end %>
+</div>
+
+
+<%= javascript_tag do %>
+
+ $(".download_file_btn").click(function(e){
+  e.stopPropagation();
+  e.preventDefault();
+  var t = this.id.split("_")
+  window.location = "<%= get_file_project_path(@project.key) %>?run_id=" + t[1] + "&onum=" + t[2];
+ });
+
+ $(".input_lineage").click(function(e){
+  var run_id = this.id.split("_")[2]
+  e.stopPropagation();
+  e.preventDefault();
+  $("#popup_window").removeClass("hidden")
+//  $("#popup_container").html("bla!")
+ refresh("popup_container", "<%= get_lineage_project_path(:key => @project.key) %>?run_id=" + run_id, {loading: 'fa-2x'})
+var w = $(window).width();
+  $("#popup_window").css({
+        left: 200,
+        width:w - 250,
+        top: e.pageY + 10
+    }).stop().show(100);
+ })
+
+
+$(".show_link").click(function(){
+ var t = this.id.split("_")
+// alert("bla!")
+ $("#popup_window").css({display:'none'})
+ refresh("step_container", "<%= get_run_project_path(:key => @project.key, :nolayout => 1) %>&run_id=" + t[2], {loading: 'fa-2x loading-step'})
+})
+$(".run_card").mouseover(function(){
+ $(this).css("border-color", 'rgba(0,0,0,0.425)')
+})
+$(".run_card").mouseout(function(){
+ $(this).css("border-color", 'rgba(0,0,0,0.125)')
+})
+
+$(".btn_destroy-run").click(function(){
+ let t = this.id.split("_")
+ $.ajax({
+  url: "<%= runs_path() %>/" + t[1],
+  type: "delete",
+  data: [{name : 'format', value: 'json'}],
+  beforeSend: function(){
+   $("#step_container").html("<div class='loading'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i></div>")
+  },
+  success: function(returnData){
+  $("#popup_window").css({display:'none'})
+  refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>&step_id=<%= @step.id %>", {loading: 'fa-2x loading-step'});
+  },
+  error: function(e){
+  }
+ });
+});
+
+/*
+$(function () {
+  $('[data-toggle="tooltip"]').tooltip()
+})
+*/
+
+<% end %>

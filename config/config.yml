@@ -1,11 +1,13 @@
 development:
  asap_instance_name:
   asap_dev
+ local_asap_run_dir:
+  /srv/asap_run/srv
  docker_call:
 #  'docker run -ti -p 5434:5433 -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --rm --entrypoint "/bin/sh" -v /data/asap2:/data/asap2 fabdavid/asap_run'
   "docker run --network=asap2_asap_network -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2  -v /srv/asap_run/srv:/srv fabdavid/asap_run -c" 
  server_url:
-  https://asap.epfl.ch
+  https://asap-beta.epfl.ch
  data_dir:
   /data/asap2
  user_data_dir:

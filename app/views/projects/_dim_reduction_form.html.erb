@@ -1,0 +1,134 @@
+<%# @successful_runs.map{|r| r.id}.to_json %>
+<%# @runs.map{|r| r.id}.to_json %>
+<%# session[:dr_params].to_json %>
+<%# @filter_runs.to_json %>
+<%# session[:dr_params].to_json %>
+<%# @default_run_id.to_json %>
+<pre><%= @error %></pre>
+<%# session[:dr_params] %>
+<% success_runs = @successful_runs.select{|r| r.status_id == 3} %>
+<% if success_runs.size > 0 %> 
+<!--  <div id='nber_dims_switch' class="switch">
+    <label>
+      2D
+      <%# check_box_tag "check[nber_dims]" %>
+      <input id="check_nber_dims" type="checkbox" value="1"  <%# (session[:dr_params][@project.id][:nber_dims] == 3) ? 'checked' : '' %> />
+      <span class="lever"></span> 3D
+    </label>
+  </div>-->
+
+  <% l = StdMethod.where(:obsolete => false, :step_id => @step.id, :id => @h_std_method_ids.keys).all.map{|e| [e.label, e.id]} %>
+  <%# session[:dr_params][@project.id][:std_method_id].to_json %>
+  <%= select_tag 'plot[std_method_id]',  options_for_select(l, session[:dr_params][@project.id][:std_method_id]),  {:class => 'custom-select mr-4'} %>
+  <%#  @h_std_method_attrs.to_json %>
+  <%# success_runs.to_json %>
+  <% l = success_runs.map{|r| ["##{r.num} #{(step = @h_steps[r.step_id] and step.multiple_runs == false) ? step.label : ((std_method = @h_std_methods[r.std_method_id]) ? ((!params[:step_id]) ? (step.label + " ") : "") + std_method.label : 'NA')} #{display_run_attrs_txt(r, @h_attrs_by_run_id[r.id], @h_std_method_attrs)}", r.id]} %>
+  <%# @h_std_method_attrs.to_json %>
+  <%# @step_ids.to_json %>
+  <%# @h_dashboard_card.to_json %>
+  <%# l = @runs.select{|r| r.status_id == 3}.map{|r| [display_run_attrs_txt(r, JSON.parse(r.attrs_json), @h_std_method_attrs), r.id]}.to_json %>
+  <%= select_tag 'plot[run_id]', options_for_select(l, @default_run_id),  {:class => 'custom-select mr-4'} %>
+
+<!--  <button id='upd_plot_btn' type='button' class='btn btn-primary mr-4'>Select</button>-->
+
+  <div class="btn-group" role="group">
+    <button id='2d-btn' type="button" class="btn btn-<%= (session[:dr_params][@project.id][:nber_dims] == 3) ? 'secondary' : 'primary' %> nber_dims_btn">2D</button>
+    <button id='3d-btn' type="button" class="btn btn-<%= (session[:dr_params][@project.id][:nber_dims] == 3) ? 'primary' : 'secondary' %> nber_dims_btn">3D</button>
+  </div>
+  <%= hidden_field_tag "plot[nber_dims]", session[:dr_params][@project.id][:nber_dims] || 2 %>
+
+<%= javascript_tag do %>
+
+
+
+<% if params[:upd_plot] %>
+
+  var p = [
+            {'name' : 'plot[run_id]', 'value' : $("#plot_run_id").val()},
+            {'name' : 'nber_dims', 'value' : $("#plot_nber_dims").val()}
+          ] 
+  var h_opt = ($("#plot_options_window").hasClass("hidden")) ? {loading : 'fa-2x'} : {loading_full:"<div style='padding:30px'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'/> <span class='italic'>Loading data...</span></div>"}
+  refresh_post("plot_container", "<%= raw dr_plot_project_path(@project.key) %>", p, 'post', h_opt);
+
+<% end %>
+
+
+$("#plot_run_id").change(function(){
+ var h_opt = {loading : 'fa-2x'}
+ refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form', :upd_plot => 1) %>&run_id=" + $("#plot_run_id").val()  + "&nber_dims=" + $("#plot_nber_dims").val(), h_opt)
+})
+
+$("#plot_std_method_id").change(function(){
+var nber_dims = $("#plot_nber_dims").val();
+ var h_opt = {loading : 'fa-2x'}
+ refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form', :upd_plot => 1) %>&run_id=" + $("#plot_run_id").val() + "&std_method_id=" + $("#plot_std_method_id").val(), h_opt)
+})
+
+$(".nber_dims_btn").click(function(){
+   var nber_dims = (this.id == '2d-btn') ? 2 : 3
+ //  console.log(nber_dims + "d")
+   $("#plot_nber_dims").val(nber_dims)
+   var h_opt = {loading : 'fa-2x'}
+   refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form', :upd_plot => 1) %>&run_id=" + $("#plot_run_id").val()  + "&nber_dims=" + $("#plot_nber_dims").val(), h_opt)
+})
+
+$(".switch input").bootstrapSwitch({
+  // The checkbox state
+  state: <%= raw (session[:dr_params][@project.id][:nber_dims] == 2) ? "false" : "true" %>,
+  // null, 'mini', 'small', 'normal', 'large'
+  size: null,
+  // Enable animation
+  animate: false,
+  // Disabled
+  disabled: false,
+  // Readonly
+  readonly: false,
+  // Indeterminate state
+  indeterminate: false,
+  // Inverse switch direction
+  inverse: false,
+  // Allow this radio button to be unchecked by the user
+  radioAllOff: false,
+  // Color of the left side of the switch
+  onColor: 'default',
+  // Color of the right side of the switch
+  offColor: 'default',
+  // Text of the left side of the switch
+  onText: '&nbsp;',
+  // Text of the right side of the switch
+  offText: '&nbsp;',
+  // Text of the center handle of the switch
+  labelText: '&nbsp',
+  // Width of the left and right sides in pixels
+  handleWidth: 'auto',
+  // Width of the center handle in pixels
+  labelWidth: 'auto',
+  // Global class prefix
+  baseClass: 'bootstrap-switch',
+  // Container element class(es)
+  wrapperClass: 'wrapper',
+  // Callback function to execute on initialization
+  onInit: () => {
+<% if session[:dr_params][@project.id][:nber_dims] == 3 %>
+    $(this).state = true
+<% end %>
+        alert(this.state);
+     },
+  // Callback function to execute on switch state change.
+  // If false is returned, the status will be reverted, otherwise nothing changes
+  onSwitchChange: () => {
+   var s = this
+   var nber_dims = ($("#check_nber_dims").is(":checked")) ? 3 : 2
+   console.log(nber_dims + "d")
+   $("#plot_nber_dims").val(nber_dims)
+   refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form') %>&run_id=" + $("#plot_run_id").val()  + "&nber_dims=" + $("#plot_nber_dims").val(), {loading : 'fa-2x'})
+  }
+});
+
+<% end %>
+  
+<% else %>
+
+<div class='alert alert-warning'>No valid run to display</div>
+
+<% end %>

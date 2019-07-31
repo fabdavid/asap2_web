@@ -23,28 +23,40 @@ class ReqsController < ApplicationController
   def edit
   end
 
-  def add_runs list_of_runs, h_attr_values, attr_name
-
+  def add_runs list_of_runs, h_attr_values, attr_name #, applied_combinatorial_run_attrs
+    logger.debug("======== #{attr_name} ========")
+    logger.debug("LIST_OF_RUNS_attrs: " + list_of_runs.map{|e| e[1]}.to_json)
+    #    logger.debug("h_attr_values: " + h_attr_values.to_json)
     new_list_of_runs = []
     list_of_runs.each do |tmp_run|
-  #    logger.debug("bla: " +  tmp_run.to_json)
-      new_run = tmp_run[0].dup
-      new_h_attr_values = h_attr_values.dup
+      #    logger.debug("bla: " +  tmp_run.to_json)
+      #    new_run = tmp_run[0].dup
       ### each value
       h_attr_values[attr_name].each do |attr|
-  #      logger.debug("bli: " + attr.to_json)
+        #        logger.debug("bli: " + attr.to_json)
+        new_run = tmp_run[0].dup
+
+        ### light version works otherwise uncomment the heavy version (using applied_combinatorial_run_attrs)
+        new_h_attr_values = JSON.parse(new_run.attrs_json)
+        #  new_h_attr_values = h_attr_values.dup
+        #  h_tmp_attr = JSON.parse(new_run.attrs_json)
+        #  applied_combinatorial_run_attrs.each do |applied_attr_name|
+        #    new_h_attr_values[applied_attr_name]= h_tmp_attr[applied_attr_name]
+        #  end
         new_h_attr_values[attr_name] = attr
         new_run.attrs_json = new_h_attr_values.to_json
+        logger.debug("NEW_H_ATTR_VALUES: " + new_h_attr_values.to_json)
         new_list_of_runs.push([new_run, new_h_attr_values])
       end
     end
-
+    logger.debug("new_LIST_OF_RUNS_attrs: " + new_list_of_runs.map{|e| e[1]}.to_json)
+    #   logger.debug("NEW_LIST: #{attr_name} => #{new_list_of_runs.to_json}")
     return new_list_of_runs
   end
 
   def create_runs
 
-#    project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user.id.to_s + @project.key
+    project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user.id.to_s + @project.key
     
     ## create runs
     # {"input_matrix":{"run_id":"13","output_attr_name":"output_matrix"},"fit_model":"log"}
@@ -63,19 +75,25 @@ class ReqsController < ApplicationController
       tmp_h.each_key do |k|
         @h_cmd_params[k] = tmp_h[k]
       end
-      @h_global_params = JSON.parse(@step.method_attrs_json)
+
+      h_res = Basic.get_std_method_attrs(@std_method, @step)
+      @h_attrs = h_res[:h_attrs]
+      @h_global_params = h_res[:h_global_params]
       
-      @h_attrs = JSON.parse(@std_method.attrs_json)
-      ## complement attributes with global parameters - defined at the level of the step                                                                                                                           
-      @h_global_params.each_key do |k|
-        @h_attrs[k]={}
-        @h_global_params[k].each_key do |k2|
-          @h_attrs[k][k2] = @h_global_params[k][k2]
-        end
-      end
+#      @h_global_params = JSON.parse(@step.method_attrs_json)
+#      
+#      @h_attrs = JSON.parse(@std_method.attrs_json)
+#      ## complement attributes with global parameters - defined at the level of the step                                                                                                    #                       
+#      @h_global_params.each_key do |k|
+#        @h_attrs[k]={}
+#        @h_global_params[k].each_key do |k2|
+#          @h_attrs[k][k2] = @h_global_params[k][k2]
+#        end
+#      end
       
       combinatorial_run_attrs = @h_attrs.keys.select{|k|  @h_attrs[k]['combinatorial_runs'] == true and (h_attr_values[k] and h_attr_values[k].size > 0)}
       
+      now = Time.now
       ### call the function for each combinatorial_runs
       h_run = {
         :req_id => @req.id,
@@ -83,50 +101,111 @@ class ReqsController < ApplicationController
         :std_method_id => @std_method.id,
         :project_id => @project.id,
         :command_json => nil,
-        :attrs_json => nil,
+        :attrs_json => h_attr_values.to_json,
         :user_id => (current_user) ? current_user.id : 1,
         :num => nil,
         :pid => nil,
         :error => nil,
         :status_id => 1,
+        :submitted_at => now,
+        :created_at => now,
         :async => @h_cmd_params['async']
       }
-
+      
       list_of_runs = [[Run.new(h_run), {}]]
+      #      applied_combinatorial_run_attrs = []
       combinatorial_run_attrs.each do |attr_name|
         #   logger.debug("ble: " + list_of_runs.to_json)
-        list_of_runs = add_runs(list_of_runs, h_attr_values, attr_name)
+        list_of_runs = add_runs(list_of_runs, h_attr_values, attr_name) #, applied_combinatorial_run_attrs)
+        #        applied_combinatorial_run_attrs.push(attr_name)
       end
       
-      ### define num for each run after creation
-      last_run = Run.where(:project_id => @project.id).order(:id).last
-      i = (last_run) ? last_run.num : 1
+      ### add errors if runs already exists
+      list_already_existing_run_i = [] 
       list_of_runs.each_index do |run_i|
+        run = list_of_runs[run_i]
+        nber_existing_runs = Run.where(:project_id => @project.id, :step_id => @step.id, :std_method_id =>  @std_method.id, :attrs_json => run[0].attrs_json).count
+        if nber_existing_runs > 0
+          @h_errors[:already_existing]||=0
+          @h_errors[:already_existing]+=1
+          list_already_existing_run_i.push run_i
+        end
+      end
+      
+      ### delete already existing runs
+      list_of_runs2 = list_of_runs.reject.with_index { |e, run_i| list_already_existing_run_i.include? run_i } 
+
+      ### define num for each run after creation                                                                                                                               
+      last_run = Run.where(:project_id => @project.id, :step_id => @step.id).order(:id).last
+      i = (last_run) ? (last_run.num+1) : 1
+
+      ### write in files some parameters that take too much space and replace in db by a SHA2
+      step_dir = project_dir + @step.name
+      Dir.mkdir step_dir if !File.exist? step_dir
+      h_sha2= {}
+      h_sha2_values={}
+      list_of_runs2.each_index do |run_i|
+        run = list_of_runs2[run_i][0]
+        # output_dir = (@step.multiple_runs == true) ? (step_dir + run.id.to_s) : step_dir
+        #        Dir.mkdir output_dir if !File.exist? output_dir
+        @h_attrs.each_key do |k|
+          if filename = @h_attrs[k]['write_in_file']                                                                                                                                                                                     
+            h_run_attrs = JSON.parse(run.attrs_json)
+            sha2 = Digest::SHA2.hexdigest h_run_attrs[k]
+            
+            h_sha2[run_i] ||= {}            
+            h_sha2[run_i][k] = sha2
+            h_sha2_values[sha2] = h_run_attrs[k]
+            h_run_attrs[k] = sha2
+            list_of_runs2[run_i][0].attrs_json = h_run_attrs.to_json
+          end                                                                                                                                                                                                                            
+        end
+      end
+      
+      ### save runs
+      list_of_runs2.each_index do |run_i|
+        list_of_runs2[run_i][0].num = i
+        list_of_runs2[run_i][0].save
+        Basic.save_run list_of_runs2[run_i][0]
         i+=1
-        list_of_runs[run_i][0].num = i
-        #   logger.debug("blo: " + list_of_runs[run_i].to_json)
-        list_of_runs[run_i][0].save
+      end
+
+      ### write files corresponding to sha2
+      list_of_runs2.each_index do |run_i|
+        run = list_of_runs2[run_i][0]
+        output_dir = (@step.multiple_runs == true) ? (step_dir + run.id.to_s) : step_dir
+        Dir.mkdir output_dir if !File.exists? output_dir
+        if h_sha2[run_i]
+          h_sha2[run_i].each_key do |k|
+            sha2 = h_sha2[run_i][k]
+            filename = @h_attrs[k]['write_in_file']
+            filepath = output_dir + filename                                                             
+            File.open(filepath, 'w') do |f|                                                                                                                                  
+              f.write(h_sha2_values[sha2])                                                                        
+            end           
+          end
+        end
       end
       
       ### need to have the run_id to determine the output_dir and build the command
-      list_of_runs.each_index do |run_i|
-        run = list_of_runs[run_i][0]
+      list_of_runs2.each_index do |run_i|
+        run = list_of_runs2[run_i][0]
         h_p = {
           :project => @project,
-          :h_cmd_params => @h_cmd_params,
+          :h_cmd_params => @h_cmd_params.dup,
           :run => run,
-          :p => list_of_runs[run_i][1],
+          :p => list_of_runs2[run_i][1],
           :h_attrs => @h_attrs,
           :step => @step,
           :std_method => @std_method,
           :h_env => @h_env
         }
-        
-        h_res = Basic.set_run(h_p)
+        logger.debug("BLOUUUUU:" + h_p.to_json)
+        h_res = Basic.set_run(logger, h_p)
         
         if !h_res[:error]
-          ### init active_run
-          h_res = Basic.init_active_run(run)
+          #  ### init active_run -- OBSOLETE as active_run is created at the same time as run
+          #   h_res = Basic.init_active_run(run)
           
           if !h_res[:error] and run.async == false
             ## execute run
@@ -137,7 +216,7 @@ class ReqsController < ApplicationController
         ### update run status
         if h_res[:error]
           h_to_upd = {:status_id => 4}
-          Basic.upd_run(run, h_to_upd)
+          Basic.upd_run(@project, run, h_to_upd)
         end
         
       end
@@ -148,15 +227,31 @@ class ReqsController < ApplicationController
   # POST /reqs
   # POST /reqs.json
   def create
+
+    project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user.id.to_s + @project.key  
+    
     @req = Req.new(req_params)
     @req.project_id = @project.id
     
     @h_env = JSON.parse(@project.version.env_json)
     @std_method = @req.std_method
     @step = @req.step
-    
+ 
     @h_attrs = {}
+    @h_errors = {}
+    
     if @std_method and @step
+
+     # ## cell_filtering
+     # 
+     # if @step.id == 9
+     #   ## write list of filtered cells
+     #   filepath = project_dir + 'filtered_out_cells.txt'
+     #   File.open(filepath, 'w') do |f|
+     #     f.write(params[:req][:all_filtered])
+     #   end
+     # end
+
       h_global_params = JSON.parse(@step.method_attrs_json)
       
       @h_attrs = JSON.parse(@std_method.attrs_json)
@@ -168,27 +263,50 @@ class ReqsController < ApplicationController
           @h_attrs[k][k2] = h_global_params[k][k2]
         end
       end
+
+      #      ### apply write_in_file
+      #      @h_attrs.each_key do |k|
+      #        if filename = @h_attrs[k]['write_in_file']
+      #          filepath = project_dir + filename
+      #          File.open(filepath, 'w') do |f|
+      #             f.write(params[:attrs][k])
+      #          end
+      #        end
+      #      end
     end
     
     tmp_attrs = params[:attrs]
 
-    tmp_attrs.each_pair do |k, v|
-      if ["array", "hash"].include? @h_attrs[k]['req_data_structure']
-        tmp_attrs[k] = JSON.parse(v)
+    if tmp_attrs
+      tmp_attrs.each_pair do |k, v|
+        if @h_attrs[k]['req_data_structure'] and ["array", "hash"].include? @h_attrs[k]['req_data_structure']
+          tmp_attrs[k] = JSON.parse(v)
+        end
       end
     end
-    @req.attrs_json = tmp_attrs.to_json
+    @req.attrs_json = (tmp_attrs) ? tmp_attrs.to_json : "{}"
     @req.user_id = (current_user) ? current_user.id : 1
+
+    
 
     respond_to do |format|
       if @req.save
 
         create_runs()
-        format.json { render :json => {:status => 'success'}}
+        errors_txt = nil
+        list_errors = []
+        if @h_errors[:already_existing]
+          list_errors.push("#{@h_errors[:already_existing]} configuration#{(@h_errors[:already_existing] > 1) ? 's' : ''} #{(@h_errors[:already_existing] > 1) ? 'were' : 'was'} already launched, #{(@h_errors[:already_existing] > 1) ? 'they' : 'it'} are not added.")
+        end
+        if list_errors.size > 0
+          errors_txt = list_errors.join(" ")
+        end
+        
+        format.json { render :json => {:status => 'success', :errors => errors_txt}}
  #       format.html { redirect_to @req, notice: 'Req was successfully created.' }
  #       format.json { render :show, status: :created, location: @req }
       else
-        format.json { render :json => {:status => 'failed'}}
+        format.json { render :json => {:status => 'failed', :log =>  tmp_attrs.to_json}}
  #       format.html { render :new }
  #       format.json { render json: @req.errors, status: :unprocessable_entity }
       end
@@ -214,10 +332,12 @@ class ReqsController < ApplicationController
   # DELETE /reqs/1
   # DELETE /reqs/1.json
   def destroy
-    @req.destroy
-    respond_to do |format|
-      format.html { redirect_to reqs_url, notice: 'Req was successfully destroyed.' }
-      format.json { head :no_content }
+    if admin?
+      @req.destroy
+      respond_to do |format|
+        format.html { redirect_to reqs_url, notice: 'Req was successfully destroyed.' }
+        format.json { head :no_content }
+      end
     end
   end
 

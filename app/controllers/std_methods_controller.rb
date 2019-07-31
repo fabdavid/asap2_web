@@ -27,7 +27,7 @@ class StdMethodsController < ApplicationController
     @std_method = StdMethod.new(std_method_params)
 
     respond_to do |format|
-      if @std_method.save
+      if admin? and @std_method.save
         format.html { redirect_to @std_method, notice: 'Std method was successfully created.' }
         format.json { render :show, status: :created, location: @std_method }
       else
@@ -41,7 +41,7 @@ class StdMethodsController < ApplicationController
   # PATCH/PUT /std_methods/1.json
   def update
     respond_to do |format|
-      if @std_method.update(std_method_params)
+      if admin? and @std_method.update(std_method_params)
         format.html { redirect_to @std_method, notice: 'Std method was successfully updated.' }
         format.json { render :show, status: :ok, location: @std_method }
       else
@@ -54,10 +54,12 @@ class StdMethodsController < ApplicationController
   # DELETE /std_methods/1
   # DELETE /std_methods/1.json
   def destroy
-    @std_method.destroy
-    respond_to do |format|
-      format.html { redirect_to std_methods_url, notice: 'Std method was successfully destroyed.' }
-      format.json { head :no_content }
+    if admin?
+      @std_method.destroy
+      respond_to do |format|
+        format.html { redirect_to std_methods_url, notice: 'Std method was successfully destroyed.' }
+        format.json { head :no_content }
+      end
     end
   end
 
@@ -69,6 +71,7 @@ class StdMethodsController < ApplicationController
 
     # Never trust parameters from the scary internet, only allow the white list through.
     def std_method_params
-      params.fetch(:std_method).permit(:name, :label, :step_id, :description, :short_label, :program, :command_json, :link, :speed_id, :attrs_json, :attr_layout_json, :obj_attrs_json)
+      params.fetch(:std_method).permit(:name, :label, :step_id, :description, :short_label, :program, :command_json, 
+                                       :link, :speed_id, :attrs_json, :attr_layout_json, :obj_attrs_json, :obsolete)
     end
 end

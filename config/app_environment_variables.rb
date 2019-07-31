@@ -58,9 +58,9 @@ ENV['SMTP_ENABLE_STARTTLS_AUTO']=true
 
 # Not running Docker natively? Replace 'localhost' with your Docker Machine IP
 # address, such as: 192.168.99.100:3000
-ENV['ACTION_MAILER_HOST']='localhost:3000'
-ENV['ACTION_MAILER_DEFAULT_FROM']='you@gmail.com'
-ENV['ACTION_MAILER_DEFAULT_TO']='you@gmail.com'
+ENV['ACTION_MAILER_HOST']='mail.epfl.ch:25'
+ENV['ACTION_MAILER_DEFAULT_FROM']='noreply@epfl.ch'
+ENV['ACTION_MAILER_DEFAULT_TO']=''
 
 # Google Analytics universal ID. You should only set this in non-development
 # environments. You wouldn't want to track development mode requests in GA.

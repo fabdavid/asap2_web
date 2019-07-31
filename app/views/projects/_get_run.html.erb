@@ -1,0 +1,69 @@
+<div id='<%= @step.name %>_step_container'>
+<% if @step and @ps and @run %>
+ <div id='step_header_container'>
+  <%= render :partial => 'step_header_container' %>
+</div>
+
+ <% if params[:errors] %>
+ <div class='alert alert-danger'><%= params[:errors] %></div>
+ <% end %>
+
+ <% if  @step.description and ! @step.description.empty? %>
+ <div id='step-info_<%= @step.id %>' class='alert alert-info <%= (@ps.status_id) ? 'hidden' : '' %>'><%= raw @step.description %></div>
+ <% end %>
+ 
+ <p id="notice"><%= notice %></p>
+
+<%# @step.show_view_json %>
+
+<%# @layout.to_json %>
+<div id='show_run_<%= @run.id %>' class='run_container'>
+<% @layout.each do |vertical_el| %>
+ <%# @vertical_el.to_json %>
+<% if (!vertical_el['admin'] or admin?) %>
+<div class="vert_element row">
+ <% vertical_el["horiz_elements"].each do |horiz_element| %>
+  <% id = horiz_element['id'] %>
+  <div class="horiz_element <%= horiz_element['container_class'] %>">
+    <% if horiz_element['type'] == 'card' and (@h_el[id] or @h_outputs[horiz_element['output_name']]) %>
+     <div class="card <%= horiz_element['class'] %>">
+      <% if @h_el[id] %>
+      <% if @h_el[id][:card_header] %>
+        <div class="card-header"><%= @h_el[id][:card_header] %></div>
+       <% end %>
+       <div class="card-body"> 
+	 <%= @h_el[id][:card_body] %>
+       </div>
+      <% elsif horiz_element['partial'] and @h_outputs[horiz_element['output_name']] and (!horiz_element['admin'] or admin?)  %>
+        <%= render :partial => horiz_element['partial'], :locals => {:horiz_element => horiz_element} %>
+      <% else %>
+	 Not found element for <%= id %>
+       <% end %>
+     </div>
+    <% end %>
+  </div>
+ <% end %>
+</div>
+<% end %>
+<% end %>
+</div>
+<!--<% if admin? %>
+<div class="vert_element row">
+ <div class="horiz_element">
+<div class='card'>
+<div class='card-header'>
+Log
+</div>
+<div class='card-body'>
+<% output_json = @output_dir + "output.log" %>
+<% if File.exist?(output_json) %>
+<pre><%= File.read(output_json) %></pre>
+<% end %>
+</div>
+</div>
+</div>
+</div>
+<% end %>
+-->
+<% end %>
+</div>

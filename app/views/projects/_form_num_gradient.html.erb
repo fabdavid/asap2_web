@@ -1,0 +1,34 @@
+<% occ_key = ("occ_#{occ}").to_sym %>
+
+<div class='row'>
+  <div class='col-6' style='padding-top:5px'>Data type</div>
+  <% data_type = session[:dr_params][@project.id][occ_key][:data_type] %>
+  <% l = [['Gene expression', '1'], ['Numerical annotation', '2']] %>
+  <%= select_tag "opt[data_type_#{occ}]", options_for_select(l, data_type),  {:class => 'custom-select col-6 data_type'} %>
+</div>
+
+<div id='data_type_2_container_<%= occ %>' class='data_type_container_<%= occ %> row <%= (data_type == "1") ? "hidden" : "" %>'>
+  <div class='col-6' style='padding-top:5px'>Data source</div>
+  <% if @annot and @num_annots %>
+  <% l = @num_annots.map{|a| [a.name, a.id]} %>
+  <% l.unshift(["Select an annotation", '']) %>
+  <%= select_tag "opt[num_annot_id_#{occ}]", options_for_select(l, session[:dr_params][@project.id][occ_key][:num_annot_id] || ''), {:class => 'custom-select col-6 sel_num_annot_id'} %>
+  <% end %>
+  <div id='field_label_<%= occ %>' class='col-6' style='padding-top:5px'>Field</div>
+  <% if @annot %>
+  <% l = [] %>
+  <%= select_tag "opt[header_i_#{occ}]", options_for_select(l, session[:dr_params][@project.id][occ_key][:header_i] || ''), {:class => 'custom-select col-6 sel_header_i'} %>
+  <% end %>
+</div>
+
+<div id='data_type_1_container_<%= occ %>' class='data_type_container_<%= occ %> row <%= (data_type == "2") ? "hidden" : "" %>'>
+  <div class='col-6' style='padding-top:5px'>Data source</div>
+  <% l = @datasets.map{|d| [display_run_short_txt(d.run), d.id]} %>
+  <%# l.unshift(["Select a dataset", nil]) %>
+  <%= select_tag "opt[dataset_#{occ}]", options_for_select(l, session[:dr_params][@project.id][occ_key][:dataset_annot_id]), {:class => 'custom-select col-6 dataset'} %>
+  <div class='col-6' style='padding-top:5px'>Gene symbol / Ensembl ID</div>
+  <%= text_field_tag "gene_free_text_#{occ}", session[:dr_params][@project.id][occ_key][:gene_free_text] || '', {:class => 'custom-select col-6 gene_free_text'} %>
+  <div id='list_genes_container_<%= occ %>' class='list_genes_container'></div>
+  <div id="gene_selected_<%= occ %>"><%= session[:dr_params][@project.id][occ_key][:gene_selected] %></div>
+  <%= hidden_field_tag "opt[row_i_#{occ}]", session[:dr_params][@project.id][occ_key][:row_i] %>
+</div>

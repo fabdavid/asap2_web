@@ -1,0 +1,45 @@
+<p id="notice"><%= notice %></p>
+
+<div class='container'>
+<% if admin? %>
+<div class='float-right'>
+<%= link_to 'New Request', new_todo_path, {:class => 'btn btn-primary'} %>
+</div>
+<% end %>
+
+<h1>Development status</h1>
+
+<% l = TodoType.all.map{|e| [e.label.pluralize, e.id]} #[["Features", 1], [ "Bug fixes", 2]] %>
+<%= select_tag "todo_type_id", options_for_select(l, 1), {:class => 'form-control'} %>
+
+<div id='roadmap_container'></div>
+
+<!--<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <%# @todos.each do |todo| %>
+      <tr>
+        <td><%# link_to 'Show', todo %></td>
+        <td><%# link_to 'Edit', edit_todo_path(todo) %></td>
+        <td><%# link_to 'Destroy', todo, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <%# end %>
+  </tbody>
+</table>
+-->
+</div>
+
+<%= javascript_tag do %>
+
+$("#todo_type_id").change(function(){
+refresh("roadmap_container", "<%= raw get_roadmap_todos_path() %>?todo_type_id=" + $(this).val(), {loading: 'fa-2x'})
+})
+
+refresh("roadmap_container", "<%= raw get_roadmap_todos_path() %>?todo_type_id=" + $("#todo_type_id").val(), {loading: 'fa-2x'})
+
+<% end %>

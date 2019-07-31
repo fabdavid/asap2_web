@@ -1,55 +1,62 @@
 <% if @projects.size > 0 %>
+
 <table id='projects' class='job_list'>
   <thead>
     <tr>
-<% if admin? %>
+      <% if admin? %>
       <th>Key</th>
-<% end %>
+      <% end %>
       <th>Name</th>
       <th>Organism</th>
       <th>#cells</th>
       <th>#genes</th>
-      <th>Last step</th>
+      <!--      <th>Last step</th>
+		<th>Status</th>
+      <th>Duration</th>-->
       <th>Status</th>
-      <th>Duration</th>
       <th>Submitted (GMT)</th>
       <th>Updated (GMT)</th>
+      <th>Size</th>      
       <th>Owner</th>
       <th>Share</th>
-<% if admin? %>
+      
+      <% if admin? %>
       <th>User</th>
       <th>Sandbox?</th>
-<% end %>
-<% if current_user %>
+      <% end %>
+      <% if current_user %>
       <th>Public?</th>
-<% end %>
+      <% end %>
       <th></th>
-<% if current_user %>     
+      <% if current_user %>     
       <th></th>
-<% end %>
+      <% end %>
       <th></th>
     </tr>
   </thead>
-<!-- # "<i title='#{h_title[e]}' class='fa fa-" + e + "'></i>"  -->
+  <!-- # "<i title='#{h_title[e]}' class='fa fa-" + e + "'></i>"  -->
   <tbody>
     <% @projects.sort{|a, b| b.created_at <=> a.created_at}.each do |project| %>
-      <tr>
-<% if admin? %>
-        <td><%= project.key %></td>
-<% end %>
-        <td class='project_name' title='<%= project.name %>'><%= project.name %></td>
-        <td><%= @h_organisms[project.organism_id].short_name.capitalize %></td>
-	<td><%= project.nber_cells %></td>
-        <td><%= project.nber_genes %></td>
-        <td><%= ((step = project.step) ? step.label : 'NA') %></th>
-        <td><%= raw ((status = project.status) ? "<span class='badge badge-#{status.label}'>#{status.name}</span>" : 'NA') %></td>
-        <td><%= raw ((project.duration) ? (duration((project.status_id == 2) ? (Time.now - project.updated_at) : project.duration)) : '') %></td>
-        <td><%= raw display_date(project.created_at) %></td>
-        <td><%= raw display_date(project.updated_at) %></td>
-	<% final_user = (u = project.user and current_user) ? ((u.email == current_user.email) ? 'Me' : u.email) : 'NA' %>
-	<td title='<%= final_user %>'><%= final_user %></td>
-	<td>
-	  <% shares = project.shares %>
+    <tr>
+      <% if admin? %>
+      <td><%= project.key %></td>
+      <% end %>
+      <td class='project_name' title='<%= project.name %>'><%= project.name %></td>
+      <td><%= (@h_organisms[project.organism_id].short_name) ? @h_organisms[project.organism_id].short_name.capitalize : 'NA' %></td>
+      <td><%= project.nber_cols %></td>
+      <td><%= project.nber_rows %></td>
+      <td class='status_cell'>
+	<%= raw display_archive_status(@h_archive_statuses[project.archive_status_id]) %>
+	<% h_nber_runs = JSON.parse(project.nber_runs_json) %>
+	<div style='float:right;text-align:right'><%= raw h_nber_runs.keys.select{|sid| @h_statuses[sid.to_i] and h_nber_runs[sid]}.map{|sid| display_status_runs(@h_statuses[sid.to_i], h_nber_runs[sid]) + "<br/>"}.join(" ") %></div>
+      </td>
+      <td><%= raw display_date(project.created_at) %></td>
+      <td><%= (project.modified_at) ? raw(display_date(project.modified_at)) : 'NA' %></td>
+      <td><%= display_mem(([1, 2].include?(project.archive_status_id)) ? project.disk_size : project.disk_size_archived) %></td>
+      <% final_user = (u = project.user and current_user) ? ((u.email == current_user.email) ? 'Me' : u.email) : 'NA' %>
+      <td title='<%= final_user %>'><%= final_user %></td>
+      <td>
+	<% shares = project.shares %>
 	  <% if (current_user and u.email == current_user.email) or admin? %>
 	  <%= raw ((nb_shares = shares.size) > 0) ? ("<span title='" + shares.map{|s| s.email + "[" + [s.view_perm && 'V', s.analyze_perm && 'A', s.export_perm && 'E'].select{|e| e}.join(",") + "]"}.join(", ") + "'>Shared <span class='badge badge-info'>#{nb_shares}</span></span>") : "Not shared" %>
  <% elsif s = shares.select{|s| s.email == current_user.email}.first %>
@@ -74,14 +81,14 @@
 	  <%# else %>
 	  <%# button_to 'Upload', upload_form_project_path(project.key), {:class => 'btn btn-primary', :method => 'get'} %>
 	  <%# end %>
-</td>
-<% if current_user %>
+	</td>
+	<% if current_user %>
 <td> 
   <% clone_text = (current_user) ? 'Clone' : 'Clone to sandbox' %>
-	  <%= button_to clone_text, clone_project_path(project.key), {:class => 'btn btn-primary btn-sm', :method => 'get'} if project.project_steps.select{|ps| [1,2].include?(ps.status_id)}.size == 0 and exportable? project %>
- 	</td>
+  <%= button_to clone_text, clone_project_path(project.key), {:class => 'btn btn-primary btn-sm', :method => 'get'} if project.project_steps.select{|ps| [1,2].include?(ps.status_id)}.size == 0 and exportable? project %>
+</td>
 <% end %>
-        <td><%# button_to('Destroy', project_path(project.key), method: :delete, data: { confirm: 'Are you sure?' }, :class => 'btn btn-danger btn-sm') if current_user and current_user.id == project.user_id %>
+<td><%# button_to('Destroy', project_path(project.key), method: :delete, data: { confirm: 'Are you sure?' }, :class => 'btn btn-danger btn-sm') if current_user and current_user.id == project.user_id %>
 	  <% if (current_user and current_user.id == project.user_id) or admin? %>
 	  <button class='delete_item btn btn-danger btn-sm' id='delete_<%= project.key %>'>Delete</button>
           <% end %>

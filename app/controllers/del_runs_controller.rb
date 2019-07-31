@@ -27,7 +27,7 @@ class DelRunsController < ApplicationController
     @del_run = DelRun.new(del_run_params)
 
     respond_to do |format|
-      if @del_run.save
+      if admin? and @del_run.save
         format.html { redirect_to @del_run, notice: 'Del run was successfully created.' }
         format.json { render :show, status: :created, location: @del_run }
       else
@@ -41,7 +41,7 @@ class DelRunsController < ApplicationController
   # PATCH/PUT /del_runs/1.json
   def update
     respond_to do |format|
-      if @del_run.update(del_run_params)
+      if admin? and @del_run.update(del_run_params)
         format.html { redirect_to @del_run, notice: 'Del run was successfully updated.' }
         format.json { render :show, status: :ok, location: @del_run }
       else
@@ -54,10 +54,12 @@ class DelRunsController < ApplicationController
   # DELETE /del_runs/1
   # DELETE /del_runs/1.json
   def destroy
-    @del_run.destroy
-    respond_to do |format|
-      format.html { redirect_to del_runs_url, notice: 'Del run was successfully destroyed.' }
-      format.json { head :no_content }
+    if admin?
+      @del_run.destroy
+      respond_to do |format|
+        format.html { redirect_to del_runs_url, notice: 'Del run was successfully destroyed.' }
+        format.json { head :no_content }
+      end
     end
   end
 

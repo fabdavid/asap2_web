@@ -3,7 +3,7 @@ class Fu < ActiveRecord::Base
   belongs_to :project, :optional => true
 
   # Variables
-  FU_STATUSES = %w(new uploading uploaded)
+  FU_STATUSES = %w(new uploading uploaded downloaded)
 
   # Validations
   #  validates :name, presence: true
@@ -57,7 +57,7 @@ class Fu < ActiveRecord::Base
     
     filename = 'input_file'
     @valid_url = 0
-    if !env_url =~ /\A#{URI::regexp(['http', 'https', 'ftp'])}\z/
+    if !enc_url =~ /\A#{URI::regexp(['http', 'https', 'ftp'])}\z/
       enc_url = "http://" + enc_url
     end
     if enc_url =~ /\A#{URI::regexp(['http', 'https', 'ftp'])}\z/

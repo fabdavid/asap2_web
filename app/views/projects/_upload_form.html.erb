@@ -43,16 +43,16 @@
 <div class='form-group form-inline'>
 <%= label_tag 'attrs[delimiter]', "Delimiter", {'data-toggle' => "tooltip", 'title' => "Character delimiting the fields in the input text file."} %>
 <% l = [['Tabulation', "\t"], ['Space', " "], ['Semicolon', ";"], ['Comma', ',']] %>
-<%= select_tag 'attrs[delimiter]', options_for_select(l), {class: 'form-control'}  %>
+<%= select_tag 'attrs[delimiter]', options_for_select(l), {class: 'custom-select'}  %>
 
 <%= label_tag 'attrs[gene_name_col]', "Gene name column" %>
 <% l = [['First column', 0], ['None', 'NA'], ['Last column', -1]] %>
-<%= select_tag 'attrs[gene_name_col]', options_for_select(l), {class: 'form-control'}  %>
+<%= select_tag 'attrs[gene_name_col]', options_for_select(l), {class: 'custom-select'}  %>
 
 <%= label_tag 'attrs[skip_line]', "Number of lines to skip" %>
 <% l = (1 .. 50).to_a.map{|e| [e, e]} %>
 <% l.unshift(['None', '0']) %>
-<%= select_tag 'attrs[skip_line]', options_for_select(l, 0), {class: 'form-control'}  %>
+<%= select_tag 'attrs[skip_line]', options_for_select(l, 0), {class: 'custom-select'}  %>
 
 <br/>
 <%= check_box_tag 'attrs[has_header]', 1, {:checked => "checked"}  %> 

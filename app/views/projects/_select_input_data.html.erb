@@ -1,0 +1,2 @@
+<%= label_tag form_attr_name, attr['label'], {'data-toggle' => 'tooltip', 'title' => attr['description'], 'class' => horiz_element['label_class'] || 'col-md-6'} %>
+ <%= select_tag form_attr_name, options_for_select(l, @h_attrs[attr_name] || attr['default']), {class: 'form-control'} %>

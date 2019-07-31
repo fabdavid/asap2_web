@@ -1,21 +1,82 @@
-<button id='select_<%= attr_name %>_btn' type='button' class='btn btn-primary'>Select</button>
-<% if session[:input_data_attrs] and session[:input_data_attrs][attr_name] %>
-<div class='input_data_attrs'>
-  <% if session[:input_data_attrs][attr_name].size > 0 %>
-  <span class='nber_runs'><%= session[:input_data_attrs][attr_name].size %></span> datasets selected
-  <% form_attr_name = "attrs[" + attr_name + "]" %>
-<!--  <input id='attrs_<%= attr_name %>' type='hidden' name='form_attr_name' value='<%= session[:input_data_attrs][attr_name].to_json %>'>-->
-<%= hidden_field_tag  form_attr_name, session[:input_data_attrs][attr_name].to_json %>
+<%# raw @log %>
+<%# session[:input_data_attrs].to_json %>
+<button id='select_<%= attr_name %>_btn' type='button' class='btn btn-primary select_input_data-btn' <%= 'disabled' if @h_unavailable_inputs and @h_unavailable_inputs[attr_name] %>>Select</button>
+
+<% if @h_unavailable_inputs and unavailable_attr = @h_unavailable_inputs[attr_name] %>
+ <div class='alert alert-danger mt-4' style='width:100%'>
+   <p>  No existing dataset comply with these conditions:</p>
+   <ul id='list_valid_types_<%= attr_name %>'></ul>
+ </div>
+<% else %>
+ <% ida = session[:input_data_attrs][@project.id] %>
+ <%# if session[:input_data_attrs][@project.id] and session[:input_data_attrs][@project.id][@step.id.to_s] and session[:input_data_attrs][@project.id][@step.id.to_s][attr_name] %>
+ <div class='input_data_attrs'>
+  <% if ida and ida[@step.id.to_s] and ida[@step.id.to_s][attr_name] and ida[@step.id.to_s][attr_name].size > 0 %>
+   <span class='nber_runs'><%= ida[@step.id.to_s][attr_name].size %></span> dataset<%= (ida[@step.id.to_s][attr_name].size > 1) ? "s" : "" %> selected
+   <% form_attr_name = "attrs[" + attr_name + "]" %>
+   <%= hidden_field_tag  form_attr_name, ida[@step.id.to_s][attr_name].to_json %>
   <% else %>
-  <span class='badge badge-danger'>Please select <%= (attr['req_data_structure'] and attr['req_data_structure'] == 'array') ? 'one or several' : 'one' %></span>
+   <% if !attr['optional'] %> 
+    <span class='badge badge-danger'>Please select <%= (attr['req_data_structure'] and attr['req_data_structure'] == 'array' and attr['max_nber_items'] == 1) ? 'one' :  ((!attr['max_nber_items']) ? 'one or several' : "1 to #{attr['max_nber_item']}") %></span>
+   <% end %>
   <% end %>
 </div>
 <% end %>
 
 <%= javascript_tag do %>
+
+ function fill_dropdown(d, h_cats, default_val, add_complementary){
+  d.empty()
+  if (add_complementary){
+   d.append($("<option />").val("").text("Complementary"))
+  }
+  $.each(h_cats, function(k, v) {
+   console.log([k, v])
+   d.append($("<option />").val(k).text(k + " (" + v + " cells)"));
+  });
+ d.val(default_val)
+}
+
 $("#select_<%= attr_name %>_btn").click(function(){
-refresh("form_container", "<%= form_select_input_data_projects_path(:key => @project.key, :step_name => @step.name, :obj_id => @obj_inst.id , :attr_name => attr_name) %>", {loading : 'fa-2x'})
+refresh("form_container", "<%= form_select_input_data_projects_path(:key => @project.key, :step_id => @step.id, :attr_name => attr_name) %>&obj_id=" + $('#req_std_method_id').val(), {loading : 'fa-2x'})
 $("#ontop_window").removeClass("hidden")
 })
 
+<% if unavailable_attr and unavailable_attr[:valid_step_ids].size == 0 %>
+//alert("<%= raw unavailable_attr.to_json %>");
+var list_valid_types = <%= raw attr['valid_types'].to_json %>
+for (i= 0; i< list_valid_types.length; i++){
+ var list_text = []
+ for (j= 0; j< list_valid_types[i].length; j++){
+   list_text.push((h_types[list_valid_types[i][j]]) ? h_types[list_valid_types[i][j]].description : '-')
+  }
+ $("#list_valid_types_<%= attr_name %>").append("<li>" + list_text.join(" OR ") + "</li>")
+}
 <% end %>
+
+
+<% if attr_name == 'group_annot' and session[:input_data_attrs][@project.id][@step.id.to_s] and session[:input_data_attrs][@project.id][@step.id.to_s][attr_name] %>
+ <% if h = session[:input_data_attrs][@project.id][@step.id.to_s][attr_name].first %>
+//  alert("<%# raw  h[:output_dataset] %>")
+ <% group_annot = Annot.where(:project_id => @project.id, :name => h[:output_dataset]).first %>
+ <% if group_annot %>
+  var annot_categories = <%= raw group_annot.categories_json %>
+  var list_annot = []
+  $.each(annot_categories, function(k, v){ list_annot.push(k)});
+
+//var $dropdown = $("#attrs_group_comp");
+fill_dropdown($("#attrs_group_ref"), annot_categories, list_annot[0], false);
+fill_dropdown($("#attrs_group_comp"), annot_categories, list_annot[1], true);
+  <% end %>
+ <% end %>
+<% end %> 
+
+<% if action_name == 'set_input_data' %>
+ <%# reset dependent attributes %>
+ <% @dependent_attributes.each do |attr_name| %>
+  refresh("form-container_<%= attr_name %>", '<%= set_input_data_project_path(:key => @project.key) %>?attr_name=<%= attr_name %>&step_id=<%= @step.id %>&obj_id=<%= params[:obj_id] %>&list_attrs=', {loading:'fa-2x'})
+ <% end %>
+<% end %>
+
+<% end %>
+

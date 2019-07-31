@@ -1,0 +1,217 @@
+<div class='alert alert-warning'>Interactive cell filtering loads faster with Chrome with a huge number of cells.</div>
+
+<div class='card'>
+  <div class='card-body'>
+    <table>
+      <% @list_p.each do |e| %> <%# select{|e| @h_data[e[:name]]}.each do |e| %>
+      <tr id='param_row_<%= e[:name] %>'><td>Filter out cells that have <%= (e[:type] == :greater) ? 'MORE' : 'LESS' %> than</td><td><input id="<%= e[:name] %>_value" name="attrs[<%= e[:attr_name] %>]" value=<%= e[:threshold] %>  type="text" style="width:60px" class='filter_input'/> <%= e[:label] %></td></tr>
+      <% end %>
+    </table>
+  </div>
+</div>
+
+<input id='attrs_manually_discarded_cols' type="hidden" name="attrs[manually_discarded_cols]"/>
+<input id='attrs_nber_manually_discarded_cols' type="hidden" name="attrs[nber_manually_discarded_cols]"/>
+<input id='attrs_discarded_cols' type="hidden" name="attrs[discarded_cols]"/>
+<% parsing_run = Run.where(:project_id => @project.id, :step_id => 1).first %>
+<% h_run = {:run_id => parsing_run.id, :output_attr_name => "output_matrix",:output_filename => "parsing/output.loom", :output_dataset => "/matrix"} %>
+<%= hidden_field_tag 'attrs[input_matrix]', "[#{h_run.to_json}]" %>
+<!-- <button id='apply_filter_btn' class='btn btn-primary' type='button'>Apply</button> -->
+
+<%= javascript_tag do %>
+
+var t0 = performance.now();
+var h_discarded = {}
+
+var nber_cells = <%= @project.nber_cols %>
+
+<%# if @h_data_json %>
+// var h_data = <%# raw @h_data_json %>
+<%# else %>
+<%# raw @h_data.keys.select{|k| @h_data[k]}.map{|k| "#{k} :  convert_short_endians_to_array(uncompress(\"#{raw @h_data[k]}\"), #{raw @h_float[k].to_json})"}.join(", ") %>
+<%# raw @h_data.keys.select{|k| @h_data[k]}.map{|k| "#{k} : \"#{raw @h_data[k]}\""}.join(", ") %>
+var h_data = <%= raw (@h_data_json) ? @h_data_json : @h_data.to_json %>
+
+var all_p = <%= raw @list_p.map{|e| e[:name]}.to_json %>
+var list_p = Object.keys(h_data)
+var nber_layers = list_p.length
+
+// disable some parameters
+for(var i=0; i< all_p.length ; i++){
+ if (!h_data[all_p[i]]){
+  console.log("hide " + all_p[i] + "!")
+  $("#param_row_" + all_p[i]).addClass("hidden"); // .css({"display" : "none"})
+ }
+}
+
+<%# end %>
+
+//var nber_layers = <%= raw @h_data.keys.select{|k| @h_data[k]}.size %>
+
+//var list_p = <%= raw @h_data.keys.select{|k| @h_data[k]}.to_json %> 
+var h_float = <%= raw @h_float.to_json %> 
+
+// uncompress
+
+<%# @h_data.each_key do |k| %>
+//h_data.<%# k %> = convert_short_endians_to_array(uncompress(h_data.<%# k %>), <%# raw @h_float[k].to_json %>) )
+<%# end %>
+for (var i=0; i < list_p.length; i++){
+ k = list_p[i]
+ // if (navigator.userAgent.match(/Chrome/)){
+ // if (1==0){
+ //  if (1==1){  
+ // ALWAYS APPLY ZLIB COMPRESSION
+     h_data[k].values = convert_short_endians_to_array(uncompress(h_data[k].values), h_float[k])
+ //  }else{
+    // Tried another Base 64 decoder but not working
+   /*  tmp = actual = new Uint8Array(nber_cells)
+   base64Decode(h_data[k], tmp) */
+ // THIS IS THE SIMPLE PACKING VERSION (just below)
+ //   h_data[k].values = convert_short_endians_to_array(Base64.decode(h_data[k].values), h_float[k]) 
+ //  }
+ // }
+}
+
+var h_p = <%= raw @h_p.to_json %>
+
+var list_types = Object.keys(h_p)
+
+var list_p_greater = <%= raw @h_p[:greater].keys.to_json %> // Object.keys(h_p.greater)
+var list_p_lower = <%= raw @h_p[:lower].keys.to_json %>
+
+function changeCutoff(){
+
+
+
+   // discard cells that are associated with selected categories of a given cell annotation
+   h_manually_discarded = {}
+   h_discarded={}
+
+   // init from existing manully filtered cells
+   if ($("#attrs_manually_discarded_cols").val() != ''){
+    var existing = JSON.parse($("#attrs_manually_discarded_cols").val())
+    for(var i=0;i<existing.manually_discarded_cols.length;i++){
+     h_manually_discarded[existing.manually_discarded_cols[i]]=1
+    }
+   }
+   $('#list_of_cats input[type="checkbox"]').each(function(){
+    // If checkbox is checked
+    if(this.checked){
+     var t = this.id.split("_")
+     t.shift()
+     var cat = t.join("_")
+     //  console.log(h_cats)
+     for(var i=0; i<h_cats[cat].length;i++){
+      h_manually_discarded[h_cats[cat][i]]=1
+     }
+    }
+   })
+   list_manually_discarded = []
+   // from there we should at some point remove the selectedList and filteredList and only use positions (but means that we have to store the position in the selectOutData, customdata, and selectInData
+   for(var i=0; i< h_data['depth'].values.length; i++){
+    if(h_manually_discarded[i]){
+     list_manually_discarded.push(i)
+     h_discarded[i]=1
+    }
+   }
+
+
+ // do filtering from thresholds
+
+<% @h_p.each_key do |type| %>
+ //console.log("<%= type %>")
+ for (var i=0; i<list_p_<%= type %>.length; i++){
+  if (h_data[list_p_<%= type %>[i]]){
+   var threshold = $("#" + list_p_<%= type %>[i] + "_value").val()
+   //console.log("l -> " + list_p_<%= type %>[i])
+   l = h_data[list_p_<%= type %>[i]].values
+   //console.log(l)
+   for (var j=0; j<l.length; j++){
+    if (l[j] <%= raw (type == :lower) ? "<" : ">" %> threshold){ // h_p.<%= type %>[list_p_<%= type %>[i]].threshold){
+      h_discarded[j]= 1 //(!h_discarded[j]) ? 1 : h_discarded[j]+1
+    }
+   }
+  }
+ }
+
+<% end %>
+
+ // update html
+
+list_discarded =  Object.keys(h_discarded)
+
+/*console.log("nb_layers:" + nber_layers)
+ list_discarded = []
+ for (var j=0; j< nber_cells; j++){
+  if (h_discarded[j] == nber_layers){
+   list_discarded.push(j)
+  }
+ }
+*/
+// list_discarded =  Object.keys(h_discarded).filter(function(key){h_discarded[key]==<%= @h_data.values.compact.size %>})					
+
+   $("#attrs_discarded_cols").val(JSON.stringify({discarded_cols : list_discarded})).trigger("change")
+ $("#attrs_manually_discarded_cols").val(JSON.stringify({manually_discarded_cols : list_manually_discarded}))
+        $("#attrs_nber_manually_discarded_cols").val(list_manually_discarded.length)
+   filtered.innerHTML = "<span class=''>Discarded : " + list_discarded.length + "</span>";
+        manually_filtered.innerHTML = "<span class=''>Manually discarded : " + list_manually_discarded.length + "</span>";
+   result.innerHTML = "<span class=''>Selected : " + (nber_cells - list_discarded.length) + "</span>"; 
+
+}
+/*
+$("#apply_filter_btn").change(function(){
+changeCutoff()
+})
+*/
+
+$(".filter_input").change(function(){
+changeCutoff()
+})
+$(".filter_input").keyup(function(){
+changeCutoff()
+})
+
+
+changeCutoff()
+/*
+$("#discard_from_cat_btn").click(function(){
+changeCutoff()
+})
+*/
+
+$("#discard_from_cat_btn").css({"display" : "none"});
+$("#annot_categories").on("click", ".check_box_cat", function(){
+changeCutoff()
+})
+
+function resetCheckboxes(){
+ $('#list_of_cats input[type="checkbox"]').each(function(){
+    $(this).prop("checked", false)
+ })
+}
+
+function resetFilters(){
+        $("#attrs_manually_discarded_cols").val('');
+        resetCheckboxes()
+      changeCutoff()
+        return false;
+}
+
+function resetParams(){
+        $("#attrs_manually_discarded_cols").val('');
+        resetCheckboxes()
+	changeCutoff()
+        return false;
+}
+
+
+function sendValues(){
+        var form = document.getElementById("form");
+        form.submit();
+}
+
+var t1 = performance.now();
+console.log(t1-t0 + "ms")
+
+<% end %>

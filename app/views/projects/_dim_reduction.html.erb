@@ -1,0 +1,122 @@
+<% if @runs.size > 0 %>
+
+<div id='plot_options_window' class='card hidden'>
+  <div class='card-header'>
+    <div class='top-right-buttons'>
+      <span id='plot_options_close' class='pointer'>
+        <i class='fa fa-times-circle'></i>
+      </span>
+    </div>
+    Plot options
+  </div>
+  <div id='plot_options_content' class='card-body'>
+  </div>
+</div>
+
+<div id='plot_options_btn' class='btn btn-primary hidden'>Plot options</div>
+
+<%# session[:current_dashboard] %>
+
+<%= render :partial => 'filter_runs' %>
+
+<!--<div class="btn-group" role="group" aria-label="Basic example">
+  <button type="button" class="btn btn-secondary">2D</button>
+  <button type="button" class="btn btn-secondary">3D</button>
+</div>
+-->
+
+<%# .to_json %>
+<%#  @h_attrs_by_run_id.to_json %>
+<div id='dim_reduction_form_container' class='form-inline'>
+  <%= render :partial => 'dim_reduction_form' %>
+</div>
+
+<div id='plot_container'></div>
+
+<%= javascript_tag do %>
+
+<%# render :partial => "dim_reduction_js" %>
+
+var h_opt = ($("#plot_options_window").hasClass("hidden")) ? {loading : 'fa-2x'} : {loading_full:"<i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'>"}
+
+refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form', :upd_plot => 1) %>&run_id=" + $("#plot_run_id").val() + "&nber_dims=" + $("#plot_nber_dims").val(), h_opt)
+
+function place_plot_options_window(){
+
+  var w = $(window).width()
+  var ww = 600;
+
+//  $("#plot_options_window").removeClass("hidden")
+
+  $("#plot_options_window").animate({
+   'top' : 150,
+   'width' : ww,
+   'left' : w - ww,
+   'bottom' : 10
+  }, 200, function(){
+  })
+
+//  if (! $("#new_analysis_form").hasClass("hidden")){
+//   add_margin_step_container()
+//  }
+}
+
+
+$("#plot_options_close").click(function(){
+ var w = $(window).width()
+ var ww = 600;
+
+ plotly_graph.updatePlotWidth(w-300);
+ $( "#plot_options_window" ).addClass("hidden");
+ $( "#plot_options_window" ).animate({
+   'top' : 150,
+   'width' : ww,
+   'left' : w,
+   'bottom' : 10
+   }, 200, function() {
+   });
+
+})
+
+$("#plot_options_btn").click(function(){
+
+ var w = $(window).width()
+ var ww = 600;
+
+/*   $( "#step_container" ).animate({
+    'margin-right': ww
+   }, 200, function() {
+   });
+*/
+
+plotly_graph.updatePlotWidth(w-ww-300);
+
+//refresh("plot_options_content", "<%= raw get_dr_options_project_path(@project.key) %>?run_id=" + , {loading:"fa-2x"})
+
+ $("#plot_options_window" ).removeClass("hidden");
+ $("#plot_options_window" ).css({"display" : '' })
+ $("#plot_options_window" ).animate({
+   'top' : 150,
+   'width' : ww,
+   'left' : w - ww,
+   'bottom' : 10
+   }, 200, function() {
+   });
+
+});
+
+
+<% end %>
+
+<% else %>
+
+<!--<div class='badge badge-warning'>No run created yet</div> -->
+<div class="container-fluid">
+ <div id='card_new_analysis' class='card text-md-center col-md-4 centered-card'>
+    <div class='card-body'>
+      <button type='button' class='btn btn-primary btn-lg centered-card <%= @h_attrs['new_analysis_btn_class'] || 'new_job_popup' %>' <%= (@project.runs.select{|r| r.status_id == 3}.size == 0) ? "disabled='disabled'" : "" %>><i class='fa fa-plus'></i> New <%= @step.label.uncapitalize %></button>
+    </div>
+ </div>
+</div>
+<% end %>
+

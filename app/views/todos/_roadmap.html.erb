@@ -1,0 +1,71 @@
+<h4 class='mt-4'>Ongoing and To be done</h4>
+
+<div class="card-deck">
+ <% @todo_cards.each_index do |i| %>
+  <% card = @todo_cards[i] %>
+  <div id='<%= card[:card_id] %>' class="card card_std <%= card[:card_class] %> mb-4">
+    <div class="card-body">
+      <%= raw card[:body] %>
+    </div>
+    <% if card[:footer] %>
+    <div class="card-footer">
+      <%= raw card[:footer] %>
+    </div>
+    <% end %>
+  </div>
+  <% j = i+1 %>
+  <% end %>
+</div>
+
+<h4 class='mt-4'>Done</h4>
+
+<div class="card-deck">
+ <% @done_cards.each_index do |i| %>
+
+  <% card = @done_cards[i] %>
+  <div id='<%= card[:card_id] %>' class="card card_std <%= card[:card_class] %> mb-4">
+    <div class="card-body">
+      <%= raw card[:body] %>
+    </div>
+    <% if card[:footer] %>
+    <div class="card-footer">
+      <%= raw card[:footer] %>
+    </div>
+    <% end %>
+  </div>
+  <% j = i+1 %>
+  <% end %>
+</div>
+
+<%= javascript_tag do %>
+
+$(".thumb").click(function(){
+ if ($(this).is('[disabled=disabled]') == false){
+
+ var t = this.id.split("_");
+
+ var p = [];
+ p.push({'name' : 'todo_id', 'value' : t[1]});
+ p.push({'name' : 'add', 'value' : t[2]});
+
+ $.ajax({
+  url: "<%= add_del_thumb_todos_path %>",
+  type: "post",
+  data: p,
+  beforeSend: function(){
+  },
+  success: function(returnData){
+   $("#roadmap_container").empty();
+   $("#roadmap_container").html(returnData);
+   $("#roadmap_container").removeClass('hidden');
+  },
+  error: function(e){
+//   alert(e);
+  }
+ });
+
+}
+
+});
+
+<% end %>

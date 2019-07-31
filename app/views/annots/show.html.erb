@@ -1,0 +1,157 @@
+<div id='step_header_container'>
+  <%= render :partial => 'projects/step_header_container' %>
+</div>
+
+<div id='step_content'>
+  <p id="notice"><%= notice %></p>
+  
+
+<h4>Annotation <%= @annot.label || @annot.name %></h4>
+<div class='row mb-4'>
+  <div class='col-md-6 col-lg-5'>
+    <div class='card'>
+      <div class='card-header'>General info</div>
+      <div class='card-body'>
+	<table>
+	  <tr>
+	    <td>Annotation type</td><td><%= (@annot.dim == 1) ? 'Cell' : 'Gene' %></td>
+	  </tr><tr>
+	    <td>Data type</td><td><%= (dt = @annot.data_type) ? dt.name : 'NA' %></td>
+	  </tr><tr>
+	    <td>Number of cells</td><td><%= @annot.nber_cols %></td>
+	  </tr><tr>
+	    <td>Number of genes</td><td><%= @annot.nber_rows %></td>
+	  </tr><tr>
+	    <td>Produced by analysis</td><td><%= (run = @annot.run) ? display_run(run) : 'NA' %></td>
+	  </tr><tr>
+	    <td>Created by</td><td><%= (u = @annot.user) ? ((u == current_user) ? 'me' : u.email) : 'admin' %></td>
+	  </tr>
+	</table>
+      </div>
+    </div>
+  </div>
+  <div class='col-md-6 col-lg-7'>
+    <div class='card'>
+      <div class='card-header'>Access</div>
+      <div class='card-body'>
+	<p><button id='download_json' class='btn btn-primary' type='button'>Download JSON</button></p>
+	Programmatic Access
+	<pre><%= @cmd.gsub("#{@project_dir}", '$PROJECT_DIR').gsub("lib/ASAP.jar", "ASAP.jar") %></pre>
+      </div>
+    </div>
+  </div>
+  
+  <div style='clear:both'></div>
+</div>
+
+<% if categories_json = @annot.categories_json and !categories_json.empty? %>
+ <div class='card'>
+   <div class='card-header'>Categories</div>
+   <div class='card-body'>
+     <%= JSON.parse(categories_json).to_json %>
+   </div>
+ </div>
+<% end %>
+
+<div class='row'>
+
+<%#  @h_results['values'].to_json %>
+
+<% nber_cols = ((@annot.dim == 1) ? @annot.nber_cols : @annot.nber_rows) %>
+
+<div class='col-md-<%= (nber_cols == 1) ? '5' : '12' %> mb-4'>
+<div class='card'>
+  <div class='card-header'>Preview</div>
+  <div class='card-body'>
+    
+    <% if @h_results %>
+     <% nber_cols = ((@annot.dim == 1) ? @annot.nber_rows : @annot.nber_cols) %>
+     <% nber_shown_cols = (nber_cols > 10) ? 10 : nber_cols %>
+     <% rows = (@annot.dim == 1) ? @h_results['cells'] : @h_results['genes'] %>
+     <% limit = 100 %>
+     <% if rows and nber_cols %>
+      <% nber_rows = (rows.size < limit) ? rows.size : limit %>
+      <% total_nber_rows = rows.size %>
+       
+      <p>
+      <% if total_nber_rows > limit %>
+        First <%= limit %> rows over <%= total_nber_rows %>
+      <% else %>
+        List of <%= total_nber_rows %> values
+      <% end %>
+      </p>
+<p><%= (nber_cols != nber_shown_cols) ? "First #{nber_shown_cols} columns over #{nber_cols}" : "#{nber_cols} columns." %></p>
+   <% if @h_results['values'] %>
+      <table>
+      <thead>
+	<tr>
+	  <th>Index in Loom</th>
+	  <th><%= (@annot.dim == 1) ? 'Cell' : 'Gene' %></th>
+	  <% (0 .. nber_shown_cols-1).each do |i| %>
+	  <th>Value <%= (nber_cols == 1) ? '' : i+1 %></th>
+	  <% end %>
+	</tr>
+      </thead>
+      <tbody>
+       
+	<% (0 .. limit-1).each do |i| %>
+	<tr>
+	  <td><%= i %></td>
+	  <td><%= rows[i] %></td>
+	  <% if nber_cols == 1 %>
+	  <td><%= @h_results['values'][i] %></td>
+	  <% else  %>
+          <%# if @h_results['values'][i] %>
+	  <% (0 .. nber_shown_cols-1).each do |j| %> 
+	  <td>
+	    <%# (@annot.dim == 1) ? ((@h_results['values'][j]) ? @h_results['values'][j][i] : 'NA') : ((@h_results['values'][i]) ? @h_results['values'][i][j] : 'NA') %>
+	    <%= ((@h_results['values'][j]) ? @h_results['values'][j][i] : 'NA') %>
+	  </td>
+	  <% end %>
+          <%# end %>
+	  <% end %>
+	</tr>
+	<% end %>
+      </tbody>
+      </table>
+    <% end %>
+     <% else %>
+      rows : <%= raw @rows.to_json %>
+     nber_cols : <%= @nber_cols %>
+      <%# @h_results.to_json %>
+     <% end %>
+    
+    <% end %>
+  </div>
+</div>
+</div>
+
+<% if @annot.data_type_id != 2 and nber_cols == 1 %>
+<div class='col-md-7 mb-4'>
+  <div class='card'>
+    <div class='card-header'>Histogram</div>
+    <div class='card-body'>
+      <div id='plotly_histo'></div>
+    </div>
+  </div>
+</div>
+<% end %>
+</div>
+
+<%= javascript_tag do %>
+
+$("#download_json").click(function(){
+ window.location = '<%= extract_metadata_project_path(:key => @project.key, :annot_id => @annot.id) %>'
+})
+
+var trace = {
+    x: <%= raw @h_results['values'].to_json %>,
+    type: 'histogram',
+  };
+var data = [trace];
+Plotly.newPlot('plotly_histo', data);
+
+<% end %>
+
+<%# link_to 'Edit', edit_annot_path(@annot) %>
+<%# link_to 'Back', annots_path %>
