@@ -139,7 +139,7 @@ GEM
       terrapin (~> 0.6.0)
     pg (1.0.0)
     popper_js (1.14.3)
-    puma (3.12.0)
+    puma (3.12.2)
     rack (2.0.5)
     rack-protection (2.0.3)
       rack
@@ -277,7 +277,7 @@ DEPENDENCIES
   multipart-parser
   paperclip
   pg (~> 1.0)
-  puma (~> 3.11)
+  puma (~> 3.12)
   rack-timeout (~> 0.4)
   rails (~> 5.2.0)
   rails4-autocomplete
