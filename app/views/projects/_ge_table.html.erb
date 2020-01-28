@@ -1,0 +1,121 @@
+
+<%= render :partial => 'filter_runs' %>
+
+<% if @runs and @runs.size > 0 and @h_ge_filter %>
+
+<%# @headers.to_json %>
+<%# @h_stats.to_json %>
+
+<div class='form-inline mb-2'>
+  <div class='float-right mr-2 ml-2'>
+    FDR <=
+  </div>
+  <%= (analyzable? @project) ? text_field_tag('filter[fdr_cutoff]',  @h_ge_filter['fdr_cutoff'], {:class => 'form-control form-ge-filter'}) : @h_ge_filter['fdr_cutoff'] %>
+<!--  <div class='float-right mr-2 ml-2'>Fold change >=</div>
+  <%# (analyzable? @project) ? text_field_tag('filter[fc_cutoff]', @h_ge_filter['fc_cutoff'], {:class => 'form-control form-de-filter'}) : @h_ge_filter['fc_cutoff'] %>-->
+  <% if analyzable? @project %>
+   <div id='filter_btn' class='btn btn-primary ml-2'>Filter</div>
+  <% end %>
+</div>
+
+<%= @error %>
+
+<% if @h_std_method_attrs %>
+
+<table id='ge_table'>
+  <thead>
+    <th>Run ID</th>
+    <th>Label</th>
+    <th>Parameters</th>
+    <th>Up-regulated pathways</th>
+    <th>Down-regulated pathways</th>
+  </thead>
+  <tbody>
+    <% @runs.select{|run| run.status_id == 3}.each do |run| %>
+    <% h_attrs = (run.attrs_json) ? JSON.parse(run.attrs_json) : {} %>
+    <tr>
+      <td><%= run.id %></td>
+      <td><%= raw display_run2(run, @h_steps[run.step_id], @h_std_methods[run.std_method_id]) %></td>
+      <td><%= raw display_run_attrs(run, h_attrs, @h_std_method_attrs) %></td>
+      <td>
+        <% if @h_stats[run.id.to_s] and @h_stats[run.id.to_s]["up"] %>
+        <span id='up_<%= run.id %>' class='badge-nber_genesets pointer badge badge-<%= (@h_stats[run.id.to_s]["up"] > 0) ? "success" : "secondary" %>'><%= @h_stats[run.id.to_s]["up"] %> gene sets</span>
+        <% end %>
+      </td>
+      <td>
+        <% if @h_stats[run.id.to_s] and @h_stats[run.id.to_s]["down"] %>
+        <span id='down_<%= run.id %>' class='badge-nber_genesets pointer badge badge-<%= (@h_stats[run.id.to_s]["down"] > 0) ? "danger" : "secondary" %>'><%= @h_stats[run.id.to_s]["down"] %> gene sets</span>
+        <% end %>
+      </td>
+    </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<% end %>
+
+<%= javascript_tag do %>
+
+$("#ge_table").dataTable()
+
+$("#ge_table").on("click", ".badge-nber_genesets", function(){
+ var t = this.id.split("_")
+ var run_id = t[1]
+ var ge_type = t[0]
+ refresh("step_container", "<%= raw runs_path() %>/" + run_id + "/get_ge_geneset_list?type=" + ge_type, {loading:'fa-2x'})
+})
+
+$(".form-ge-filter").keyup(function(event){
+    if(event.keyCode == 13){
+       $("#filter_btn").click()
+    }
+})
+
+$("#filter_btn").click(function(){
+$(this).attr('disabled', 'disabled');
+ p = [
+  {'name' : 'type', 'value' : 'ge_results'},
+  {'name' : 'step_id', 'value' : '<%= @step.id %>'},
+//  {'name' : 'filter[fc_cutoff]', 'value' : $("#filter_fc_cutoff").val()},
+  {'name' : 'filter[fdr_cutoff]', 'value' : $("#filter_fdr_cutoff").val()}
+ ];
+  refresh_post("step_container", "<%= filter_ge_results_project_path(:key => @project.key) %>", p, 'post', {loading:'fa-2x', redirect:true});
+});
+
+ $("#ge_table").on("click", ".input_lineage", function(e){
+  var run_id = this.id.split("_")[2]
+  e.stopPropagation();
+  e.preventDefault();
+  $("#popup_window").removeClass("hidden")
+  //  $("#popup_container").html("bla!")
+  refresh("popup_container", "<%= get_lineage_project_path(:key => @project.key) %>?run_id=" + run_id, {loading: 'fa-2x'})
+  var w = $(window).width();
+  $("#popup_window").css({
+        left: 200,
+        width:w - 250,
+        top: e.pageY + 10
+    }).stop().show(100);
+ })
+
+$("#ge_table").on("click", ".show_link", function(){
+ var t = this.id.split("_")
+// alert("bla!")
+ $("#popup_window").css({display:'none'})
+ refresh("step_container", "<%= get_run_project_path(:key => @project.key, :nolayout => 1) %>&run_id=" + t[2], {loading: 'fa-2x loading-step'})
+})
+$(".run_card").mouseover(function(){
+ $(this).css("border-color", 'rgba(0,0,0,0.425)')
+})
+$(".run_card").mouseout(function(){
+ $(this).css("border-color", 'rgba(0,0,0,0.125)')
+})
+
+
+<% end %>
+
+<% else %>
+<% if session[:activated_filter][@project.id] == true and !@disable_filter %>
+<div class='alert alert-danger'>No runs found with selected filter criteria</div>
+<% end %>
+
+<% end %>

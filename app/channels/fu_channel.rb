@@ -1,8 +1,6 @@
 class FuChannel < ApplicationCable::Channel
-  def follow(data)
-    fu = Fu.find(data['fu_id'])
-    stream_from "fu_#{fu.id}"
-#    DirtyStatusChangeJob.perform_later project                                                                                                         
+  def subscribed
+      stream_from "fu_#{params[:fu_id]}"
   end
 
   def unfollow

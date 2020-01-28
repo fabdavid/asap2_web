@@ -74,10 +74,10 @@ class StepsController < ApplicationController
   
   # Never trust parameters from the scary internet, only allow the white list through.
   def step_params
-    params.fetch(:step).permit(:obj_name, :name, :label, :description, :rank, 
+    params.fetch(:step).permit(:obj_name, :name, :label, :description, :warnings, :rank, 
                                :multiple_runs, :attrs_json, :method_attrs_json, :output_json, 
                                :command_json, :has_std_dashboard, :has_std_view, :has_std_form,
-                               :dashboard_card_json, :show_view_json, :hidden
+                               :dashboard_card_json, :show_view_json, :hidden, :group_name
                                )
   end
   

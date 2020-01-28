@@ -1,0 +1,2 @@
+class HcaoNamespace < ApplicationRecord
+end

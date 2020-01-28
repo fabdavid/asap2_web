@@ -86,7 +86,7 @@
               </p>
             </div>
           </div>
-	  <% if analyzable?(@project) and owner?(@project) %>
+	  <% if analyzable?(@project) and owner_or_admin?(@project) %>
           <div id="visualization_button" class='center-block btn btn-primary' style="width: 100px;">Plot</div>
 	  <% end %>
         </div>

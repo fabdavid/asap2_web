@@ -1,0 +1,157 @@
+<div class='float-right'><button id='refresh_view-btn' type='button' class='btn btn-success hidden'>Refresh</button></div>
+<h5>Markers</h5>
+
+<%# @res.to_json %>
+<%# @error %>
+<%# @log %>
+<%# @successful_ge_runs.map{|r| r.to_json}.join(", ") %>
+
+<% if @l %>
+
+<%= select_tag 'analysis_type', options_for_select(@l, ((@list_runs) ? @list_runs.map{|e| e.id}.join(",") : '')), {:class => 'form-control mb-2'} %>
+
+<% end %>
+
+<% if @res and @res.size > 0 %>
+
+<table id='de-markers_table'>
+  <thead>
+    <th>Run</th>
+    <th>Cluster ID</th>
+    <th>Top10 up-regulated genes</th>
+    <th>Top10 down-regulated genes</th>
+    <th>Cluster name</th>
+    <th>Edited by</th>
+  </thead>
+  <tbody>
+    <% @res.each_index do |i| %>
+     <% t = @res[i] %>
+     <% annot_id = @h_annots_by_run_id[t[5]].id %>
+    <tr>
+      <td><%= t[0] %></td>
+      <td><span id='cat-name_<%= annot_id %>_<%= i %>'><%= t[1] %></span></td>
+      <td>
+	<%= raw t[2].map{|e| "<span id='ensembl-gene_#{e[1]}' class='ensembl_gene pointer badge badge-success' title='#{e[1]}'>" + e[2] + "</span>"}.join(" ") %>
+	<%# raw t[4].to_json %>
+	<br/>	
+	<%# raw t[4].map{|e| "<span id='geneset_#{e[0]}' class='ensembl_gene pointer badge badge-light' title='#{e[0]}'>" + e[0] + ": " + e[1] + "</span>"}.join(" ") %>
+	<% if t[4] %>
+	<% t[4].each do |e| %>
+	<span id='geneset-run_<%= e[0] %>_up' class='badge badge-light'>
+	  Enrichment #<%= @h_ge_runs[e[0]].num %> 
+	  <%= @h_gene_sets[e[1]['gene_set_id'].to_i].label %> 
+	  <span class='badge badge-<%= (@h_filtered_stats[e[0].to_s]['up'] == 0) ? 'secondary' : 'success' %>'>
+	    <%= @h_filtered_stats[e[0].to_s]['up'] %>
+	  </span>
+	</span>
+	<% end %>
+	<% end %>
+      </td>
+      <td>
+	<%= raw t[3].map{|e| "<span id='ensembl-gene_#{e[1]}' class='ensembl_gene pointer badge badge-danger' title='#{e[1]}'>" + e[2] + "</span>"}.join(" ") %>
+	<br/>	
+	<%# raw t[5].map{|e| "<span id='geneset_#{e[0]}' class='ensembl_gene pointer badge badge-light' title='#{e[0]}'>" + e[0] + ": " + e[1] + "</span>"}.join(" ") %>
+	<% if t[4] %>
+	<% t[4].each do |e| %>
+        <span id='geneset-run_<%= e[0] %>_down' class='badge badge-light'>
+          Enrichment #<%= @h_ge_runs[e[0]].num %>
+          <%= @h_gene_sets[e[1]['gene_set_id'].to_i].label %>
+          <span class='badge badge-<%= (@h_filtered_stats[e[0].to_s]['down'] == 0) ? 'secondary' : 'danger' %>'>
+            <%= @h_filtered_stats[e[0].to_s]['down'] %>
+          </span>
+        </span>
+        <% end %>
+	<% end %>
+      </td>
+      <td>
+        <button id='cat-alias_edit-btn_<%= annot_id %>_<%= i %>' class='float-right cat-alias_edit-btn btn btn-sm btn-outline-secondary'>
+          <i class='fa fa-edit'/>
+        </button>
+	<%# @h_cat_aliases[9686].to_json %><%# t[5] %>
+        <input type='text' id='cat-alias_edit_<%= annot_id %>_<%= i %>' class='hidden form-control cat-alias_edit' value='<%= (@h_cat_aliases[t[5]]['names']) ? @h_cat_aliases[t[5]]['names'][t[1]] : '' %>'/>
+        <span id='cat-alias_<%= annot_id %>_<%= i %>'><%= (@h_cat_aliases[t[5]]['names']) ? @h_cat_aliases[t[5]]['names'][t[1]] : '' %></span>
+      </td>
+      <td>
+	<%= (@h_cat_aliases[t[5]]['users_ids'] and @h_cat_aliases[t[5].to_s]['user_ids'][t[1]] != current_user.id) ? @h_users[@h_cat_aliases[t[5]]['user_ids'][t[1]]].email : "me" %>
+      </td>
+    </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<% else %>
+
+<% if session[:activated_filter][@project.id] == true and !@disable_filter %>
+<div class='alert alert-danger'>No clusters found with selected filter criteria</div>
+<% else %>
+<div class='alert alert-danger'>No clusters found</div>
+<% end %>
+
+<% end %>
+
+<%= javascript_tag do %>
+
+$(".ensembl_gene").click(function(e){
+ var ensembl_id = this.id.split("_")[1]
+ var w = $(window).width()
+ var ww = 600
+  $("#popup_window").css({
+        left: (w-e.pageX > ww) ? (e.pageX + 10) : w-ww+10,
+        width:ww,
+        top: e.pageY + 10
+  }).stop().show(100);
+ refresh("popup_container", "<%= search_genes_path() %>?ensembl_id=" + ensembl_id, {loading:true})
+})
+
+$("#de-markers_table").dataTable()
+
+$("#analysis_type").click(function(){
+ refresh('step_container', '<%= raw get_step_project_path(:key => @project.key, :step_id => 6, :no_layout => 1) %>&de_markers_run_id=' + $(this).val().split(",")[0], {loading:'fa-2x'})
+})
+
+$("#refresh_view-btn").click(function(){
+ refresh('step_container', '<%= raw get_step_project_path(:key => @project.key, :step_id => 6, :no_layout => 1) %>&de_markers_run_id=' + $(this).val().split(",")[0], {loading:'fa-2x'})
+})
+
+function upd_cat_alias(annot_id, cat_i){
+ var p = [
+  {name : 'annot_id', value : annot_id}, //$("#opt_cat_annot_id").val()},
+  {name : 'cat_i', value : cat_i},
+  {name : 'cat_name', value : $("#cat-name_" + annot_id + "_" + cat_i).html()},
+  {name : 'cat_alias', value : $("#cat-alias_edit_" + annot_id + "_" + cat_i).val()}
+ ]
+ refresh_post(null, "<%= upd_cat_alias_project_path(:key => @project.key) %>", p, 'post', {loading:'fa-2x'})
+}
+
+$("#de-markers_table").on("click", ".cat-alias_edit-btn", function(){
+ var t = this.id.split("_")
+ var annot_id = t[2]
+ var id = t[3]
+ $("#cat-alias_edit_" + annot_id + "_" + id).removeClass("hidden")
+ $(this).addClass("hidden")
+ $("#cat-alias_" + annot_id + "_" + id).addClass("hidden")
+ console.log("#cat-alias_edit_" + annot_id + "_" + id)
+ $("#cat-alias_edit_" + annot_id + "_" + id).focus()
+})
+
+$("#de-markers_table").on("blur", ".cat-alias_edit", function(){
+ var t = this.id.split("_")
+ var annot_id = t[2]
+ var id = t[3]
+ $("#cat-alias_edit-btn_" + annot_id + "_" + id).removeClass("hidden")
+ $(this).addClass("hidden")
+ $("#cat-alias_" + annot_id + "_" + id).removeClass("hidden")
+})
+
+$("#de-markers_table").on("keyup", ".cat-alias_edit", function(e){
+ console.log(e.key)
+ if (e.key == 'Enter'){
+//  alert("bla")
+  var t = this.id.split("_")
+  var i = t[3]
+  var annot_id = t[2]
+  upd_cat_alias(annot_id, i)
+ }
+})
+
+<% end %>

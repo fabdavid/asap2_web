@@ -5,24 +5,40 @@
 <div id='step_content'>
   <p id="notice"><%= notice %></p>
   
-
-<h4>Annotation <%= @annot.label || @annot.name %></h4>
+<% if @annot.dim %>
+<h4>
+  <% if @annot.dim == 3 %> 
+  Expression matrix 
+  <% else %>
+  Annotation
+  <% end %>
+  <%= @annot.label || @annot.name %>  
+</h4>
 <div class='row mb-4'>
   <div class='col-md-6 col-lg-5'>
     <div class='card'>
       <div class='card-header'>General info</div>
       <div class='card-body'>
 	<table>
+	  <% if @annot.dim !=3 %>
 	  <tr>
 	    <td>Annotation type</td><td><%= (@annot.dim == 1) ? 'Cell' : 'Gene' %></td>
-	  </tr><tr>
+	  </tr>
+	  <% end %>
+	  <tr>
 	    <td>Data type</td><td><%= (dt = @annot.data_type) ? dt.name : 'NA' %></td>
 	  </tr><tr>
 	    <td>Number of cells</td><td><%= @annot.nber_cols %></td>
 	  </tr><tr>
 	    <td>Number of genes</td><td><%= @annot.nber_rows %></td>
 	  </tr><tr>
-	    <td>Produced by analysis</td><td><%= (run = @annot.run) ? display_run(run) : 'NA' %></td>
+	    <td>Produced by analysis</td><td>
+	      <% if run = @annot.run %>
+	      <span id='show_run_<%= run.id %>' class='show_link pointer'><%= raw display_run2(run, run.step, run.std_method) %><i class='fa fa-arrow-circle-right'></i></span>
+	      <% else %>
+	      NA
+	      <% end %>
+	    </td>
 	  </tr><tr>
 	    <td>Created by</td><td><%= (u = @annot.user) ? ((u == current_user) ? 'me' : u.email) : 'admin' %></td>
 	  </tr>
@@ -34,9 +50,17 @@
     <div class='card'>
       <div class='card-header'>Access</div>
       <div class='card-body'>
-	<p><button id='download_json' class='btn btn-primary' type='button'>Download JSON</button></p>
-	Programmatic Access
+	<% if @annot.dim != 3 %>
+	<b>Download</b>
+	<p>
+	  <button id='download_json' class='btn btn-primary' type='button'>JSON</button>
+	  <button id='download_text' class='btn btn-primary' type='button'>Tab-separated</button>
+	</p>
+	<% end %>
+	<b>Programmatic Access</b>
+	<% if @cmd %>
 	<pre><%= @cmd.gsub("#{@project_dir}", '$PROJECT_DIR').gsub("lib/ASAP.jar", "ASAP.jar") %></pre>
+	<% end %>
       </div>
     </div>
   </div>
@@ -114,10 +138,11 @@
 	<% end %>
       </tbody>
       </table>
-    <% end %>
+   <% end %>
      <% else %>
-      rows : <%= raw @rows.to_json %>
-     nber_cols : <%= @nber_cols %>
+     No results available.
+    <!--  rows : <%= raw @rows.to_json %>
+     nber_cols : <%= @nber_cols %>-->
       <%# @h_results.to_json %>
      <% end %>
     
@@ -141,8 +166,13 @@
 <%= javascript_tag do %>
 
 $("#download_json").click(function(){
- window.location = '<%= extract_metadata_project_path(:key => @project.key, :annot_id => @annot.id) %>'
+ window.location = '<%= extract_metadata_project_path(:key => @project.key, :annot_id => @annot.id, :format => 'json') %>'
 })
+$("#download_text").click(function(){
+ window.location = '<%= extract_metadata_project_path(:key => @project.key, :annot_id => @annot.id, :format => 'text') %>'
+})
+
+<% if @annot.data_type_id != 2 and nber_cols == 1 %>
 
 var trace = {
     x: <%= raw @h_results['values'].to_json %>,
@@ -153,5 +183,20 @@ Plotly.newPlot('plotly_histo', data);
 
 <% end %>
 
+$(".show_link").click(function(){
+ var t = this.id.split("_")
+// alert("bla!")
+ $("#popup_window").css({display:'none'})
+ refresh("step_container", "<%= get_run_project_path(:key => @project.key, :nolayout => 1) %>&run_id=" + t[2], {loading: 'fa-2x loading-step'})
+})
+
+<% end %>
+
 <%# link_to 'Edit', edit_annot_path(@annot) %>
 <%# link_to 'Back', annots_path %>
+
+<% else %>
+
+Undefined annotation type
+
+<% end %>

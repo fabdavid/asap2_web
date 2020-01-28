@@ -1,19 +1,23 @@
 class ApplicationController < ActionController::Base
   protect_from_forgery with: :exception, prepend: true
 
-  helper_method :admin?, :authorized?, :read_only?, :readable?, :analyzable?, :analyzable_item?, :clonable?, :downloadable?, :editable?, :exportable?, :exportable_item?, :owner?
+  helper_method :admin?, :authorized?, :read_only?, :readable?, :analyzable?, :analyzable_item?, :clonable?, :downloadable?, :editable?, :exportable?, :exportable_item?, :owner?, :owner_or_admin?
   before_action :init_session
 
   def admin?
-    current_user and ['bbcf.epfl@gmail.com'].include?(current_user.email)
+    current_user and APP_CONFIG[:admin_emails].include?(current_user.email)
   end
 
   def authorized?
     (current_user and @project and current_user.id == @project.user_id) or (@project and @project.sandbox == true and session[:sandbox] == @project.key) or admin?
   end
 
-  def owner? p
+  def owner_or_admin? p
      admin? or (p and ((!current_user and (p.sandbox == true and session[:sandbox] == p.key))) or (current_user and p.user_id == current_user.id))
+  end
+
+  def owner? p
+     (p and ((!current_user and (p.sandbox == true and session[:sandbox] == p.key))) or (current_user and p.user_id == current_user.id))
   end
 
   def read_only? p
@@ -65,8 +69,6 @@ class ApplicationController < ActionController::Base
     session[:sandbox]||=create_key()   
     session[:settings]||={:limit => 5, :public_limit => 5, :free_text => '', :public_free_text => ''}
   end
-
-   
 
 #def create_job(o, step_id, project, job_id_key, speed_id = 1)
   #  h = {:project_id => project.id, :step_id => step_id,  :status_id => 1, :speed_id => speed_id}

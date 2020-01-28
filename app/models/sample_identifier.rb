@@ -1,0 +1,2 @@
+class SampleIdentifier < ApplicationRecord
+end

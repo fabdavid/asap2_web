@@ -1,0 +1,17 @@
+<%= form_with(model: hcao_namespace, local: true) do |form| %>
+  <% if hcao_namespace.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(hcao_namespace.errors.count, "error") %> prohibited this hcao_namespace from being saved:</h2>
+
+      <ul>
+      <% hcao_namespace.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

@@ -1,4 +1,30 @@
 Rails.application.routes.draw do
+  resources :exp_entries do 
+      member do
+      get :summary
+    end
+  end
+  resources :provider_projects
+  resources :providers
+  resources :journals
+  resources :articles do
+    member do
+      get :summary
+    end
+  end
+  resources :identifier_types
+  resources :sample_identifiers
+  resources :geo_entries do
+    member do
+      get :summary
+    end
+  end
+  resources :hca_projects
+  resources :hcao_namespaces
+  resources :hcao_terms
+  resources :ensembl_subdomains
+  resources :tmp_genes
+  resources :gene_set_items
   resources :archive_statuses
   resources :fos
   resources :todo_types
@@ -12,6 +38,7 @@ Rails.application.routes.draw do
   resources :annots do
     member do
       get :get_cats
+      get :get_cat_details
     end
     collection do
     end
@@ -21,7 +48,12 @@ Rails.application.routes.draw do
   resources :del_runs
   resources :active_runs
   resources :reqs
-  resources :runs
+  resources :runs do
+    member do
+      get :get_de_gene_list
+      get :get_ge_geneset_list
+    end
+  end
   resources :supports
   resources :std_methods
   resources :std_runs
@@ -40,6 +72,7 @@ Rails.application.routes.draw do
   resources :imputation_methods
   resources :genes do
     collection do
+      get :search
       get :autocomplete
     end
   end
@@ -119,11 +152,17 @@ Rails.application.routes.draw do
       get :get_cart
       get :form_select_input_data
       post :hca_preview
+      get :hca_projects
       post :hca_download
     end
     member do
+      post :set_public
       get :get_commands
       get :form_new_analysis
+      get :form_new_metadata
+      post :save_metadata_from_selection
+      post :upd_cat_alias
+      post :upd_sel_cats
       post :broadcast_on_project_channel
       get :live_upd
       get :parse_form
@@ -142,6 +181,7 @@ Rails.application.routes.draw do
       get :get_attributes
       get :get_attribute
       get :set_input_data
+      get :set_geneset
       get :get_visualization
       get :get_dim_reduction_form
       post :dr_plot
@@ -150,12 +190,15 @@ Rails.application.routes.draw do
       get :extract_row
       get :get_rows
       get :extract_metadata
+      post :filter_de_results
+      post :filter_ge_results
       get :clone
       post :delete_all_runs_from_step
       get :confirm_delete_all
       post :replot
  #     get :summary
       get :get_clusters
+      post :cluster_comparison
       get :get_selections
       get :set_viz_session
       post :delete_batch_file
@@ -169,6 +212,7 @@ Rails.application.routes.draw do
   resources :jobs
 
   match '/roadmap' => 'todos#index', :via => [:get]
+  match 'hca_projects' => 'projects#hca_projects', :via => [:get]
 
   root 'projects#index'
 

@@ -41,7 +41,7 @@ class ProjectBroadcastJob < ApplicationJob
     if step.name == 'parsing'
       if parsing_job_id = project.parsing_job_id
         parsing_job = Run.where(:project_id => project.id, :step_id => step_id).first
-        h_res[:parsing_status_id] = parsing_job.status_id
+        h_res[:parsing_status_id] = parsing_job.status_id #(parsing_job) ? parsing_job.status_id : 1
       end
     else ## update the nbers
       [1, 2, 3, 4, 5].each do |status_id|

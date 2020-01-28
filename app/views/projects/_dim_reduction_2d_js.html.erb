@@ -7,14 +7,32 @@ function Graph(config){
 	this.json = config.json;
 	this.selectData = [];
 	this.groupData = [];
-	this.defaultConf = { modeBarButtonsToRemove: ["hoverClosest3d","sendDataToCloud", "toggleSpikelines", "hoverClosestCartesian", "hoverCompareCartesian"],
+	this.defaultConf = { modeBarButtonsToRemove: ["hoverClosest3d","sendDataToCloud", "toggleSpikelines", "hoverClosestCartesian", "hoverCompareCartesian", "toImage"],
+           modeBarButtonsToAdd: [
+            {
+             name: 'Save PNG',
+             icon: Plotly.Icons.camera,
+             click: function(gd) {
+             Plotly.downloadImage(gd, {format: 'png', height:400,width:800})
+            }
+           },
+           {
+            name: 'Save SVG',
+            icon: Plotly.Icons.camera,
+            click: function(gd) {
+            Plotly.downloadImage(gd, {format: 'svg'})
+           }
+          }],
+
 			     displaylogo: false,
-			     displayModeBar: true,
+                             displayModeBar: true,
 			     showLink: false,
 			     doubleClick: 'reset+autosize',
 			     showTips: false };
 
 	this.layout = {
+             hovermode: 'closest',
+             dragmode:'lasso',
              height : h-150,
              //             width: 'w-300,
              width : (($("#plot_options_window").hasClass("hidden")) ? w-300 : w-900),
@@ -59,8 +77,8 @@ function Graph(config){
 	this.prepare			= function(){
 								var c = this.config;
 								this.data = [this.getTrace(this.json[c.x_json],this.json[c.y_json],c.text_vector,c.text_vector,this.config.color,null)];
-                                                                console.log("data")
-                                                                console.log(this.data)
+                                                               // console.log("data")
+                                                               // console.log(this.data)
 								this.draw();
 							};
 	this.draw				= function(){
@@ -99,11 +117,100 @@ function Graph(config){
          this.layout.width = width
          this.draw()
         };
+
+        this.addClusterShapes = function(){
+         var o = this.config;
+         var rows = conf2D.quant_vector;
+    console.log("first_row_length:" + rows[0].length)
+ //        alert("add shapes")
+         var shapes = []
+
+            var colors = []
+            var palette = Plotly.d3.scale.category10().range();
+            var h_cats = {}
+            var list_cats = []
+            var c_i = 0
+            var h = {x_min : {}, x_max : {}, y_min : {}, y_max : {}}
+
+            for (var i=0; i<rows[0].length; i++){
+              //   console.log(data)
+              //   console.log(i + ":" + c_i + ":" + (c_i % 10))
+              if(!h_cats[rows[0][i]]){
+                list_cats.push(rows[0][i])
+                c_i += 1
+                h_cats[rows[0][i]]=c_i
+                h.x_min[c_i] = conf2D.json[0][i]
+                h.x_max[c_i] = conf2D.json[0][i]
+                h.y_min[c_i] = conf2D.json[1][i]
+		h.y_max[c_i] = conf2D.json[1][i]
+              }else{ 
+
+               if (h.x_min[c_i] > conf2D.json[0][i]){
+                 h.x_min[c_i] = conf2D.json[0][i]
+               }else{
+                if (h.x_max[c_i] < conf2D.json[0][i]){
+                 h.x_max[c_i] = conf2D.json[0][i]
+	        }
+               } 
+               if (h.y_min[c_i] > conf2D.json[1][i]){
+                h.y_min[c_i] = conf2D.json[1][i]
+               }else{
+                if (h.y_max[c_i] < conf2D.json[1][i]){
+                 h.y_max[c_i] = conf2D.json[1][i]
+                }
+               }
+              }         
+            }
+         for (var i=0; i < list_cats.length; i++){
+          var color = palette[h_cats[rows[0][i]] % 10]
+          console.log(color)
+          var shape = {
+            type: 'circle',
+            xref: 'x',
+            yref: 'y',
+            x0: h.x_min[i], //d3.min(x0),
+            y0: h.y_min[i], //d3.min(y0),
+            x1: h.x_max[i], //d3.max(x0),
+            y1: h.y_max[i], //d3.max(y0),
+            opacity: 0.2,
+            fillcolor: color,
+            line: {
+                color: color
+            }
+          }
+          shapes.push(shape)
+         }
+         var update = {
+           shapes : shapes
+/*[
+            {
+            type: 'circle',
+            xref: 'x',
+            yref: 'y',
+            x0: 0, //d3.min(x0),
+            y0: 0, //d3.min(y0),
+            x1: 10, //d3.max(x0),
+            y1: 10, //d3.max(y0),
+            opacity: 0.2,
+            fillcolor: 'blue',
+            line: {
+                color: 'blue'
+            }
+        }] */
+         };
+          Plotly.relayout(o.target, update);         
+        };
+
 	this.addGeneExpression	= function(name, data){
          var o = this.config;
          var update = {}
-
-         if (data.length == 0){
+         var rows = data.rows
+         console.log("first_row_length:" + rows[0].length)
+         conf2D.quant_vector = rows
+         
+         console.log("ROWS:")
+         console.log(rows)
+         if (rows.length == 0){
           update = {
              marker: {
                size : o.size,
@@ -113,26 +220,28 @@ function Graph(config){
              }
            }     
          }else{
-          if (data.length > 1){
+          if (rows.length > 1){
            var colors = []
            var max = []
            var min = []
            var diff = [] 
-           for (var i=0; i<data.length; i++){
-            max[i] = Math.max(...(data[i]) ? data[i] : [0])
-            min[i] = Math.min(...(data[i]) ? data[i] : [0])
+           for (var i=0; i<rows.length; i++){
+          //  max[i] = Math.max(...(rows[i]) ? rows[i] : [0])
+          //  min[i] = Math.min(...(rows[i]) ? rows[i] : [0])
+	     max[i] = (rows[i]) ? list_max(rows[i]) : 0
+	     min[i] = (rows[i]) ? list_min(rows[i]) : 0
             diff[i] = max[i] - min[i]
            }
-           for (var i=0; i<data[0].length; i++){
-            var rgb = [((data[0] && diff[0] > 0) ? 230 - Math.round((data[0][i]-min[0]) * 230 / diff[0]) : 255), 
-             ((data[1] && diff[1] > 0) ? 230 - Math.round((data[1][i]-min[1]) * 230 / diff[1]) : 255), 
-             ((data[2] && diff[2] > 0) ? 230 - Math.round((data[2][i]-min[2]) * 230 / diff[2]) : 255)]
+           for (var i=0; i<rows[0].length; i++){
+            var rgb = [((rows[0] && diff[0] > 0) ? 230 - Math.round((rows[0][i]-min[0]) * 230 / diff[0]) : 255), 
+             ((rows[1] && diff[1] > 0) ? 230 - Math.round((rows[1][i]-min[1]) * 230 / diff[1]) : 255), 
+             ((rows[2] && diff[2] > 0) ? 230 - Math.round((rows[2][i]-min[2]) * 230 / diff[2]) : 255)]
 
             var alpha = (rgb[0] >= 230 && rgb[1] >= 230 && rgb[2] >= 230) ? ",0" : "" 
             colors.push("rgb(" + rgb.join(",") + alpha + ")")
            }
       
-           console.log(colors)
+          // console.log(colors)
            update = {
              marker: {              
                size : o.size,
@@ -144,28 +253,14 @@ function Graph(config){
           }else{
            if ($("#opt_coloring_type").val()< 3){ 
 
-            var geneExpression = data[0]
-            var max = Math.max(...geneExpression) //.sort(function(a, b){return a-b})[geneExpression.length-1]
-            var min = Math.min(...geneExpression)
+            var geneExpression = rows[0]
+            var max = list_max(geneExpression)
+	    var min = list_min(geneExpression)
+  
             console.log("test here!!!" + min + "-" + max)
-            // rescale because of bug with plotly
-            
-//            var colorscale = []
-//            if (min >= 0){
-              colorscale = [[0, "rgb(230,230,230)"], [1, "rgb(255,5,5)"]]
-//  	    }
-/*
-            if (max <= 0){
-              colorscale = [[0, "rgb(230,230,230)"], [1, "rgb(5,5,255)"]]
-            }
-            if (min < 0 && max > 0){
-             // abs_max = Math.max(...[max, -min])
-             // min = -abs_max
-             // max = abs_max
-              colorscale = [[0, "rgb(5,5,255)"], [-min/(max-min),"rgb(230,230,230)"],[1,"rgb(255,5,5)"]]			     
-              console.log(colorscale, min, max) 
-            }		
-*/			      
+            // rescale because of bug with plotly            
+            colorscale = [[0, "rgb(230,230,230)"], [1, "rgb(255,5,5)"]]
+
  	    update = {	
              marker: {
                size : o.size,
@@ -181,16 +276,29 @@ function Graph(config){
             var colors = []
             var palette = Plotly.d3.scale.category10().range();
             var h_cats = {}
+	    var list_cats = []	       
             var c_i = 0
-            for (var i=0; i<data[0].length; i++){
-              console.log(data)
-              console.log(i + ":" + c_i + ":" + (c_i % 10))
-	      if(!h_cats[data[0][i]]){
+            for (var i=0; i<rows[0].length; i++){
+              //   console.log(data)
+              //   console.log(i + ":" + c_i + ":" + (c_i % 10))
+	      if(!h_cats[rows[0][i]]){
+                list_cats.push(rows[0][i])
                 c_i += 1
-                h_cats[data[0][i]]=c_i
+                h_cats[rows[0][i]]=c_i
+                if (!data.cat_aliases.names){
+                 data.cat_aliases.names = {}
+                 data.cat_aliases.user_ids = {}
+                }
+                if (!data.cat_aliases.names[rows[0][i]]){
+                 data.cat_aliases.names[rows[0][i]]=rows[0][i]
+                 data.cat_aliases.user_ids[rows[0][i]]=<%= (current_user) ? current_user.id : "null" %>
+                }
               }	
-              colors[i] = palette[h_cats[data[0][i]] % 10]			    
+              colors[i] = palette[h_cats[rows[0][i]] % 10]			    
             }
+            conf2D.list_cats = list_cats
+            upd_cat_legend(data.cat_aliases, c_i, list_cats, palette, h_users, sel_cats, <%= editable?(@project) %>)
+				    
             update = {
              marker: {
               size : o.size,
@@ -265,16 +373,14 @@ function Graph(config){
 
 
 function tooltip(text){
-	console.log(text);
+//	console.log(text);
 	return false;
 }
 
 var json_data = <%= raw @h_json_data %>
-
-console.log("row!!")
-//console.log(<%= raw @row.to_json %>)
+//var json_data = (all_json_data['list_meta'] && all_json_data['list_meta'][0]) ? all_json_data['list_meta'][0] : {};
+//console.log(<%# raw @row.to_json %>)
 <%# if @row %>
-//console.log(@row.to_json)
 <%# end %>
 
 var conf2D = {
@@ -285,7 +391,9 @@ var conf2D = {
                 json            : json_data.values,
 		x_json		: 0,
 		y_json		: 1,
-		text_vector     : json_data.cells,
+		text_vector     : json_data.cells || json_data.names,
+                quant_vector    : [],
+                list_cats       : [],
 		x_label		: "PC1",
 		y_label		: "PC2",
 		c_label		: "label",
@@ -301,6 +409,66 @@ var conf2D = {
 plotly_graph = null;
 //loadColoringSelection();
 init();
+
+ document.getElementById("dr_plot").on('plotly_deselect', function(data) {
+ cancel_selection()  
+});
+
+ document.getElementById("dr_plot").on('plotly_click', function(eventData) {
+  if ($("#plot_options_btn").prop("disabled") == false){
+  var list_cells = [];
+  eventData.points.forEach(function(pt) {
+    // console.log(pt);
+    list_cells.push(pt.pointNumber);
+  });
+  if (list_cells.length == 1){
+   var html_content = "Clicked cell: <span class='badge badge-light'>" + conf2D.text_vector[list_cells[0]] + "</span>"
+   for (var i=0; i< conf2D.quant_vector.length; i++){
+    html_content += "<span class='badge badge-light'>Value " + (i+1) + " = " + conf2D.quant_vector[i][list_cells[0]] + "</span>"
+   }
+   $("#clicked_point-desc").html(html_content)
+   $("#inspector-tab").click()
+   $("#plot_options_btn").click()
+  }
+  }else{
+    alert("Please wait controls finish to load and click again.")
+  }
+ });
+
+ document.getElementById("dr_plot").on('plotly_selected', function(eventData) {
+ if (eventData){
+ if ($("#plot_options_btn").prop("disabled") == false){
+//  console.log(eventData.points);
+  var list_cells = [];
+  eventData.points.forEach(function(pt) {
+    // console.log(pt);
+    list_cells.push(pt.pointNumber);
+  });
+  console.log(list_cells);
+  if (list_cells.length > 0){
+  //  if ($("#plot_options_window").hasClass("hidden")){ 
+  $("#selection-actions_container").removeClass("hidden")  
+  $("#selection-desc").html("<button id='selection-btn' type='button' class='btn btn-outline-secondary'>Selection <span class='badge badge-light'>" + list_cells.length + " cells</span></button>")
+  $("#selection-content").val(JSON.stringify(list_cells))	  
+  $("#inspector-tab").click()
+  $("#plot_options_btn").click()
+  
+  //  }	 
+ // if (list_cells.length > 0){
+   p = [
+    {name: 'project_key', value: '<%= @project.key %>'},
+    {name: 'annot_id', value: '<%# @annot.id %>'},
+    {name: 'list_of_items', value: list_cells.join(";")}
+   ];
+
+ //  refresh_post("cart", '<%= selections_path %>', p, 'post');
+ // }
+  }
+  }else{
+    alert("Please wait controls finish to load and select again cells.")
+  }
+  }
+});
 
 function init(){
 	plotly_graph = new Graph(conf2D);
@@ -326,8 +494,6 @@ function loadColoringSelection(){
 	});
 }
 
-
-
 function coloring(colorType){
 	//console.log(colorType.name + ": " +colorType.value);
 	if(colorType.value==0){
@@ -349,5 +515,4 @@ function coloring(colorType){
 		plotly_graph.addClusters(colorType.name, colorType.value);
 	}
 }
-
 

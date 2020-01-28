@@ -69,11 +69,16 @@ gem 'rails4-autocomplete'
 gem 'jquery-fileupload-rails'
 gem 'paperclip'
 gem 'multipart-parser'
-gem 'haml'
+#gem 'haml'
+gem "haml", ">= 5.0.0"
 gem 'activerecord-session_store'
 #gem 'hdf5'
 #gem 'get_process_mem'
 gem 'zlib'
+gem 'biomart'
+gem 'parallel'
+gem 'mechanize'
+gem 'hpricot'
 
 group :development, :test do
   # Call 'byebug' anywhere in your code to drop into a debugger console

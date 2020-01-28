@@ -1,0 +1,17 @@
+<%= form_with(model: hca_project, local: true) do |form| %>
+  <% if hca_project.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(hca_project.errors.count, "error") %> prohibited this hca_project from being saved:</h2>
+
+      <ul>
+      <% hca_project.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

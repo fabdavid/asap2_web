@@ -1,0 +1,2 @@
+module TmpGenesHelper
+end

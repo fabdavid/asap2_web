@@ -1,0 +1,46 @@
+<h5>Create new metadata</h5>
+
+<div class='row'>
+  <div class='col-6'>Selection name</div>
+  <div class='col-6'>
+    <%= text_field_tag "selected_name", "", {:placeholder => 'Selected', :class => 'form-control'} %>
+  </div>
+</div>
+<div class='row'>
+  <div class='col-6'>Complementary set name</div>
+  <div class='col-6'>
+    <%= text_field_tag "unselected_name", "", {:placeholder => 'Not selected', :class => 'form-control'} %>
+  </div>
+</div>
+<button type='button' id='save_selection-btn' class='btn btn-primary'>Save</button>
+<button type='button' id='cancel_new_metadata-btn' class='btn btn-outline-secondary'>Cancel</button>
+<%= javascript_tag do %>
+
+  $("#form_new_metadata").removeClass("hidden")
+  $("#selection_stats_container").addClass("hidden")
+/*  var w = $(window).width();
+  var w = $(window).width();
+  $("#popup_window").css({
+        right: 0,
+        left:'',
+        width: 500,
+        top: 300,
+        height: ''
+  }).stop().show(100);
+*/
+  $("#save_selection-btn").click(function(){
+   var p = [
+    {'name' : 'list_cols', 'value' : $("#selection-content").val()},
+    {'name' : 'selected_name', 'value' : $("#selected_name").val()},
+    {'name' : 'unselected_name', 'value' : $("#unselected_name").val()},
+    {name : 'run_id', value : '<%= params[:run_id] %>'}
+   ]
+   refresh_post(null, "<%= save_metadata_from_selection_project_path(:key => @project.key) %>", p, 'post', {loading:'fa-2x',redirect:true})
+  })
+
+ $("#cancel_new_metadata-btn").click(function(){
+  cancel_new_metadata()
+ })
+
+
+<% end %>

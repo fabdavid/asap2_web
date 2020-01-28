@@ -32,39 +32,61 @@ App.project = App.cable.subscriptions.create({channel: 'ProjectChannel',
     },
 
    received: function(data) {
-           console.log("condition ok")
-//          console.log(h_steps[h_step_id_by_name["summary"]])
+     console.log("condition ok")
+     //          console.log(h_steps[h_step_id_by_name["summary"]])
      let now = new Date();
-console.log("time -> ", now, last_update, now-last_update)
+     console.log("time -> ", now, last_update, now-last_update)
+
      if (now - last_update > 500){
       if ($("li#step_" + data['step_id']).hasClass('active')){
-              // check if the view is not on a current step                                                                                                                                                     console.log("run_container:" + $(".run_container").length)
-          if ($(".run_container").length > 0){                                                                                                                                                      
-           console.log("Update the header only")                                                                                                                   
-            refresh("step_header_container", data['url_step_header_callback'], {});
+          // check if the view is not on a current step                                                                                                                                                    
+          console.log("run_container:" + $(".run_container").length)
+          if ($(".run_container").length > 0){
+           if ($("#refresh_view-btn").length > 0){
+             console.log("refresh_view_btn")
+             $("#refresh_view-btn").removeClass("hidden")
+           }                                                                                                                                                                 
+           console.log("Update the header only")                                                                                        
+           //xhrs = abort_and_delete_xhrs(xhrs)                           
+           refresh("step_header_container", data['url_step_header_callback'], {});
           }else{
-            console.log($("#dashboard"))
+           console.log($("#dashboard"))
            if ($("#dashboard").length > 0  && $("#dashboard").val() == 'dim_reduction' && $("#dim_reduction_form_container").length>0 && $("#dr_plot").length>0 ){
             console.log("->refresh dim reduction")
-         //   if($("#dr_plot").length>0){
-             refresh("step_header_container", data['url_step_header_callback'], {});
-             refresh("dim_reduction_form_container", data['url_dim_reduction_callback'], {'h_loading' : 'fa-2x'});
-         /*   }else{
-              refresh("step_container", data['url_base_callback'], {'h_loading' : 'fa-2x'});
+            //   if($("#dr_plot").length>0){
+            refresh("step_header_container", data['url_step_header_callback'], {});
+            refresh("dim_reduction_form_container", data['url_dim_reduction_callback'], {'h_loading' : 'fa-2x'});
+            //   }else{
+            //     refresh("step_container", data['url_base_callback'], {'h_loading' : 'fa-2x'});
+            //   }
+            //
+           }else{
+//            if($("#dashboard").length > 0  && $("#dashboard").val() == 'std_runs'){
+             console.log("refresh step " + data['step_id']);
+             refresh("step_container", data['url_base_callback'], {'h_loading' : 'fa-2x'});
+/*            }else{             
+             console.log("not a standard dashboard")             
+             //xhrs = abort_and_delete_xhrs(xhrs)
+             if ($("#refresh_view-btn").length > 0){
+               console.log("refresh_view_btn")
+               $("#refresh_view-btn").removeClass("hidden")
+             }
+             refresh("step_header_container", data['url_step_header_callback'], {});            
             }
-          */
-           }else{             
-            console.log("refresh step " + data['step_id']);
-            refresh("step_container", data['url_base_callback'], {'h_loading' : 'fa-2x'});
+*/
+            if ($("#refresh_view-btn").length > 0){
+             $("#refresh_view-btn").removeClass("hidden")
+            }
            }
-         }
+          }
       }else{
          if ($("li#step_14").hasClass('active')){
               console.log("condition4 ok");
               upd_summary()
          }
-       }
+      }
       last_update = now    
      }
     }
+
 });

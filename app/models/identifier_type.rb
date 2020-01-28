@@ -1,0 +1,2 @@
+class IdentifierType < ApplicationRecord
+end

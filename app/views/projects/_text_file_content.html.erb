@@ -1,17 +1,18 @@
 <% output_name = horiz_element['output_name'] %>
 
 <div class='card-header'>
-<% if @h_outputs[output_name].keys.size == 1 %>
-<div class='top-right-buttons'>
-</div>
-<% end %>
+ <% if @h_outputs[output_name].keys.size == 1 %>
+  <div class='top-right-buttons'>
+  </div>
+ <% end %>
 
-<%= horiz_element['title'] %>
+ <%= horiz_element['title'] %>
 </div>
 <div class='card-body'>
   <% @h_outputs[output_name].each_key do |f| %>
   <div id="file_content_<%= @run.id %>_<%= output_name %>_<%= @h_outputs[output_name][f]['onum'] %>">
-  <pre><%= File.read(@project_dir + f) %></pre>
+  <pre><%= File.read(@project_dir + f).gsub(@project_dir.to_s, "$PROJECT_DIR") %></pre>
+  </div>
   <% end %>
 </div>
 

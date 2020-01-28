@@ -1,0 +1,2 @@
+module IdentifierTypesHelper
+end

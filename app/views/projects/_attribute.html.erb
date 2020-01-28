@@ -7,6 +7,8 @@
  <% end %>
  <% if attr['widget']=='input_data' %>
   <%= render :partial => 'input_data', :locals => {:attr_name => attr_name, :attr => attr} %>
+ <% elsif attr['widget']=='input_gene_set' %>
+  <%= render :partial => 'input_gene_set', :locals => {:attr_name => attr_name, :attr => attr} %>
  <% elsif attr['widget']=='select_input_data' %>
   <%= render :partial => 'select_input_data', :locals => {:attr_name => attr_name, :attr => attr} %>
  <% elsif attr['widget']=='textfield' %>
@@ -22,7 +24,8 @@
  <%# h_checkbox.to_json %>
  <%# ((attr_val and attr_val != false) or (!attr_val and attr['default'] != false)).to_json %>
  <%# check_box_tag attr_name, '1', ((@ps.status_id != nil and attr_val and attr_val != false) or (!@ps.status_id and !attr_val and attr['default'] != false)),  h_checkbox %>
- <%= check_box_tag attr_name, '1', ((attr_val and @attr_val != false) or (!attr_val and attr['default'] != false)),  h_checkbox %>
+ <%= check_box_tag ("checkbox-" + attr_name), ((attr_val and @attr_val != false) or (!attr_val and attr['default'] != false)), {},  h_checkbox %>
+ <%= hidden_field_tag form_attr_name, ((attr_val and @attr_val != false) or (!attr_val and attr['default'] != false)) ? 'true' : 'false' %>
  <%= label_tag form_attr_name, attr['label'], {'data-toggle' => 'tooltip', 'title' => attr['description']} %>
  <% elsif attr['widget'] == 'select' and !attr['grouped_list'] %>
  <% l = [] %>

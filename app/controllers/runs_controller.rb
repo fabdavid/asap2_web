@@ -1,5 +1,118 @@
 class RunsController < ApplicationController
-  before_action :set_run, only: [:show, :edit, :update, :destroy]
+  before_action :set_run, only: [:get_de_gene_list, :get_ge_geneset_list, :show, :edit, :update, :destroy]
+  before_action :get_base_data, only: [:get_de_gene_list, :get_ge_geneset_list, :download_de_gene_list]
+  include ApplicationHelper
+  
+  def get_base_data 
+    @h_dashboard_card = {}
+    @h_dashboard_card[@step.id] = JSON.parse(@step.dashboard_card_json)
+    @h_attrs = (@step.attrs_json and !@step.attrs_json.empty?) ? JSON.parse(@step.attrs_json) : {}
+    @h_nber_runs = JSON.parse(@ps.nber_runs_json)
+    @h_steps = {}
+    Step.all.map{|s| @h_steps[s.id] = s}
+    @h_statuses = {}
+    Status.all.map{|s| @h_statuses[s.id] = s}
+    #    @h_std_methods = {}
+    #    StdMethod.all.map{|s| @h_std_methods[s.id] = s}
+  end
+
+  def get_ge_geneset_list
+    params[:from] ||= 'ge_results'
+    @h_ge_filters = Basic.safe_parse_json(@project.ge_filter_json, {})
+    @limit = 3000
+    @data = []
+    @project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
+    filename =  @project_dir + "ge" + @run.id.to_s + "output.json"
+    h_output = Basic.safe_parse_json(File.read(filename), {})
+    @fields = h_output["headers"]
+    h_fields = {}
+    @fields.each_index do |i|
+      h_fields[@fields[i]] = i
+    end
+
+    if  h_output[params[:type]]
+      h_output[params[:type]].each do |e|
+        if e[h_fields['fdr']] <= @h_ge_filters['fdr_cutoff'].to_f
+          @data.push e
+        end
+      end
+    end
+    @nber_genesets = @data.size
+    
+    if !params[:download]
+      render :partial => 'get_ge_geneset_list'
+    else
+         send_data ((params[:format]=='json') ? @data.to_json : @data.map{|e| e.join("\t")}.join("\n")), type: 'text', disposition: "attachment; filename=" + @project.key  + "_" + display_run_ultra_short_txt(@run) + "_de_table_#{params[:type]}"  + "." + ((params[:format]=='json') ? 'json' : 'txt')
+    end
+
+  end
+  
+  def get_de_gene_list
+    params[:from] ||= 'de_results'
+    @fields = ["Gene index", "EnsemblID", "Gene name", "Alt names", "Description", "logFC", "P-value", "FDR", "Avg group1", "Avg group2"]
+    @limit = 3000
+    @h_std_method_attrs = {
+      @std_method.id => Basic.get_std_method_attrs(@std_method, @step)[:h_attrs]
+    }
+    @h_run_attrs = (@run.attrs_json) ? JSON.parse(@run.attrs_json) : {}
+    @data = []
+    @project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
+    filename =  @project_dir + "de" + @run.id.to_s + "filtered.#{params[:type]}.json"
+    if params[:from]== 'ge_form'
+      filename = @project_dir + "tmp" + "#{current_user.id}_#{@run.id}_filtered.#{params[:type]}.json"
+    end
+    @h_filtered_rows = {}
+    list_filtered_rows = []
+    begin
+      list_filtered_rows = JSON.parse(File.read(filename))
+    rescue
+    end
+    list_filtered_rows.map{|e| @h_filtered_rows[e] = 1}
+    @nber_genes = list_filtered_rows.size
+    
+    filename = @project_dir + "de" + @run.id.to_s + "output.txt"
+    i = 0
+    j = 0
+
+    @tmp_data = File.readlines(filename)
+    if params[:type] == 'up'
+      #File.open(filename, 'r') do |f|
+      @tmp_data.reverse.each do |l|     
+        #      while (l = f.gets  and (params[:download] or j < @limit) 
+        if @h_filtered_rows[@tmp_data.size-1-i]
+          t = l.chomp.split("\t")
+          t[2] = t[2].split(",").join(", ")
+          @data.push t
+          j+=1
+        end
+        i+=1
+        if j == @limit and !params[:download]
+          break
+        end
+      end
+    else
+      
+      @tmp_data.each do |l|
+        if @h_filtered_rows[i]
+          t = l.chomp.split("\t")
+          t[2] = t[2].split(",").join(", ")
+          @data.push t
+          j+=1
+        end
+        i+=1
+        if j == @limit and !params[:download]
+          break
+        end
+      end
+    end
+    #end
+    #    @data.reverse! if params[:type] == 'up'
+    if !params[:download]
+      render :partial => 'get_de_gene_list'
+    else
+      send_data ((params[:format]=='json') ? @data.to_json : @data.map{|e| e.join("\t")}.join("\n")), type: 'text', disposition: "attachment; filename=" + @project.key  + "_" + display_run_ultra_short_txt(@run) + "_de_table_#{params[:type]}"  + "." + ((params[:format]=='json') ? 'json' : 'txt')
+    end
+  end
 
   # GET /runs
   # GET /runs.json
@@ -66,20 +179,22 @@ class RunsController < ApplicationController
     #run.annots.each do |annot|
     h_outputs = JSON.parse(run.output_json)
     logger.debug(h_outputs.to_json)
-    h_outputs.each_key do |k|
-      h_outputs[k].each_key do |output_key|
-        t = output_key.split(":")
-        if t.size == 2 
-          if File.exist? (project_dir + t[0])
-            cmd = "java -jar ../asap_run/srv/ASAP.jar -T RemoveMetaData -o #{tmp_dir} -loom #{project_dir + t[0]} -meta #{t[1]}"
-            logger.debug("CMD: " + cmd)
-            `#{cmd}`
+    if h_outputs
+      h_outputs.each_key do |k|
+        h_outputs[k].each_key do |output_key|
+          t = output_key.split(":")
+          if t.size == 2 
+            if File.exist? (project_dir + t[0])
+              cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T RemoveMetaData -o #{tmp_dir} -loom #{project_dir + t[0]} -meta #{t[1]} 2>&1 > tmp/bla.txt"
+              logger.debug("CMD: " + cmd)
+              `#{cmd}`
+            end
+            #        elsif t.size == 1
+            #          if File.exist? (project_dir + t[0])
+            #            logger.debug("DEL_FILE: " + t.to_json + '---' + (project_dir + t[0]).to_s)
+            #            File.delete (project_dir + t[0]) 
+            #          end
           end
-#        elsif t.size == 1
-#          if File.exist? (project_dir + t[0])
-#            logger.debug("DEL_FILE: " + t.to_json + '---' + (project_dir + t[0]).to_s)
-#            File.delete (project_dir + t[0]) 
-          #          end
         end
       end
     end
@@ -89,6 +204,7 @@ class RunsController < ApplicationController
     
     ### from the database
     run.annots.destroy_all
+    Annot.where(:store_run_id => run.id).destroy_all ## shouldn't need to add this line if everything happens normally...
     run.fos.destroy_all
     
     ## remove the run
@@ -100,7 +216,8 @@ class RunsController < ApplicationController
       h_run = run.as_json
       if ! DelRun.where(h_run).first
         del_run = DelRun.new(h_run)
-        del_run.save!
+        del_run.run_id = h_run["id"]
+        del_run.save!        
       end
     end
 
@@ -128,36 +245,56 @@ class RunsController < ApplicationController
   end
   
   def self.destroy_run_call project, run
- 
+    start_time = Time.now
+    @log = ""
+    log = ''
+    log += (Time.now - start_time).to_s + " step 2</br>"
+
     step = run.step
 
-    ## edit parent's children_run_ids                                                                                                                                                                                 
-    parents = (run.run_parents_json) ? JSON.parse(run.run_parents_json) : []
-    parent_runs = Run.where(:project_id => project.id, :id => parents.map{|p| p['run_id']}).all
-    parent_runs.each do |parent_run|
-      children_run_ids = parent_run.children_run_ids.split(",").reject{|e| e == run.id}
-      parent_run.update_attribute(:children_run_ids, children_run_ids.join(","))
-    end
+    ActiveRecord::Base.transaction do
 
-    ## destroy run and descendants                                                                                                                                                                                    
-    @log = "call destroy_children on #{run.id}. "
-    @h_step_ids = {}
-    destroy_children project, step, run
-
-    ### update project_step for each step affected                                                                                                                                                                    
-    @h_step_ids.each_key do |step_id|
-      Basic.upd_project_step project, step_id
+      ## edit parent's children_run_ids                                                                                                                                  
+      parents = (run.run_parents_json) ? JSON.parse(run.run_parents_json) : []
+      if parents
+        parent_runs = Run.where(:project_id => project.id, :id => parents.map{|p| p['run_id']}).all
+        parent_runs.each do |parent_run|
+          children_run_ids = parent_run.children_run_ids.split(",").reject{|e| e == run.id}
+          parent_run.update_attribute(:children_run_ids, children_run_ids.join(","))
+        end
+      end
+      
+      log += (Time.now - start_time).to_s + " step 3</br>"
+      ## destroy run and descendants                                                                                                                                                                                    
+      log += "call destroy_children on #{run.id}. "
+      @h_step_ids = {}
+      destroy_children project, step, run
+      
+      log += (Time.now - start_time).to_s + " step 4</br>"
+      ### update project_step for each step affected                                                                                                                                                                    
+      @h_step_ids.each_key do |step_id|
+        Basic.upd_project_step project, step_id
+      end
+      
+      log += (Time.now - start_time).to_s + " step 5</br>"
+      Basic.upd_project_size project
     end
-    Basic.upd_project_size project
+    return log
 
   end
 
+  def destroy_run_call project, run
+    RunsController.destroy_run_call(project, run)
+  end
 
   # DELETE /runs/1
   # DELETE /runs/1.json
   def destroy
+    @log = ''
+    start_time = Time.now
+    @log += (Time.now - start_time).to_s + " start</br>"
     if editable?(@project)
-      RunsController.destroy_run_call(@project, @run)
+      @log += RunsController.destroy_run_call(@project, @run)
       
       respond_to do |format|
         format.json { #redirect_to runs_url, notice: 'Run was successfully destroyed.' }
@@ -176,6 +313,7 @@ class RunsController < ApplicationController
       @project = @run.project
       @step = @run.step
       @std_method = @run.std_method
+      @ps = ProjectStep.where(:project_id => @project.id, :step_id => @step.id).first
     end
 
     # Never trust parameters from the scary internet, only allow the white list through.

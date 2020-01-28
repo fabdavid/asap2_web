@@ -44,6 +44,12 @@
 
  $('[data-toggle="tooltip"]').tooltip();
 
+$(".std_form_checkbox").click(function(){
+ var attr_name = this.id.split("-")[1]
+ var checked = $(this).prop("checked")
+ $("#attrs_" + attr_name).val((checked) ? 'true' : 'false')
+})
+
 function validate_req(){
  var valid_message = ""
  var messages = []
@@ -145,6 +151,26 @@ $("#attrs_nbclust").change(function(){
 var infos = get_infos();
 $("#infos").html(infos);
 });
+
+function set_group_pairs(){
+ if ($("#attrs_all_against_compl").prop("checked")== true){
+  // fill group_pairs
+  var group_pairs = compute_all_against_compl("#attrs_group_ref option") 
+  $("#attrs_group_pairs").val(JSON.stringify(group_pairs)) 
+  $("#form-container_group_ref").addClass("hidden")
+  $("#form-container_group_comp").addClass("hidden")
+ }else{
+  $("#attrs_group_pairs").val("[]")
+  $("#form-container_group_ref").removeClass("hidden")
+  $("#form-container_group_comp").removeClass("hidden")
+ }
+}
+
+$("#attrs_all_against_compl").click(function(){
+set_group_pairs()
+})
+
+set_group_pairs()
 
 // add tooltip to disabled checkbox
 

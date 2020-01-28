@@ -34,7 +34,7 @@
       <td><%= (j = JSON.parse(std_method.attrs_json) and j.kind_of?(Array)) ? j.map{|e| e['name']}.join(", ") : j.keys.join(", ") %></td>
       <td><%= std_method.program %></td>
       <!-- <td><%# (filter.handles_log == true) ? 'Yes' : 'No' %></td>-->
-      <td><%= link_to 'Show', std_method %></td>
+      <td><%= link_to 'Show', std_method_path(std_method) %></td>
       <td><%= link_to 'Edit', edit_std_method_path(std_method) %></td>
       <td><%= link_to 'Destroy', std_method, method: :delete, data: { confirm: 'Are you sure?' } %></td>
     </tr>

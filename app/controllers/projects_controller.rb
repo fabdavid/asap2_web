@@ -1,14 +1,17 @@
 class ProjectsController < ApplicationController
 #  before_action :authenticate_user!, except: [:index]
   before_action :set_project, only: [:show, :edit, :update, :destroy, 
+                                     :set_public,
                                      :broadcast_on_project_channel, :live_upd, 
-                                     :form_select_input_data, :form_new_analysis,
+                                     :form_select_input_data, :form_new_analysis, :form_new_metadata,
+                                     :upd_cat_alias, :upd_sel_cats,
                                      :parse_form, :parse, :add_metadata, :get_step, :get_pipeline,
                                      :get_run, :get_lineage, :get_step_header,
                                      :autocomplete_genes, :get_rows, :extract_row, :extract_metadata, 
-                                     :get_dr_options, :dr_plot, :get_commands, :save_plot_settings,
+                                     :filter_de_results, :filter_ge_results, :cluster_comparison, :provider_projects,
+                                     :get_dr_options, :new_selection, :save_metadata_from_selection, :dr_plot, :get_commands, :save_plot_settings,
                                      :confirm_delete_all, :delete_all_runs_from_step,
-                                     :get_attributes, :set_input_data, :get_visualization, :replot, :get_file, :upload_file, 
+                                     :get_attributes, :set_input_data, :set_geneset, :get_visualization, :replot, :get_file, :upload_file, 
                                      :delete_batch_file, :upload_form, :clone, :direct_download]
   before_action :empty_session, only: [:show]
 #  skip_before_action :verify_authenticity_token
@@ -24,6 +27,19 @@ class ProjectsController < ApplicationController
     end
   end
 
+  def set_public
+    now = Time.now
+    h_upd = { 
+      :public => true, 
+      :updated_public_at => now 
+    }
+    if @project.public == false
+      h_upd[:public_at] = now
+      h_upd[:public_id] = Project.select("public_id").order("public_id desc").limit(1).first.public_id.to_i + 1
+    end
+    @project.update_attributes(h_upd)
+  end
+
   def confirm_delete_all
     render :partial => "confirm_delete_all"
   end
@@ -36,6 +52,667 @@ class ProjectsController < ApplicationController
     render :partial => "delete_all_runs_from_step"
   end
 
+  def dashboard_markers
+
+    @successful_runs = @runs.select{|r| r.status_id == 3}
+
+    if params[:de_markers_run_id]
+      session[:de_markers][@project.id] = params[:de_markers_run_id].to_i
+    end
+    session[:de_markers][@project.id] ||= @successful_runs.first.id 
+    @log = ''
+    
+    h_attrs_by_tag = {}
+    h_attrs_by_run_id = {}
+    @successful_runs.map{|r|
+      h_tmp = Basic.safe_parse_json(r.attrs_json, {})
+      #      h_tmp = JSON.parse(r.attrs_json)
+      h_attrs_by_run_id[r.id] = h_tmp
+      # if (h_tmp['group_comp'] == ''){
+      h_filtered_attrs={}
+      h_filtered_attrs['method'] = r.std_method.name
+      h_tmp.keys.reject{|k| ['group_comp', 'group_ref'].include? k}.map{|k| h_filtered_attrs[k] = h_tmp[k]}
+      tag = h_filtered_attrs
+      h_attrs_by_tag[tag]||=[]
+      h_attrs_by_tag[tag].push({:run => r, :h_attrs => h_tmp})
+      # }
+    } 
+    @l= [] 
+    @list_runs = []
+    if h_attrs_by_tag
+      h_attrs_by_tag.each_key do |tag|
+        # @log += 'tag'
+        tmp_list_runs = h_attrs_by_tag[tag].map{|e| e[:run]}
+        @l.push([display_attrs_txt(6, tag) + " (#{h_attrs_by_tag[tag].size})", tmp_list_runs.map{|e| e.id}.join(",")]) 
+        if h_attrs_by_tag[tag].map{|e| e[:run].id}.include? session[:de_markers][@project.id]
+          #   @log += 'tbtbtb'
+          @list_runs = tmp_list_runs #.map{|e| e.id]}.join(",")
+        end
+      end 
+    end
+    
+#    @log = @list_runs.to_json
+
+    @res = []
+    #    @h_cat_aliases = Basic.safe_parse_json(@cat_annot.cat_aliases_json, {})
+    @h_cat_aliases ={}
+    h_user_ids = {}
+    @h_annots_by_run_id = {}
+    Annot.where(:dim => 1, :run_id => @list_runs.map{|r| h_attrs_by_run_id[r.id]["group_annot"][0]['run_id']}).all.each do |annot|
+      @h_annots_by_run_id[annot.run_id] = annot
+      @h_cat_aliases[annot.run_id] = Basic.safe_parse_json(annot.cat_aliases_json, {}) 
+      if @h_cat_aliases[annot.run_id]['user_ids']
+        @h_cat_aliases[annot.run_id]['user_ids'].each_key do |cat_id|
+          h_user_ids[@h_cat_aliases[annot.run_id]['user_ids'][cat_id]] = 1
+        end
+      end
+    end
+    
+    @h_users = {}
+    User.where(:id => h_user_ids.keys).all.each do |u|
+      @h_users[u.id] = u
+    end
+
+
+    filtered_stats_file =  @project_dir + 'ge' + 'filtered_stats.json'
+    @h_filtered_stats = {}
+    if File.exist? filtered_stats_file
+      @h_filtered_stats = Basic.safe_parse_json(File.read(filtered_stats_file), {})
+    end
+
+    ##### WE ALREADY HAVE FILTERED STATS
+    ## get summary gene_enrichment
+    #sum_ge_file = @project_dir + 'ge' + 'sum.json' 
+    #h_sum_ge = {}
+    #if File.exist?(sum_ge_file)
+    #  h_sum_ge = Basic.safe_parse_json(File.read(sum_ge_file), {})
+    #end
+    
+    ### get gene enrichments                                                                                                                        
+    @successful_ge_runs = Run.where(:step_id => 7, :status_id => 3).all
+    @h_ge_runs = {}
+    @successful_ge_runs.map{|r| @h_ge_runs[r.id] = r}
+
+    ##### WE ALREADY HAVE FILTERED STATS
+    ### compute and write sum if not up-to-date
+    #if @successful_ge_runs.map{|e| e.id}.sort != h_sum_ge.keys.sort
+    #  @successful_ge_runs.each do |r|
+    #    if !h_sum_ge[r.id]
+    #      file_ge =  @project_dir + 'ge' + r.id.to_s + "output.json"                                                                                                    
+    #      nber_down = h_ge_data['down'].size
+    #      #    h_up_genesets[ge_run_id] = h_ge_data['up'].first(10)                                                                                                           #    
+    ##  end                      
+    #      h_sum_ge[r.id]= {:up => nber_up, :down => nber_down}
+    #    end
+    #  end
+    #end
+
+    h_gene_set_ids = {}
+    @h_ge = {}
+    @successful_ge_runs.each do |r|
+      h_attrs = Basic.safe_parse_json(r.attrs_json, {})
+      @h_ge[h_attrs['input_annot']["run_id"].to_i]||=[]
+      @h_ge[h_attrs['input_annot']["run_id"].to_i].push [r.id, h_attrs]
+      h_gene_set_ids[h_attrs['gene_set_id']] = 1
+    end
+    
+    ## get geneset ids
+    @h_gene_sets = {}
+    ConnectionSwitch.with_db(:data_with_version, @project.version_id) do
+      GeneSet.where(:id => h_gene_set_ids.keys).all.each do |gs|
+        @h_gene_sets[gs.id] = gs
+      end
+    end
+    @list_runs.each do |r|
+      file = @project_dir + 'de' + r.id.to_s + "output.txt"
+      h_down_genesets = {}
+      h_up_genesets = {}
+      #  @h_ge[r.id].each do |ge_run_id|
+      #    file_ge =  @project_dir + 'ge' + ge_run_id.to_s + "output.json"
+      #    h_down_genesets[ge_run_id] = h_ge_data['down'].first(10)
+      #    h_up_genesets[ge_run_id] = h_ge_data['up'].first(10)
+      #  end
+      
+      #      h_ge_data = Basic.safe_parse_json(File.read(file_ge), {})
+      down_genes = `head -10 #{file}`.split("\n").map{|l| l.split("\t")}
+      up_genes = `tail -10 #{file}`.split("\n").reverse.map{|l| l.split("\t")}
+      #      down_genesets = []
+      #      up_genesets = []
+      #      down_genesets = h_ge_data['down'].first(10)
+      #      up_genesets = h_ge_data['up'].first(10)
+
+      tmp_res = [r.id, h_attrs_by_run_id[r.id]["group_ref"], up_genes, down_genes, @h_ge[r.id], h_attrs_by_run_id[r.id]["group_annot"][0]['run_id'].to_i]
+      @res.push(tmp_res)      
+    end
+    
+  end
+  
+  def cluster_comparison
+    
+    @project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
+  
+    [:run_id1, :run_id2, :op].map{|e| session[:clust_comparison][@project.id][e] = params[e]}
+
+    @res = []
+    p = session[:clust_comparison][@project.id]
+    @log = "e"
+    @vals = []
+    @h_clusters = {}
+    @h_runs = {}
+    if p[:run_id1] and p[:run_id2] and p[:op]
+      @log += 'bla'
+      list_run_ids = [p[:run_id1], p[:run_id2]]
+      Run.where(:id => list_run_ids).all.map{|r| @h_runs[r.id.to_s] = r}
+      annots = Annot.where(:run_id => list_run_ids).all
+      @h_annots={}
+      annots.map{|a| @h_annots[a.run_id.to_s] = a}
+      
+      @list_cats = []
+      list_run_ids.each do |e|
+        @log += e
+        cats = Basic.safe_parse_json(@h_annots[e].categories_json, {}).keys.map{|e| e.to_i}
+        @list_cats.push cats
+        loom_file = @project_dir + @h_annots[e].filepath      
+        @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -loom #{loom_file} -meta #{@h_annots[e].name} -names"
+        tmp_res = Basic.safe_parse_json(`#{@cmd}`, {})
+        h_vals = {}
+        cats.each do |cat|
+           h_vals[cat.to_i] = []
+        end
+        #        if tmp_res['list_meta'] and meta = tmp_res['list_meta'][0]
+        tmp_res['values'].each_index do |i|
+          h_vals[tmp_res['values'][i].to_i].push(tmp_res['cells'][i]) 
+        end
+        @vals.push(h_vals)
+        #        end
+      end
+
+      if p[:op] == "1" 
+        
+        @list_cats[0].each_index do |i| 
+          @res[i] = []
+          set1 = @vals[0][@list_cats[0][i]]
+          @list_cats[1].each_index do |j|
+            set2 = @vals[1][@list_cats[1][j]]
+            @res[i][j] = set1 - set2
+          end
+        end
+      elsif p[:op] == "2" 
+        @list_cats[0].each_index do |i|
+          @res[i] = []
+          set1 = @vals[0][@list_cats[0][i]]
+          @list_cats[1].each_index do |j|
+            set2 = @vals[1][@list_cats[1][j]]
+            @res[i][j] = set2 - set1
+          end
+        end
+      else
+        @list_cats[0].each_index do |i|
+          @res[i] = []
+          set1 = @vals[0][@list_cats[0][i]]
+          @list_cats[1].each_index do |j|
+            set2 = @vals[1][@list_cats[1][j]]
+            @res[i][j] = set1 & set2
+          end
+        end        
+      end
+      
+    end
+    
+    
+    
+    render :partial => "cluster_comparison_results"
+  end
+  
+  
+  def filter_de annots, type
+#    @log4 = annots.to_json
+    @log2 = ''
+    if type == 'de_results'
+      @h_de_filters = Basic.safe_parse_json(@project.de_filter_json, {})
+    else
+      @h_de_filters = session[:tmp_de_filter][@project.id]
+    end
+    @ts = [] 
+    #    start_time = Time.now
+    
+  #  @log2 += 'blablablabla'
+
+    h_ensembl_ids = {}
+    h_ensembl_ids_by_loom_path = {}
+    h_gene_names_by_loom_path = {}
+    # store_run_ids_to_do = annots.select{|annot| !File.exist? @project_dir + 'de' + annot.id.to_s + 'output.txt'}.map{|annot| annot.store_run_id}
+    # store_runs = Run.where(:id => store_run_ids_to_do).all
+    h_annots_by_loom_path = {}
+    annots_to_do = annots.select{|annot| !File.exist? @project_dir + 'de' + annot.run_id.to_s + 'output.txt' or File.size( @project_dir + 'de' + annot.run_id.to_s + 'output.txt') == 0}
+    annots_to_do.each do |annot|
+      h_annots_by_loom_path[annot.filepath]||=[]
+      h_annots_by_loom_path[annot.filepath].push annot
+    end
+    @h_genes = {}
+    @log+=annots_to_do.to_json
+    @log+= 'bli'
+    #   loom_paths.each do |loom_path|
+    #   store_runs.each do |store_run|
+    #  @ensembl_ids = nil
+   # @log2 += annots_to_do.to_json
+#    @log += annots_to_do.to_json
+    loom_paths = annots_to_do.map{|a| a.filepath}.uniq
+    loom_paths.each do |loom_path|
+      #    @ensembl_ids = nil
+#      gene_names = nil
+      #      store_run_step = store_run.step
+      #      output_file = @project_dir + store_run_step.name
+      #      output_file += store_run.id.to_s if store_run_step.multiple_runs == true
+      #      output_file += 'gene_list.txt'
+      # loom_path = annot.filepath
+      @log += loom_path
+      ## Check if at least one file is not found
+      to_compute = 0
+      h_annots_by_loom_path[loom_path].each do |annot|
+        output_file = @project_dir + 'de' + annot.run_id.to_s + 'output.txt' 
+        if !File.exist?(output_file) or File.size(output_file) == 0
+          to_compute = 1
+          break
+        end
+      end
+      @log += "to_compute:" + to_compute.to_s
+      if to_compute == 1
+        h_ensembl_ids[loom_path] = {}
+        loom_file = @project_dir + loom_path
+        @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -loom #{loom_file} -meta /row_attrs/Accession"
+        @log += @cmd
+        
+        h_res = Basic.safe_parse_json(`#{@cmd}`, {})
+        #    if h_res['list_meta'] and meta = h_res['list_meta'][0]
+        if h_res['values']
+          h_res['values'].each do |v|
+            h_ensembl_ids[v] = 1        
+          end
+        end
+        #   end
+        
+        h_ensembl_ids_by_loom_path[loom_path] = h_res['values']
+        # @ensembl_ids = h_res['values']
+        
+        @cmd2 = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -loom #{loom_file} -meta /row_attrs/Gene"
+        @log+= @cmd2
+        h_res = Basic.safe_parse_json(`#{@cmd2}`, {})
+       # h_gene_names_by_loom_path[loom_path] = (h_res['list_meta'] and meta = h_res['list_meta'][0]) ? meta['values'] : []
+        h_gene_names_by_loom_path[loom_path] =h_res['values']
+      end
+    end
+
+    if annots_to_do.size > 0
+      ## get genes              
+      Gene.select("ensembl_id, organism_id, name, description, alt_names").where(:organism_id => @project.organism_id).all.select{|g| h_ensembl_ids[g.ensembl_id]}.map{|g| @h_genes[g.ensembl_id] = g}
+    end
+
+#    @log4 = annots_to_do.to_json
+    annots_to_do.each do |annot|
+      loom_path = annot.filepath
+      loom_file = @project_dir + loom_path
+      output_file =  @project_dir + 'de' + annot.run_id.to_s + 'output.txt'
+     # cmd = "head -1 #{output_file.to_s}"
+ #     @log4+=cmd
+      if !File.exist?(output_file) or File.size(output_file) == 0  #or `head -1 #{output_file.to_s}`.split("\t").size != 10
+        @cmd3 = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -loom #{loom_file} -prec 5 -meta #{annot.name}"
+        @log+= @cmd3
+        #@h_results = {}
+        @ensembl_ids = h_ensembl_ids_by_loom_path[loom_path]
+        gene_names =  h_gene_names_by_loom_path[loom_path]        
+       # @log+= "ensembl_ids: #{@ensembl_ids.to_json}"
+       # @log += `#{@cmd3}`
+        @h_results = Basic.safe_parse_json(`#{@cmd3}`.force_encoding(Encoding::ISO_8859_1).encode(Encoding::UTF_8), {})
+        ##### 3 next lines TO REMOVE when output of Extractmetadata is numbers and not strings  
+        if @h_results['values']
+          @h_results['values'].each_index do |i|
+            @h_results['values'][i] = @h_results['values'][i].map{|e| e.to_f}
+          end
+        end
+        #        @h_results = (h_all_results['list_meta'] and meta = h_all_results['list_meta'][0]) ? meta : {}
+        
+        File.open(output_file, "w") do |f|
+          if @h_results['values'] and @h_results['values'][0] and @h_results['values'][0].size > 0
+            f.write (0 .. @h_results['values'][0].size-1).to_a.select{|e| @h_results['values'][0][e]}.sort{|a, b| @h_results['values'][0][a] <=> @h_results['values'][0][b]}.map{|i|
+              if @ensembl_ids and @ensembl_ids[i] and g = @h_genes[@ensembl_ids[i]]
+                details_genes = [i, g.ensembl_id, g.name, g.alt_names, g.description]
+              else
+                details_genes = [i, nil, (gene_names) ? gene_names[i] : nil, nil, nil]
+              end
+              (details_genes + (0 .. 4).map{|vi| 
+                 (@h_results['values'][vi][i]) ? (([1, 2].include?(vi)) ? @h_results['values'][vi][i] : @h_results['values'][vi][i].round(2)) : 'NA'}).join("\t")
+            }.join("\n") + "\n"
+          end
+        end
+      end
+    end
+      
+#    @ts.push (Time.now - start_time)
+    # @cmd4 = "bla"
+    
+    #    filter_cmd = "echo '" + annots.map{|annot| annot.id}.join("\n") + "' | xargs -P 10 -I {} -c 'rails filter_de[{}]'"
+
+#    annots.each do |annot|
+#            Thread.new do
+
+    
+    filtered_stats_txt_file = (type=='de_results') ? (@project_dir + 'de' + 'filtered_stats.txt') : (@project_dir + 'tmp' + "#{current_user.id}_filtered_stats.txt")
+
+    File.delete(filtered_stats_txt_file) if File.exist? filtered_stats_txt_file
+    # !!! store in a text file the result of the parallelized code => cannot keep the values outside of the Parallel block
+    
+    # to uncomment to benchmark
+    # timing_file = @project_dir + 'de' + 'timing_file.txt'
+
+    #   start_time = Time.now
+    Parallel.map(annots, in_processes: 10) { |annot| 
+        start_time = Time.now
+      loom_file = @project_dir + annot.filepath
+      
+      #      @cmd4 = "rails filter_de[#{annot.id}]"
+      #      `#{@cmd4}`
+      
+      input_file = @project_dir + "de" + annot.run_id.to_s + "output.txt"
+      ######    log_fc_threshold = Math.log2(@h_de_filters['fc_cutoff']) #### to put back when output of Extractmetadata is numbers and not strings  
+      log_fc_threshold = Math.log2(@h_de_filters['fc_cutoff'].to_f)
+      final_lists = {:down => [], :up => []}
+      final_sorted_lists = {:down => [], :up => []}
+      i_line = 0
+      if type == 'ge_form'
+        File.open(input_file, 'r') do |f|
+          while (l = f.gets) do
+            t = l.chomp.split("\t")
+            ######   if t[6].to_f <= @h_de_filters['fdr_cutoff'] #### to put back when output of Extractmetadata is numbers and not strings                                                     
+            if t[7].to_f <= @h_de_filters['fdr_cutoff'].to_f
+              if t[5].to_f >= 0 and t[5].to_f >= log_fc_threshold
+                final_lists[:up].push t[0] 
+              elsif t[5].to_f <= 0 and t[5].to_f <= -log_fc_threshold
+                final_lists[:down].push t[0] 
+              end
+            end
+            i_line+=1
+          end
+        end
+      else
+        File.open(input_file, 'r') do |f|
+          while (l = f.gets) do
+            t = l.chomp.split("\t")
+            ######   if t[6].to_f <= @h_de_filters['fdr_cutoff'] #### to put back when output of Extractmetadata is numbers and not strings
+            if t[7].to_f <= @h_de_filters['fdr_cutoff'].to_f
+              if t[5].to_f >= 0 and t[5].to_f >= log_fc_threshold
+                final_lists[:up].push [i_line, t[5], t[7]]
+              elsif t[5].to_f <= 0 and t[5].to_f <= -log_fc_threshold
+                final_lists[:down].push [i_line, t[5], t[7]]
+              end
+            end
+            i_line+=1
+          end
+        end
+      end
+        #      @log += "SIZE: " + final_lists[:up].size.to_s + " : " + i_line.to_s
+#      final_sorted_lists[:up] = final_lists[:up].reverse
+#      final_sorted_lists[:down] = final_lists[:down]
+      #      final_sorted_lists[:up] = final_lists[:up].sort{|a, b| b[1] <=> a[1]}
+      #      final_sorted_lists[:down] = final_lists[:down].sort{|a, b| a[1] <=> b[1]}
+      
+#      final_lists.each_key do |k|
+  #      filename = @project_dir + 'de' + annot.run_id.to_s + "filtered.#{k}.json"
+      if type == 'ge_form'
+        filename = @project_dir + 'tmp' + "#{current_user.id}_#{annot.run_id}_filtered.json"
+        File.open(filename, 'w') do |f|
+          f.write(final_lists.to_json)
+        end
+      else
+        final_lists.each_key do |k|
+          filename = @project_dir + 'de' + annot.run_id.to_s + "filtered.#{k}.json"
+          File.open(filename, 'w') do |f|
+            f.write final_lists[k].map{|e| e[0]}.to_json
+          end
+        end
+      end
+    #  end
+      
+#        @h_stats[annot.run_id.to_s] = {'up' => final_sorted_lists[:up].size, 'down' => final_sorted_lists[:down].size}
+      #      filename = @project_dir + 'de' + 'filtered_stats.txt'
+      File.open(filtered_stats_txt_file, "a") do |f|
+        f.write [annot.run_id, final_lists[:up].size, final_lists[:down].size].join("\t") + "\n"
+      end
+
+        
+        #      filtered_stats_txt_file = @project_dir + 'de' + 'filtered_stats.txt'
+        #      File.open(filtered_stats_txt_file, "r") do |f|
+        #        while (l = f.gets) do
+        #          t = l.chomp.split("\t")
+        #          @h_stats[t[0]] = {:up => t[1], :down => t[2]}
+        #        end
+        #      end
+        
+        #      start_time = Time.now
+        #      @cmd4 = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T FilterDEMetadata -loom #{loom_file} -iAnnot #{annot.name} -fdr #{@h_de_filters['fdr_cutoff']} -fc #{@h_de_filters['fc_cutoff']}"
+        #      @h_results_filtered = JSON.parse(`#{@cmd4}`)
+        #      
+        #      @ts.push (Time.now - start_time)      
+        #      start_time = Time.now
+        #      ## write filtered file                                                                                                  ##                                                                                                    
+        #      @h_results_filtered.each_key do |k|
+        #        filename = @project_dir + 'de' + annot.run_id.to_s + "filtered.#{k}.json"
+        #        File.open(filename, 'w') do |f|
+        #          f.write @h_results_filtered[k].to_json
+        #        end
+        #        @h_stats[annot.run_id] ||= {}
+        #        @h_stats[annot.run_id][k] = @h_results_filtered[k].size
+        #      end
+        #      @ts.push (Time.now - start_time)
+    
+#      end 
+ 
+      # to uncomment to benchmark
+      #      File.open(timing_file, 'a') do |f|
+      #        f.write (Time.now - start_time).to_s + "\n" 
+      #      end
+    }
+#    @ts.push (Time.now - start_time)
+
+    #    filtered_stats_txt_file = @project_dir + 'de' + 'filtered_stats.txt'                                                                           
+     @h_stats['6o6o']=  filtered_stats_txt_file
+    if File.exist? filtered_stats_txt_file
+       @h_stats['6o6o']= "bla"
+      File.open(filtered_stats_txt_file, "r") do |f|                                                                                                 
+        while (l = f.gets) do                                                                                                                        
+          t = l.chomp.split("\t")                                                                                                                    
+          @h_stats[t[0]] = {"up" => t[1].to_i, "down" => t[2].to_i}                                                                                              
+        end                                                                                                                                          
+      end               
+      
+      filtered_stats_file = @project_dir + 'de' + 'filtered_stats.json'
+      if type == 'ge_form'
+        filtered_stats_file = @project_dir + 'tmp' + "#{current_user.id}_filtered_stats.json"
+      end
+      File.open(filtered_stats_file, "w") do |f|
+        f.write(@h_stats.to_json)
+      end
+      
+    end
+
+
+    return @h_stats
+    
+  end
+
+  def filter_de_results
+    params[:step_id] ||= 6
+    common_get_step()
+    annots = [] 
+    @h_results = {}
+    @h_stats = {}
+    @log = ""
+    @ida = session[:input_data_attrs][@project.id][params[:step_id]]
+    @project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
+
+    if params[:type] == 'de_results'
+      annots = Annot.where(:run_id => @runs.map{|r| r.id}).all
+      @h_de_filters = Basic.safe_parse_json(@project.de_filter_json, {})
+    else
+      annots =  Annot.where(:run_id => @ida[params[:attr_name]].map{|e| e[:run_id]}).all
+      @h_de_filters = session[:tmp_de_filter][@project.id]
+    end
+
+    @log4 = @annots.to_json
+    
+    #    @h_de_filters = Basic.safe_parse_json(@project.de_filter_json, {})
+    
+    if @h_de_filters != params[:filter] or params[:type] == 'ge_form'
+      if params[:type] == 'de_results'
+        @project.update_attribute(:de_filter_json, {:fc_cutoff => params[:filter][:fc_cutoff].to_f, :fdr_cutoff => params[:filter][:fdr_cutoff].to_f}.to_json)
+      else
+         session[:tmp_de_filter][@project.id] = params[:filter]
+      end
+      # recompute the nbers 
+      #    annots.each do |annot|
+      #      loom_file = @project_dir + annot.filepath
+      #      @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T FilterDEMetadata -loom #{loom_file} -iAnnot #{annot.name} -fdr #{params[:filter][:fdr_cutoff]} -fc #{params[:filter][:fc_cutoff]} -light#"
+      #      @h_results[annot.id] = JSON.parse(`#{@cmd}`)
+      #    end
+      #    File.open(filtered_stats_file, "w") do |f|
+      #       f.write(@h_results.to_json)
+      #    end
+      @log += 'bla'
+      @h_stats = filter_de(annots, params[:type])
+      #      annots.each do |annot|
+      #        loom_file = @project_dir + annot.filepath
+      #        @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T FilterDEMetadata -loom #{loom_file} -iAnnot #{annot.name} -fdr #{params[:filter][:fdr_cutoff]} -fc #{params[:filter][:fc_cutoff]}"
+      #        @h_results = JSON.parse(`#{@cmd}`)
+      #        ## write filtered file
+      #        @h_results.each_key do |k|
+      #          filename = @project_dir + 'de' + annot.run_id.to_s + "filtered.#{k}.json"          
+      #          #       @h_results[annot.run_id].each_key do |k|
+      #          @h_stats[annot.run_id] ||= {}
+      #          @h_stats[annot.run_id][k] = @h_results[k].size 
+      #        end
+      #      end
+      #end
+      #      File.open(filtered_lists_file, "w") do |f|
+      #        f.write(@h_results.to_json)
+      #      end
+      #      File.open(filtered_stats_file, "w") do |f|
+      #        f.write(@h_stats.to_json)
+      #      end
+      
+    end
+    
+#    render :text => "refresh('step_container', '#{get_step_project_path(@project.id, :step_id => 6)}', {loading:'fa-2x'})" #:partial => 'de_table'
+     if params[:type] == 'de_results'
+       render :partial => 'filter_de_results'
+     elsif params[:type] == 'ge_form'
+       @h_runs = {}
+       runs = Run.where(:id => @ida[params[:attr_name]].map{|e| e[:run_id]}).all
+       runs.map{|r| @h_runs[r.id] = r}
+       render :partial => 'ge_filtered_de', :locals => {:attr_name => params[:attr_name]}
+       #       render :partial => 'attribute', :locals => {:attr_name => params[:attr_name], :horiz_element => horiz_element}
+     end
+  end
+
+  def filter_ge runs, type
+    project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
+    ge_dir = project_dir + 'ge'
+    h_stats = {}
+    @h_ge_filters = Basic.safe_parse_json(@project.ge_filter_json, {})
+    
+    @headers = []
+    h_headers = {}
+
+    @successful_runs = @runs.select{|r| r.status_id == 3}
+    first_run = @successful_runs.first
+    if first_run
+      result_filename = ge_dir + first_run.id.to_s + "output.json"
+      h_output = Basic.safe_parse_json(File.read(result_filename), {})
+      ### define header once for all                                                                                                                                                                                            
+      if @headers.size == 0
+        @headers = h_output['headers']
+        @headers.each_index do |i|
+          h_headers[@headers[i]] = i
+        end
+      end
+      
+      filtered_stats_txt_file = project_dir + 'ge' + 'filtered_stats.txt'
+      File.delete(filtered_stats_txt_file) if File.exist? filtered_stats_txt_file
+      
+      Parallel.map(@successful_runs, in_processes: 10) { |run|
+        #@runs.each_index do |run_i|
+        # run = @runs[run_i]
+        h_stats[run.id]={}
+        result_filename = ge_dir + run.id.to_s + "output.json"
+        h_output = Basic.safe_parse_json(File.read(result_filename), {})
+        
+        #            h_stats[run.id] = result_filename + "-->" + h_output.to_json.first(100)
+        h_lists = {:up => [], :down => []}
+        h_lists.each_key do |k|
+          if  h_output[k.to_s]
+            h_output[k.to_s].each do |e|
+            if e[h_headers['fdr']] <= @h_ge_filters['fdr_cutoff'].to_f
+              h_lists[k].push e 
+            else
+              break
+            end
+            end
+          end
+      end
+        
+        File.open(filtered_stats_txt_file, "a") do |f|
+          f.write [run.id, h_lists[:up].size, h_lists[:down].size].join("\t") + "\n"
+        end
+        
+      }
+      
+      if File.exist? filtered_stats_txt_file
+        File.open(filtered_stats_txt_file, "r") do |f|
+          while (l = f.gets) do
+            t = l.chomp.split("\t")
+            h_stats[t[0]] = {"up" => t[1].to_i, "down" => t[2].to_i}
+          end
+        end
+        
+        filtered_stats_file = project_dir + 'ge' + 'filtered_stats.json'
+        File.open(filtered_stats_file, "w") do |f|
+          f.write(h_stats.to_json)
+        end
+        
+      end
+    end
+    
+    return h_stats
+  end
+  
+  def filter_ge_results
+    params[:step_id] ||= 7
+    common_get_step()
+    annots = []
+    @h_results = {}
+    @h_stats = {}
+    @log = ""
+    @ida = session[:input_data_attrs][@project.id][params[:step_id]]
+    @project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
+
+    if params[:type] == 'ge_results'
+      @h_ge_filters = Basic.safe_parse_json(@project.ge_filter_json, {})
+    end
+
+    @log4 = @annots.to_json
+
+    if @h_ge_filters != params[:filter]
+      if params[:type] == 'ge_results'
+        @project.update_attribute(:ge_filter_json, {:fdr_cutoff => params[:filter][:fdr_cutoff].to_f}.to_json)
+      end
+      @log += 'bla'
+      @h_stats = filter_ge(@runs, params[:type])
+    end
+    if params[:type] == 'ge_results'
+      render :partial => 'filter_ge_results'
+    end
+  end
+
+  
   def get_commands
 
     get_base_data()
@@ -67,13 +744,17 @@ class ProjectsController < ApplicationController
       output_dir = (step.multiple_runs == true) ? (step_dir + run.id.to_s) : step_dir
       local_output_dir = ((step.multiple_runs == true) ? (local_step_dir + run.id.to_s) : local_step_dir) + "/"
       
-      h_cmd = JSON.parse(run.command_json)
-      h_cmd['docker_call'].gsub!("-v /srv/asap_run/srv:/srv", "")
-      h_cmd['docker_call'].gsub!("/data/asap2:/data/asap2", "$PROJECT_DIR:$PROJECT_DIR")
+      h_cmd = Basic.safe_parse_json(run.command_json, {})
+      if h_cmd['docker_call']
+        h_cmd['docker_call'].gsub!("-v /srv/asap_run/srv:/srv", "")
+        h_cmd['docker_call'].gsub!("/data/asap2:/data/asap2", "$PROJECT_DIR:$PROJECT_DIR")
+      end
       h_cmd['time_call'] = nil
       ['opts', 'args'].each do |e|
-        h_cmd[e].each_index do |i|
-          h_cmd[e][i]['value'] = h_cmd[e][i]['value'].to_s.gsub(project_dir.to_s, "$PROJECT_DIR")
+        if h_cmd[e]
+          h_cmd[e].each_index do |i|
+            h_cmd[e][i]['value'] = h_cmd[e][i]['value'].to_s.gsub(project_dir.to_s, "$PROJECT_DIR")
+          end
         end
       end
       
@@ -85,7 +766,7 @@ class ProjectsController < ApplicationController
           @list_cmds.push("## " + operation)
           @list_cmds.push("echo '-> #{operation}'")
           @list_cmds.push("echo '#{File.read(filepath)}' > #{local_filepath}")
-        end                                                                                                                                                                \
+        end                    
       end
 
       operation = "Running #{@h_steps[run.step_id].label}"
@@ -130,7 +811,7 @@ class ProjectsController < ApplicationController
     @fu_input = Fu.where(:project_key => @project.key).first
     
     ## get the attributes
-    @h_attrs = JSON.parse(@project.parsing_attrs_json)
+    @h_attrs = Basic.safe_parse_json(@project.parsing_attrs_json, {})
 
     render :partial => "form_parsing"
   end
@@ -153,8 +834,8 @@ class ProjectsController < ApplicationController
     end
 
     #    @obj_inst = StdMethod.find(params[:obj_id])                                                                                                                                             
-    h_global_params = JSON.parse(step.method_attrs_json)
-    attrs = JSON.parse(std_method.attrs_json)
+    h_global_params = Basic.safe_parse_json(step.method_attrs_json, {})
+    attrs = Basic.safe_parse_json(std_method.attrs_json, {})
     ## complement attributes with global parameters - defined at the level of the step                                                                                                       
     #    @log = "bla : #{@attrs.to_json}"
     # if attrs.class != Hash
@@ -168,7 +849,7 @@ class ProjectsController < ApplicationController
       end
     end
     #    @log += "blou : #{@attrs.to_json}"                                                                                                                                                  
-    attr_layout =  JSON.parse(std_method.attr_layout_json)
+    attr_layout =  Basic.safe_parse_json(std_method.attr_layout_json, {})
     return {:attrs => attrs, :attr_layout => attr_layout}
   end
 
@@ -188,13 +869,15 @@ class ProjectsController < ApplicationController
     @h_float = {"mito" => 1, "ribo" => 1, "protein_coding" => 1}
     @h_data = {}
     @h_data_json = nil
-    if !File.exist?(compressed_zip_annot_json_file) or File.size(compressed_zip_annot_json_file) == 0 #(browser != 'chrome') ? compressed_annot_json_file : compressed_zip_annot_json_file)
+    #  @h_cmd = {"bla" => compressed_zip_annot_json_file}
+
+    if !File.exist?(compressed_zip_annot_json_file) or File.size(compressed_zip_annot_json_file) <= 2 #(browser != 'chrome') ? compressed_annot_json_file : compressed_zip_annot_json_file)
       @h_cmd = {
-        "depth" => "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -light -f #{loom_file} -meta col_attrs/_Depth", 
-        "ribo" => "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -prec 1 -f #{loom_file} -light -meta col_attrs/_Ribosomal_Content",
-        "mito" => "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -prec 1 -f #{loom_file} -light -meta col_attrs/_Mitochondrial_Content",
-        "detected_genes" => "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -f #{loom_file} -light -meta col_attrs/_Detected_Genes",
-        "protein_coding" => "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -prec 1 -f #{loom_file} -light -meta col_attrs/_Protein_Coding_Content"
+        "depth" => "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -loom #{loom_file} -meta col_attrs/_Depth", 
+        "ribo" => "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -prec 1 -loom #{loom_file} -meta col_attrs/_Ribosomal_Content",
+        "mito" => "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -prec 1 -loom #{loom_file} -meta col_attrs/_Mitochondrial_Content",
+        "detected_genes" => "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -loom #{loom_file} -meta col_attrs/_Detected_Genes",
+        "protein_coding" => "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -prec 1 -loom #{loom_file} -meta col_attrs/_Protein_Coding_Content"
       }
       
       #      @h_json_data = {}      
@@ -226,7 +909,8 @@ class ProjectsController < ApplicationController
         @h_cmd.each_key do |k|
           tmp_json = `#{@h_cmd[k]}`.gsub(/\n/, '').encode('ASCII', :replace => '0')
           if !tmp_json.empty?
-            @h_data[k] = {'values' => Base64.encode64( Zlib::Deflate.deflate(JSON.parse(tmp_json)['values'].map{|e| (@h_float[k]) ? (e*10).to_i : e.to_i}.pack("S*"))).gsub("\n", "")}
+            #            @h_data[k] = {'list_meta' => [{'values' => Base64.encode64( Zlib::Deflate.deflate(Basic.safe_parse_json(tmp_json, {})['values'].map{|e| (@h_float[k]) ? (e*10).to_i : e.to_i}.pack("S*"))).gsub("\n", "")}]}
+              @h_data[k] = {'values' => Base64.encode64( Zlib::Deflate.deflate(Basic.safe_parse_json(tmp_json, {})['values'].map{|e| (@h_float[k]) ? (e*10).to_i : e.to_i}.pack("S*"))).gsub("\n", "")}
           end
         end
         fw.write(@h_data.to_json)
@@ -255,7 +939,7 @@ class ProjectsController < ApplicationController
       if  @project.nber_cols > 20000
         @h_data_json = File.read(compressed_zip_annot_json_file)
       else
-        @h_data = JSON.parse(File.read(compressed_zip_annot_json_file))
+        @h_data = Basic.safe_parse_json(File.read(compressed_zip_annot_json_file), {})
       end
       #      @h_data_json = File.read(compressed_annot_json)
     end
@@ -308,13 +992,17 @@ class ProjectsController < ApplicationController
 
   end
   
+  def form_new_metadata
+    render :partial => 'form_new_metadata'
+  end
+
   def form_new_analysis
     @log = ''
     get_base_data()
 
     @step_id = params[:step_id].to_i
     @step = @h_steps[@step_id]    
-    @h_step_attrs = (@step.attrs_json and !@step.attrs_json.empty?) ? JSON.parse(@step.attrs_json) : {}
+    @h_step_attrs = (@step.attrs_json and !@step.attrs_json.empty?) ? Basic.safe_parse_json(@step.attrs_json, {}) : {}
     
     ## check applicable methods
     runs = Run.where(:project_id => @project.id, :status_id => @h_statuses_by_name['success'].id)
@@ -359,7 +1047,7 @@ class ProjectsController < ApplicationController
   end
 
   def check_valid_types step, runs, all_valid_types, source_steps, h_constraints
-  
+    @log = "CHECK_VALID_TYPES: " + h_constraints.to_json
     h_res = {
       :h_attr_outputs => {},
       :valid_step_ids => [],
@@ -377,22 +1065,27 @@ class ProjectsController < ApplicationController
     if h_constraints and h_constraints['in_lineage']
       constraint_params = h_constraints['in_lineage']
       constraint_datasets = constraint_params.select{|attr_name| s =session[:input_data_attrs][@project.id][step.id.to_s] and s[attr_name]}.map{|attr_name| session[:input_data_attrs][@project.id][step.id.to_s][attr_name]}.flatten.uniq
+  #    @log = "CONSTRAINT_DATASETS_bla: " + constraint_datasets.to_json
+  #    @log += "CONSTRAINT_DATASETS: " +  constraint_datasets.map{|e| e[:run_id]}.to_json
     #  @log += session[:input_data_attrs].to_json
     #  @log += constraint_params.to_json
-      constraint_runs = Run.where(:id => constraint_datasets.map{|e| e["run_id"]}).all
+      constraint_runs = Run.where(:id => constraint_datasets.map{|e| e[:run_id]}).all
+   #   @log += "CONSTRAINT_RUNS: " + constraint_runs.to_json 
       lineage_constraint_run_ids = constraint_runs.map{|e2| [e2.id] + e2.lineage_run_ids.split(",").map{|e| e.to_i}}.flatten.uniq
+      
       runs = runs.select{|e|
         intersect = e.lineage_run_ids.split(",").map{|e| e.to_i} & lineage_constraint_run_ids
-        #  @log +="111 #{e.lineage_run_ids.split(",").to_json} <==> #{lineage_constraint_run_ids.to_json}"                                                                                              
-          @log +="#{intersect.size} == #{lineage_constraint_run_ids.size}"
+    #      @log +="111 #{e.lineage_run_ids.split(",").to_json} <==> #{lineage_constraint_run_ids.to_json}"                                                                                              
+     #     @log +="INTERSECT:#{intersect.size} == #{lineage_constraint_run_ids.size}"
         intersect.size == lineage_constraint_run_ids.size
       }
+     @log += runs.to_json
     end
     
     runs.each do |run|
       sid = run.step_id
       ### add run only if the run has a compatible output                                                                                                                                                     
-      h_outputs = JSON.parse(run.output_json)
+      h_outputs = Basic.safe_parse_json(run.output_json, {})
 #      @log+= run.id.to_s + "--->" + h_outputs.to_json
       h_outputs.each_key do |k|
         files = h_outputs[k].keys.select{|k2|
@@ -423,7 +1116,7 @@ class ProjectsController < ApplicationController
   end
   
   def form_select_input_data
-    tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
+    @project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
    # @step = Step.where(:name => params[:step_name]).first
 
 #    source_step_id = (params[:source_step_id]) ? params[:source_step_id].to_i : h_res[:valid_step_ids].first 
@@ -469,7 +1162,7 @@ class ProjectsController < ApplicationController
     @h_std_methods = {}
     std_methods.map{|std_method| @h_std_methods[std_method.id] = std_method} 
     @h_runs_by_step = {}
-    
+#    @log = runs.to_json
     @h_res = check_valid_types(@step, runs, @valid_types, @source_steps,  @h_constraints)
 
     @h_children_run_ids = {}
@@ -501,7 +1194,7 @@ class ProjectsController < ApplicationController
     ## get dashboard cards info for each valid step
     @h_dashboard_card={}
     @h_res[:valid_step_ids].map{|sid| @h_steps[sid]}.each do |step|
-      @h_dashboard_card[step.id] = JSON.parse(step.dashboard_card_json)
+      @h_dashboard_card[step.id] = Basic.safe_parse_json(step.dashboard_card_json, {})
     end
 
     render :partial => 'form_select_input_data'
@@ -559,164 +1252,205 @@ class ProjectsController < ApplicationController
  
     if exportable? @project #@project.sandbox == false or admin?                                                                                           
       new_project = @project.dup
+      valid_case = 0
       if current_user
         new_project.key = create_key()
         new_project.sandbox = false
-      else
-        if p = Project.where(:key => session[:sandbox]).first and editable? p
-          delete_project(p)
-        end
+        valid_case = 1
+      elsif ! Project.where(:key => session[:sandbox]).first 
+        #if p = Project.where(:key => session[:sandbox]).first and editable? p
+        #   delete_project(p)
+        # end
         new_project.key = session[:sandbox]
         new_project.sandbox = true
+        valid_case = 1
       end
       
-      new_project.name += ' cloned'
-      new_project.public = false
-      new_project.user_id = (current_user) ? current_user.id : 1
-      new_project.session_id = (s = Session.where(:session_id => session.id).first) ? s.id : nil
-      new_project.cloned_project_id = @project.id
-      new_project.parsing_job_id = nil
-      new_project.filtering_job_id = nil
-      new_project.normalization_job_id = nil
-      new_project.save
+      if valid_case == 1
 
-      ##create user dir if doesn't exist yet                                                                                                               
-      new_project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + ((new_project.user_id == nil) ? '0' : new_project.user_id.to_s)
-      Dir.mkdir new_project_dir if !File.exist? new_project_dir
-      new_project_dir += new_project.key
-      project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
-      FileUtils.cp_r project_dir, new_project_dir if project_dir != new_project_dir
-
-      ## copy runs 
-      
-      h_runs = {}
-      @project.runs.each do |run|
-        new_run = run.dup
-        new_run.project_id = new_project.id
-        new_run.save
-        h_runs[run.id] = new_run.id
-      end
-
-      h_steps = {}
-      Step.all.each do |s|
-        h_steps[s.id] = s
-      end
-      
-      ## change ids and full_path in all runs 
-      new_project.runs.each do |run|
-        step = h_steps[run.step_id]
-        run_dir = project_dir + step.name
-        new_run_dir = new_project_dir + step.name
-        if run.step.multiple_runs == true
-          run_dir = project_dir + step.name + run.id.to_s
-          new_run_dir = new_project_dir + step.name + run.id.to_s
+        new_project.name += ' cloned'
+        new_project.public = false
+        new_project.user_id = (current_user) ? current_user.id : 1
+        new_project.session_id = (s = Session.where(:session_id => session.id).first) ? s.id : nil
+        new_project.cloned_project_id = @project.id
+        new_project.parsing_job_id = nil
+        new_project.filtering_job_id = nil
+        new_project.normalization_job_id = nil
+        now = Time.now
+        new_project.created_at = now
+        new_project.updated_at = now
+        new_project.modified_at = now
+        new_project.save
+        
+        ##create user dir if doesn't exist yet                                                                                                               
+        new_project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + ((new_project.user_id == nil) ? '0' : new_project.user_id.to_s)
+        Dir.mkdir new_project_dir if !File.exist? new_project_dir
+        new_project_dir += new_project.key
+        project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
+        FileUtils.cp_r project_dir, new_project_dir if project_dir != new_project_dir
+        
+        ## copy runs 
+        
+        h_runs = {}
+        @project.runs.each do |run|
+          new_run = run.dup
+          new_run.project_id = new_project.id
+          new_run.save
+          h_runs[run.id] = new_run
+          logger.debug("H_RUNS: #{run.id} => " + new_run.id.to_s)
         end
-
-        h_output = JSON.parse(run.output_json)
-        new_h_output = {}
-        h_output.each_key do |k|
-         # keys_to_delete = []
-          new_h_output[k]={}
-          h_output[k].each_key do |k2|
-            l = k2.split(":")
-            t = l[0].split("/")
-            if t.size == 3 and run_id = t[1]
-              t[1] = h_runs[run_id.to_i]
-              l[0] = t.join("/")
-              new_k2 = l.join(":")
-              new_h_output[k][new_k2]=h_output[k][k2].dup              
+        
+        h_steps = {}
+        Step.all.each do |s|
+          h_steps[s.id] = s
+        end
+        
+        ## change ids and full_path in all runs 
+        @project.runs.each do |run|
+          step = h_steps[run.step_id]
+          run_dir = project_dir + step.name
+          new_run_dir = new_project_dir + step.name
+          new_run = h_runs[run.id]
+          logger.debug("NEW_RUN_DIR: " + h_runs[run.id].to_json)
+          if run.step.multiple_runs == true
+            run_dir = project_dir + step.name + run.id.to_s
+            new_run_dir = new_project_dir + step.name + h_runs[run.id].id.to_s
+          end
+          
+          h_output = Basic.safe_parse_json(run.output_json, {})
+          new_h_output = {}
+          h_output.each_key do |k|
+            # keys_to_delete = []
+            new_h_output[k]={}
+            h_output[k].each_key do |k2|
+              l = k2.split(":")
+              t = l[0].split("/")
+              if t.size == 3 and run_id = t[1] and h_runs[run_id.to_i]
+                t[1] = h_runs[run_id.to_i].id
+                l[0] = t.join("/")
+                new_k2 = l.join(":")
+                new_h_output[k][new_k2]=h_output[k][k2].dup              
+              elsif t.size == 2
+                new_h_output[k][k2]=h_output[k][k2].dup
+              end
+            end
+            #          keys_to_delete.each do |k2|
+            #            h_output[k].delete(k2)
+            #          end
+          end
+          new_lineage_run_ids = run.lineage_run_ids.split(",").select{|run_id|  h_runs[run_id.to_i]}.map{|run_id| h_runs[run_id.to_i].id}
+          new_parent_run = nil
+          if run.run_parents_json
+            if parent_run = Basic.safe_parse_json(run.run_parents_json, [])
+              new_parent_run =[]
+              parent_run.each do |p_run|
+                new_parent_run.push({:run_id => h_runs[p_run["run_id"]].id, :type => p_run["type"], :output_attr_name => p_run["output_attr_name"]})
+              end
             end
           end
-          #          keys_to_delete.each do |k2|
-          #            h_output[k].delete(k2)
-          #          end
-        end
-        new_lineage_run_ids = run.lineage_run_ids.split(",").map{|run_id| h_runs[run_id.to_i]}
-        new_parent_run = nil
-        if run.run_parents_json
-          if parent_run = JSON.parse(run.run_parents_json)
-            new_parent_run =[]
-            parent_run.each do |p_run|
-              new_parent_run.push({:run_id => h_runs[p_run["run_id"]], :type => p_run["type"], :output_attr_name => p_run["output_attr_name"]})
+          new_children_run_ids = run.children_run_ids.split(",").map{|run_id| (tmp_run = h_runs[run_id.to_i]) ? tmp_run.id : nil}.compact
+          new_command = Basic.safe_parse_json(run.command_json, {})
+          if new_command['container_name']
+            t =  new_command['container_name'].split("_").map{|e| (h_runs[e.to_i]) ? h_runs[e.to_i].id : e }          
+            new_command['container_name']= t.join("_")
+          end
+          if new_command['program']
+            new_command['program'].gsub!(/\[#{@project.key}\]/, "[#{new_project.key}]/")
+          end
+         
+          if new_command['time_call']
+            logger.debug("TIME_CALL_DEBUG")
+            logger.debug(run_dir.to_s)
+            logger.debug(new_run_dir.to_s)
+            new_command['time_call'].gsub!(/#{run_dir.to_s}/, new_run_dir.to_s)
+          end
+          ['args', 'opts'].each do |k|
+            new_command[k].each_index do |i|
+              if m = new_command[k][i]['value'].to_s.match(/\/#{@project.key}\/\w+?\/(\d+?)\//)
+                run_id = m[1]
+                if h_runs[run_id.to_i]
+                  new_command[k][i]['value'].gsub!(/\/#{run_id}\//, "/#{h_runs[run_id.to_i].id}/")
+                end
+              end
+              if  new_command[k][i]['value'].to_s.match(/\/#{@project.key}\//)
+                new_command[k][i]['value'].gsub!(/\/#{@project.key}\//, "/#{new_project.key}/")
+              end
             end
           end
-        end
-        new_children_run_ids = run.children_run_ids.split(",").map{|run_id| h_runs[run_id.to_i]}
-        new_command = JSON.parse(run.command_json)
-        t =  new_command['container_name'].split("_").map{|e| (h_runs[e.to_i]) ? h_runs[e.to_i] : e }
-        new_command['container_name']= t.join("_")
-        new_command['time_call'].gsub!(/#{run_dir.to_s}/, new_run_dir.to_s)
-        ['args', 'opts'].each do |k|
-          new_command[k].each_index do |i|
-            if new_command[k][i]['value'].to_s.match(/\/#{run.id}\//)
-              new_command[k][i]['value'].gsub!(/\/#{run.id}\//, "/#{h_runs[run.id]}/")
+          new_attrs = Basic.safe_parse_json(run.attrs_json, {})
+          new_attrs.each_key do |k|
+            if new_attrs[k].is_a? Hash
+              new_attrs[k]['run_id'] = h_runs[new_attrs[k]['run_id'].to_i].id
+              t = new_attrs[k]['output_filename'].split("/")
+              t[1] = h_runs[t[1].to_i].id if t.size == 3
+              new_attrs[k]['output_filename'] = t.join("/") 
             end
           end
+          new_run.update_attributes({
+                                  :attrs_json => new_attrs.to_json,
+                                  :command_json => new_command.to_json,
+                                  :output_json => new_h_output.to_json, 
+                                  :lineage_run_ids => new_lineage_run_ids.join(","), 
+                                  :run_parents_json => new_parent_run.to_json,
+                                  :children_run_ids => new_children_run_ids.join(",")
+                                })
         end
-        new_attrs = JSON.parse(run.attrs_json)
-        new_attrs.each_key do |k|
-          if new_attrs[k].is_a? Hash
-            new_attrs[k]['run_id'] = h_runs[new_attrs[k]['run_id'].to_i]
-            t = new_attrs[k]['output_filename'].split("/")
-            t[1] = h_runs[t[1].to_i] if t.size == 3
-            new_attrs[k]['output_filename'] = t.join("/") 
+        
+        ## copy files (do not use the fo_id but directly relative path)          
+        #  h_fos = {}
+        @project.fos.each do |file|
+          new_fo = file.dup
+          new_fo.project_id = new_project.id
+          new_fo.save
+          #    h_fos[fo.id] = new_fo.id
+        end
+        
+        ## copy annots
+        @project.annots.each do |annot|
+          new_annot = annot.dup
+          new_annot.project_id = new_project.id
+          new_annot.run_id = h_runs[annot.run_id].id
+          new_annot.store_run_id = h_runs[annot.store_run_id].id
+          new_annot.save
+        end
+        
+        ## copy project_steps
+        @project.project_steps.sort{|a, b| a.updated_at <=> b.updated_at}.map{|e|
+          new_e = e.dup
+          new_project.project_steps << new_e
+        }
+        
+        ## copy fus
+        @project.fus.map{|e| new_e = e.dup; new_e.update_attribute(:project_key, new_project.key); new_project.fus << new_e}
+
+        ## copy exp_entries
+        @project.exp_entries.each do |e|
+          new_project.exp_entries << e
+        end
+        
+        @log = ''
+        ## rename run folders
+        Step.where(:multiple_runs => true).all.each do |s|
+          Run.where(:project_id => @project.id, :step_id => s.id).all.each do |r|
+            run_dir = new_project_dir + s.name + r.id.to_s
+            new_run_dir = new_project_dir + s.name + h_runs[r.id].id.to_s
+            @log += "#{run_dir.to_s} -> #{new_run_dir.to_s}"
+            File.rename(run_dir, new_run_dir)
           end
         end
-        run.update_attributes({
-                                :attrs_json => new_attrs.to_json,
-                                :command_json => new_command.to_json,
-                                :output_json => new_h_output.to_json, 
-                                :lineage_run_ids => new_lineage_run_ids.join(","), 
-                                :run_parents_json => new_parent_run.to_json,
-                                :children_run_ids => new_children_run_ids.join(",")
-                              })
-      end
-      
-      ## copy files (do not use the fo_id but directly relative path)          
-      #  h_fos = {}
-      @project.fos.each do |file|
-        new_fo = file.dup
-        new_fo.project_id = new_project.id
-        new_fo.save
-        #    h_fos[fo.id] = new_fo.id
-      end
-      
-      ## copy annots
-      @project.annots.each do |annot|
-        new_annot = annot.dup
-        new_annot.project_id = new_project.id
-        new_annot.run_id = h_runs[annot.run_id]
-        new_annot.store_run_id = h_runs[annot.store_run_id]
-        new_annot.save
-      end
-      
-      ## copy project_steps
-      @project.project_steps.sort{|a, b| a.updated_at <=> b.updated_at}.map{|e|
-        new_e = e.dup
-        new_project.project_steps << new_e
-      }
-
-      ## copy fus
-      @project.fus.map{|e| new_e = e.dup; new_e.update_attribute(:project_key, new_project.key); new_project.fus << new_e}
-
-      @log = ''
-      ## rename run folders
-      Step.where(:multiple_runs => true).all.each do |s|
-        Run.where(:project_id => @project.id, :step_id => s.id).all.each do |r|
-          run_dir = new_project_dir + s.name + r.id.to_s
-          new_run_dir = new_project_dir + s.name + h_runs[r.id].to_s
-          @log += "#{run_dir.to_s} -> #{new_run_dir.to_s}"
-          File.rename(run_dir, new_run_dir)
+        
+        ## replace input.[extension] by a link (because cannot be changed)                                                                   
+        if project_dir != new_project_dir
+          File.delete new_project_dir + ('input.' + @project.extension)
+          File.symlink project_dir + ('input.' + @project.extension), new_project_dir + ('input.' + @project.extension)
         end
-      end
-
-      ## replace input.[extension] by a link (because cannot be changed)                                                                   
-      if project_dir != new_project_dir
-        File.delete new_project_dir + ('input.' + @project.extension)
-        File.symlink project_dir + ('input.' + @project.extension), new_project_dir + ('input.' + @project.extension)
-      end
       
-      redirect_to :action => 'show', :key => new_project.key
+        redirect_to :action => 'show', :key => new_project.key
+        
+      else
+        
+        redirect_to :action => 'show', :key => @project.key
+      end
     else
       render :nothing => true
     end
@@ -821,7 +1555,7 @@ class ProjectsController < ApplicationController
 
       @project.project_dim_reductions.map{|e|
         new_e = e.dup
-        h_attrs_json = JSON.parse(new_e.attrs_json)
+        h_attrs_json = Basic.safe_parse_json(new_e.attrs_json, {})
         h_attrs_json['custom_geneset'] = h_genesets[h_attrs_json['custom_geneset']] if h_attrs_json['custom_geneset']
         status_id = e.status_id
         status_id = nil if status_id and status_id < 3
@@ -850,7 +1584,7 @@ class ProjectsController < ApplicationController
   
   def set_viz_attrs(pdr)
      if pdr and pdr.attrs_json
-      h_attrs = JSON.parse(pdr.attrs_json)
+      h_attrs = Basic.safe_parse_json(pdr.attrs_json, {})
       @attrs.each_index do |i|
         logger.debug("DEFAULT" + @attrs[i]['name'].to_json + "->" + h_attrs[@attrs[i]['name']].to_json)
         @attrs[i]['default']=h_attrs[@attrs[i]['name']]
@@ -862,7 +1596,7 @@ class ProjectsController < ApplicationController
     @h_dim_reductions={}
     DimReduction.all.map{|s| @h_dim_reductions[s.id]=s}
     @form_inline = 1 ### to display attributes on one line                                                                                                                     
-    @attrs = JSON.parse(@h_dim_reductions[dr_id].attrs_json)
+    @attrs = Basic.safe_parse_json(@h_dim_reductions[dr_id].attrs_json, {})
     @dim_reduction = DimReduction.where(:id => dr_id).first
     pdr = ProjectDimReduction.where(:project_id => @project.id, :dim_reduction_id => dr_id).first
     if !pdr
@@ -961,7 +1695,7 @@ class ProjectsController < ApplicationController
   
   def get_viz_data(tmp_dir)
     @data_json = File.read(tmp_dir + 'output.json')
-    @h_ori_data = JSON.parse(@data_json)
+    @h_ori_data = Basic.safe_parse_json(@data_json, {})
     @h_data={'text' => @h_ori_data['text']}
     session[:viz_params]['dim3']='1' if !@h_ori_data["PC" + (params[:dim3] || session[:viz_params]['dim3'].to_s)]
     @h_data['x']=@h_ori_data["PC" + (params[:dim1] || session[:viz_params]['dim1'].to_s)]
@@ -1086,7 +1820,7 @@ class ProjectsController < ApplicationController
 
   def trajectory_plot(pdr, project_dir)
     tmp_dir = project_dir + 'visualization' +  pdr.dim_reduction.name
-    @pdr_params = (pdr.attrs_json) ? JSON.parse(pdr.attrs_json) : {}
+    @pdr_params = (pdr.attrs_json) ? Basic.safe_parse_json(pdr.attrs_json, {}) : {}
     @cells = get_cells().map{|e| [e, e]}
     ['geneset_type', 'custom_geneset', 'global_geneset'].each do |e|
       session[:viz_params][e] = @pdr_params[e]
@@ -1108,7 +1842,7 @@ class ProjectsController < ApplicationController
     
     tmp_dir = project_dir + 'visualization' +  pdr.dim_reduction.name
 
-    @pdr_params = JSON.parse(pdr.attrs_json) #: {}
+    @pdr_params = Basic.safe_parse_json(pdr.attrs_json, {}) #: {}
     @cells = get_cells().map{|e| [e, e]}
     @h_ori_data = {}
     if File.exist?(tmp_dir + 'output.json')
@@ -1123,7 +1857,7 @@ class ProjectsController < ApplicationController
 
     tmp_dir = project_dir + 'visualization' +  pdr.dim_reduction.name
 
-    @pdr_params =  JSON.parse(pdr.attrs_json)
+    @pdr_params =  Basic.safe_parse_json(pdr.attrs_json, {})
 
     ['geneset_type', 'custom_geneset', 'global_geneset'].each do |e|
       session[:viz_params][e] = @pdr_params[e]
@@ -1134,7 +1868,7 @@ class ProjectsController < ApplicationController
     ### get data                  
     if File.exist?(tmp_dir + 'output.json')
       @data_json = File.read(tmp_dir + 'output.json')
-      @h_ori_data = JSON.parse(@data_json)
+      @h_ori_data = Basic.safe_parse_json(@data_json, {})
     end
 
     if File.exist?(tmp_dir + 'output.heatmap.json')                                           
@@ -1168,7 +1902,7 @@ class ProjectsController < ApplicationController
       h_ensembl_ids = {}
       ensembl_ids.split(",").map{|e| h_ensembl_ids[e] = 1}
       #gene = Gene.where(:ensembl_id => params[:gene_text].split(" ").first).first
-      list_genes = JSON.parse(File.read(project_dir + 'parsing' + 'gene_names.json')) 
+      list_genes = Basic.safe_parse_json(File.read(project_dir + 'parsing' + 'gene_names.json'), []) 
       i = 0
       catch (:done) do
         list_genes.each do |e|
@@ -1222,7 +1956,7 @@ class ProjectsController < ApplicationController
     elsif  params[:color_by] == 'clustering_list'
       
       filename = project_dir + 'clustering' + params[:cluster_id] + "output.json"
-      h_results = JSON.parse(File.read(filename)) if File.exist?(filename)
+      h_results = Basic.safe_parse_json(File.read(filename), {}) if File.exist?(filename)
       trace_names = (1 .. h_results['clusters'].keys.size).to_a.map{|e| "Cluster #{e}"}
       # @trace_names= trace_names
       traces = create_traces(h_results['clusters'], trace_names)
@@ -1286,10 +2020,7 @@ class ProjectsController < ApplicationController
       filename = tmp_dir + "output.json"       
       if @project.step_id >= i and File.exist?(filename)
         results_json = File.open(filename, 'r').read #lines.join("\n")                                                                                       
-        begin
-          @all_results[step_name] = JSON.parse(results_json)
-        rescue Exception => e
-        end
+        @all_results[step_name] = Basic.safe_parse_json(results_json, {})
       end
     end
     @results = @all_results[t[@step_id-1]]
@@ -1312,6 +2043,15 @@ class ProjectsController < ApplicationController
     end
   end
 
+  def get_dashboards 
+    ## get dashboard cards info for each valid step                                                                                                                                                             
+    @h_dashboard_card={}
+    Step.all.each do |step|
+      @h_dashboard_card[step.id] = Basic.safe_parse_json(step.dashboard_card_json, {})
+    end
+
+  end
+
   def get_lineage
     
     @h_std_methods = {}
@@ -1328,11 +2068,13 @@ class ProjectsController < ApplicationController
       end
     end
     @list_runs =  Run.where(:project_id => @project.id, :id => run_ids).all.order(:id)
+    @list_runs.push run if params[:include_query_run] and params[:include_query_run] == "1"
     h_runs = {}
     @list_runs.each do |run|
       h_runs[run.id]=run
     end
     @step = @h_steps[h_runs[params[:run_id].to_i].step_id]
+    get_dashboards()
     list_cards = create_run_cards(@list_runs)
     
     render :partial => 'display_card_deck', :locals => {:cards => list_cards}
@@ -1399,8 +2141,29 @@ class ProjectsController < ApplicationController
       @annot = Annot.where(:id => params[:annot_id]).first
       project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
       loom_file = project_dir + @annot.filepath
-      cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -light -f #{loom_file} -meta #{@annot.name}"
-      send_data `#{cmd}`,  type: params[:content_type] || 'text', disposition: (!params[:display]) ? ("attachment; filename=" + @project.key  + "_" + @annot.filepath.gsub("/", "_")  + @annot.name.gsub("/", "_") + ".json") : ''
+      cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -loom #{loom_file} -meta #{@annot.name} -names"
+      json_data = `#{cmd}`
+      if params[:format] == 'json'
+        send_data json_data,  type: params[:content_type] || 'text', disposition: (!params[:display]) ? ("attachment; filename=" + @project.key  + "_" + @annot.filepath.gsub("/", "_")  + @annot.name.gsub("/", "_") + ".json") : ''
+      else
+        data = Basic.safe_parse_json(json_data, {})
+        #  if all_data['list_meta'] and data = all_data['list_meta'].first
+        final = []
+        if  data['values'][0].is_a?(Array)
+          data['values'][0].each_index do |i|
+            tmp = [i]
+            data['values'].each_index do |j|
+              tmp.push(data['values'][j][i])
+            end
+            final.push tmp
+          end
+        else
+          data['values'].each_index do |i|
+            final.push [i, ((data['cells']) ? data['cells'][i] : ((data['genes']) ? data['genes'][i] : '')), data['values'][i]]
+          end
+        end
+        send_data final.map{|e| e.join("\t")}.join("\n"),  type: params[:content_type] || 'text', disposition: (!params[:display]) ? ("attachment; filename=" + @project.key  + "_" + @annot.filepath.gsub("/", "_")  + @annot.name.gsub("/", "_") + ".txt") : ''
+      end
     end
   end
 
@@ -1419,7 +2182,7 @@ class ProjectsController < ApplicationController
         
         if s[:data_type] == "1" and s[:dataset_annot_id] and s[:row_i]
           @dataset_annot = Annot.where(:id => s[:dataset_annot_id]).first
-          
+          loom_path = project_dir + @dataset_annot.filepath
           # run = Run.where(:project_id => @project.id, :id => params[:annot_id])
           #  h_outputs = JSON.parse(run.output_json)
           #  output_matrix = nil
@@ -1428,23 +2191,30 @@ class ProjectsController < ApplicationController
           #    end
           #  end
           
-          @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractRow -prec 2 -i #{s[:row_i]} -f #{loom_path} -iAnnot #{@dataset_annot.name}"
+          @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractRow -prec 2 -indexes #{s[:row_i]} -loom #{loom_path} -iAnnot #{@dataset_annot.name}"
           row_txt = `#{@cmd}`
-          row = (row_txt.match(/^\{/)) ? JSON.parse(row_txt)['row'] : nil
-          
+#          row = (row_txt.match(/^\{/)) ? JSON.parse(row_txt)['row'] : nil
+          @log4 += @cmd
+          logger.debug("CMD_extract:" + @cmd)
+          tmp = Basic.safe_parse_json(row_txt, {})
+          row = (tmp and tmp['values']) ? tmp['values'][0] : []
         elsif s[:data_type] == "2" and s[:num_annot_id] and s[:header_i]
           @num_annot = Annot.where(:id => s[:num_annot_id]).first
           row = ['bla']
           if @num_annot.dim == 1 
             # col =>  ExtractCol
             if @num_annot.nber_rows == 1
-              @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -prec 2 -light -f #{loom_path} -meta #{@num_annot.name}"
+              @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -prec 2 -loom #{loom_path} -meta #{@num_annot.name}"
               row_txt = `#{@cmd}`
-              row = (row_txt.match(/^\{/)) ? JSON.parse(row_txt)['values'].map{|e| e.to_f} : nil
+             # row = (row_txt.match(/^\{/)) ? JSON.parse(row_txt)['values'].map{|e| e.to_f} : nil
+              tmp_h = Basic.safe_parse_json(row_txt, {})              
+              #      row = (tmp_h['list_meta'] and meta = tmp_h['list_meta'][0]) ? meta['values'] : []
+              row = (tmp_h['values']) ? tmp_h['values'] : [] 
             else
-              @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractCol -prec 2 -i #{s[:header_i]} -f #{loom_path} -iAnnot #{@num_annot.name}"
+              @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractCol -prec 2 -indexes #{s[:header_i]} -loom #{loom_path} -iAnnot #{@num_annot.name}"
               row_txt = `#{@cmd}`
-              row = (row_txt.match(/^\{/)) ? JSON.parse(row_txt)['col'] : nil
+              #              row = (row_txt.match(/^\{/)) ? JSON.parse(row_txt)['col'] : nil
+              row = Basic.safe_parse_json(row_txt, {})['values'][0]
             end
             #          row= [@cmd]
             # else
@@ -1459,14 +2229,18 @@ class ProjectsController < ApplicationController
      #  row = ['blu']
       elsif session[:dr_params][@project.id][:coloring_type] == '3' and cat_annot_id = session[:dr_params][@project.id][:cat_annot_id] ## cat
       
-      @cat_annot = Annot.where(:id => cat_annot_id).first
-     # row = ['bla']
-    #  if @cat_annot.dim == 1
+        @cat_annot = Annot.where(:id => cat_annot_id).first
+        # row = ['bla']
+        #  if @cat_annot.dim == 1
         # col =>  ExtractCol                                                                                                                                                                                                                 
         if @cat_annot.nber_rows == 1
-          @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -light -f #{loom_path} -meta #{@cat_annot.name}"
+          @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -loom #{loom_path} -meta #{@cat_annot.name}"
           row_txt = `#{@cmd}`
-          row = (row_txt.match(/^\{/)) ? JSON.parse(row_txt)['values'].map{|e| e.to_f} : nil
+#          row = (row_txt.match(/^\{/)) ? JSON.parse(row_txt)['values'].map{|e| e.to_f} : nil
+          
+          tmp_h = Basic.safe_parse_json(row_txt, {}) #['values']
+          #          row = (tmp_h['list_meta'] and meta = tmp_h['list_meta'][0]) ? meta['values'] : []
+          row = (tmp_h['values']) ? tmp_h['values'] : []
           
         else
           #        @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractCol -i #{s[:header_i]} -f #{loom_path} -iAnnot #{@cat_annot.name}"
@@ -1489,7 +2263,19 @@ class ProjectsController < ApplicationController
   end
 
   def get_rows
+    @log4 = ''
     @rows = []
+#    @annot = Annot.where(:id => session[:dr_params][@project.id][:annot_id]).first
+    h_res = {}
+
+    ### detect there is a change of cat_annnot_id to init selected clusters
+    if session[:dr_params][@project.id][:cat_annot_id] != params[:cat_annot_id]
+      cat_annot = Annot.where(:id => params[:cat_annot_id]).first
+      if cat_annot
+        session[:dr_params][@project.id][:sel_cats] = Basic.safe_parse_json(cat_annot.categories_json, {}).keys.map{|e| e.to_i}
+      end
+    end
+    
     [:annot_id, :coloring_type, :cat_annot_id].each do |k|
       if params[k]
         session[:dr_params][@project.id][k] = params[k]
@@ -1522,29 +2308,40 @@ class ProjectsController < ApplicationController
       if row = extract_row(nil)
         @rows = [row]
       end
+      h_res[:cat_aliases] = Basic.safe_parse_json(@cat_annot.cat_aliases_json, {})
+      #      h_res[:test] = @cat_annot.to_json
     end
 
-#    respond_to do |format|                                                                                                                                                                                    
-#      format.json {                                                                                                                                                                                           
-#        render :text => rows.to_json                                                                                                                                                                          
-#      }                                                                                                                                                                                                       
-#    end        
+    h_res[:rows] = @rows
+    h_res[:test] = @genes_annot
+    respond_to do |format|          
+      format.json {                                      
+        render :plain => h_res.to_json                                                
+      }                                                                                                                                                                                                      
+    end        
   end
 
+
   def save_plot_settings
-    [:dot_opacity, :dot_size, :coloring_type].each do |k|
+    [:dot_opacity, :dot_size, :coloring_type, :main_menu].each do |k|
       session[:dr_params][@project.id][k] = params[k] if params[k]
     end
   end
   
   def get_dr_options
 
+    @h_users = (current_user) ? {current_user.id => 'me'} : {}
+    @project.shares.map{|s| @h_users[s.user_id] = s.email}
+
+    @h_std_methods = {}
+    StdMethod.all.map{|s| @h_std_methods[s.id] = s}
+
     get_base_data()
 
     project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
     @annot = nil
     @datasets = []
-    @autocomplete_json = ''
+    @autocomplete_json = '[]'
     @log4 = ''
     @num_annots = []
     @cat_annots = []
@@ -1552,99 +2349,267 @@ class ProjectsController < ApplicationController
       @run = Run.where(:id => params[:run_id]).first
       @annot = Annot.where(:project_id => @project.id, :run_id => params[:run_id]).first
      
-      @h_attrs = JSON.parse(@run.attrs_json)
+      @h_attrs = Basic.safe_parse_json(@run.attrs_json, {})
       @h_annots = {}
       
       all_runs = []
       store_run = Run.where(:id => @annot.store_run_id).first
-      source_run = Run.where(:id => @h_attrs['input_matrix']['run_id']).first
+      #      source_run = Run.where(:id => @h_attrs['input_matrix']['run_id']).first
       occ_k = :occ_1 #("occ_" + params[:occ]
       if s = session[:dr_params][@project.id][occ_k]
-        s[:dataset_annot_id] = source_run.id
-        @datasets = Annot.where(:project_id => @project.id, :store_run_id => store_run.id, :dim => 3).all
-        h_datasets = {}
-        @datasets.map{|d| h_datasets[d.run_id]=d}
-        if  h_datasets[source_run.id]
-          s[:dataset_annot_id] =  h_datasets[source_run.id].id
-          
-          @num_annots = Annot.where(:project_id => @project.id, :data_type_id => 1, :dim => 1, :store_run_id => @annot.store_run_id).all.select{|a| a.nber_rows and a.nber_rows < 200}
-          @cat_annots = Annot.where(:project_id => @project.id, :data_type_id => 3, :dim => 1, :store_run_id => @annot.store_run_id).all
-          @num_annot = nil
-          if annot_id = session[:dr_params][@project.id][:annot_id]
-            @num_annot = Annot.where(:project_id => @project.id, :id => annot_id).first
-          end
-          
-          ### prepare JSON file for searching genes
-          store_run_step = store_run.step
-          autocomplete_file = project_dir + store_run_step.name
-          autocomplete_file += store_run.id.to_s if store_run_step.multiple_runs == true
-          autocomplete_file += 'autocomplete_genes.json'
-          if !File.exists? autocomplete_file
-            
-            ### retrieve data from loom
-            
-            annot_names = ["/row_attrs/Gene", "/row_attrs/Accession", "/row_attrs/_StableID"]
-            annot_names.each_index do |i|
-              annot_name = annot_names[i]
-              key = annot_name.split("/")[2].downcase  
-              @genes_annot = Annot.where(:store_run_id => @annot.store_run_id, :name => annot_name).first
-              
-              loom_path = project_dir + @genes_annot.filepath
-              @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -light -f #{loom_path} -meta #{annot_name}"
-              @log4 += "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -light -f #{loom_path} -meta #{annot_name}" 
-              val = `#{@cmd}`
-              h_res = (val.match(/^\{/)) ? JSON.parse(val) : {} 
-              @h_annots[key] = h_res['values'] 
-            end
-            
-            ### get alt names from database
-            h_alt_names = {}
-            accessions = @h_annots['accession'].uniq
-            h_search = {:organism_id => @project.organism_id}
-            if accessions.size < 65000
-              h_search[:ensembl_id] = accessions
-            end
-            Gene.select("ensembl_id, alt_names").where(h_search).all.each do |g|
-              h_alt_names[g.ensembl_id] = g.alt_names 
-            end
-            
-            autocomplete_list = []
-            h_indexes = {}
-            if @h_annots["accession"]
-              @h_annots["accession"].each_index do |i|
-                h_indexes[@h_annots["_stableid"][i]] = i
-                alt_names = h_alt_names[@h_annots["accession"][i]]
-                str = [@h_annots["gene"][i], ((@h_annots["accession"][i] != '') ? @h_annots["accession"][i] : nil), ((alt_names and alt_names != '') ? "[#{alt_names}]" : nil), "{#{@h_annots["_stableid"][i]}}"].compact.join(" ")
-                autocomplete_list.push str #@h_annots["_stableid"][i]
-              end
-            end
-            @autocomplete_json = {"search" => autocomplete_list.sort, "h_indexes" => h_indexes}.to_json
-            
-            if autocomplete_list.size > 0 and h_indexes.keys.size > 0
-              File.open(autocomplete_file, 'w') do |f|
-                f.write(@autocomplete_json)
-              end
-            end
-          else
-            @autocomplete_json = File.read(autocomplete_file)
-          end
+        if s[:dataset_annot_id]
+          store_run = Run.where(:id => Annot.where(:id => s[:dataset_annot_id]).first.store_run_id).first
         end
+        
+#        s[:dataset_annot_id] = store_run.id
+#        @datasets = Annot.where(:project_id => @project.id, :store_run_id => [store_run.id] + store_run.lineage_run_ids.split(","), :dim => 3).all.to_a 
+         @datasets = Annot.where(:project_id => @project.id, :dim => 3).all.to_a
+        #   @datasets.push @annot if !@datasets.include? @annot
+        #   h_datasets = {}
+        #   @datasets.map{|d| h_datasets[d.run_id]=d}
+        #   @log4+= source_run.id.to_s + ' => titi' + @datasets.to_json
+        #   if  h_datasets[store_run.id]
+        #     s[:dataset_annot_id] =  h_datasets[store_run.id].id
+        @log4 += 'toto'
+        @num_annots = Annot.where(:project_id => @project.id, :data_type_id => 1, :dim => 1, :store_run_id => @annot.store_run_id).all.select{|a| a.nber_rows and a.nber_rows < 200}
+        @cat_annots = Annot.where(:project_id => @project.id, :data_type_id => 3, :dim => 1, :store_run_id => @annot.store_run_id).all
+        @num_annot = nil
+        if annot_id = session[:dr_params][@project.id][:annot_id]
+          @num_annot = Annot.where(:project_id => @project.id, :id => annot_id).first
+        end
+        
+        ### prepare JSON file for searching genes
+        store_run_step = store_run.step
+        autocomplete_file = project_dir + store_run_step.name
+        autocomplete_file += store_run.id.to_s if store_run_step.multiple_runs == true
+        autocomplete_file += 'autocomplete_genes.json'
+
+#        if s[:dataset_annot_id] != params[:dataset_annot_id]
+#          File.delete autocomplete_file
+#        end
+
+        @log4+=autocomplete_file.to_s
+        if !File.exists? autocomplete_file
+          #  @log4 += 'bla'
+          ### retrieve data from loom
+          
+          store_run_id= @annot.store_run_id
+          if s[:dataset_annot_id]
+            store_run_id = Annot.where(:id => s[:dataset_annot_id]).first.store_run_id
+          end
+          annot_names = ["/row_attrs/Gene", "/row_attrs/Accession", "/row_attrs/_StableID"]
+          annot_names.each_index do |i|
+            annot_name = annot_names[i]
+            key = annot_name.split("/")[2].downcase  
+            
+            @genes_annot = Annot.where(:store_run_id => store_run_id, :name => annot_name).first
+            
+            loom_path = project_dir + @genes_annot.filepath
+            @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -loom #{loom_path} -meta #{annot_name}"
+            #  @log4 += "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -f #{loom_path} -meta #{annot_name}" 
+            val = `#{@cmd}`
+            @log4 += @cmd
+            @log4 += " : " + val
+            #              h_res = (val.match(/^\{/)) ? JSON.parse(val) : {} 
+            h_res = Basic.safe_parse_json(val, {})
+            #             @h_annots[key] = (h_res['list_meta'] and meta = h_res['list_meta'].first) ? meta['values'] : [] 
+            @h_annots[key] = (h_res['values']) ? h_res['values'] : []
+          end
+          
+          ### get alt names from database
+          h_alt_names = {}
+          accessions = @h_annots['accession'].uniq
+          h_search = {:organism_id => @project.organism_id}
+          if accessions.size < 65000
+            h_search[:ensembl_id] = accessions
+          end
+          Gene.select("ensembl_id, alt_names").where(h_search).all.each do |g|
+            h_alt_names[g.ensembl_id] = g.alt_names 
+          end
+          
+          autocomplete_list = []
+          h_indexes = {}
+          if @h_annots["accession"]
+            @h_annots["accession"].each_index do |i|
+              h_indexes[@h_annots["_stableid"][i]] = i
+              alt_names = h_alt_names[@h_annots["accession"][i]]
+              str = [@h_annots["gene"][i], ((@h_annots["accession"][i] != '') ? @h_annots["accession"][i] : nil), ((alt_names and alt_names != '') ? "[#{alt_names}]" : nil), "{#{@h_annots["_stableid"][i]}}"].compact.join(" ")
+              autocomplete_list.push str #@h_annots["_stableid"][i]
+            end
+          end
+          @autocomplete_json = {"search" => autocomplete_list.sort, "h_indexes" => h_indexes}.to_json
+          
+          if autocomplete_list.size > 0 and h_indexes.keys.size > 0
+            File.open(autocomplete_file, 'w') do |f|
+              f.write(@autocomplete_json)
+            end
+          end
+        else
+          @autocomplete_json = File.read(autocomplete_file)
+        end
+        #  end
       end
     end
     render :partial => 'dim_reduction_options'
   end
+  
+  def upd_cat_alias
+ 
+    if params[:annot_id] and params[:cat_name] and params[:cat_alias]
+      annot = Annot.where(:id => params[:annot_id]).first
+      h_cat_aliases = Basic.safe_parse_json(annot.cat_aliases_json, {})
+      h_cat_aliases['names']||={}
+      h_cat_aliases['user_ids']||={}
+      h_cat_aliases['names'][params[:cat_name]] = params[:cat_alias]
+      h_cat_aliases['user_ids'][params[:cat_name]] = current_user.id
+      annot.update_attribute(:cat_aliases_json, h_cat_aliases.to_json)
+      render :partial => "upd_cat_alias"
 
+    else
+      render :nothing => true
+    end
+    
+
+  end
+
+  def save_metadata_from_selection
+
+    @run = Run.where(:id => params[:run_id]).first ### dimension reduction run
+    
+    if @run
+      
+      project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
+      metadata_dir = project_dir + 'metadata'
+      Dir.mkdir(metadata_dir) if !File.exist? metadata_dir
+      
+      version = @project.version
+      h_env = JSON.parse(version.env_json)
+      
+      annot = @run.annots.select{|a| a.dim == 1}.first ## suppose there is only one annotation produced           
+      loom_file = @run.annots.first.filepath
+      total_nber_operations = Run.where(:step_id => 16, :project_id => @project.id).all.size
+      total_nber_selections = Run.where(:std_method_id => 48, :project_id => @project.id).all.size
+      nber_selections = Annot.where(:store_run_id => @run.id, :project_id => @project.id).all.select{|a| a.name.match(/#{annot.name}_sel_/)}.size
+      annot_name = annot.name + ".sel_" + (total_nber_operations+1).to_s
+      
+      h_outputs = {}
+      
+      lineage_run_ids = @run.lineage_run_ids.split(",")
+      lineage_run_ids.push @run.id
+      
+      h_run = {
+        :project_id => @project.id,
+        :step_id => 16,
+        :std_method_id => 48, 
+        :status_id => 2, #status_id, # set as running  
+        :num => total_nber_operations + 1,
+        :user_id => current_user.id,
+        :command_json => "{}", #h_cmd.to_json,
+        :attrs_json => "{}", #self.parsing_attrs_json,
+        :output_json => h_outputs.to_json,
+        :lineage_run_ids => lineage_run_ids.join(","),
+        :submitted_at => Time.now,
+        :return_stdout => true
+      }
+      
+      new_run = Run.new(h_run)
+      new_run.save
+      run_dir = metadata_dir + new_run.id.to_s
+      Dir.mkdir(run_dir) if !File.exist? run_dir
+
+      ### define stableIDs
+      @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -loom #{project_dir + loom_file} -meta /col_attrs/_StableID"
+      @h_res = Basic.safe_parse_json(`#{@cmd}`, {})
+      
+      cell_indexes_filename = run_dir + 'list_cols.json'
+      @list_cols = Basic.safe_parse_json(params[:list_cols], [])
+      File.open(cell_indexes_filename, 'w') do |f|
+        f.write("{\"selected_cells\" : " + @list_cols.map{|i| @h_res['values'][i]}.to_json + "}")
+      end
+      
+      h_cmd = {
+        # :host_name => "localhost",
+        # :time_call => h_env["time_call"].gsub(/\#output_dir/, run_dir.to_s),
+        :program => "java -jar lib/ASAP.jar", # "rails parse[#{self.key}]",  #(mem > 10) ? "java -Xms#{mem}g -Xmx#{mem}g -jar /srv/ASAP.jar" : 'java -jar /srv/ASAP.jar',  
+        :opts => [
+                  {"opt" => "-T", "value" => "CreateCellSelection"},
+                  {"opt" => "-loom", "param_key" => "loom_filename", "value" => project_dir + loom_file},
+#                  {"opt" => "-o", "value" => run_dir},
+                  {"opt" => "-meta", "param_key" => 'annot_name', "value" => annot_name},
+                  {"opt" => '-f', "value" => cell_indexes_filename}
+                 ],
+        :args => []
+      }
+      
+      new_run.update_attribute(:command_json, h_cmd.to_json)
+      
+      #      @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T CreateCellSelection -loom #{loom_file} -meta #{annot_name} -f #{sel_content}"
+      #      @res = `#{@cmd}`
+      
+      @results_json = Basic.exec_run logger, new_run
+
+      meta = Basic.safe_parse_json(@results_json, {}) 
+
+      h_data_types = {}
+      DataType.all.map{|dt| h_data_types[dt.name] = dt}
+      
+      @new_annot = Annot.where(:run_id => new_run.id).first ##Basic.load_annot new_run, meta, loom_file, h_data_types
+      if @new_annot
+        h_cat_aliases = {
+          :user_ids => {
+            "0" => current_user.id,
+            "1" => current_user.id
+          },
+          :names => {
+            "0" => (v = params[:unselected_name] and !v.empty?) ? params[:unselected_name] : "Not selected", 
+            "1" => (v = params[:selected_name] and !v.empty?) ? params[:selected_name] : "Selected"
+          }
+        } 
+        
+        @new_annot.update_attribute(:cat_aliases_json, h_cat_aliases.to_json)
+      end
+#      h_output = {
+#        :output_annot => {
+#          [loom_file, annot_name].join(":") => {
+#            :onum  => 1,
+#            :filename => "output.loom"
+#            :dataset => annot_name,
+#            :types => ["dataset","annot","col_annot","discrete_annot"],
+#            :size => File.size(project_dir + loom_file),"nber_rows":2,"nber_cols":384,"dataset_size":6144}}
+#      }
+#
+#      new_run.update_attribute(:output_json, h_output.json)
+
+      render :partial => 'save_metadata_from_selection'
+    else
+      render :nothing => true
+    end
+  end
+
+  def new_selection
+    render :partial => 'new_selection'
+  end
 
   def dr_plot
     @h_data = {}
     @run = nil
     @row = nil
+    @nber_cols = 0
+    @valid_plot = 0
+
+    @browser_name = ( params[:browser_name].match(/Chrome/)) ? 'Chrome' : 'Other'
+
+    @h_thresholds = {
+      'Chrome' => {'2d' => 1500000, '3d' => 500000},
+      'Other' => {'2d' => 1500000, '3d' => 200000}
+    }
+
     if run_id = params[:plot][:run_id]
       @run = Run.where(:id => run_id).first
-      h_outputs = JSON.parse(@run.output_json)
+      h_outputs = Basic.safe_parse_json(@run.output_json, {})
       
-      project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
-      
+      project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key      
+
       dataset = nil
       loom_file = ''
       h_outputs['output_annot'].keys.each do |output_key|
@@ -1652,20 +2617,49 @@ class ProjectsController < ApplicationController
         if t.size > 1
           loom_file = t[0]
           dataset = t[1]
+          @nber_cols = h_outputs['output_annot'][output_key]["nber_cols"] 
         end
       end
-      if dataset
+
+      @plot_type = '2d'
+      if dataset.match(/_3D/) or params[:plot][:dim3]
+        @plot_type = '3d'
+      end
+
+      if dataset and (@nber_cols <= @h_thresholds[@browser_name]['3d'] and @plot_type == '3d') or (@nber_cols <= @h_thresholds[@browser_name]['2d'] and @plot_type == '2d')
+        @valid_plot = 1
+        (1 .. session[:dr_params][@project.id][:displayed_nber_dims]).each do |dim|
+          session[:dr_params][@project.id]["dim#{dim}"] = params[:plot]["dim#{dim}"]
+        end
         #t2 = dataset.split("/")
         
         loom_path = project_dir + loom_file
-        @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -f #{loom_path} -meta #{dataset}"
+#        @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -loom #{loom_path} -meta #{dataset} -names"
         
         #        @h_data = {}
         # @h_cmd.each_key do |k|
-        @h_json_data= `#{@cmd}` #.split("\n")[2] #gsub(/^.+?\{/, '{')     
+        @cmd = nil
+        dims = []
+        if params[:plot]["dim1"]
+          dims = [ params[:plot]["dim1"].to_i-1, params[:plot]["dim2"].to_i-1]
+          dims.push params[:plot]["dim3"].to_i-1 if params[:plot]["dim3"]
+#          @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractCol -prec 2 -indexes #{dims.join(",")} -loom #{loom_path} -iAnnot #{dataset} -display-names"
+#          h_data = Basic.safe_parse_json(`#{@cmd}`, {})
+#          h_data['values'] = dims.map{|d| h_data['values'][d.to_i-1]}
+#          @h_json_data= h_data.to_json
+        else
+          dims = [0,1]
+          dims.push(2) if @plot_type == '3d'
+#          @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -loom #{loom_path} -meta #{dataset}"
+#          @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractCol -prec 2 -indexes #{dims.join(",")} -loom #{loom_path} -iAnnot #{dataset} -display-names"
+          #    @h_json_data= `#{@cmd}` #.split("\n")[2] #gsub(/^.+?\{/, '{')     
+        end
+        @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractCol -prec 2 -indexes #{dims.join(",")} -loom #{loom_path} -iAnnot #{dataset} -display-names"
+        @h_json_data= `#{@cmd}` if @cmd
       end
     end
-    
+
+    #    @h_json_data='[]' if  @h_json_data==''
 #    if session[:global_dr_params][@project.id][:coloring_type] == "1" and 
 #      params[:occ] = '1'
 #    extract_row("1")
@@ -1682,9 +2676,103 @@ class ProjectsController < ApplicationController
     
   end
 
+  def upd_sel_cats
+    session[:dr_params][@project.id][:sel_cats] = Basic.safe_parse_json(params[:sel_cats], [])
+    render :partial => "upd_sel_cats"
+  end
+
   def get_dim_reduction_form
     render :partial => "dim_reduction_form"
   end
+
+  def get_run_clustering
+ 
+    annot = @h_annots_by_dim[1].first
+    h_clusters = Basic.safe_parse_json(annot.categories_json, {})
+    @h_el["card-clusters"] = {
+      :card_header => 'Clusters',
+      :card_body => h_clusters.keys.sort{|a, b| a.to_i <=> b.to_i}.map{|k| 
+        cell_label = "cell"
+        cell_label = cell_label.pluralize if h_clusters[k] > 1
+        "<button type='button' id='cat-details_#{annot.id}_#{k}' class='cat-details btn btn-sm btn-outline-secondary'>Cluster #{k} <span class='badge badge-light'>#{h_clusters[k]} #{cell_label}</span></button>"
+      }.join(" ")
+    }
+    #    @h_el["card-resultss"][:card_header] +='bla'
+  end
+
+  def get_run_de
+    annot = @h_annots_by_dim[2].first
+    loom_file = @project_dir + annot.filepath
+    
+    @h_stats = {}
+    filter_stats_file = @project_dir + 'de' + 'filtered_stats.json'
+    if File.exist? filter_stats_file
+      @h_stats = Basic.safe_parse_json(File.read(filter_stats_file), {})
+    end
+    
+    ## check if lacking filtered DE results                                                                                                                 
+    if !@h_stats[annot.run_id.to_s]
+      #  @annots_to_filter = annots.select{|annot| !@h_stats[annot.run_id.to_s]}
+      @h_stats = filter_de([annot], "de_results")
+    end
+
+#    @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -f #{loom_file} -prec 2 -light -meta #{annot.name}"
+#    @h_results = JSON.parse(`#{@cmd}`)
+    
+    ## get cell names                                                                                                                                                          
+#    @cmd2 = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -light -f #{loom_file} -meta /row_attrs/Gene"
+#    @h_res = JSON.parse(`#{@cmd2}`)
+#    @h_results["list_gene_names"]=[]
+#    @h_results["values"][0].each_index do |i|
+#      @h_results["list_gene_names"].push @h_res["values"][i]
+#    end
+
+#    fields = ['p1', 'p2', 'p3', 'p4', 'p5']
+    @h_el["card-de_table"] = {
+      :card_header => #"<div class='float-right'><button id='download_de_table_btn' class='btn btn-sm btn-primary' type='button'>Download</button></div>" + 
+      "Filtered DE tables",
+      :card_body => "<span id='up_#{@run.id}' class='badge-nber_genes pointer badge badge-" + ((@h_stats[@run.id.to_s]["up"] > 0) ? "success" : "secondary") + "'>" + @h_stats[@run.id.to_s]["up"].to_s + " up-regulated gene" + ((@h_stats[@run.id.to_s]["up"] > 1) ? "s" : "") + "</span> " +
+      "<span id='down_#{@run.id}' class='badge-nber_genes pointer badge badge-" + ((@h_stats[@run.id.to_s]["down"] > 0) ? "danger" : "secondary") + "'>" + @h_stats[@run.id.to_s]["down"].to_s + " down-regulated gene" + ((@h_stats[@run.id.to_s]["down"] > 1) ? "s" : "") + "</span> " +
+      "<button id='btn-to_de_table' type='button' class='btn btn-primary btn-sm'>Change threshold</button>"
+      #<table id='de_results'>" 
+      #"<thead><th>Gene name</th>" + fields.map{|e| "<th>#{e}</th>"}.join("") + "</thead>" + 
+      #"<tbody>" + 
+      # (0 .. @h_results["values"][0].size-1).map{|vi| "<tr><td>" + @h_results["list_gene_names"][vi] + 
+      #        "</td>" + (0 .. (fields.size-1)).map{|i| "<td>" + @h_results["values"][i][vi].to_s + "</td>"}.join("") + "</tr>" }.join("\n") +
+      #"</tbody>" +       
+      #"</table>"# + @cmd + @h_res["values"].size.to_s  #@h_results["values"].size.to_s + 
+      #  @h_res["values"].to_json 
+    }
+    
+  end
+
+  def get_run_ge
+#    annot = @h_annots_by_dim[2].first
+#    loom_file = @project_dir + annot.filepath
+
+    @h_stats = {}
+    filter_stats_file = @project_dir + 'ge' + 'filtered_stats.json'
+    if File.exist? filter_stats_file
+      @h_stats = Basic.safe_parse_json(File.read(filter_stats_file), {})
+    end
+
+    ## check if lacking filtered DE results                                                                                                                                                                                         
+    if !@h_stats[@run.id.to_s]
+      #  @annots_to_filter = annots.select{|annot| !@h_stats[annot.run_id.to_s]}                                                                                                              
+      @h_stats = filter_ge([@run], 'ge_results')
+    end
+
+    #   fields = ['p1', 'p2', 'p3', 'p4', 'p5']
+    @h_el["card-ge_table"] = {
+      :card_header => #"<div class='float-right'><button id='download_de_table_btn' class='btn btn-sm btn-primary' type='button'>Download</button></div>" +                                   
+      "Filtered GE tables",
+      :card_body => "<span id='up_#{@run.id}' class='badge-nber_genesets pointer badge badge-" + ((@h_stats[@run.id.to_s]["up"] > 0) ? "success" : "secondary") + "'>" + @h_stats[@run.id.to_s]["up"].to_s + " up-regulated gene set" + ((@h_stats[@run.id.to_s]["up"] > 1) ? "s" : "") + "</span> " +
+      "<span id='down_#{@run.id}' class='badge-nber_genesets pointer badge badge-" + ((@h_stats[@run.id.to_s]["down"] > 0) ? "danger" : "secondary") + "'>" + @h_stats[@run.id.to_s]["down"].to_s + " down-regulated gene set" + ((@h_stats[@run.id.to_s]["down"] > 1) ? "s" : "") + "</span> " +
+      "<button id='btn-to_ge_table' type='button' class='btn btn-primary btn-sm'>Change threshold</button>"
+    }
+
+  end
+
 
   def get_run
 
@@ -1694,65 +2782,120 @@ class ProjectsController < ApplicationController
     #Status.all.map{|s| @h_statuses[s.id]=s}
     get_base_data()
 
+    @h_std_methods = {}
+    StdMethod.all.map{|s| @h_std_methods[s.id] = s}
+    
+        ## get dashboard cards info for each valid step                                                                                                                                   
+    @h_dashboard_card={}
+
     ## define output_dir                                                                                                                                                                                          
     @project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
-      
+    output_json_file =
     @run = Run.where(:id => params[:run_id]).first
+    h_attrs = (@run.attrs_json) ? Basic.safe_parse_json(@run.attrs_json, {}) : {}
+    #   @h_res = {}
+    ## get std_method details    
+    h_std_method_attrs = get_std_method_details([@run])
     @step = nil
     @ps = nil
     @output_dir = nil
     if @run
       @step = @run.step
-      @h_attrs = (@step.attrs_json and !@step.attrs_json.empty?) ? JSON.parse(@step.attrs_json) : {}
+      @h_dashboard_card[@step.id] = Basic.safe_parse_json(@step.dashboard_card_json, {}) 
+      @h_attrs = (@step.attrs_json and !@step.attrs_json.empty?) ? Basic.safe_parse_json(@step.attrs_json, {}) : {}
       @ps = ProjectStep.where(:project_id => @project.id, :step_id => @step.id).first
-      @h_nber_runs = JSON.parse(@ps.nber_runs_json)
+      @h_nber_runs = Basic.safe_parse_json(@ps.nber_runs_json, {})
       step_dir = @project_dir + @step.name
       @output_dir = (@step.multiple_runs == true) ? (step_dir + @run.id.to_s) : step_dir
+#      output_json_file = @output_dir + 'output.json'
+#      @h_res = (File.exist? output_json_file) ? JSON.parse(File.read(output_json_file)) : {}
     end
 
-    @layout = JSON.parse(@step.show_view_json)
-    @h_outputs = JSON.parse(@run.output_json)
+    @layout = Basic.safe_parse_json(@step.show_view_json, {})
+    @h_outputs = Basic.safe_parse_json(@run.output_json, {})
     
+    h_files = {}
+    if @h_dashboard_card[@run.step_id]["output_files"]
+      @h_dashboard_card[@run.step_id]["output_files"].select{|e| @h_outputs[e["key"]] and ((admin? or e["admin"] == true ) or !e["admin"])}.each do |e|
+        k = e["key"]
+        @h_outputs[k].keys.each do |output_key|
+          t = output_key.split(":")
+          h_files[t[0]] ||= {
+            :h_output => @h_outputs[k][output_key],
+            :datasets => []
+          }
+          h_files[t[0]][:datasets].push({:name => t[1], :dataset_size => @h_outputs[k][output_key]['dataset_size']}) if t.size > 1
+        end
+      end
+    end
+    
+    @h_annots_by_dim = {}
+    @h_el = {}
     if @step.has_std_view == true
       
-      @h_el = {}
       ## initialize
       #@layout.each do |e|
       #  e["horiz_elements"].each do |e2|
       #    @h_el[e2.id]={}
       #  end
       #end
+      annots = Annot.where(:run_id => @run.id).all
+      annots.map{|a| @h_annots_by_dim[a.dim] ||= []; @h_annots_by_dim[a.dim].push a}
+      dataset_results = []
+      h_dim = {1 => 'Cell annotation', 2 => 'Gene annotation', 3 => 'Expression matrix'}
+      @h_annots_by_dim.each_key do |dim|
+        subtitle = h_dim[dim]
+        subtitle = subtitle.pluralize if @h_annots_by_dim[dim].size > 1
+        dataset_results.push "<h4>#{subtitle}</h4><p style='line-height:2.5em'>" +  
+          @h_annots_by_dim[dim].map{|annot| 
+          col_name = ([1, 3].include? dim) ? 'cell' : 'column'
+          row_name = ([2, 3].include? dim) ? 'gene' : 'row'
+          col_name = col_name.pluralize if annot.nber_cols and annot.nber_cols > 1
+          row_name = row_name.pluralize if annot.nber_rows and annot.nber_rows > 1
+          "<button id='annot_#{annot.id}_btn' class='btn btn-outline-secondary btn-sm annot_btn'>#{annot.name} <span class='badge badge-light'>#{annot.nber_cols} #{col_name}</span> <span class='badge badge-light'>#{annot.nber_rows} #{row_name}</span></button>"}.join(" ") + "</p>"
+      end
       
       ## set values for standard cards
       @h_el = {
-        "card-status" => {
-          :card_header => 'Status',
-          :card_body => ""
-        },
+        #        "card-status" => {
+        #          :card_header => 'Status',
+        #          :card_body => ""
+        #        },
         "card-params" => {
           :card_header => 'Parameters',
-          :card_body => ""
+          :card_body => display_run_attrs(@run, h_attrs, h_std_method_attrs)
         },
         "card-downloads" => {
+          :card_header => 'Downloads',
+          :card_body => ((h_files.keys.size > 0) ? ("<p class='card-text'>" + h_files.keys.map{|k| display_download_btn(@run, h_files[k])}.join(" ") + "</p>") : "")
+        },
+        "card-results" => {
           :card_header => 'Results',
-          :card_body => ""
+          :card_body => dataset_results.join("<br/>\n")
         }
         
       }
-    else
-      specific_function = "get_run_#{@step.name}()"
-      begin
-        eval(specific_function)
-      rescue
-        ## do nothing for the moment - later we could check if this is normal regarding to the parameters - but for the moment this is not mandatory to create a specific method for a step                                           
-      end
+#    else
     end
 
+    specific_function = "get_run_#{@step.name}()"  
+    begin
+      eval(specific_function)
+    rescue Exception => e
+      ## do nothing for the moment - later we could check if this is normal regarding to the parameters - but for the moment this is not mandatory to create a specific method for a step   
+      #      @error = e.message
+    end
+    #    end
+    
     render :partial => (@step.has_std_view == true) ? 'get_run' : (@step.name + "_view")
 
   end
 
-  def get_step_metadata
+  #  def get_step_markers
+  #   # @log = "test"
+  #  end
+
+  def get_step_metadata_expr
    
     [:metadata_type, :store_run_id].each do |k|
       session[k][@project.id] = params[k].to_i if params[k]
@@ -1769,10 +2912,10 @@ class ProjectsController < ApplicationController
     DataType.all.map{|dt| @h_data_types[dt.id]=dt}
 
     ## get dashboard cards info for each valid step                                  
-    @h_dashboard_card={}
-    Step.all.each do |step|    
-      @h_dashboard_card[step.id] = JSON.parse(step.dashboard_card_json)
-    end
+    #@h_dashboard_card={}
+    #Step.all.each do |step|    
+    #  @h_dashboard_card[step.id] = JSON.parse(step.dashboard_card_json)
+    #end
 
     @annot_runs = Run.where(:id => @annots.map{|a| a.run_id}.uniq).all
 
@@ -1780,7 +2923,7 @@ class ProjectsController < ApplicationController
     @h_outputs = {}    
     #  @h_parents = {}
     @annot_runs.each do |r|                                                                                                                                                                  
-      @h_outputs[r.id] = JSON.parse(r.output_json)  
+      @h_outputs[r.id] = Basic.safe_parse_json(r.output_json, {})  
       #    @h_run_parents[r.id] = JSON.parse(r.run_parents_json)
     end 
     
@@ -1821,16 +2964,16 @@ class ProjectsController < ApplicationController
 
     @h_json = {}
 
-    cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -f #{loom_file} -light -meta col_attrs/CellID"
+    cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -loom #{loom_file} -meta col_attrs/CellID"
     tmp_json = `#{cmd}`.gsub(/\n/, '')
     if tmp_json
-      @h_json[:cells] = JSON.parse(tmp_json)['values'].first(10)
+      @h_json[:cells] = Basic.safe_parse_json(tmp_json, {})['values'].first(10)
     end
 
-    cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -f #{loom_file} -light -meta row_attrs/Gene"
+    cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -loom #{loom_file} -meta row_attrs/Gene"
     tmp_json = `#{cmd}`.gsub(/\n/, '')
     if tmp_json
-      @h_json[:genes] = JSON.parse(tmp_json)['values'].first(10)
+      @h_json[:genes] = Basic.safe_parse_json(tmp_json, {})['values'].first(10)
     end
     
     render :partial => 'add_metadata'
@@ -1841,31 +2984,110 @@ class ProjectsController < ApplicationController
     ProjectStep.where(:project_id => @project.id).all.select{|ps| ps.status_id}.each do |ps|
       @h_project_steps[ps.step_id]=ps
     end
-    @list_steps =  @h_project_steps.keys.map{|step_id| @h_steps[step_id]}.sort{|a, b| a.rank <=> b.rank}
+    @list_steps =  @h_project_steps.keys.map{|step_id| @h_steps[step_id]}.select{|s| s.hidden == false}.sort{|a, b| a.rank <=> b.rank}
     @list_cards = []
    
+    if @project.cloned_project_id
+      @cloned_project = Project.where(:id => @project.cloned_project_id).first
+    end
+
+    @h_identifier_types = {}
+    IdentifierType.all.map{|e| @h_identifier_types[e.id] = e}
+    @h_exp_entries = {}
+    @project.exp_entries.map{|e| @h_exp_entries[e.identifier_type_id] ||= []; @h_exp_entries[e.identifier_type_id].push e}
+
+    @h_articles = {}
+    Article.where(:pmid => @project.exp_entries.map{|ge| ge.pmid}).all.map{|a| @h_articles[a.pmid] = a}
+    
+    @klay_data = []
+    @log = ""
+    h_runs = {}
+    @runs = Run.where(:project_id => @project.id, :status_id => 3).all
+    @runs.each do |run|
+      h_runs[run.id] = run
+    end
+      lineage_filter() ############### bypass lineage_filter
+#    if params[:add_lineage_run_ids]
+#       params[:add_lineage_run_ids].split(",").map{|e| e.to_i}.each do |run_id|
+#        session[:filter_lineage_run_ids][@project.id].push(run_id) if !session[:filter_lineage_run_ids][@project.id].include?(run_id)
+#      end
+#     elsif params[:del_lineage_run_ids]
+#     end
+    h_filtered_run_ids = {}
+    if session[:activated_filter][@project.id] == true
+      list_filtered_run_ids = [] #@runs.map{|r| r.id}
+     # all_lineage_filter = @runs.map{|r| r.id}
+    #  all_lineage_filter = session[:filter_lineage_run_ids][@project.id]
+   #   h_filter ={}
+      session[:filter_lineage_run_ids][@project.id].each do |run_id|
+        h_filtered_run_ids[run_id] = 1
+      end
+      @runs.each do |run|
+        if !h_filtered_run_ids[run.id] and (run.lineage_run_ids.split(",").map{|e| e.to_i} & session[:filter_lineage_run_ids][@project.id]).size > 0
+          h_filtered_run_ids[run.id]=1 
+          run.lineage_run_ids.split(",").map{|e| h_filtered_run_ids[e.to_i]=1}
+#          h_filter[run]
+        end
+      end
+#      @log = "toto" + h_filtered_run_ids.to_json
+      @list_filter_run_ids = session[:filter_lineage_run_ids][@project.id]
+    end
+
+    #runs = @current_filtered_run_ids.map{|run_id| h_runs[run_id]}
+
+    parsing_run = Run.where(:project_id => @project.id, :step => 1).first
+    @klay_data = [{:data => {:id => parsing_run.id, :rank => 1, :label => 'Parsing', :color => @h_steps[1].color}}]
+    rank_diff = @h_steps[1].rank-1
+    current_runs = [parsing_run]
+  
+    while(!current_runs.map{|r| r.children_run_ids}.join("").empty?) do
+    #  @log+='bla'
+      tmp_next_runs = []
+      current_runs.each do |parent_run|
+       # @log+= parent_run.to_json
+    #   next_runs = Run.where(:id => current_runs.children_run_ids}.split(",")).all
+        next_runs = parent_run.children_run_ids.split(",").select{|rid| h_filtered_run_ids[rid.to_i] or session[:activated_filter][@project.id] == false}.map{|rid| h_runs[rid.to_i]}.compact
+    #   @log += next_runs.to_json
+        next_runs.each do |run|
+          if step = @h_steps[run.step_id]
+            @klay_data.push({:data => {:id => run.id, :rank => step.rank-rank_diff, :node_text => step.rank-rank_diff, 
+                                :label => #((step_id = run.step_id) ? @h_steps[step_id].label : "") + 
+                                ("##{run.num} " + ((run.std_method_id) ? @h_std_methods[run.std_method_id].name : "")), :color => step.color}})
+            @klay_data.push({:data => {:id => parent_run.id.to_s + "-" + run.id.to_s, :source => parent_run.id, :target => run.id}})
+          end
+        end
+        tmp_next_runs += next_runs
+      end
+     #  @log+=tmp_next_runs.to_json
+      current_runs = tmp_next_runs.uniq
+    end
+
+    
     @list_steps.each do |step|
       ps = @h_project_steps[step.id]
       card_text = ""
-      if step.multiple_runs == false 
+      if step.multiple_runs == false
         run = Run.where(:project_id => @project.id, :step_id => step.id).first
         if run and admin?
           card_text += "##{run.id} "
         end
         card_text += display_status(@h_statuses[ps.status_id])
       else
-        h_nber_runs = JSON.parse(ps.nber_runs_json)
+        h_nber_runs = Basic.safe_parse_json(ps.nber_runs_json, {})
         card_text = h_nber_runs.keys.select{|sid| @h_statuses[sid.to_i]}.map{|sid| display_status_runs(@h_statuses[sid.to_i], h_nber_runs[sid])}.join(" ")
       end
-      
+
       h_card = {
         :card_id => "summary_step_card-#{step.id}",
         :card_class => "summary_step_card pointer",
-        :body => "<h5 class='card-title'>#{step.label}</h5><p class='card-text'>#{card_text}</p>",
+        :body => "<h5 class='card-title'><i style='color:#{step.color}' class='fa fa-circle'/> #{step.label}</h5><p class='card-text'>#{card_text}</p>",
         :footer => "<small class='text-muted'>Last updated #{display_elapsed_time(ps.updated_at)}</small>"
       }
       @list_cards.push(h_card)
     end
+
+
+
   end
 
   def get_std_method_details(runs)
@@ -1885,33 +3107,37 @@ class ProjectsController < ApplicationController
 
   def create_run_cards runs
 
-    ## get dashboard_cards
-    @h_dashboard_card={}
-    step_ids = runs.map{|r| r.step_id}.uniq
-    step_ids.map{|sid| @h_steps[sid]}.each do |step|
-      @h_dashboard_card[step.id] = JSON.parse(step.dashboard_card_json)
-    end      
+#    ## get dashboard_cards
+#    @h_dashboard_card={}
+#    step_ids = runs.map{|r| r.step_id}.uniq
+#    step_ids.map{|sid| @h_steps[sid]}.each do |step|
+#      @h_dashboard_card[step.id] = JSON.parse(step.dashboard_card_json)
+#    end      
 
     ## get std_method details
     h_std_method_attrs = get_std_method_details(runs)
 
     list_cards = []
+    editable_project = editable?(@project)
+
     runs.each do |run|
       #    if !step_dir
       step_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key + @h_steps[run.step_id].name
       output_dir = (@h_steps[run.step_id].multiple_runs == true) ? (step_dir + run.id.to_s) : step_dir
       #    end
-      h_attrs = (run.attrs_json) ? JSON.parse(run.attrs_json) : {}
       output_json_file = output_dir + "output.json"
       output_logfile = output_dir + "output.log"
-
-      h_res = (File.exist? output_json_file) ? JSON.parse(File.read(output_json_file)) : {}
-      h_outputs = (run.output_json.match(/^\{/)) ?  JSON.parse(run.output_json) : {}
-      
-      top_right = (action_name == 'get_step') ? "<div id='destroy-run_#{run.id}' class='btn_destroy-run'><i class='fa fa-times-circle'></i></div>" : ""
+      begin
+        h_attrs = (run.attrs_json) ? JSON.parse(run.attrs_json) : {}
+        h_res = (File.exist? output_json_file) ? JSON.parse(File.read(output_json_file)) : {}
+        h_outputs = (run.output_json.match(/^\{/)) ? JSON.parse(run.output_json) : {}
+      rescue
+      end
+      top_right = (action_name == 'get_step' and editable_project) ? "<div id='destroy-run_#{run.id}' class='btn_destroy-run'><i class='fa fa-times-circle'></i></div>" : ""
       
       h_files = {}
-      if @h_dashboard_card[run.step_id]["output_files"]
+#      if run.step_id != 16
+      if @h_dashboard_card[run.step_id] and @h_dashboard_card[run.step_id]["output_files"]
         @h_dashboard_card[run.step_id]["output_files"].select{|e| h_outputs[e["key"]] and ((admin? or e["admin"] == true ) or !e["admin"])}.each do |e|
           k = e["key"]
           h_outputs[k].keys.each do |output_key| 
@@ -1929,8 +3155,8 @@ class ProjectsController < ApplicationController
       h_card = {
         :card_id => "run_card_#{run.id}",
         :card_class => "run_card",
-        :body => ["<div class='top-right-buttons'>#{top_right}</div><p class='card-title'>#{display_status_short @h_statuses[run.status_id]} 
-<span id='show_run_#{run.id}' class='show_link pointer'><b>##{run.num}</b> #{(step = @h_steps[run.step_id] and step.multiple_runs == false) ? step.label : ((std_method = @h_std_methods[run.std_method_id]) ? ((!params[:step_id]) ? (step.label + " ") : "") + std_method.label : 'NA')}</span></p>",
+        :body => ["<div class='top-right-buttons'>#{top_right}</div><p class='card-title'>#{display_status_short @h_statuses[run.status_id]}" + display_run2(run, @h_steps[run.step_id], @h_std_methods[run.std_method_id]) + "</p>", 
+#<span id='show_run_#{run.id}' class='show_link pointer'><b>##{run.num}</b> #{(step = @h_steps[run.step_id] and step.multiple_runs == false) ? step.label : ((std_method = @h_std_methods[run.std_method_id]) ? ((!params[:step_id]) ? (step.label + " ") : "") + std_method.label : 'NA')}</span></p>",
                   #                  run.lineage_run_ids, 
                   #            h_attrs.to_json +                                                                                                                                                    
                   display_run_attrs(run, h_attrs, h_std_method_attrs),
@@ -1944,9 +3170,12 @@ class ProjectsController < ApplicationController
                   ((run.status_id == 3 and h_res['warnings']) ? h_res['warnings'].map{|e| "<p class='text-warning text-truncate' title='#{e['name']}. #{e['description']}'>#{e['name']}</p>"}.join(" ") : ''),
                   ((run.status_id == 4) ? ("<p class='card-text'>" + ((h_res['displayed_error']) ? h_res['displayed_error'].map{|e| "<p class='text-danger text-truncate' title='#{e}'>#{e}</p>"}.join(" ") : '')) : "" )#,
                 #  ((admin?) ? "<button id='run_#{run.id}_#{h_outputs[k][f]['onum']}' type='button' class='btn btn-sm btn-outline-secondary download_file_btn'>Log file</button>" : "")
+                #  "<div class='float-right'><button id='show_details_#{run.id}' class='btn btn-primary btn-sm show_link'>Details</button></div>"
                  ].join(""),
         
-        :footer => "<small class='text-muted'>" +
+        :footer => 
+        "<div class='float-right' style='margin-top:-50px'><button id='show_details_#{run.id}' class='btn btn-primary btn-sm show_link'>Details</button></div>" + 
+        "<small class='text-muted'>" +
         ((admin?) ? "##{run.id}, "  : "") +
         ["<span class='nowrap'>#{display_date_short(run.created_at)}</span><span id='created_time_#{run.id}' class='hidden'>#{run.submitted_at.strftime "%Y-%m-%d %H:%M:%S"}</span><span id='start_time_#{run.id}' class='hidden'>#{(run.start_time) ? run.start_time.strftime("%Y-%m-%d %H:%M:%S") : ""}</span>",
          ((run.waiting_duration) ? "<span class='nowrap'>Wait #{duration(run.waiting_duration.to_i)}</span>" : ((run.status_id == 1) ? "<span id='ongoing_wait_#{run.id}' class='nowrap'>Wait #{duration((Time.now-run.submitted_at).to_i)}</span>" : nil)), 
@@ -1959,6 +3188,7 @@ class ProjectsController < ApplicationController
       }
       list_cards.push(h_card)
     end
+#    end
     return list_cards
   end
 
@@ -1972,7 +3202,7 @@ class ProjectsController < ApplicationController
      # if active_run.status_id == 3
         @h_all_lineage_run_ids[run.id] = (run.lineage_run_ids) ? run.lineage_run_ids.split(",").map{|e| e.to_i} : []
      # end
-      @current_run_ids.push(run.id) if action_name == 'form_select_input_data' or run.step_id == @step.id
+      @current_run_ids.push(run.id) if action_name == 'form_select_input_data' or run.step_id == @step.id or @step.name == 'summary' #@h_attrs['force_run_filter']
     end
 
     @log = ''
@@ -1992,7 +3222,7 @@ class ProjectsController < ApplicationController
         @log+= "TREAT_session #{session[:filter_lineage_run_ids].to_json}"                                                
         to_delete = {}
         session[:filter_lineage_run_ids][@project.id].each do |run_id2|
-          if (@h_all_lineage_run_ids[run_id2] and @h_all_lineage_run_ids[run_id2].include? run_id) or run_id == run_id2
+          if (@step.name == 'summary' and run_id == run_id2) or (@step.name != 'summary' and ((@h_all_lineage_run_ids[run_id2] and @h_all_lineage_run_ids[run_id2].include? run_id) or run_id == run_id2))
             to_delete[run_id2] = 1
           end
         end
@@ -2036,11 +3266,16 @@ class ProjectsController < ApplicationController
 
     ## define the list of runs after applying filters                                                                                                                                                          
     @current_filtered_run_ids = []
+   # @log += "FIL: " + @list_filter_run_ids.to_json
     if session[:activated_filter][@project.id] == true and @list_filter_run_ids.size > 0
       @max = 0
       @current_run_ids.map{|run_id| tmp = @h_all_lineage_run_ids[run_id] & @list_filter_run_ids; @max = tmp.size if tmp and @max < tmp.size }
-      @current_filtered_run_ids = @current_run_ids.select{|run_id| tmp = @h_all_lineage_run_ids[run_id] & @list_filter_run_ids; tmp and @log+="#{@max} #{tmp.size} >= [#{@h_all_lineage_run_ids[run_id].size}, #{@list_filter_run_ids.size}].min" and  tmp.size == @max} # [@h_all_lineage_run_ids[run_id].size, @list_filter_run_ids.size].min}
-      
+      @log+='CUR_ini: ' +  @current_run_ids.to_json
+      if @max > 0
+        @current_filtered_run_ids = @current_run_ids.select{|run_id| tmp = @h_all_lineage_run_ids[run_id] & @list_filter_run_ids; tmp and @log+="#{@max} #{tmp.size} >= [#{@h_all_lineage_run_ids[run_id].size}, #{@list_filter_run_ids.size}].min" and  tmp.size == @max} # [@h_all_lineage_run_ids[run_id].size, @list_filter_run_ids.size].min}
+      else
+        @current_filtered_run_ids = []
+      end
       #      if params[:activated_filter] != '1' and @current_filtered_run_ids == @current_run_ids
 #        @log +='blo'
         #        session[:activated_filter] = false                        
@@ -2053,6 +3288,7 @@ class ProjectsController < ApplicationController
       @current_filtered_run_ids = @current_run_ids
 #      @log += @current_filtered_run_ids.to_json
     end
+    @log += "CUR: " + @current_filtered_run_ids.to_json
     
     #    if @current_filtered_run_ids == @current_run_ids and @filter_lineage_run_ids.size ==0 and @implicit_filter_lineage_run_ids.size == 0    
     #      @log +='blo'                      
@@ -2085,9 +3321,11 @@ class ProjectsController < ApplicationController
       #  if !@local_filter_lineage_run_ids.include? run_id and !((@h_all_lineage_run_ids[run_id] & @local_filter_lineage_run_ids).size > 0)       
       #  @local_filter_lineage_run_ids.push(run_id)                 
       #  session[:filter_lineage_run_ids].push(run_id)                                                                                                                                                         
-      if !@filter_lineage_run_ids.include? run_id and !@implicit_filter_lineage_run_ids.include? run_id
-        @h_lineage_run_ids_by_step_id[@h_all_runs[run_id].step_id] ||= []
-        @h_lineage_run_ids_by_step_id[@h_all_runs[run_id].step_id].push run_id
+      if !@filter_lineage_run_ids.include? run_id and !@implicit_filter_lineage_run_ids.include? run_id and (@step.name != 'summary' or !session[:filter_lineage_run_ids][@project.id].include?(run_id))
+        if @h_all_runs[run_id]
+          @h_lineage_run_ids_by_step_id[@h_all_runs[run_id].step_id] ||= []
+          @h_lineage_run_ids_by_step_id[@h_all_runs[run_id].step_id].push run_id
+        end
       end
     end
     #    else                    
@@ -2139,7 +3377,7 @@ class ProjectsController < ApplicationController
   def check_session_params runs, h_attr
     ## evaluate if there are runs where all params
     @log3 = ''
-    @filter_runs = runs.select{|r| h_attr[r.id]["nber_dims"] == session[:dr_params][@project.id][:nber_dims] and r.std_method_id == session[:dr_params][@project.id][:std_method_id]}
+    @filter_runs = runs.select{|r| r.status_id == 3 and h_attr[r.id]["nber_dims"] == session[:dr_params][@project.id][:nber_dims] and r.std_method_id == session[:dr_params][@project.id][:std_method_id]}
    
     if @filter_runs.size == 0
       new_ref = runs.first
@@ -2149,191 +3387,462 @@ class ProjectsController < ApplicationController
     
   end
 
-
   def get_step_dim_reduction
- 
+
+    @log3= 'b ' + session[:dr_params][@project.id][:displayed_nber_dims].to_json  + "-" + session[:dr_params][@project.id][:std_method_id].to_json
+    @error_message = ''
     ## set session for std_method_id and nber_dims
+    h_changed = {}
     session[:dr_params][@project.id][:nber_dims]||=2
-    [:std_method_id, :nber_dims].select{|e| params[e]}.each do |e|
-      session[:dr_params][@project.id][e]= params[e].to_i
-    end
-
-    ## filter only successful runs
-    @successful_runs = @runs.select{|r| r.status_id == 3}
-
-    ## get attrs for all runs
-    @h_attrs_by_run_id = {}
-    @runs.each do |r|
-      @h_attrs_by_run_id[r.id]=JSON.parse(r.attrs_json)
-    end
-   
-#    @log4 = @runs.map{|r| [r.id, r.attrs_json]}.to_json
- 
-    ## check session parameters and change them if not valid anymore
-    check_session_params(@runs, @h_attrs_by_run_id)
-
-    ## filter runs by attr nber_dims
-    @successful_runs = @successful_runs.select{|r| @h_attrs_by_run_id[r.id]['nber_dims'] == session[:dr_params][@project.id][:nber_dims]}
-    
-    @log = ''
-    @finished_runs = 
-    ## define default run_id
-    if @successful_runs.size > 0
-    
-      ## define default std_method_id in session                                                                                                                                    
-      session[:dr_params][@project.id][:std_method_id]||=@successful_runs.first.std_method_id
+    [:dim1, :dim2, :dim3, :std_method_id, :displayed_nber_dims, :run_id].select{|e| params[e]}.each do |e|
+      if session[:dr_params][@project.id][e] != params[e].to_i and  params[e].to_i != 0
+        h_changed[e]=1
+      end
+#      @error_message = session[:dr_params][@project.id][:std_method_id]
       
-      ## filter runs by std_method_id            
-      @successful_runs = @successful_runs.select{|r| session[:dr_params][@project.id][:std_method_id] == r.std_method_id}
+      session[:dr_params][@project.id][e]= params[e].to_i if params[e].to_i != 0
+    end
+    
+    #    @log = "bla"
+    h_runs = {}
+    @h_std_method_attrs={}
+    
+    if @runs and @runs.size > 0
+      ## filter only successful runs
+      @successful_runs = @runs.select{|r| r.status_id == 3}
       
-      if @successful_runs.size > 0
+      ## get attrs for all runs
+      @h_attrs_by_run_id = {}
+     # begin
+      @runs.each do |r|
+        h_runs[r.id] = r
+        @h_attrs_by_run_id[r.id]=Basic.safe_parse_json(r.attrs_json, {})
+      end
+      # rescue
+      # end
+      
+      #    @log4 = @runs.map{|r| [r.id, r.attrs_json]}.to_json
+      
+      ## check session parameters and change them if not valid anymore
+      #      check_session_params(@runs, @h_attrs_by_run_id)
+      
+      ## filter runs by attr nber_dims
+      
+      # successful_runs_nber_dims = @successful_runs.select{|r| @h_attrs_by_run_id[r.id]['nber_dims'] == session[:dr_params][@project.id][:nber_dims]}
+      #    @successful_runs = @successful_runs.select{|r| @h_attrs_by_run_id[r.id]['nber_dims'] == session[:dr_params][@project.id][:nber_dims]}
+      #      @log = ":" + session[:dr_params][@project.id][:nber_dims].to_json + "-"
+      #      @log = ''
+      #      @finished_runs = 
+      #@log = @successful_runs.to_json
+      ## define default run_id
+      
+      if !params[:partial] and  run = h_runs[params[:run_id].to_i]
+        @default_run_id = params[:run_id].to_i
+        session[:dr_params][@project.id][:std_method_id]= run.std_method_id
+        @log3+= "-->#{@default_run_id}<--"
+        if ['tsne', 'umap'].include? @h_std_methods[run.std_method_id].name
+          session[:dr_params][@project.id][:displayed_nber_dims] = @h_attrs_by_run_id[run.id]["nber_dims"].to_i
+        end
+      else
+
         
-        if !params[:run_id]
+        if params[:run_id] and h_changed[:run_id]
+          run = h_runs[params[:run_id].to_i]
+          session[:dr_params][@project.id][:std_method_id]||= run.std_method_id
+          @default_run_id = params[:run_id].to_i
+          @log3+='c'
+          #      else
+        end
+        
+        s = session[:dr_params][@project.id]
+        
+        #      if !h_changed[:run_id] and !h_changed[:std_method_id] and !h_changed[:displayed_nber_dims]
+        #        @default_run_id = session[:dr_params][@project.id][:run_id]
+        #        successful_runs =  @successful_runs.select{|r| s[:std_method_id] == h_runs[@default_run_id].std_method_id and 
+        #          (['pca', 'inc_pca'].include?(@h_std_methods[h_runs[@default_run_id].std_method_id].name) or s[:displayed_nber_dims] == @h_attrs_by_run_id[@default_run_id]["nber_dims"])}
+        
+        
+        
+        if @successful_runs.size > 0
           
-          @default_run_id = @runs.first.id
-        elsif params[:run_id] 
-          run = Run.where(:id => params[:run_id]).first
-        
-          #       @log += run.attrs_json
-          if (run and m = run.attrs_json.match(/nber_dims\"\:(\d+)/))
-            #          @log += m[1]
-            if m[1] != params[:nber_dims] and 
-                run2 = Run.where(:project_id => @project.id, :step_id => 4, :attrs_json => run.attrs_json.gsub(/nber_dims\"\:(\d+)/, "nber_dims\":#{session[:dr_params][@project.id][:nber_dims]}")).first
-              @default_run_id = run2.id
-            else
-              @default_run_id = run.id
+          ## define default std_method_id in session                                             
+          #          session[:dr_params][@project.id][:std_method_id]||=successful_runs_nber_dims.first.std_method_id if successful_runs_nber_dims.size > 0
+          session[:dr_params][@project.id][:std_method_id]||=@successful_runs.first.std_method_id
+          
+          #          if ['tsne', 'umap'].include? @h_std_methods[session[:dr_params][@project.id][:std_method_id]].name
+          #            
+          #          end
+          
+          if !h_changed[:std_method_id]
+            if @successful_runs.select{|r| session[:dr_params][@project.id][:std_method_id] == r.std_method_id}.size == 0
+              @default_run_id = (@successful_runs.map{|r| r.id}.include? params[:run_id].to_i) ? params[:run_id].to_i : @successful_runs.first.id
+              session[:dr_params][@project.id][:std_method_id]=@successful_runs.first.std_method_id
+              #   @error_message = 'bla'
             end
           end
+          
+          ## filter runs by std_method_id            
+          @successful_runs = @successful_runs.select{|r| session[:dr_params][@project.id][:std_method_id] == r.std_method_id}
+          #          @log = @successful_runs.size
+          
+          if @successful_runs.size > 0 
+            first_run = @successful_runs.first
+            #    if !h_changed[:run_id]
+            #              @log3='z'
+            #          @default_run_id = @successful_runs.select{|r| session[:dr_params][@project.id][:displayed_nber_dims] == @h_attrs_by_run_id[r.id]["nber_dims"]}.first.id
+            successful_runs = @successful_runs.select{|r| session[:dr_params][@project.id][:displayed_nber_dims] == @h_attrs_by_run_id[r.id]["nber_dims"]}
+            if successful_runs.size == 0 and ['tsne', 'umap'].include? @h_std_methods[first_run.std_method_id].name
+              session[:dr_params][@project.id][:displayed_nber_dims]= @h_attrs_by_run_id[first_run.id]["nber_dims"].to_i
+              #   @default_run_id = @successful_runs.first.id
+              #else
+              #  @default_run_id = successful_runs.first.id
+            end
+            @default_run_id = (@successful_runs.map{|r| r.id}.include? params[:run_id].to_i) ? params[:run_id].to_i  : @successful_runs.first.id
+            #    end
+            #            elsif params[:run_id] 
+            ##              run = Run.where(:id => params[:run_id]).first
+            #              
+            #              #       @log += run.attrs_json
+            ##              if (run and m = run.attrs_json.match(/nber_dims\"\:(\d+)/))
+            #              if h_attrs = @h_attrs_by_run_id[params[:run_id].to_i] #and nber_dims = h_attrs["nber_dims"]
+            #                @log3 = "z"
+            #                if h_attrs["nber_dims"] != params[:nber_dims] #and 
+            #                  run2 = Run.where(:project_id => @project.id, :step_id => 4, :attrs_json => h_runs[params[:run_id].to_i].attrs_json.gsub(/nber_dims\"\:(\d+)/, "nber_dims\":#{session[:dr_params][@project.#id][:nber_dims]}")).first
+            #                  @default_run_id = run2.id
+            #                else
+            #                  @default_run_id = params[:run_id].to_i
+            #                end
+            #              end
+            #    end
+          end
         end
+        #end
+        
+        default_run = h_runs[@default_run_id]
+        
+        if default_run and ['tsne', 'umap'].include? @h_std_methods[default_run.std_method_id].name 
+          if h_changed[:run_id] and params[:run_id] and !h_changed[:displayed_nber_dims] and !h_changed[:std_method_id]
+            @default_run_id = params[:run_id].to_i
+            @log3 += 'n'
+          elsif h_attrs = @h_attrs_by_run_id[default_run.id] and h_attrs["nber_dims"] != session[:dr_params][@project.id][:displayed_nber_dims]
+            if h_changed[:displayed_nber_dims] #@h_attrs_by_run_id[@default_run.id] and h_attrs["nber_dims"] != params[:displayed_nber_dims]
+              @log3 = 'm'
+              run2 = Run.where(:project_id => @project.id, :step_id => 4, :attrs_json => h_runs[params[:run_id].to_i].attrs_json.gsub(/nber_dims\"\:(\d+)/, "nber_dims\":#{session[:dr_params][@project.id][:displayed_nber_dims]}")).first
+              if run2
+                @default_run_id = run2.id 
+              else
+                @error_message = "Cannot find #{@h_std_methods[default_run.std_method_id].label} computed with #{session[:dr_params][@project.id][:displayed_nber_dims]} dimensions."
+              end            
+            else
+              @log3 += 'o'
+              # session[:dr_params][@project.id][:displayed_nber_dims] = h_attrs["nber_dims"]
+              @log3+='d'
+            end
+          else
+            if !h_attrs
+              @error_message = "This run doens't exist anymore."  
+            end
+          end
+        end 
       end
+      #      end
+      
+      #      @log3 = @default_run_id
+      ## get std_method details           
+      @default_run = h_runs[@default_run_id]
+      @h_std_method_attrs = get_std_method_details(@runs)
+      @default_std_method_id = params[:std_method_id].to_i || @h_std_method_attrs.keys.first
     end
-    ## get std_method details           
-    @h_std_method_attrs = get_std_method_details(@runs)
-    @default_std_method_id = params[:std_method_id].to_i || @h_std_method_attrs.keys.first
-   
     ## borrow dashboard_card info
-    @h_dashboard_card={}
-    step_ids = @runs.map{|r| r.step_id}.uniq
-    step_ids.map{|sid| @h_steps[sid]}.each do |step|
-      @h_dashboard_card[step.id] = JSON.parse(step.dashboard_card_json)
-    end
+    #    @h_dashboard_card={}
+    #    step_ids = @runs.map{|r| r.step_id}.uniq
+    #    step_ids.map{|sid| @h_steps[sid]}.each do |step|
+    #      @h_dashboard_card[step.id] = JSON.parse(step.dashboard_card_json)
+    #    end
     
   end
   
-  def get_step
+  def get_step_de
+    
+    ## get DE filters
+    @h_de_filter = Basic.safe_parse_json(@project.de_filter_json, {})
+ #   begin
+ #     @h_de_filter = JSON.parse(@project.de_filter_json)
+ #   rescue
+ #   end
+    
+    @h_stats = {}
+    filter_stats_file = @project_dir + 'de' + 'filtered_stats.json'
+    if File.exist? filter_stats_file
+     # begin
+      @h_stats = Basic.safe_parse_json(File.read(filter_stats_file), {})
+     # rescue
+     # end
+    end
+    @log4 = ''
+    ## check if lacking filtered DE results
+    if @runs
+      annots = Annot.where(:run_id => @runs.map{|r| r.id}).all
+      @annots_to_filter = annots.select{|annot| !@h_stats[annot.run_id.to_s]}
+      @log4 = @annots_to_filter.to_json
+      @h_stats = filter_de(@annots_to_filter, "de_results")
+    end
+    #    annots_to_filter.each do |annot|
+    #annot = @h_annots_by_dim[2].first
+    #      loom_file = @project_dir + annot.filepath
+    #     @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -f #{loom_file} -prec 2 -light -meta #{annot.name}"
+    #     @h_results[annot.run_id] = JSON.parse(`#{@cmd}`)
+    
+    #    end
+    
+    ## get dashboards
+    # @h_dashboard_card = {}
+    # @h_dashboard_card[@step.id] = JSON.parse(@step.dashboard_card_json)
+    current_dashboard = session[:current_dashboard][@project.id][@step.id]
+    @h_std_method_attrs = {}
 
-    ### redefine the current project (if other windows will change them to this project)
-    session[:current_project]=@project.key
-  @lod = 'e'
+    if current_dashboard == 'de_table'
+
+      @h_std_method_attrs = get_std_method_details(@runs)
+    end
+#    @log2 = 'bla'
+  end
+  
+  
+  def get_step_ge
+
+    ## get GE filters                                                                                                                                                                                                               
+    @h_ge_filter = Basic.safe_parse_json(@project.ge_filter_json, {})
+
+    @h_stats = {}
+    filter_stats_file = @project_dir + 'gene_enrichment' + 'filtered_stats.json'
+    if File.exist? filter_stats_file
+      @h_stats = Basic.safe_parse_json(File.read(filter_stats_file), {})
+    end
+    @log4 = ''
+
+    ## check if lacking filtered DE results                                                                                                                                                                                         
+    if @runs
+      # annots = Annot.where(:run_id => @runs.map{|r| r.id}).all
+      # @annots_to_filter = annots.select{|annot| !@h_stats[annot.run_id.to_s]}
+      #   @log4 = @annots_to_filter.to_json
+      @h_stats = filter_ge(@runs, 'ge_results')
+    end
+    current_dashboard = session[:current_dashboard][@project.id][@step.id]
+    @h_std_method_attrs = {}
+    
+    if current_dashboard == 'ge_table'
+      @h_std_method_attrs = get_std_method_details(@runs)
+    end
+    #    @log2 = 'bla'                                                                                                                                                                                                                  
+  end
+
+  def common_get_step
+    
+    @project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user.id.to_s + @project.key
+    
     get_base_data()
+    get_dashboards()
     @h_std_methods = {}
     StdMethod.all.map{|s| @h_std_methods[s.id] = s}
-    #    @h_steps={}
-    #   Step.all.map{|s| @h_steps[s.id]=s}
-    
-    #    @h_pdr={}
-    #    ProjectDimReduction.where(:project_id => @project.id).all.map{|pdr| @h_pdr[pdr.dim_reduction_id]=pdr}
 
     session[:active_step] = params[:active_step].to_i if params[:active_step]
     @step_id = params[:step_id].to_i || session[:active_step]
     @step = @h_steps[@step_id]
-
+#    @log = @step.name
     @ps = ProjectStep.where(:project_id => @project.id, :step_id => @step_id).first
-    @h_nber_runs = JSON.parse(@ps.nber_runs_json)
-
+    #   @h_nber_runs = {}
+    #   begin
+    @h_nber_runs = Basic.safe_parse_json(@ps.nber_runs_json, {}) if @ps
+    #   rescue
+    #   end
+    
     if @step.multiple_runs == true
       lineage_filter()
-   # else
-   #   @current_filtered_run_ids = ActiveRun.
     end
 
     @results = {}
     @all_results = {}
     @results_parsing={}
     @h_batches={}
-    @h_attrs = (@step.attrs_json and !@step.attrs_json.empty?) ? JSON.parse(@step.attrs_json) : {}
-
+  #  @h_attrs = {}
+  #  begin
+    @h_attrs = (@step.attrs_json and !@step.attrs_json.empty?) ? Basic.safe_parse_json(@step.attrs_json, {}) : {}
+  #  rescue
+  #  end
+    
     if params[:dashboard]
       session[:current_dashboard][@project.id][@step.id] = params[:dashboard]
     elsif @h_attrs["dashboards"] and default_dashboard = @h_attrs["dashboards"].first
-      session[:current_dashboard][@project.id][@step.id] ||= default_dashboard['name'] 
+      session[:current_dashboard][@project.id][@step.id] ||= default_dashboard['name']
     elsif @step.has_std_dashboard
        session[:current_dashboard][@project.id][@step.id] ||= 'std_runs'
     else
       session[:current_dashboard][@project.id][@step.id] ||= @step.name
     end
-    
 
-    #jobs = Job.where(:project_id => @project.id, :step_id => session[:active_step], :status_id => [1, 2, 3, 4]).all.to_a.compact
-    #jobs.sort!{|a, b| (a.updated_at.to_s || '0') <=> (b.updated_at.to_s || '0')} if jobs.size > 0
-    #last_job = jobs.last
-    #@last_update = @project.status_id.to_s + ","
-    #@last_update += [jobs.size, last_job.status_id, last_job.updated_at].join(",") if last_job
     @last_update = get_last_update_status()
-   # session[:last_update_active_step]= @last_update
     session[:active_dr_id] ||= 1
     session[:active_viz_type] ||= 'dr'
 
     step_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key + @step.name
 
-    if readable? @project #(current_user and current_user.id == @project.user_id) or admin? or @project.public == true or @project.sandbox == true
-  #    tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key + @h_steps[session[:active_step]].label.downcase
-  #    filename = tmp_dir + "output.json"
-  #    logger.debug("FILE: " + filename.to_s)
-  #    @h_statuses = {}
-  #    Status.all.map{|s| @h_statuses[s.id] = s}
-  
-#      @runs = ActiveRun.where(:project_id => @project.id, :step_id => @step.id).order("id desc").all
-   #   @runs = @current_filtered_run_ids.map{|run_id| @h_all_runs[run_id]}  #  (@current_filtered_run_ids.size > 0) ? @current_filtered_run_ids.map{|run_id| @h_all_runs[run_id]} : @current_run_ids.map{|run_id| @h_all_runs[run_id]}
-     # lineage_run_ids = @runs.map{|e| e.lineage_run_ids.split(",")}.flatten.uniq
-     # lineage_runs = ActiveRun.where(:project_id => @project.id, :id => lineage_run_ids).all
-     # @h_lineage_runs = {}
-     # lineage_runs.each do |lineage_run|
-     #   @h_lineage_runs[@h_steps[lineage_run.step_id].label]||=[]
-     #   @h_lineage_runs[@h_steps[lineage_run.step_id].label].push lineage_run
-     # end
-      
+
+    if readable? @project
+
       @list_cards = []
-      
-      if @step.multiple_runs == true 
-        @runs = @current_filtered_run_ids.map{|run_id| @h_all_runs[run_id]} 
-        
-        ## compute the uniq list of methods for successful runs
+
+      if @step.multiple_runs == true
+        @runs = @current_filtered_run_ids.map{|run_id| @h_all_runs[run_id]}
+
+        ## compute the uniq list of methods for successful runs                                                                                                                                               
         @h_std_method_ids = {}
         @runs.select{|r| r.status_id == 3}.map{|r| @h_std_method_ids[r.std_method_id] = 1}
         current_dashboard = session[:current_dashboard][@project.id][@step.id]
         if @runs.size > 0 and (!@h_attrs["dashboards"] or current_dashboard=='std_runs')
-          
-          #       h_dashboard_card = JSON.parse(@step.dashboard_card_json)
+
+          #       h_dashboard_card = JSON.parse(@step.dashboard_card_json)                                                                                                                                    
           @list_cards = create_run_cards(@runs)
+        elsif ['markers'].include? current_dashboard
+        #  begin
+            eval("dashboard_#{current_dashboard}()")
+        #  rescue Exception => e
+        #    @error = e.message
+        #  end
         end
-#          <div class='card'>
-#<div class='card-body'>
-#<div class='top-right-buttons'>
-#  <div id='destroy-run_<%= run.id %>' class='btn_destroy-run'><i class='fa fa-times-circle'></i></div>
-#</div>
-#<%# run.id %>
-#<p class='card-title'><b><%= raw display_status_short  @h_statuses[run.status_id] %> #<%= run.num %></b> <%= @h_std_methods[run.std_method_id].label %></p>
-#<% h_attrs = JSON.parse(run.attrs_json) %>
-#<p class='card-text'><%= raw h_attrs.keys.map{|k| v = h_attrs[k]; "<span class='badge badge-info'>#{k}:#{(v.is_a? Hash and v['run_id'] and tmp_run = Run.find(v['run_id']) and tmp_step = @h_steps[tmp#_\
-#run.step_id]) ? (tmp_step.name + ((tmp_step.multiple_runs == true) ? (" #" + tmp_run.num.to_s) : '')) : v }</span>"}.join(" ") %></p>
-#<p class='card-text'></p>
-#</div>
-#</div>
+      end
+
+    end
+  end
+    
+
+  def get_step
+
+    @log = "test"
+    common_get_step()
+
+#    @project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user.id.to_s + @project.key
+
+#    ### redefine the current project (if other windows will change them to this project)
+#    session[:current_project]=@project.key
+#    @lod = 'e'
+#    get_base_data()
+#    @h_std_methods = {}
+#    StdMethod.all.map{|s| @h_std_methods[s.id] = s}
+#    #    @h_steps={}
+#    #   Step.all.map{|s| @h_steps[s.id]=s}
+#    
+#    #    @h_pdr={}
+#    #    ProjectDimReduction.where(:project_id => @project.id).all.map{|pdr| @h_pdr[pdr.dim_reduction_id]=pdr}
 #
-#<% end %>
+#    session[:active_step] = params[:active_step].to_i if params[:active_step]
+#    @step_id = params[:step_id].to_i || session[:active_step]
+#    @step = @h_steps[@step_id]
+#
+#    @ps = ProjectStep.where(:project_id => @project.id, :step_id => @step_id).first
+#    @h_nber_runs = JSON.parse(@ps.nber_runs_json)
+#
+#    if @step.multiple_runs == true
+#      lineage_filter()
+#   # else
+#   #   @current_filtered_run_ids = ActiveRun.
+#    end
+#
+#    @results = {}
+#    @all_results = {}
+#    @results_parsing={}
+#    @h_batches={}
+#    @h_attrs = (@step.attrs_json and !@step.attrs_json.empty?) ? JSON.parse(@step.attrs_json) : {}
+#
+#    if params[:dashboard]
+#      session[:current_dashboard][@project.id][@step.id] = params[:dashboard]
+#    elsif @h_attrs["dashboards"] and default_dashboard = @h_attrs["dashboards"].first
+#      session[:current_dashboard][@project.id][@step.id] ||= default_dashboard['name'] 
+#    elsif @step.has_std_dashboard
+#       session[:current_dashboard][@project.id][@step.id] ||= 'std_runs'
+#    else
+#      session[:current_dashboard][@project.id][@step.id] ||= @step.name
+#    end
+#    
+#
+#    #jobs = Job.where(:project_id => @project.id, :step_id => session[:active_step], :status_id => [1, 2, 3, 4]).all.to_a.compact
+#    #jobs.sort!{|a, b| (a.updated_at.to_s || '0') <=> (b.updated_at.to_s || '0')} if jobs.size > 0
+#    #last_job = jobs.last
+#    #@last_update = @project.status_id.to_s + ","
+#    #@last_update += [jobs.size, last_job.status_id, last_job.updated_at].join(",") if last_job
+#    @last_update = get_last_update_status()
+#   # session[:last_update_active_step]= @last_update
+#    session[:active_dr_id] ||= 1
+#    session[:active_viz_type] ||= 'dr'
+#
+#    step_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key + @step.name
+#
+#    if readable? @project #(current_user and current_user.id == @project.user_id) or admin? or @project.public == true or @project.sandbox == true
+#  #    tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key + @h_steps[session[:active_step]].label.downcase
+#  #    filename = tmp_dir + "output.json"
+#  #    logger.debug("FILE: " + filename.to_s)
+#  #    @h_statuses = {}
+#  #    Status.all.map{|s| @h_statuses[s.id] = s}
+#  
+##      @runs = ActiveRun.where(:project_id => @project.id, :step_id => @step.id).order("id desc").all
+#   #   @runs = @current_filtered_run_ids.map{|run_id| @h_all_runs[run_id]}  #  (@current_filtered_run_ids.size > 0) ? @current_filtered_run_ids.map{|run_id| @h#_all_runs[run_id]} : @current_run_ids.map{|run_id| @h_all_runs[run_id]}
+#     # lineage_run_ids = @runs.map{|e| e.lineage_run_ids.split(",")}.flatten.uniq
+#     # lineage_runs = ActiveRun.where(:project_id => @project.id, :id => lineage_run_ids).all
+#     # @h_lineage_runs = {}
+#     # lineage_runs.each do |lineage_run|
+#     #   @h_lineage_runs[@h_steps[lineage_run.step_id].label]||=[]
+#     #   @h_lineage_runs[@h_steps[lineage_run.step_id].label].push lineage_run
+#     # end
+#      
+#      @list_cards = []
+#      
+#      if @step.multiple_runs == true 
+#        @runs = @current_filtered_run_ids.map{|run_id| @h_all_runs[run_id]} 
+#        
+#        ## compute the uniq list of methods for successful runs
+#        @h_std_method_ids = {}
+#        @runs.select{|r| r.status_id == 3}.map{|r| @h_std_method_ids[r.std_method_id] = 1}
+#        current_dashboard = session[:current_dashboard][@project.id][@step.id]
+#        if @runs.size > 0 and (!@h_attrs["dashboards"] or current_dashboard=='std_runs')
+#          
+#          #       h_dashboard_card = JSON.parse(@step.dashboard_card_json)
+#          @list_cards = create_run_cards(@runs)
+#        end
+##          <div class='card'>
+##<div class='card-body'>
+##<div class='top-right-buttons'>
+##  <div id='destroy-run_<%= run.id %>' class='btn_destroy-run'><i class='fa fa-times-circle'></i></div>
+##</div>
+##<%# run.id %>
+##<p class='card-title'><b><%= raw display_status_short  @h_statuses[run.status_id] %> #<%= run.num %></b> <%= @h_std_methods[run.std_method_id].label %></p>
+##<% h_attrs = JSON.parse(run.attrs_json) %>
+##<p class='card-text'><%= raw h_attrs.keys.map{|k| v = h_attrs[k]; "<span class='badge badge-info'>#{k}:#{(v.is_a? Hash and v['run_id'] and tmp_run = Run.find(#v['run_id']) and tmp_step = @h_steps[tmp#_\
+##run.step_id]) ? (tmp_step.name + ((tmp_step.multiple_runs == true) ? (" #" + tmp_run.num.to_s) : '')) : v }</span>"}.join(" ") %></p>
+##<p class='card-text'></p>
+##</div>
+##</div>
+##
+##<% end %>
+#
+#
+#      end
 
-
-      end
+    if readable? @project 
       @error = ''
-      specific_function = "get_step_#{@step.name}()"
-      begin
-        eval(specific_function)
-      rescue Exception => e
-        ## do nothing for the moment - later we could check if this is normal regarding to the parameters - but for the moment this is not mandatory to create a specific method for a step
-        @error = e.message #e.backtrace
+      function = nil
+      if ["de", "ge", "metadata_expr", "summary", "dim_reduction"].include? @step.name
+        function = method(("get_step_" + @step.name).to_sym)
+        function.call()
+      #  specific_function = "get_step_#{@step.name}()"
+      #  begin
+      #    eval(specific_function)
+      #  #          get_step_de()
+      #  rescue Exception => e
+      #    ## do nothing for the moment - later we could check if this is normal regarding to the parameters - but for the moment this is not mandatory to create a specific method for a step
+      #    @error = e.backtrace
+      #  end
       end
-
+      
       get_results()
       get_batch_file_groups()      
       #      if  session[:active_step] > 1
@@ -2370,19 +3879,40 @@ class ProjectsController < ApplicationController
     StdMethod.all.map{|s| @h_std_methods[s.id] = s}
     @step_id = params[:step_id].to_i || session[:active_step]
     @step = @h_steps[@step_id]
-    @h_attrs = (@step.attrs_json and !@step.attrs_json.empty?) ? JSON.parse(@step.attrs_json) : {}
     @ps = ProjectStep.where(:project_id => @project.id, :step_id => @step_id).first
-    @h_nber_runs = JSON.parse(@ps.nber_runs_json)
-    
+
+    #    @h_attrs = {}
+    #    @h_nber_runs = {}
+    # begin
+    @h_attrs = (@step.attrs_json and !@step.attrs_json.empty?) ? Basic.safe_parse_json(@step.attrs_json, {}) : {}
+    @h_nber_runs = Basic.safe_parse_json(@ps.nber_runs_json, {})
+   # rescue
+   # end
+
     render :partial => "step_header_container"
     
+  end
+
+  def get_attributes_gene_enrichment
+   # @filter_stats = {}
+    @h_stats = {}
+    @log2 = 'toto'
+    if @ida['input_annot']
+      #     @log2+='tata'
+      #     @log2+=@ida.to_json
+      annots = Annot.where(:run_id => @ida['input_annot'].map{|e| e[:run_id]}).all
+      @h_stats = filter_de annots, "ge_form"
+      #  @ida['input_annot'].each do |e|
+      #     @filter_stats.push({"down" => 0, "up" => 0})
+      #  end
+    end
   end
 
   def get_attributes
     @log = ''
     session[:input_data_attrs][@project.id]||={}
     session[:input_data_attrs][@project.id][params[:step_id]]||={}
-    
+    @ida = session[:input_data_attrs][@project.id][params[:step_id]]
     #    h_obj = {
     #      'filter_method' => FilterMethod,
     #      'norm' => Norm,
@@ -2397,17 +3927,21 @@ class ProjectsController < ApplicationController
     #      'diff_expr_method' => 6
     #    }
     get_base_data()
-    tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
+    @project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
     @step = @h_steps[params[:step_id].to_i]
     @std_method = StdMethod.find(params[:obj_id])
     h_res = get_attr(@step, @std_method)
     @h_attrs = h_res[:attrs]
     @attr_layout = h_res[:attr_layout]
-    
+    @h_dashboard_card={}
+    @h_dashboard_card[@step.id] = Basic.safe_parse_json(@step.dashboard_card_json, {})
+
     ## check attributes with valid_types
 
     @h_unavailable_inputs={}
+    @h_runs = {}
     runs = Run.where(:project_id => @project.id, :status_id => @h_statuses_by_name['success'].id)
+    runs.map{|run| @h_runs[run.id] = run}
     h_res[:attrs].each_key do |attr_name|
       if  h_res[:attrs][attr_name]['valid_types']
         valid_types = h_res[:attrs][attr_name]['valid_types']
@@ -2425,14 +3959,16 @@ class ProjectsController < ApplicationController
     ### filter out datasets already selected and that are not available
     session[:input_data_attrs][@project.id][params[:step_id]].each_key do |attr_name|
       list_datasets_to_remove = []
-      session[:input_data_attrs][@project.id][params[:step_id]][attr_name].each_index do |i|
-        h = session[:input_data_attrs][@project.id][params[:step_id]][attr_name][i]
-        if u = @h_unavailable_inputs[attr_name]  and u[:h_runs] and u[:h_runs][h['run_id']]
-          list_datasets_to_remove.push i
+      if session[:input_data_attrs][@project.id][params[:step_id]][attr_name].is_a? Array
+        session[:input_data_attrs][@project.id][params[:step_id]][attr_name].each_index do |i|
+          h = session[:input_data_attrs][@project.id][params[:step_id]][attr_name][i]
+          if u = @h_unavailable_inputs[attr_name] and u[:h_runs] and u[:h_runs][h[:run_id]]
+            list_datasets_to_remove.push i
+          end
         end
-      end
-      list_datasets_to_remove.each do |i|
-        session[:input_data_attrs][@project.id][params[:step_id]][attr_name].slice(i)
+        list_datasets_to_remove.each do |i|
+          session[:input_data_attrs][@project.id][params[:step_id]][attr_name].slice(i)
+        end
       end
     end
     
@@ -2449,14 +3985,61 @@ class ProjectsController < ApplicationController
 #    elsif params[:step_name] == 'diff_expr'
 #      @h_attrs = JSON.parse((de = DiffExpr.where(:project_id => @project.id, :diff_expr_method_id => @obj_inst.id).order("id desc").first && de && de.attrs_json) || "{}")
 #    end
-
+#    begin
+    if @step.name == 'gene_enrichment'
+      get_attributes_gene_enrichment()
+    end
+#    rescue
+#    end
     @warning = @std_method.warning if @std_method.respond_to?(:warning)
     
-    @batch_file_exists = 1 if File.exist?(tmp_dir + "parsing" + "group.tab") 
-    @ercc_file_exists = 1 if File.exist?(tmp_dir + "parsing" + "ercc.tab")
+    @batch_file_exists = 1 if File.exist?(@project_dir + "parsing" + "group.tab") 
+    @ercc_file_exists = 1 if File.exist?(@project_dir + "parsing" + "ercc.tab")
 
     render :partial => 'attributes' #, locals: {h_attrs: @h_attrs} 
     
+  end
+
+  def set_geneset
+
+    ## get attributes                                                                                                                                           
+    get_base_data()
+
+    @step = @h_steps[params[:step_id].to_i]
+    @std_method = StdMethod.find(params[:obj_id])
+    h_res = get_attr(@step, @std_method)
+    @h_attrs = h_res[:attrs]
+    @attr_layout = h_res[:attr_layout]
+    @log3 = ""
+  
+    if params[:step_id] and params[:attr_name]
+      ## define input data  
+     # @log3+='bla'
+      session[:input_data_attrs][@project.id]||={}
+      session[:input_data_attrs][@project.id][params[:step_id]] ||= {}
+      session[:input_data_attrs][@project.id][params[:step_id]][params[:attr_name] + "_type"] = params[:geneset_type]
+      session[:input_data_attrs][@project.id][params[:step_id]][params[:attr_name]] = params[:geneset]
+      
+    end
+
+    ## find the layout context              
+    horiz_element = false
+    
+    @attr_layout.each do |tmp_vertical_el|
+      tmp_vertical_el["horiz_elements"].each do |tmp_horiz_element|
+        if tmp_horiz_element['attr_list']
+          tmp_horiz_element['attr_list'].select{|k| attr = @h_attrs[k]; attr and attr['widget'] and !attr['obsolete']}.each do |attr_name|
+            if attr_name == params[:attr_name]
+              horiz_element = tmp_horiz_element
+              break
+            end
+          end
+        end
+      end
+    end
+    
+    render :partial => 'attribute', :locals => {:attr_name => params[:attr_name], :horiz_element => horiz_element}
+
   end
 
   def set_input_data
@@ -2465,33 +4048,41 @@ class ProjectsController < ApplicationController
 
     ## get attributes                                                                                                                                                                                           
     get_base_data()
-    tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
+    @project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
     @step = @h_steps[params[:step_id].to_i]
     @std_method = StdMethod.find(params[:obj_id])
     h_res = get_attr(@step, @std_method)
     @h_attrs = h_res[:attrs]
     @attr_layout = h_res[:attr_layout]
+
+    @h_dashboard_card = {}
+    @h_dashboard_card[@step.id] = Basic.safe_parse_json(@step.dashboard_card_json, {})
+    
     
     ## define input data
     session[:input_data_attrs][@project.id]||={}
     session[:input_data_attrs][@project.id][params[:step_id]] ||= {}
-
-    if session[:input_data_attrs][@project.id][params[:step_id]][params[:attr_name]] != params[:list_attrs]      
-      session[:input_data_attrs][@project.id][params[:step_id]][params[:attr_name]] = []
+    @ida = session[:input_data_attrs][@project.id][params[:step_id]]
+    
+    if @ida[params[:attr_name]] != params[:list_attrs]      
+      @ida[params[:attr_name]] = []
       @h_attrs.keys.select{|attr_name| c = @h_attrs[attr_name]['constraints'] and c['in_lineage'] and c['in_lineage'].include?(params[:attr_name])}.each do |attr_name|
-        session[:input_data_attrs][@project.id][params[:step_id]][attr_name]=[]
+        @ida[attr_name]=[]
       end
       params[:list_attrs].split(",").each do |e|
         e2 = e.split(":")
-        session[:input_data_attrs][@project.id][params[:step_id]][params[:attr_name]].push({:run_id => e2[0], :output_attr_name => e2[1], :output_filename => e2[2], :output_dataset => (e2.size > 3) ? e2[3] : nil })
+        @ida[params[:attr_name]].push({:run_id => e2[0], :output_attr_name => e2[1], :output_filename => e2[2], :output_dataset => (e2.size > 3) ? e2[3] : nil })
       end
     end
-
     
+    @h_runs = {}
+    runs = Run.where(:id => @ida[params[:attr_name]].map{|e| e[:run_id]}).all
+    runs.map{|r| @h_runs[r.id] = r}
+
     @warning = @obj_inst.warning if @obj_inst.respond_to?(:warning)
     
-    @batch_file_exists = 1 if File.exist?(tmp_dir + "parsing" + "group.tab")
-    @ercc_file_exists = 1 if File.exist?(tmp_dir + "parsing" + "ercc.tab")
+    @batch_file_exists = 1 if File.exist?(@project_dir + "parsing" + "group.tab")
+    @ercc_file_exists = 1 if File.exist?(@project_dir + "parsing" + "ercc.tab")
     
     ## find the layout context
     horiz_element = false
@@ -2517,6 +4108,10 @@ class ProjectsController < ApplicationController
       end
     end
 
+    if @step.name == 'gene_enrichment' and params[:attr_name] == 'input_annot'
+      get_attributes_gene_enrichment()
+    end
+    
     ## render the attribute
     params[:validate_form] = 1
     render :partial => 'attribute', :locals => {:attr_name => params[:attr_name], :horiz_element => horiz_element}
@@ -2549,7 +4144,7 @@ class ProjectsController < ApplicationController
     
     ### get gene_file
     if File.exists?(tmp_dir + "parsing" + 'gene_names.json')
-      list_gene_names = JSON.parse(File.read(tmp_dir + "parsing" + 'gene_names.json'))
+      list_gene_names = Basic.safe_parse_json(File.read(tmp_dir + "parsing" + 'gene_names.json'), [])
     end
     ### get file    
     filename = params[:filename] || "output.tab"
@@ -2585,7 +4180,7 @@ class ProjectsController < ApplicationController
     step_name = params[:step]
     if run_id
       run =  Run.where(:id => run_id).first
-      h_outputs = JSON.parse(run.output_json)
+      h_outputs = Basic.safe_parse_json(run.output_json, {})
       h_file_by_id = {}
       h_outputs.each_key do |k|
         h_outputs[k].each_key do |k2|
@@ -2616,11 +4211,21 @@ class ProjectsController < ApplicationController
     #    obj = Run
     
     if readable?(@project) and (exportable? @project or ['png', 'pdf', 'jpeg', 'jpg'].include?(ext)) or (step_name == 'visualization' and filename.match(/trajectory/) and ext == 'json') or (step_name and run and exportable_item?(@project, run))
-      
-      send_file filepath.to_s, type: params[:content_type] || 'text', # type: 'application/octet-stream'
-      x_sendfile: true, buffer_size: 512, disposition: (!params[:display]) ? ("attachment; filename=" + [@project.key, step_name,  run_id, filename].compact.join("_")) : ''
+      if File.exist? filepath
+        if ['exec.err', 'exec.out'].include? filename
+          content = File.read(filepath) 
+          content.gsub!(project_dir.to_s, "$PROJECT_DIR")
+          send_data content, type: params[:content_type] || 'text', # type: 'application/octet-stream'                                                                   
+          x_sendfile: true, buffer_size: 512, disposition: (!params[:display]) ? ("attachment; filename=" + [@project.key, step_name,  run_id, filename].compact.join("_")) : ''          
+        else
+          send_file filepath.to_s, type: params[:content_type] || 'text', # type: 'application/octet-stream'
+          x_sendfile: true, buffer_size: 512, disposition: (!params[:display]) ? ("attachment; filename=" + [@project.key, step_name,  run_id, filename].compact.join("_")) : ''
+        end
+      else
+        render :plain => "This file doesn't exist."
+      end
     else
-      render :text => 'Not authorized to download this file'
+      render :plain => 'Not authorized to download this file.'
     end
     
   end
@@ -2721,12 +4326,16 @@ class ProjectsController < ApplicationController
     if @project
 
       @version =@project.version
-      @h_env = JSON.parse(@version.env_json)
+      @h_env = {}
+      begin
+        @h_env = Basic.safe_parse_json(@version.env_json, {})
+      rescue
+      end
       
       ### define the current project
       #if session[:current_project] != @project.key
 
-      [:input_data_attrs, :filter_lineage_run_ids, :activated_filter, :current_dashboard, :dr_params, :metadata_type, :store_run_id].each do |k|
+      [:input_data_attrs, :filter_lineage_run_ids, :activated_filter, :current_dashboard, :dr_params, :clust_comparison, :de_markers, :metadata_type, :store_run_id, :tmp_de_filter].each do |k|
         session[k]||={}
       end
 
@@ -2735,10 +4344,11 @@ class ProjectsController < ApplicationController
       session[:input_data_attrs][@project.id]||={}
       session[:filter_lineage_run_ids][@project.id]||=[]
       session[:activated_filter][@project.id]=false
-      session[:current_dashboard][@project.id]={}
+      session[:current_dashboard][@project.id]||={}
+      session[:tmp_de_filter][@project.id]={"fc_cutoff" => 2, "fdr_cutoff" => 0.05}
 #      session[:global_dr_params][@project.id]||={:dot_opacity => 0.5, :dot_size => 3, :coloring_type => "1", :std_method_id => nil, :nber_dims => 2}
       session[:dr_params][@project.id]||={
-        :dot_opacity => 0.5, :dot_size => 3, :coloring_type => "1", :std_method_id => nil, :nber_dims => 2, :cat_annot_id => nil,
+        :dot_opacity => 0.5, :dot_size => 3, :coloring_type => "1", :std_method_id => nil, :nber_dims => 2, :displayed_nber_dims => 2, :cat_annot_id => nil, :main_menu => "general", :info_cat => "gene_exp", :sel_cats => [],
         #   :row_i_1 => nil,
         #   :dataset_annot_id_1 => nil,
         #   :gene_selected_1 => '',
@@ -2759,12 +4369,21 @@ class ProjectsController < ApplicationController
       session[:dr_params][@project.id][:dot_opacity] ||= 0.5
       session[:dr_params][@project.id][:dot_size] ||= 3
       session[:dr_params][@project.id][:coloring_type]||= "1" if !["1", "2"].include?(session[:dr_params][@project.id][:coloring_type])
-
+      session[:dr_params][@project.id][:displayed_nber_dims]||=2
+      session[:dr_params][@project.id][:main_menu]||='general'
+      session[:dr_params][@project.id][:info_cat]||= 'gene_expr'
+      session[:dr_params][@project.id][:sel_cats]||=[]
+      session[:clust_comparison][@project.id]||={}
+      session[:clust_comparison][@project.id][:op] ||= "1"
+      
       session[:current_project]=@project.key
       #    session[:reload_step]=0
       
       if readable? @project
-        
+
+        ### check if all project_steps exist
+        init_project_steps()
+
         ### have to ensure the project is in status unarchived
         if @project.archive_status_id != 1
           while [2, 4].include? @project.archive_status_id
@@ -2807,11 +4426,16 @@ class ProjectsController < ApplicationController
         session[:last_step_status_id]=@project.status_id
         params[:last_step_status_id]=@project.status_id
         session[:last_step_id]=last_step_id
+
+        ### init subdir
+        project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
+        ["tmp"].each do |d|
+          Dir.mkdir project_dir + d if !File.exist?(project_dir + d)
+        end
         
         ### setup selections
         session[:selections]={}
         if readable?(@project)
-          project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
           selection_dir = project_dir + 'selections'
           Dir.mkdir selection_dir if !File.exist?(selection_dir)
           @project.selections.each do |selection|
@@ -2858,11 +4482,14 @@ class ProjectsController < ApplicationController
     #      :projects => "https://service.dev.explore.data.humancellatlas.org/repository/projects?filters=#{@h_filters.to_json}&size=15"
     #    }
 
+
     @h_filters = JSON.parse(params[:q]) if params[:q]
+
+    q_txt = URI::encode(@h_filters.to_json)
    
     @h_urls = {
-      :summary => "https://service.explore.data.humancellatlas.org/repository/summary?filters=#{params[:q]}",
-      :projects => "https://service.explore.data.humancellatlas.org/repository/projects?filters=#{params[:q]}&size=#{@nber_hits_displayed}"
+      :summary => "https://service.explore.data.humancellatlas.org/repository/summary?filters=#{q_txt}",
+      :projects => "https://service.explore.data.humancellatlas.org/repository/projects?filters=#{q_txt}&size=#{@nber_hits_displayed}"
     }
 
     errors = []
@@ -2875,7 +4502,7 @@ class ProjectsController < ApplicationController
 
       if !tmp_data.empty?
         begin
-          @h_hca[k] = JSON.parse(tmp_data)
+          @h_hca[k] = Basic.safe_parse_json(tmp_data, {})
         rescue Exception => e
           errors.push("Data from HCA is not accessible at this time.")
         end
@@ -2883,6 +4510,22 @@ class ProjectsController < ApplicationController
     end
   end
 
+  def provider_projects
+    
+    params[:q] = '{"fileFormat":{"is":["matrix"]}}'
+    get_hca_data()
+    
+    respond_to do |format|
+      format.json {
+        render :plain => @h_hca[:projects]['hits'].map{|e| 
+          total_cells = 0;
+          e['cellSuspensions'].map{|e2| total_cells += e2['totalCells']};
+          {'entryId' => e['entryId'], 'projectTitle' => e['projects'].map{|e2| e2['projectTitle']}.join(", "), 'totalCells' => total_cells}}.to_json
+      }
+      
+    end
+  end
+  
   def hca_preview
 
     h_p = {}
@@ -2934,6 +4577,13 @@ class ProjectsController < ApplicationController
     @project.key = project_key
     @shares = @project.shares.to_a
   
+#    @h_list_organisms = {'Most popular species' => Organism.where(:id => [1, 2, 35]).map{|o|  [o.short_name.capitalize + " - #{o.name} [TaxID:#{o.tax_id}]", o.id]}}
+#    EnsemblSubdomains.all.each do |e| 
+#      @h_list_organisms.merge({e.name => e.organisms.map{|o| [o.short_name.capitalize + " - #{o.name} [TaxID:#{o.tax_id}]", o.id]}})
+#    end
+#    'All species' => Organism.all.select{|o| o.short_name}.map{|o|  [o.short_name.capitalize + " - #{o.name} [TaxID:#{o.tax_id}]", o.id]}.sort}
+
+
     ### get initial HCA data
     #get_hca_data()
 
@@ -2955,7 +4605,11 @@ class ProjectsController < ApplicationController
         if params[:global]
           render :partial => "edit"
         else
-          @h_attrs_parsing = JSON.parse(@project.parsing_attrs_json) if @project.parsing_attrs_json
+          #          @h_attrs_parsing = {}
+          #          begin
+          @h_attrs_parsing = Basic.safe_parse_json(@project.parsing_attrs_json, {}) if @project.parsing_attrs_json
+          #          rescue
+          #          end
           render :partial => "form_" + active_step_name 
         end
       }#:layout => nil }
@@ -3035,6 +4689,19 @@ class ProjectsController < ApplicationController
     
   end
 
+  def init_project_steps
+ 
+#    (1 .. Step.count).each do |step_id|
+    Step.all.each do |step|
+      project_step = ProjectStep.where(:project_id => @project.id, :step_id => step.id).first
+      if !project_step
+        project_step = ProjectStep.new(:project_id => @project.id, :step_id => step.id, :status_id => (step.id == 1) ? 1 : nil  )
+        project_step.save
+      end
+    end
+    
+  end
+
   # POST /projects
   # POST /projects.json
   def create
@@ -3055,7 +4722,7 @@ class ProjectsController < ApplicationController
     tmp_attrs = params[:attrs] || {}
     tmp_attrs[:has_header] = 1 if tmp_attrs[:has_header]
     tmp_attrs[:file_type] = 'LOOM' if !tmp_attrs[:file_type] ### HCA import case
-    [:file_type, :sel_name, :nber_cols, :nber_rows, :sel_hca_projects].each do |k|
+    [:file_type, :sel_name, :nber_cols, :nber_rows, :sel_provider_projects, :provider_project_id].each do |k|
       tmp_attrs[k] = params[k] if params[k] and !params[k].strip.empty?
     end
     if @h_formats[tmp_attrs[:file_type]].child_format != 'RAW_TEXT' ## delete the RAW_TEXT parsing options
@@ -3079,23 +4746,26 @@ class ProjectsController < ApplicationController
       logger.debug("CMD_ls0 " + `ls -alt #{file_path}`)
     end
     
-    default_diff_expr_filters = {
+    default_de_filter = {
       :fc_cutoff => '2',
-      :fdr_cutoff => '0.05'
+      :fdr_cutoff => '0.05' #,
+  #    :pval_cutoff => '0.05'
     }    
-    @project.diff_expr_filter_json = default_diff_expr_filters.to_json
+    @project.de_filter_json = default_de_filter.to_json
     
-    default_gene_enrichment_filters = {
-      :fdr_cutoff => '0.05'
+    default_ge_filter = {
+      :fdr_cutoff => 0.05
     }
-    @project.gene_enrichment_filter_json = default_gene_enrichment_filters.to_json
+    @project.ge_filter_json = default_ge_filter.to_json
 
 #    tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s
 #    File.delete tmp_dir + ('input.' + @project.extension) if File.exist?(tmp_dir + ('input.' + @project.extension))
     # logger.debug("1. File #{file_path} exists!") if File.exist?(file_path)
 
+    @project.modified_at = Time.now
+
     respond_to do |format|
-      if ((input_file and input_file.upload_file_name) or params[:sel_hca_projects] != '{}' ) and @project.save
+      if ((input_file and input_file.upload_file_name) or params[:provider_project_id] != '' ) and @project.save
         
         session[:active_dr_id] = 1
         
@@ -3140,15 +4810,62 @@ class ProjectsController < ApplicationController
 
         @project.update_attribute(:extension, ext)
 
-        ### init project_steps
-        
-        (1 .. Step.count).each do |step_id|
-          project_step = ProjectStep.where(:project_id => @project.id, :step_id => step_id).first
-          if !project_step
-            project_step = ProjectStep.new(:project_id => @project.id, :step_id => step_id, :status_id => (step_id == 1) ? 1 : nil  )
-            project_step.save
+        ### Setup HCA project key                                                                                                                                                
+        if params[:provider_project_id] != ''
+          h_provider_project = {
+            :provider_project_key => params[:provider_project_id],
+            :provider_id => params[:provider_id]
+          }
+          if ! provider_project = ProviderProject.where(h_provider_project).first
+            provider_project = ProviderProject.new(h_provider_project)
+            provider_project.save
           end
+          @project.provider_projects << provider_project if !@project.provider_projects.include? provider_project
+
+          ### add accessions
+          h_q = {"fileFormat" => {"is" => ["matrix"]}}
+          q_txt = URI::encode(h_q.to_json)
+          
+          url = "https://service.explore.data.humancellatlas.org/repository/projects?filters=#{q_txt}"
+          cmd = "wget -U 'Safari Mac' -q -O - '#{url}'"
+          puts "CMD: #{cmd}"
+          res = `#{cmd}`
+          puts "RES: " + res.to_json
+          h_hca = JSON.parse(res) #Basic.safe_parse_json(res, {})
+          puts "HCA: #{h_hca.to_json}"
+          
+          accession_types = ["arrayExpressAccessions", "geoSeriesAccessions"]
+          h_accessions = {}
+          accession_types.each do |acc_type|
+            h_accessions[acc_type] = []
+          end
+          
+          if h_hca['hits']
+            h_hca['hits'].each do |hit|
+              if hit["entryId"] == params[:provider_project_id]
+                puts "entry: " + hit["projects"][0]["arrayExpressAccessions"].to_json #e['projects'][0].to_json
+                accession_types.each do |k|
+                  if h_accessions[k] and hit["projects"][0][k]
+                    h_accessions[k] = hit["projects"][0][k]
+                  end
+                end
+              end
+            end
+          end
+          
+          puts "ACCESSIONS: " + h_accessions.to_json
+          
+          Fetch.add_upd_exp_codes({
+                                    :project => @project,
+                                    :geo_codes => h_accessions["geoSeriesAccessions"].join(", "),
+                                    :array_express_codes => h_accessions["arrayExpressAccessions"].join(", ")}
+                                  )
+          
         end
+
+        ### init project_steps
+
+        init_project_steps()
         
         ### read_write access
 
@@ -3158,6 +4875,12 @@ class ProjectsController < ApplicationController
         @project.parse_files()
      #   logger.debug("4. File #{file_path} exists!") if File.exist?(file_path)
         
+        ### setup project sqlite database
+        sqlite_schema_file = Pathname.new(Rails.root) + 'db' + 'asap_project_data.sql'
+        sqlite_file = tmp_dir + 'asap_data.db'
+        cmd = "less #{sqlite_schema_file} | sqlite3 #{sqlite_file}"
+        `#{cmd}`
+        logger.debug(cmd)
         #        @project.parse()
         session[:active_step]=1
         format.html { redirect_to project_path(@project.key) #, notice: 'Project was successfully created.'
@@ -3199,6 +4922,25 @@ class ProjectsController < ApplicationController
       #@project.parse_batch_file()
     #  cmd = "rails parse_batch_file[#{@project.key}]"
     #  `#{cmd}`
+
+      logger.debug("TEST GSE")
+
+      Fetch.add_upd_exp_codes({
+                                :project => @project,
+                                :geo_codes => params[:geo_codes], 
+                                :array_express_codes => params[:array_express_codes]})
+
+      
+      if params[:pmid]
+        h_article = Fetch.fetch_pubmed(@project.pmid)
+        article = Article.where(:pmid => @project.pmid).first
+        if !article
+          article = Article.new(h_article)
+          article.save
+        else
+          article.update_attributes(h_article)
+        end
+      end
       
       ### if organism changes, update the gene file                                                                                                                                                
       if @project.organism_id != params[:project][:organism_id].to_i
@@ -3390,18 +5132,32 @@ class ProjectsController < ApplicationController
         end
       end
       
-      ## delete files                                                                                            
-      new_tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + ((p.user_id == nil) ? '0' : p.user_id.to_s) + p.key
-      FileUtils.rm_r new_tmp_dir if File.exist?(new_tmp_dir)
-      
+    ## delete files                                                                                            
+    new_tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + ((p.user_id == nil) ? '0' : p.user_id.to_s) + p.key
+    FileUtils.rm_r new_tmp_dir if File.exist?(new_tmp_dir)
+    
+    ### delete potential archive
+    project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + p.user_id.to_s
+    archive_file = project_dir + (p.key + '.tgz')
+    if File.exist? archive_file
+      File.delete archive_file
+    end
+
     # delete objects
     p.shares.destroy_all
     p.annots.destroy_all
     p.del_runs.destroy_all
     p.active_runs.destroy_all
     p.fos.destroy_all
-    p.runs.destroy_all
 
+    ## delete runs
+    p.runs.sort{|a,b| b.id <=> a.id}.each do |r|
+      RunsController.destroy_run_call p, r
+    end
+    #    p.runs.destroy_all
+    ##### strange have to do thing for a project ### not normal 
+    p.reqs.map{|r| r.runs.map{|r| RunsController.destroy_run_call p, r}}
+    #### 
     p.reqs.destroy_all
       #p.fus.destroy_all
       p.project_steps.destroy_all
@@ -3422,10 +5178,12 @@ class ProjectsController < ApplicationController
       File.delete file_path if File.exist?(file_path)
     }
     p.fus.destroy_all
-#    p.runs.destroy_all
-
+    p.exp_entries.clear
+    p.provider_projects.clear
+    #    p.runs.destroy_all
+    
     p.destroy
-
+    
   end
   
   # DELETE /projects/1
@@ -3457,9 +5215,9 @@ class ProjectsController < ApplicationController
   private
   # Use callbacks to share common setup or constraints between actions.
   def set_project
-    
-    @project = Project.find_by_key(params[:key])
-    
+    public_id = params[:key].gsub(/ASAP\:/, "")
+    public_id = (public_id.match(/^\d+$/)) ? public_id.to_i : 0
+    @project = Project.where(["key = ? or public_id = ?", params[:key],public_id]).first
   end
   
   # Never trust parameters from the scary internet, only allow the white list through.

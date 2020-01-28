@@ -1,0 +1,60 @@
+var palette = Plotly.d3.scale.category10().range();
+var sel_cats = <%= raw session[:dr_params][@project.id][:sel_cats] %>;
+var h_sel_cats = {}
+
+for (var i=0; i < sel_cats.length; i++){
+  h_sel_cats[sel_cats[i]] = 1
+}
+
+var h_cats = {}
+for (var i=0; i < conf2D.list_cats.length; i++){
+  h_cats[conf2D.list_cats[i]] = i+1
+}
+
+var nber_checked=0
+$(".view_cluster").each(function(){
+  var cat_idx = this.id.split("_")[2]
+  checked = (h_sel_cats[conf2D.list_cats[cat_idx]]) ? true : false
+  if (checked == true){
+    nber_checked++
+  }
+  $(this).prop("checked", checked)
+})
+
+console.log(nber_checked)
+console.log(conf2D.list_cats.length)
+
+if (nber_checked > 0 ){ 
+  $("#view_cluster_all").prop("checked", true)
+  if (nber_checked < conf2D.list_cats.length){
+   $("#view_cluster_all").prop("indeterminate", true)
+  }else{
+   $("#view_cluster_all").prop("indeterminate", false)
+  }
+}else{
+ $("#view_cluster_all").prop("checked", false)
+}
+
+var opacity_vector = []
+var colors = []
+for(var i=0; i< conf2D.quant_vector[0].length; i++){
+// console.log(i)
+  opacity_vector.push((h_sel_cats[conf2D.quant_vector[0][i]]) ? 0.8 : 0.1)
+  colors.push(palette[h_cats[conf2D.quant_vector[0][i]] % 10])
+}
+
+console.log(opacity_vector)
+
+var upd = {
+             marker: {
+              opacity : opacity_vector,
+              size : conf2D.size,
+              blend : true,
+              color : colors
+             }
+            }
+
+//Plotly.relayout(document.getElementById("dr_plot"), upd);
+ Plotly.restyle(document.getElementById("dr_plot"), upd, 0);
+
+finish_refresh_plot()

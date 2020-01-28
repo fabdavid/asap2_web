@@ -1,0 +1,15 @@
+<% identifier_type = @exp_entry.identifier_type %>
+<h4><%= identifier_type.name %> <%= link_to @exp_entry.identifier, "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=" + @exp_entry.identifier %></h4>
+
+<div class='row'>
+  <div class='col-md-3'><b>Title</b></div><div class='col-md-9'><%= @exp_entry.title %></div>
+</div>
+
+<div class='row'>
+  <div class='col-md-3'><b>Contacts</b></div><div class='col-md-9'><%= raw @exp_entry.contact_emails.split(";").map{|e| link_to e, "mailto:#{e}?subject=Request about dataset #{@exp_entry.identifier} [#{APP_CONFIG[:server_name]}]"}.join(" ") %></div>
+</div>
+
+<div class='row'>
+  <div class='col-md-3'><b>Summary</b></div><div class='col-md-9'><%= @exp_entry.description %></div>
+</div>
+

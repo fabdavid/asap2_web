@@ -1,0 +1,13 @@
+if ($("#cat-alias_edit_<%= params[:cat_i] %>").length > 0){
+$("#cat-alias_edit_<%= params[:cat_i] %>").addClass("hidden")
+$("#cat-alias_edit-btn_<%= params[:cat_i] %>").addClass("hidden")
+$("#cat-alias_edit-btn_<%= params[:cat_i] %>").removeClass("hidden")
+$("#cat-alias_<%= params[:cat_i] %>").html("<%= params[:cat_alias] %>")
+$("#cat-alias_<%= params[:cat_i] %>").removeClass("hidden")
+}else{
+$("#cat-alias_edit_<%= params[:annot_id] %>_<%= params[:cat_i] %>").addClass("hidden")
+$("#cat-alias_edit-btn_<%= params[:annot_id] %>_<%= params[:cat_i] %>").addClass("hidden")
+$("#cat-alias_edit-btn_<%= params[:annot_id] %>_<%= params[:cat_i] %>").removeClass("hidden")
+$("#cat-alias_<%= params[:annot_id] %>_<%= params[:cat_i] %>").html("<%= params[:cat_alias] %>")
+$("#cat-alias_<%= params[:annot_id] %>_<%= params[:cat_i] %>").removeClass("hidden")
+}

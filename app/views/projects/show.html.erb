@@ -98,11 +98,12 @@ Dear users, during a maintenance procedure on April 13th 2017, current sandbox p
 
  var project_id = <%= @project.id %>;
  // var step_by_name_json = JSON.stringify(<%= raw @h_step_id_by_name.to_json %>);
+ var step_ids = <%= raw Step.where({:hidden => false}).all.map{|e| e.id}.to_json %>;
  var h_step_id_by_name = <%= raw @h_step_id_by_name.to_json %>;
  var h_steps = <%= raw @h_steps.to_json %>
  var h_statuses = <%= raw @h_statuses.to_json %>;
  var h_types = <%= raw @h_env['types'].to_json %>
-
+ var xhrs = []
 // prevent clicking on back
 /*
 (function(window, location) {
@@ -375,8 +376,7 @@ if (returnData){
 
 });
 
- 
+    
 <% end %>
 <% end %>
-
 <% end %>

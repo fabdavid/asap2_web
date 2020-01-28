@@ -16,8 +16,11 @@
     <tr><td>Step</td><td><%= f.select :step_id, l %></td></tr>
     <tr><td>Name</td><td><%= f.text_field :name %></td></tr>
     <tr><td>Label</td><td><%= f.text_field :label %></td></tr>
-    <tr><td>Description</td><td><%= f.text_field :description %></td></tr>
-    <!--    <tr><td>Speed</td><td><%= f.select :speed_id, Speed.all.map{|s| [s.name, s.id]} %></td></tr>-->
+   <!-- <% l = Speed.all.map{|s| [s.name, s.id]} %>
+    <tr><td>Label</td><td><%= f.select :speed_id, l %></td></tr> -->
+    <tr><td>Obsolete?</td><td><%= f.check_box :obsolete %></td></tr>
+    <tr><td>Description</td><td><%= f.text_area :description, :cols => 100, :rows => 5 %></td></tr>
+        <tr><td>Speed</td><td><%= f.select :speed_id, Speed.all.map{|s| [s.name, s.id]} %></td></tr>
     <% l = (1 .. 25).to_a.map{|e| [e, e]} %>
     <tr><td>Number of cores</td><td><%= f.select :nber_cores, l %></td></tr>
     <tr><td>Link</td><td><%= f.text_field :link, :size => 100 %></td></tr>

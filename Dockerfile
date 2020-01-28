@@ -1,19 +1,23 @@
 FROM ruby:2.5-alpine
 
-RUN apk update && apk add build-base nodejs postgresql-dev bash emacs docker shadow wget
+RUN apk update && apk add build-base nodejs postgresql-dev bash emacs docker shadow wget git openssh mailx netcat-openbsd pigz sqlite postgresql
 RUN apk add openjdk8-jre #default-jre default-jdk
+#RUN echo "relayhost = mail.epfl.ch" >> /etc/postfix/main.cf
+#RUN /etc/init.d/postfix start
 
 WORKDIR /app
 
 COPY Gemfile Gemfile.lock ./
+#RUN bundle update
 RUN bundle install --binstubs
 COPY . ./
 
 #RUN apk-install sudo
 #### add dockerroot group
-RUN groupadd --gid 987 dockerroot
+RUN groupdel docker
+RUN groupadd --gid 995 docker
 
-ENV USER=rvmuser USER_ID=60000 USER_GID=1001
+ENV USER=rvmuser USER_ID=1006 USER_GID=1006
 
 # now creating user
 RUN groupadd --gid "${USER_GID}" "${USER}" && \
@@ -24,7 +28,7 @@ RUN groupadd --gid "${USER_GID}" "${USER}" && \
       --shell /bin/bash \
 ${USER}
 
-RUN usermod -G dockerroot "${USER}"
+RUN usermod -a -G docker "${USER}"
 
 USER ${USER}
 

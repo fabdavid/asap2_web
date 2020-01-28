@@ -1,6 +1,22 @@
 version: '2'
 
 services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    volumes:
+       - ./nginx.conf:/etc/nginx/nginx.conf
+       - /etc/pki/tls/certs/asap-beta.epfl.ch.pem:/etc/nginx/asap-beta.epfl.ch.pem
+       - /etc/pki/tls/private/asap-beta.epfl.ch.key:/etc/nginx/asap-beta.epfl.ch.key
+    links:
+      - website
+    ports:
+      - 80:80
+      - 443:443
+      - 28081:28081
+    networks:
+       - asap_network
+
   postgres:
     image: 'postgres:10.3-alpine'
     volumes:
@@ -39,6 +55,7 @@ services:
       - '.:/app'
       - 'dumps:/dumps'
       - '/data/asap2/:/data/asap2'
+      - '/srv/asap_run:/srv/asap_run'
       - '/var/run/docker.sock:/var/run/docker.sock'
     env_file:
       - '.env_website'

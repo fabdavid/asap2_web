@@ -50,9 +50,23 @@ class GenesController < ApplicationController
     end
   end
 
+  def search
+
+    @gene = Gene.where(:ensembl_id => params[:ensembl_id]).first
+
+    render :partial => "search"
+
+  end
+
   # GET /genes/1
   # GET /genes/1.json
   def show
+
+    if params[:no_layout] == '1'
+      render :partial => 'show'
+    else
+      render 
+    end
   end
 
   # GET /genes/new

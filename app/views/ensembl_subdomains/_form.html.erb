@@ -1,0 +1,17 @@
+<%= form_with(model: ensembl_subdomain, local: true) do |form| %>
+  <% if ensembl_subdomain.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(ensembl_subdomain.errors.count, "error") %> prohibited this ensembl_subdomain from being saved:</h2>
+
+      <ul>
+      <% ensembl_subdomain.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

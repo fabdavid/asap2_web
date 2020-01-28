@@ -1,0 +1,17 @@
+<%= form_with(model: tmp_gene, local: true) do |form| %>
+  <% if tmp_gene.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(tmp_gene.errors.count, "error") %> prohibited this tmp_gene from being saved:</h2>
+
+      <ul>
+      <% tmp_gene.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

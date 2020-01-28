@@ -13,6 +13,15 @@
 
  <p id="notice"><%= notice %></p>
 
-Plot!
+
+
+Redirecting to plots..
+
+<%= javascript_tag do %>
+
+// refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form') %>&run_id=<%= @run.id %>", {loading : 'fa-2x'})
+// refresh("step_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :dashboard => 'dim_reduction') %>&no_layout=1&run_id=<%= @run.id %>&displayed_nber_dims=<%= session[:dr_params][@project.id][:displayed_nber_dims] %>", {loading : 'fa-2x'})
+ refresh("step_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :dashboard => 'dim_reduction') %>&no_layout=1&run_id=<%= @run.id %>&std_method_id=<%= @run.std_method_id %>&displayed_nber_dims=<%= session[:dr_params][@project.id][:displayed_nber_dims] %>", {loading : 'fa-2x'})
+<% end %>
 
 <% end %>

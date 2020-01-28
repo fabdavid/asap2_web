@@ -1,5 +1,7 @@
 <%= form_with(model: step, local: true) do |f| %>
-  <% if step.errors.any? %>
+<%# form_for(@step) do |f| %>
+ 
+ <% if step.errors.any? %>
     <div id="error_explanation">
       <h2><%= pluralize(step.errors.count, "error") %> prohibited this step from being saved:</h2>
 
@@ -12,7 +14,7 @@
   <% end %>
 
   <table>
-    <tr><td>Rank</td><td><%= f.text_field :rank %></td></tr>
+    <tr><td>Group name</td><td><%= f.text_field :group_name %></td></tr>
     <tr><td>Object name</td><td><%= f.text_field :obj_name %></td></tr>
     <tr><td>Name</td><td><%= f.text_field :name %></td></tr>
     <tr><td>Label</td><td><%= f.text_field :label %></td></tr>
@@ -21,11 +23,16 @@
     <tr><td>Has standard dashboard?</td><td><%= f.check_box :has_std_dashboard %></td></tr>
     <tr><td>Has standard form?</td><td><%= f.check_box :has_std_form %></td></tr>
     <tr><td>Has standard view?</td><td><%= f.check_box :has_std_view %></td></tr>
-    <tr><td>Description</td><td><%= f.text_area :description %></td></tr>
+    <tr><td>Hidden</td><td><%= f.check_box :hidden %></td></tr>
+    <tr><td>Description</td><td><%= f.text_area :description, {:cols => 60, :rows => 15} %></td></tr>
+    <tr><td>Warnings</td><td><%= f.text_area :warnings, {:cols => 60, :rows => 15} %></td></tr>
+    <tr><td>Default </td><td><%# f.text_area :recommended_conf, {:cols => 60, :rows => 15} %></td></tr>
     <tr><td>Optional step attributes</td><td><%= f.text_area :attrs_json, {:cols => 60, :rows => 3} %></td></tr>
     <tr><td>Standard method attribute global properties</td><td><%= f.text_area :method_attrs_json, {:cols => 60, :rows => 15} %></td></tr>
-    <tr><td>Standard outputs global properties</td><td><%= f.text_area :method_output_json, {:cols => 60, :rows => 15} %></td></tr>
+    <tr><td>Standard outputs global properties</td><td><%= f.text_area :output_json, {:cols => 60, :rows => 15} %></td></tr>
     <tr><td>Default command</td><td><%= f.text_area :command_json, {:cols => 60, :rows => 15} %></td></tr>
+    <tr><td>Dashboard card details (for the std dashboard)</td><td><%= f.text_area :dashboard_card_json, {:cols => 60, :rows => 15} %></td></tr>
+    <tr><td>Show view details (for the std view)</td><td><%= f.text_area :show_view_json, {:cols => 60, :rows => 15} %></td></tr>
   </table>
   
   <div class="actions">

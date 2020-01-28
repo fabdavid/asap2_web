@@ -1,3 +1,7 @@
+<%# @h_std_methods.to_json %>
+<%# @log4 %>
+<%# @cmd %>
+<%# @h_annots.to_json %>
 <%# session[:dr_params][@project.id].to_json %>
 <%# @log4 %>
 <%# @h_annots["accesssion"] %>
@@ -13,75 +17,132 @@
     <div id='plot_opt_close'></div>
     <div id='plot_opt_content'>-->
 
-<div class='plot_option_category mb-2'>General</div>
+<ul class="nav nav-tabs" id="main_menu-nav" role="tablist">
+  <li class="nav-item">
+    <a class="nav-link <%= (session[:dr_params][@project.id][:main_menu] == 'general') ? 'active' : '' %>" id="general-tab" data-toggle="tab" href="#pane-general" role="tab" aria-controls="general" aria-selected="true">General</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link <%= (session[:dr_params][@project.id][:main_menu] == 'coloring') ? 'active' : '' %>" id="coloring-tab" data-toggle="tab" href="#pane-coloring" role="tab" aria-controls="coloring" aria-selected="false">Coloring</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link <%= (session[:dr_params][@project.id][:main_menu] == 'info') ? 'active' : '' %>" id="info-tab" data-toggle="tab" href="#pane-info" role="tab" aria-controls="info" aria-selected="false">Info</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link <%= (session[:dr_params][@project.id][:main_menu] == 'inspector') ? 'active' : '' %>" id="inspector-tab" data-toggle="tab" href="#pane-inspector" role="tab" aria-controls="inspector" aria-selected="false">Inspector</a>
+  </li>
+</ul>
 
-<div class='row'>
-  <div class='col-6'>Dot opacity</div>
-  <div class='col-6'>
-    <input name='opt[dot_opacity]' type="range" value="<%= session[:dr_params][@project.id][:dot_opacity] %>" min="0.1" max="1" step="0.1" oninput="opacityChange()" id="dot_opacity" class="slider"/>
-    <span id="op_value"><%= session[:dr_params][@project.id][:dot_opacity] %></span>
+<!-- Tab panes -->
+<div class="tab-content">
+  <div class="tab-pane <%= (session[:dr_params][@project.id][:main_menu] == 'general') ? 'active' : '' %>" id="pane-general" role="tabpanel" aria-labelledby="general-tab">
+
+   <!-- <div class='plot_option_category mb-2'>General</div>-->
+
+    <div class='row mt-2'>
+      <div class='col-6'>Dot opacity</div>
+      <div class='col-6'>
+	<input name='opt[dot_opacity]' type="range" value="<%= session[:dr_params][@project.id][:dot_opacity] %>" min="0.1" max="1" step="0.1" oninput="opacityChange()" id="dot_opacity" class="slider"/>
+	<span id="op_value"><%= session[:dr_params][@project.id][:dot_opacity] %></span>
   </div>
-</div>
-<!-- <div width="300px" align="left">
-     <input type="range" value="1" min="0.1" max="1" step="0.1" oninput="opacityChange()" id="opacity" class="slider"/>
-      </div>-->
-<!--  Coloring
-      <% l = [["None", 0], ["Cluster list", 1], ["Gene expression", 2], ["Selections", 3]] %>
-      <%= select_tag 'plot[coloring_type]', options_for_select(l) %>-->
-<!--  <select id="coloringList" name="coloringList" onchange="coloring(this)">                                                                                                    
-      <option value="0" selected="selected">No Coloring</option>                                                                                                                  
-      <optgroup id="optgroup1" label="Cluster list"></optgroup>                                                                                                                   
-      <optgroup id="optgroup2" label="Gene expression list"></optgroup>                                                                                                           
-      <optgroup id="optgroup3" label="Custom groups"></optgroup>                                                                                                                  
-</select>-->
-
-<div class='row'>
-  <div class='col-6'>Dot size</div>
-  <div class='col-6'>
-    <input name='opt[dot_size]' type="range" value="<%= session[:dr_params][@project.id][:dot_size] %>" min="1" max="15" step="1" oninput="sizeChange()" id="dot_size" class="slider"/>
-    <span id="size_value"><%= session[:dr_params][@project.id][:dot_size] %> px</span>
+    </div>
+    <!-- <div width="300px" align="left">
+	 <input type="range" value="1" min="0.1" max="1" step="0.1" oninput="opacityChange()" id="opacity" class="slider"/>
+    </div>-->
+    <!--  Coloring
+	  <% l = [["None", 0], ["Cluster list", 1], ["Gene expression", 2], ["Selections", 3]] %>
+	  <%= select_tag 'plot[coloring_type]', options_for_select(l) %>-->
+    <!--  <select id="coloringList" name="coloringList" onchange="coloring(this)">                                                                                                    
+	  <option value="0" selected="selected">No Coloring</option>                                                                                                                  
+	  <optgroup id="optgroup1" label="Cluster list"></optgroup>                                                                                                                   
+	  <optgroup id="optgroup2" label="Gene expression list"></optgroup>                                                                                                           
+	  <optgroup id="optgroup3" label="Custom groups"></optgroup>                                                                                                                  
+    </select>-->
+    
+    <div class='row'>
+      <div class='col-6'>Dot size</div>
+      <div class='col-6'>
+	<input name='opt[dot_size]' type="range" value="<%= session[:dr_params][@project.id][:dot_size] %>" min="1" max="15" step="1" oninput="sizeChange()" id="dot_size" class="slider"/>
+	<span id="size_value"><%= session[:dr_params][@project.id][:dot_size] %> px</span>
+      </div>
+    </div>
   </div>
+  <div class="tab-pane <%= (session[:dr_params][@project.id][:main_menu] == 'coloring') ? 'active' : '' %>" id="pane-coloring" role="tabpanel" aria-labelledby="coloring-tab">
+
+<!--    <div class='plot_option_category mb-2'>Coloring</div>-->
+    
+    <%# session[:dr_params][@project.id].to_json %>
+    
+    <% coloring_type = session[:dr_params][@project.id][:coloring_type] %>
+    <div class='row flex-container2 mb-2 mt-2'>
+      <div class="btn-group" role="group">	  
+	<button id='coloring_type_0_btn' type="button" class="btn btn-<%= (coloring_type == "0") ? 'primary' : 'secondary' %> coloring_type_btn">None</button>
+	<button id='coloring_type_1_btn' type="button" class="btn btn-<%= (coloring_type == "1") ? 'primary' : 'secondary' %> coloring_type_btn">Single gradient</button>
+	<button id='coloring_type_2_btn' type="button" class="btn btn-<%= (coloring_type == "2") ? 'primary' : 'secondary' %> coloring_type_btn">3-Channels</button>
+	<button id='coloring_type_3_btn' type="button" class="btn btn-<%= (coloring_type == "3") ? 'primary' : 'secondary' %> coloring_type_btn">Categorical</button> 
+      </div>
+      <%= hidden_field_tag 'opt[coloring_type]', coloring_type %> 
 </div>
-
-<div class='plot_option_category mb-2'>Coloring</div>
-
-<%# session[:dr_params][@project.id].to_json %>
-
-<% coloring_type = session[:dr_params][@project.id][:coloring_type] %>
-<div class='row flex-container2 mb-2'>
-  <div class="btn-group" role="group">	  
-    <button id='coloring_type_0_btn' type="button" class="btn btn-<%= (coloring_type == "0") ? 'primary' : 'secondary' %> coloring_type_btn">None</button>
-    <button id='coloring_type_1_btn' type="button" class="btn btn-<%= (coloring_type == "1") ? 'primary' : 'secondary' %> coloring_type_btn">Single gradient</button>
-    <button id='coloring_type_2_btn' type="button" class="btn btn-<%= (coloring_type == "2") ? 'primary' : 'secondary' %> coloring_type_btn">3-Channels</button>
-    <button id='coloring_type_3_btn' type="button" class="btn btn-<%= (coloring_type == "3") ? 'primary' : 'secondary' %> coloring_type_btn">Categorical</button> 
+    
+    <div id='coloring_type_1_container' class='coloring_type_container <%= (coloring_type == "1") ? '' : 'hidden' %>'>
+      <%= render :partial => 'form_num_gradient', :locals => {:occ => 1} %>
+    </div>
+    
+    <div id='coloring_type_2_container' class='coloring_type_container <%= (coloring_type == "2") ? '' : 'hidden' %>'>
+      <div class='col-6 bold'>Red channel</div>
+      <%= render :partial => 'form_num_gradient', :locals => {:occ => 2} %>
+      <div class='col-6 bold'>Green channel</div>
+      <%= render :partial => 'form_num_gradient', :locals => {:occ => 3} %>
+      <div class='col-6 bold'>Blue channel</div>
+      <%= render :partial => 'form_num_gradient', :locals => {:occ => 4} %>
+      <div class='fake' style='margin-bottom:200px'></div>
+    </div>
+    
+    
+    <div id='coloring_type_3_container' class='coloring_type_container <%= (coloring_type == "3") ? '' : 'hidden' %>'>
+      <div class='row'>
+	<div class='col-6' style='padding-top:5px'>Data source</div>
+	<% if @annot and @cat_annots %>
+	<% l = @cat_annots.map{|a| [a.name, a.id]} %>
+	<% l.unshift(["Select an annotation", '']) %>
+	<%= select_tag "opt[cat_annot_id]", options_for_select(l, session[:dr_params][@project.id][:cat_annot_id] || ''), {:class => 'custom-select col-6 sel_cat_annot_id'} %>
+      </div>
+<!--      <div id='hightlight_cluster_container' class='row <%= (session[:dr_params][@project.id][:displayed_nber_dims] == 3) ? 'hidden' : '' %>'>
+        <div class='col-12' style='padding-top:5px'> 
+	  <%= check_box_tag "opt[highlight_clusters]" %>
+	  Highlight clusters on plot
+	</div>
+      </div>
+-->
+      <div id='cat_legend'></div>
+      <% end %>
+    </div>
   </div>
-  <%= hidden_field_tag 'opt[coloring_type]', coloring_type %> 
-</div>
 
-<div id='coloring_type_1_container' class='coloring_type_container <%= (coloring_type == "1") ? '' : 'hidden' %>'>
-  <%= render :partial => 'form_num_gradient', :locals => {:occ => 1} %>
-</div>
-
-<div id='coloring_type_2_container' class='coloring_type_container <%= (coloring_type == "2") ? '' : 'hidden' %>'>
-  <div class='col-6 bold'>Red channel</div>
-  <%= render :partial => 'form_num_gradient', :locals => {:occ => 2} %>
-  <div class='col-6 bold'>Green channel</div>
-  <%= render :partial => 'form_num_gradient', :locals => {:occ => 3} %>
-  <div class='col-6 bold'>Blue channel</div>
-  <%= render :partial => 'form_num_gradient', :locals => {:occ => 4} %>
-  <div class='fake' style='margin-bottom:200px'></div>
-</div>
-
-
-<div id='coloring_type_3_container' class='coloring_type_container <%= (coloring_type == "3") ? '' : 'hidden' %>'>
-  <div class='row'>
-    <div class='col-6' style='padding-top:5px'>Data source</div>
-    <% if @annot and @cat_annots %>
-    <% l = @cat_annots.map{|a| [a.name, a.id]} %>
-    <% l.unshift(["Select an annotation", '']) %>
-    <%= select_tag "opt[cat_annot_id]", options_for_select(l, session[:dr_params][@project.id][:cat_annot_id] || ''), {:class => 'custom-select col-6 sel_cat_annot_id'} %>
-    <% end %>
+  <div class="tab-pane <%= (session[:dr_params][@project.id][:main_menu] == 'info') ? 'active' : '' %>" id="pane-info" role="tabpanel" aria-labelledby="info-tab">
+   <% info_cat = session[:dr_params][@project.id][:info_cat] %>
+    <div id='info-cat_container' class='row flex-container2 mb-2 mt-2'>
+      <div class="btn-group" role="group">
+        <button id='gene_expr-btn' type="button" class="btn btn-<%= (info_cat == "gene_expr") ? 'primary' : 'secondary' %> info_cat_btn">Gene expression stats</button>
+        <button id='metadata_comparison-btn' type="button" class="btn btn-<%= (info_cat == "metadata_comparison") ? 'primary' : 'secondary' %> info_cat_btn">Metadata comparison</button>
+      </div>
+    </div>
   </div>
+
+  <div class="tab-pane <%= (session[:dr_params][@project.id][:main_menu] == 'inspector') ? 'active' : '' %>" id="pane-inspector" role="tabpanel" aria-labelledby="inspector-tab">
+  <div id='clicked_point-desc' class=' mt-2'></div>
+    <div id='selection-desc' class='float-left mt-2'></div>
+
+    <div id='selection-actions_container' class='float-left mt-2 ml-1 hidden'>
+      <button id='create_new_metadata-btn' type='button' class='btn btn-success'>Create new metadata</button>
+      <button id='cancel_selection-btn' type='button' class='btn btn-outline-danger'>Cancel selection</button>
+      <!--      <button id='merge_metadata-btn' type='button' class='btn btn-success hidden'>Merge with existing metadata</button>-->
+    </div>
+    <div class='clear'></div>
+
+    <div id='form_new_metadata' class='mt-4 hidden'></div>
+    <div id='selection_stats_container' class='mt-4'></div>
+  </div>
+
 </div>
 
 <!--    </div>
@@ -92,10 +153,12 @@
 
 <%= javascript_tag do %>
 
+var h_users = <%= raw @h_users.to_json %>
 
 <% h_headers = {};  @num_annots.select{|a| a.headers_json}.map{|a| h_headers[a.id] = JSON.parse(a.headers_json)} %>
 
 var h_headers = <%= raw h_headers.to_json %>
+var sel_cats = <%= raw session[:dr_params][@project.id][:sel_cats] %>;
 
 function upd_headers(i){
  console.log(h_headers)
@@ -129,6 +192,114 @@ function upd_headers(i){
 //console.log("bla")
 //
 
+$("#pane-inspector").on("click", "#create_new_metadata-btn", function(e){
+  refresh("form_new_metadata", "<%= raw form_new_metadata_project_path(@project.key, :run_id => @run.id) %>", {loading : 'fa-2x'})
+})
+
+$("#pane-inspector").on("click", "#cancel_selection-btn", function(e){
+  console.log("reset plot")
+  // $("#dr_plot").find(".plot_container").first().dblclick()
+  Plotly.restyle(document.getElementById("dr_plot"), {selectedpoints: [null]});
+  cancel_selection() 
+  //  $("#selection-desc").addClass("hidden")
+  //  $("#selection-actions_container").addClass("hidden")				      
+})
+
+$("#opt_highlight_clusters").click(function(){
+ var checked = $(this).prop("checked")
+ var layout = {shapes : {}}
+ if (checked == true){
+  plotly_graph.addClusterShapes()
+  //  layout.shapes = compute_shapes()
+ }else{
+   Plotly.restyle(document.getElementById("dr_plot"), layout);
+ }
+})
+
+$("#refresh_plot-btn").click(function(){
+ start_refresh_plot()
+ refresh_plot()
+})
+
+function start_refresh_plot(){
+ $(this).addClass("hidden")
+ $("#refresh_plot_status").removeClass("hidden")
+ $("#refresh_plot_icon").addClass("fa-pulse")
+ $("#refresh_plot-btn").prop("disabled", true)
+}
+function finish_refresh_plot(){
+ $(this).removeClass("hidden")
+ $("#refresh_plot_status").addClass("hidden")
+ $("#refresh_plot_icon").removeClass("fa-pulse")
+ $("#refresh_plot-btn").prop("disabled", false)
+}
+
+$("#pane-coloring").on("click", "#view_cluster_all", function(e){
+ var sel_cats = ($(this).prop("checked") == true) ? conf2D.list_cats  : []
+ start_refresh_plot()
+ var p = [{name : 'sel_cats', value : JSON.stringify(sel_cats)}]
+ refresh_post(null, "<%= upd_sel_cats_project_path(:key => @project.key) %>", p, 'post', {})
+})
+
+function refresh_sel_cat_view(){
+ var sel_cats = []
+ start_refresh_plot()
+ $(".view_cluster").each(function(){
+  var cat_idx = this.id.split("_")[2]
+  if ($(this).prop("checked") == true){
+   sel_cats.push(conf2D.list_cats[cat_idx])
+  }
+ })
+  var p = [{name : 'sel_cats', value : JSON.stringify(sel_cats)}]
+  refresh_post(null, "<%= upd_sel_cats_project_path(:key => @project.key) %>", p, 'post', {})
+}
+
+$("#pane-coloring").on("click", ".view_cluster", function(e){
+ refresh_sel_cat_view()
+})
+
+ $("#pane-inspector").on("click", "#selection-btn", function(e){
+  var w = $(window).width();
+//  console.log($("#selection-content").val())
+  var list_cells = JSON.parse($("#selection-content").val())
+  var list_cell_names = []
+  var limit = list_cells.length
+
+  var message = "<div class='float-right'><a id='download_all_list_cells-btn' class='btn btn-primary' href=''>Download all</a></div><h4>List of cells</h4>"
+  if (list_cells.length > 10000){
+   limit = 10000
+   message = message + "<p><b>The number of cells (" + list_cells.length + ") exceeds the limit to be displayed. Only first " + limit + " cells are displayed.</b></p>"
+  }
+
+  for (var i=0; i<limit; i++){
+    list_cell_names.push("<span class='badge badge-light'>" + conf2D.text_vector[list_cells[i]] + "</span>")
+  }
+  
+  $("#popup_container").html(message + list_cell_names.join(" "))
+  $("#popup_window").css({
+        left: 200,
+        width:w - 250,
+        top: e.pageY + 10
+    }).stop().show(100);
+ })
+
+$(document).on("click", "#download_all_list_cells-btn", function(e){
+
+  // Don't follow the link
+  e.preventDefault();
+
+  var list_cells = JSON.parse($("#selection-content").val())
+  var list_cell_names = []
+  for (var i=0; i<list_cells.length; i++){
+   list_cell_names.push(conf2D.text_vector[list_cells[i]])
+  }
+// alert("bla")
+//  $(this).attr('href', "hrefdata:application/octet-stream;charset=utf-8;base64," + window.btoa(list_cell_names.join("\n") + "\n"))
+  var filename = "<%= @project.key %>_<%= @h_std_methods[@run.std_method_id].name %>_<%= @run.num %>." + list_cells.length + "_cells.csv"
+  sendData(filename, list_cell_names.join("\n") + "\n")
+})
+
+
 function opacityChange(){
         opacity = document.getElementById("dot_opacity").value;
         op_value.innerHTML = opacity
@@ -146,6 +317,7 @@ function sizeChange(){
 
 
 function upd_params(){
+
   $.ajax({
       url: '<%= save_plot_settings_project_path(:key => @project.key) %>?dot_opacity=' + $("#dot_opacity").val() + "&dot_size=" + $("#dot_size").val(),
            dataType: "json",
@@ -173,8 +345,19 @@ function upd_params(){
 // }
 
 console.log("1---")
+console.log(<%= raw @cmd.to_json %>)
+console.log(<%= raw @log4.to_json %>)
 
 var h_autocomplete = <%= raw @autocomplete_json %>
+
+function upd_main_menu(menu_item){
+  $.ajax({
+      url: '<%= save_plot_settings_project_path(:key => @project.key) %>?main_menu=' + menu_item,
+           dataType: "json",
+           success: function(data){
+           }
+       })
+}					 
 
 function upd_plot(i){
     var gene_str = $("#gene_selected_" + i).html()
@@ -188,17 +371,29 @@ function upd_plot(i){
     }
     var header_i = $("#opt_header_i_" + i).val()
     var num_annot_id = $("#opt_num_annot_id_" + i).val()					 
-    var cat_annot_id =  $("#opt_cat_annot_id").val()					 
+    var cat_annot_id =  $("#opt_cat_annot_id").val()
+    if (coloring_type == 3){
+     i= null
+    }					 
     var occ_txt = (i == null) ? '' : '&occ=' + i
     $.ajax({
       url: '<%= get_rows_project_path(:key => @project.key, :annot_id => @annot.id, :format => 'json') %>&coloring_type=' + coloring_type + occ_txt + '&row_i=' + h_autocomplete["h_indexes"][gene_i] + "&dataset_annot_id="  + $("#opt_dataset_" + i).val() + "&gene_selected=" + gene_str + "&data_type=" + data_type + "&num_annot_id=" + num_annot_id + "&header_i=" + header_i + "&cat_annot_id=" + cat_annot_id,
            dataType: "json",
            success: function(data){
+             console.log("DATA:")
              console.log(data)
              plotly_graph.addGeneExpression('name', data)
+             if (coloring_type == 3){
+              refresh_sel_cat_view()
+             }
            }
        })
 }   
+
+$("#main_menu-nav .nav-item .nav-link").click(function(){
+ var menu_item = this.id.split("-")[0]
+ upd_main_menu(menu_item)
+})
 
 $(".sel_num_annot_id").change(function(){
   var i = this.id.split("_")[4]
@@ -337,6 +532,44 @@ $(".coloring_type_btn").click(function(){
  upd_plot((v == 1) ? 1 : 2)
 })
 
+$("#plot_options_btn").html("Controls")
+$("#plot_options_btn").prop("disabled", false)
 
+function upd_cat_alias(cat_i){
+ var p = [
+  {name : 'annot_id', value : $("#opt_cat_annot_id").val()},
+  {name : 'cat_i', value : cat_i},
+  {name : 'cat_name', value : $("#cat-name_" + cat_i).html()},
+  {name : 'cat_alias', value : $("#cat-alias_edit_" + cat_i).val()}
+ ]
+ refresh_post(null, "<%= upd_cat_alias_project_path(:key => @project.key) %>", p, 'post', {loading:'fa-2x'})
+}
+
+$("#cat_legend").on("click", ".cat-alias_edit-btn", function(){
+ var id = this.id.split("_")[2]
+ $("#cat-alias_edit_" + id).removeClass("hidden")
+ $(this).addClass("hidden")
+ $("#cat-alias_" + id).addClass("hidden")
+ console.log("#cat-alias_edit_" + id)
+ $("#cat-alias_edit_" + id).focus()
+})
+
+$("#cat_legend").on("blur", ".cat-alias_edit", function(){
+ var id = this.id.split("_")[2]
+ $("#cat-alias_edit-btn_" + id).removeClass("hidden")
+ $(this).addClass("hidden")
+ $("#cat-alias_" + id).removeClass("hidden")
+})
+
+$("#cat_legend").on("keyup", ".cat-alias_edit", function(e){
+ console.log(e.key)
+ if (e.key == 'Enter'){
+//  alert("bla")
+  var i = this.id.split("_")[2]
+  upd_cat_alias(i)
+ }
+})
+
+finish_refresh_plot()
 
 <% end %>

@@ -1,0 +1,21 @@
+<h4>Publication <%= link_to "Pubmed link", "https://www.ncbi.nlm.nih.gov/pubmed/" + @article.pmid.to_s, {:class => 'badge badge-info'} %></h4>
+
+<div class='row'>
+  <div class='col-md-3'><b>Authors</b></div><div class='col-md-9'><%= raw @article.authors.split(";").map{|e| "<span class='badge badge-info'>#{e}</span>"}.join(" ") %></div>
+</div>
+
+<div class='row'>
+  <div class='col-md-3'><b>Year</b></div><div class='col-md-9'><%= @article.year %></div>
+</div>
+
+<div class='row'>
+  <div class='col-md-3'><b>Journal, Volume (Issue)</b></div><div class='col-md-9'><%= "#{@article.journal.name}, #{@article.volume || ''}" + ((@article.issue) ? (" (" + @article.issue.to_s + ")") : "") %></div>
+</div>
+
+<div class='row'>
+  <div class='col-md-3'><b>Title</b></div><div class='col-md-9'><%= @article.title %></div>
+</div>
+
+<div class='row'>
+  <div class='col-md-3'><b>Summary</b></div><div class='col-md-9'><%= @article.abstract %></div>
+</div>

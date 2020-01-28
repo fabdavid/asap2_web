@@ -4,9 +4,10 @@
 <%# @log %>
 <%# @h_hca[:summary].keys %>
 <%# @h_hca[:projects].keys %>
+<%# @h_hca[:projects]['hits'][0].keys %>
 <% if @h_hca[:projects]['termFacets'] %>
 
-<div class='alert alert-danger'><i class='fas fa-exclamation-triangle warning-ico fa-3x'/> The HCA data are currently not available. There is a data re-ingestion process ongoing.</div>
+<!--<div class='alert alert-danger'><i class='fas fa-exclamation-triangle warning-ico fa-3x'/> The HCA data are currently not available. There is a data re-ingestion process ongoing.</div>-->
 
 <div class="row">
   <div class="col">
@@ -15,39 +16,11 @@
   <div class="col">
     <% discarded_facets = ['fileFormat'] %>
     <% displayed_facets = ['organ', 'method', 'donor', 'specimen'] %>
-    
-    <!-- CATEGORY BUTTONS - to implement later -->
-    <!--
-	<% displayed_facets.each do |facet| %>
-	<button type="button" class="btn btn-outline-secondary">
-	  <%= facet.gsub(/(?<=[a-z])(?=[A-Z])/, ' ').capitalize %>
-	      </button>
-	<% end %>
-	<% remaining_facets = @h_hca[:projects]['termFacets'].keys - displayed_facets - discarded_facets %>
-	
-	<div class="btn-group" role="group">
-	  <button id="btnGroupDrop1" type="button" class="btn btn-outline-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-	    Others
-	  </button>
-	  <div class="dropdown-menu" aria-labelledby="btnGroupDrop1">
-	    <% remaining_facets.sort.each do |facet| %>
-	    <a class="dropdown-item" href="#">
-	      <%= facet.gsub(/(?<=[a-z])(?=[A-Z])/, " ").capitalize %>
- 		  </a>
-  	    <% end %>
-	  </div>
-	</div>
-	-->
+
   </div>
 </div>
 <div id='list_filters'>
-<% @h_filters['file'].each_key do |k| %>
-<span class='badge badge-light <%= (k != 'fileFormat') ? 'hca_filter_badge' : '' %>'><%= k %>: <%= @h_filters['file'][k]['is'].map{|e| e}.sort.join(",") %>
-<% if k != 'fileFormat' %>
-<i class='fa fa-times'/>
-<% end %>
-</span>
-<% end %>
+<%=  @h_filters['fileFormat'].to_json %>
 </div>
 
 <div id='container_choices' class='hidden'>
@@ -59,51 +32,54 @@
   Total number of projects (<%= @h_hca[:projects]['termFacets']['project']['terms'].size %>) exceeding maximum number of hits displayed (<%= @nber_hits_displayed %>), please add filters.
 </div>
 <% end %>
-<!--
-<button id='hca_select_all' type='button' class='btn btn-secondary'>Select all</button>
-<button id='hca_deselect_all' type='button' class='btn btn-secondary'>Deselect all</button>
--->
+
+<%# @h_hca[:projects]['hits'].map{|e| e['projects'].map{|e2| e2.keys}}.to_json #"arrayExpressAccessions","geoSeriesAccessions","insdcProjectAccessions","insdcStudyAccessions","supplementaryLinks" %>
+
 <div id='container_list_projects'>
 <table id='list_projects'>
 <thead><tr>
-    <th><input type="checkbox" name="select_all" value="1" id="example-select-all"><%# check_box_tag "hca_select_all", "1", false %></th>
+    <th><!--<input type="checkbox" name="select_all" value="1" id="example-select-all"><%# check_box_tag "hca_select_all", "1", false %>--></th>
     <th>Project</th>
     <th>Species</th>
-    <th>Organ</th>
-    <th>Organ part</th>
+<!--    <th>Organ</th>
+    <th>Organ part</th>-->
     <th>Disease</th>
-    <th>Donor count</th>
-    <th>Cell count</th>
-    <th>Library construction approach</th>
-    <th>Machine</th>
+    <!--    <th>Donor count</th> -->
+    <th>Cell origin</th>
+    <th>Total number cells</th>
+    <!--    <th>Library construction approach</th>
+    <th>Machine</th> -->
 </tr></thead>
 <tbody>
 <%  @h_hca[:projects]['hits'].each_index do |i| %>
 <% e = @h_hca[:projects]['hits'][i] %>
+<% total_cells = 0 %>
+<% cell_details = e['cellSuspensions'].map{|e2| total_cells += e2['totalCells']; "<span class='badge badge-secondary'>" + ["organ", "organPart", "selectedCellType"].map{|k| (e2[k].is_a? Array) ? e2[k].join(" / ") : e2[k]}.compact.reject{|e3| e3.strip.empty?}.join(" > ") + " : " + number_with_delimiter(e2['totalCells'], :delimiter => "'") + " cells</span>"}.join(" ") %>
+<% if total_cells > 0 %>
 <tr>
-  <th><%= check_box_tag "hca-hit_#{i}", "1", false, {:class=> 'hca-hit'} %></th>
-  <td><%= e['projects'].map{|e2| e2['projectTitle']}.join(", ") %></td>
-  <td><%= (e['projectSummary']['genusSpecies']) ? e['projectSummary']['genusSpecies'].join(", ") : 'NA' %></td>
-  <td><%= e['specimens'].map{|e2| e2['organ'].join(", ")}.join(", ") %></td>
-  <td><%= e['specimens'].map{|e2| e2['organPart'].join(", ")}.join(", ") %></td>
-  <td><%= e['specimens'].map{|e2| e2['disease'].join(", ")}.join(", ") %></td>
-  <td><%= e['projectSummary']['donorCount'].to_i %></td>
-  <td><%=  e['fileTypeSummaries'].select{|e| e['fileType'] == 'matrix'}.first['count'].to_json %><%# (nber_cols = e['fileType']['count'].to_i and nber_cols > 0) ? nber_cols : 'NA' %></td>
-  <td><%= e['projectSummary']['libraryConstructionApproach'].join(", ") %></td>
-  <td><%= e['protocols'].map{|e2| e2['instrumentManufacturerModel'] && e2['instrumentManufacturerModel'].join(", ")}.compact.join(", ") %></td>
+  <td><%= check_box_tag "hca-hit_#{i}", e['entryId'], false, {:class=> 'hca-hit'} %></td>
+<td><%= e['projects'].map{|e2| e2['projectTitle']}.join(", ") %></td>
+<td><%= e['donorOrganisms'].map{|e2| e2['genusSpecies']}.flatten.join(", ") %><%# (e['projectSummary']['genusSpecies']) ? e['projectSummary']['genusSpecies'].join(", ") : 'NA' %></td>
+<!--<td><%= e['specimens'].map{|e2| e2['organ']}.flatten.join(", ") %></td>
+<td><%= e['specimens'].map{|e2| e2['organPart']}.flatten.join(", ") %></td> -->
+<td><%= e['specimens'].map{|e2| e2['disease']}.flatten.join(", ") %></td>
+<td><%= raw cell_details %>
+  <%# e['fileTypeSummaries'].select{|e| e['fileType'] == 'matrix'}.first['count'].to_json %>
+</td>
+<td><span class='total_nber_cells'><%= number_with_delimiter(total_cells, :delimiter => "'") %></span></td>
 </tr>
+<% end %>
 <% end %>
 </tbody>
 </table>
-</div>
 
 <%= javascript_tag do %>
 
  var h_q = JSON.parse($("#hca_query").val());
  var h_hca = <%= raw @h_hca.to_json %>;
 
-var table = $("#list_projects").DataTable({
-'columnDefs': [{
+ var table = $("#list_projects").DataTable({
+        'columnDefs': [{
          'targets': 0,
          'searchable': false,
          'orderable': false,
@@ -116,10 +92,22 @@ var table = $("#list_projects").DataTable({
   "dom": '<"top"i>rt<"bottom"lp><"clear">'
 });
 
+$(".hca-hit").click(function(){
+ $(".hca-hit").prop('checked', false)
+ $(this).prop("checked", true) 
+ $("#provider_project_id").val($(this).val())
+ $("#provider_id").val("1")
+// console.log($(this).parent())
+// if ($("#project_name").val() == ''){
+//  var project_name = $(this).parent().parent().children()[1].innerHTML
+//  $("#project_name").val(project_name)
+// }
+})
+
 function get_sel_hca_projects(){
  let flag = true
- let h_post_query = h_q 
- h_post_query.file.project = {is : []}
+ let h_post_query = h_q
+ h_post_query.project = {is : []}
  table.$('input[type="checkbox"]').each(function(){
          // If checkbox is checked
          if(this.checked){
@@ -127,10 +115,10 @@ function get_sel_hca_projects(){
       //          list_projects.push(h_hca.projects.hits[i].projects[0].projectShortname)
             let project_name = h_hca.projects.hits[i].projects[0].projectShortname
             //console.log("P: " + project_name)
-           h_post_query.file.project.is.push(project_name)
+           h_post_query.project.is.push(project_name)
          }
     })
- $("#sel_hca_projects").val(JSON.stringify(h_post_query))
+// $("#sel_provider_projects").val(JSON.stringify(h_post_query))
  validate_form()
 // return JSON.stringify(h_post_query)
 }
@@ -146,16 +134,7 @@ function all_checked(){
    return flag
 }
 
-// Handle click on "Select all" control
-   $('#example-select-all').on('click', function(){
-      // Get all rows with search applied
-      var rows = table.rows({ 'search': 'applied' }).nodes();
-      // Check/uncheck checkboxes for all rows in the table
-      $('input[type="checkbox"]', rows).prop('checked', this.checked);
-      get_sel_hca_projects()
-   });
-
-   // Handle click on checkbox to set state of "Select all" control
+  // Handle click on checkbox to set state of "Select all" control
    $('#list_projects tbody').on('change', 'input[type="checkbox"]', function(){
       var el = $('#example-select-all').get(0);
       // If checkbox is not checked
@@ -167,39 +146,17 @@ function all_checked(){
             el.indeterminate = true;
          }
       }else{ if(all_checked() == true){
-         el.indeterminate = false;         
+         el.indeterminate = false;
       }}
       get_sel_hca_projects()
    });
 
-
-
-
-/*
-hca_projects.on("click", "#hca_select_all", function(){
- let l = h_hca.projects.hits
- alert(l.length)
- for(i=0; i< l.length; i++){
-  $("#hca-hit_" + i).prop("checked", "checked")
-  $("#hca-hit_" + i).checked = true
- }
-
-$('input', hca_projects.cells().nodes()).prop('checked',true); 
-})
-
-$("#hca_deselect_all").click(function(){
- let l = h_hca.projects.hits
- for(i=0; i< l.length; i++){
-  $("#hca-hit_" + i).checked = false
- }
-})
-*/
 $(".hca_filter_badge").click(function(){
 var c = $(this).html()
 var k = c.split(": ")[0]
 delete h_q.file[k]
-console.log("bla")
-console.log(h_q) 
+//console.log("bla")
+//console.log(h_q)
  $("#hca_query").val(JSON.stringify(h_q))
  upd_hca_preview()
 })
@@ -209,7 +166,7 @@ $(function() {
  var list_facets = <%= raw (@h_hca[:projects]['termFacets'].keys - discarded_facets).sort.to_json %>
  for (var i=0; i< list_facets.length; i++){
   var tmp_l = h_hca.projects.termFacets[list_facets[i]].terms
-  for (var j = 0; j < tmp_l.length; j++){ 
+  for (var j = 0; j < tmp_l.length; j++){
    data.push({label: tmp_l[j].term, n: tmp_l[j].count, c: list_facets[i] }) //capitalize(list_facets[i].replace(/([A-Z])/g, " $1"))})
   }
  }
@@ -219,22 +176,21 @@ $(function() {
   source: data
  });
 
-
 $('.ui-autocomplete').on('click', '.ui-menu-item', function(){
  //alert($(this).attr("aria-label"))
  var t = $(this).attr("aria-label").split("|")
  var values = (h_q.file[t[0]] && h_q.file[t[0]].is) ? h_q.file[t[0]].is : [];
  if($.inArray(t[1], values) == -1){
-  values.push(t[1]) 
+  values.push(t[1])
   console.log(t[1])
-  console.log(values)		    
+  console.log(values)
  }else{
   console.log("val: " + t[1] +  " in " + values.length)
-  
+
  }
  h_q.file[t[0]] = {is : values}
  console.log(h_q)
- $("#hca_query").val(JSON.stringify(h_q))		      
+ $("#hca_query").val(JSON.stringify(h_q))
  upd_hca_preview()
 });
 
@@ -243,4 +199,6 @@ $('.ui-autocomplete').on('click', '.ui-menu-item', function(){
 <% end %>
 
 <% end %>
+
+
 

@@ -26,6 +26,18 @@ $grid-breakpoints: (
 $grid-gutter-width: 30px !default;
 
 // number of cards per line for each breakpoint
+$cards-per-line_sum: (
+    xs: 1,
+    sm: 1,
+    md: 1,
+    lg: 2,
+    xl: 2,
+    xxl: 3,
+    xxxl: 3,
+    xxxxl: 4
+);
+
+// number of cards per line for each breakpoint
 $cards-per-line: (
     xs: 1,
     sm: 1,

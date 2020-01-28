@@ -1,14 +1,14 @@
+<%# session[:input_data_attrs] %>
 <%# @log %>
 <%# @h_res[:h_attr_outputs].to_json %>
 <%# @h_constraints['in_lineage'].to_json %>
-<%# @h_constraints['in_lineage'].map{|attr_name| session[:input_data_attrs][attr_name]}.to_json %>
-
+<%# @h_constraints['in_lineage'].map{|attr_name| session[:input_data_attrs][@project.id]["6"][attr_name]}.to_json %>
+<%#  @h_res.to_json %>
 <%# @h_constraints %>
 <%# params[:attr_name] %>
 <%# @valid_types %>
 <%# @attrs[params[:attr_name]] %>
 <%# @h_res[:valid_types] %>
-<%# @log %>
 <%# @attrs.to_json %>
 <%# @h_runs_by_step.to_json %>
 <%# @h_res[:h_attr_files].to_json %>
@@ -36,45 +36,16 @@
 
 <% if @h_res[:valid_step_ids].size > 0 %>
 
-<!--<div> 
-<b>Select input data source</b>
-<br>
--->
-<!--
-<% @h_res[:valid_step_ids].each do |source_step_id| %>
- <button id='btn-sel-step_<%= source_step_id %>' type='button' class='btn btn-primary btn-sel-step'><%= @h_steps[source_step_id].label %></button>
-<% end %>
--->
-<!--
-<div class='alert alert-info'> 
-<%# check_box_tag "select_all_parents" %> Select all parents
-<%# check_box_tag "select_all_children" %> Select all children
-
-<div class='form-group form-inline'>
-<%= label_tag "Filter:" %>
-<% l = @h_res[:valid_step_ids].map{|step_id| [@h_steps[step_id].label, step_id]} %>
-<% l.unshift(["All", 0]) %>
-<%= select_tag 'filter_step_id', options_for_select(l), {:class => 'form-control'} %>
+<div style='position:fixed;width:95%;z-index:100000'>
+<div class='float-right'> <button type='button' class='select_runs btn btn-primary'>Apply selection</button></div>
 </div>
-</div>
--->
-<!--<button id='input_data_select_all' type='button' class='btn btn-secondary'>Select all</button>
-<button id='input_data_deselect_all' type='button' class='btn btn-secondary'>Deselect all</button>
-
-</div>
--->
-<!-- if there are more than one -->
-<!--<div id='pipeline_paths' class='hidden'>
-<b>Runs</b>
-
-<div id='pipeline_path'></div>
-</div>
--->
 
 <%# @h_res[:h_attr_outputs].keys.sort{|a, b| @h_steps[a] <=> @h_steps[b]}.each do |source_step_id| %>
 <% @h_res[:valid_step_ids].each do |source_step_id| %>
 <% step = @h_steps[source_step_id] %>
+
 <div id='step_title_<%= source_step_id %>'> 
+
 <div style='width:200px' class='float-left'><b><%= @h_steps[source_step_id].label %></b></div>
 <button type='button' id='select_all_<%= source_step_id %>' class='btn btn-secondary btn-sm input_data_select_all sel_all'>Select all</button>                                                      
 <button type='button' id='deselect_all_<%= source_step_id %>' class='btn btn-secondary btn-sm input_data_deselect_all sel_all'>Deselect all</button>
@@ -125,7 +96,9 @@
 </div>
 <% end %>
 
- <button id='select_runs' type='button' class='btn btn-primary'>Select</button>
+<!--<div class='float-right'>-->
+ <button type='button' class='select_runs btn btn-primary'>Apply selection</button>
+<!--</div>-->
 
 <% else %>
  <div class='alert alert-danger'>
@@ -144,8 +117,9 @@ var h_children_run_ids = <%= raw @h_children_run_ids.to_json %>
 var h_lineage_run_ids = <%= raw @h_lineage_run_ids.to_json %>
 
 var max_selected = <%= raw (@attrs[params[:attr_name]]['max_nber_items']) ? @attrs[params[:attr_name]]['max_nber_items'] : "null" %>
-
+console.log("blaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 $(".sel_all").click(function(){
+console.log("bla")
   var sid = this.id.split("_")[2]
   var run_ids = h_run_ids_by_step_id[sid]
  if ($(this).hasClass("input_data_select_all")){ 
@@ -187,15 +161,24 @@ $(".sel_all").click(function(){
 */
 //})
 
+function deselect_all_runs(){
+   $(".run_card").each(function(i, obj){
+    c = $(obj).find(".check-icon i")
+    c.removeClass("fa")
+    c.addClass("far")
+   });
+}
 
 $(".run_card").click(function(){
  var id = this.id.split("-")[2];
  var list_run_ids = get_list_selected_cards()
 
  var check_icon = $(this).find(".check-icon i")
- if (!max_selected || max_selected > list_run_ids.length || check_icon.hasClass("fa-circle")){		  
+ if (!max_selected || max_selected > list_run_ids.length){ 
+//check_icon.hasClass('fa')		  
 // $(this).toggleClass("selected_run"); 
 // console.log(check_icon)
+//deselect_all_runs()
  check_icon.toggleClass("far")
  check_icon.toggleClass("fa")
 }else{
@@ -204,28 +187,19 @@ $(".run_card").click(function(){
    alert("Max number of selected datasets reached (" + max_selected + ")")
   }else{
    // deselect all runs
-   
-   $(".run_card").each(function(i, obj){
-    c = $(obj).find(".check-icon i")
-    c.removeClass("fa")
-    c.addClass("far")
-   });
-         
+   deselect_all_runs()         
    check_icon.addClass("fa")
    check_icon.removeClass("far")
-   
   }
  }
 }
 })
-
 
 /*$(".btn-sel-step").click(function(){
 var source_step_id = this.id.split("_")[1]
 refresh("form_container", "<%= form_select_input_data_projects_path(:key => @project.key, :step_id => @step.id, :attr_name => params[:attr_name]) %>&source_step_id=" + source_step_id + "&obj_id=" + $('#req_std_method_id').val(), {loading : 'fa-2x'})
 })
 */
-
 
 function get_list_selected_cards(){
 
@@ -239,15 +213,13 @@ function get_list_selected_cards(){
  return list_run_ids
 }
 
-
-
-$("#select_runs").click(function(){
+$(".select_runs").click(function(){
 
  // get the list of selected cards
  var list_run_ids = get_list_selected_cards()
 
  console.log(list_run_ids);
-// refresh("attrs_container", '<%= set_input_data_project_path(:key => @project.key) %>?attr_name=<%= params[:attr_name] %>&step_id=<%= @step.id %>&obj_id=<%= params[:obj_id] %>&list_attrs=' +  list_run_ids.join(","), {loading:'fa-2x'})
+ // refresh("attrs_container", '<%= set_input_data_project_path(:key => @project.key) %>?attr_name=<%= params[:attr_name] %>&step_id=<%= @step.id %>&obj_id=<%= params[:obj_id] %>&list_attrs=' +  list_run_ids.join(","), {loading:'fa-2x'})
  refresh("form-container_<%= params[:attr_name] %>", '<%= set_input_data_project_path(:key => @project.key) %>?attr_name=<%= params[:attr_name] %>&step_id=<%= @step.id %>&obj_id=<%= params[:obj_id] %>&list_attrs=' +  list_run_ids.join(","), {loading:'fa-2x'})
  $("#ontop_window").addClass("hidden");
 })

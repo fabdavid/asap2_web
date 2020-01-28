@@ -78,17 +78,16 @@
 	    <!--	<tr><td data-toggle="tooltip" title="Average of the all genes expression">Mean of gene expression</td><td><%# ((@results['total_signal'].to_f * 100) / (@results['nber_genes'] * @results['nber_cells'])).round(2) %></td></tr>                            
 			<	<tr><td data-toggle="tooltip" title="Standard deviation is calculated for every gene, and then all SDs are averaged over all genes.">Mean SD by gene</td><td><%# ((@results['mean_sd'].to_f * 100) / @results['nber_genes']).round(2) %></td></tr>-->
 	    <!--	<tr><td data-toggle="tooltip" title="In case of duplicate genes (genes with the same gene name), only the most expressed gene is retained.">Duplicate genes</td><td><%= nber_duplicated_genes = @results['nber_duplicated_genes'] %> <%= raw "<span class='glyphicon " + ((nber_duplicated_genes == 0) ? 'glyphicon-ok' : 'glyphicon-warning-sign') + "'></span>" %></td></tr>-->
-            <tr><td>
+            <!--<tr><td>
 		<span data-toggle="tooltip" title="Number of detected ERCC (they are removed from the result datatable)">Number of ERCC</span></td>
 	      <td>
 		<%# if @results['nber_ercc'] > 0 %>
 			  <%# link_to raw("<button class='btn btn-primary btn-xs'>#{@results['nber_ercc']} ERCC</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'ercc.tab') %>
 			  <%# else %>
-			  <!-- 0 -->   
 			  <%# end %>
 			  <%= @results['nber_ercc'] %>
 			  <span class='badge badge-info'>ERCCs are automatically detected as genes starting with "ERCC-"</span>
-             </td></tr>
+             </td></tr>-->
 <%# display_batch_file() %>
 
             <tr><td>
@@ -118,12 +117,10 @@
 
 <div class='col-xl-4' style='display:flex;align-items: center;justify-content:center'>
 
-<p><%= link_to(raw("<button class='btn btn-outline-secondary btn-sm'>Download Loom file</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'output.loom'), "target" => "_blank") if exportable?(@project) %> </p>
-   
+<p><%= link_to(raw("<button class='btn btn-outline-secondary btn-sm'>Download Loom file</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'output.loom'), "target" => "_blank") if exportable?(@project) %></p>   
 <% if admin? %>
-<p><%= link_to(raw("<button class='btn btn-outline-secondary btn-sm'>Download JSON file</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'output.json'), "target" => "_blank") if exportable?(@project) %> </p>
-<p><%= link_to(raw("<button class='btn btn-outline-secondary btn-sm'>Download Log file</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'output.log'), "target" => "_blank") if exportable?(@project) %> </p>
-
+<p><%= link_to(raw("<button class='btn btn-outline-secondary btn-sm'>Download JSON file</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'output.json'), "target" => "_blank") if exportable?(@project) %></p>
+<p><%= link_to(raw("<button class='btn btn-outline-secondary btn-sm'>Download Log file</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'output.log'), "target" => "_blank") if exportable?(@project) %></p>
 <% end %> 
 
 </div>

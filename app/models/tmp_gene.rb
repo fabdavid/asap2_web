@@ -1,0 +1,2 @@
+class TmpGene < ApplicationRecord
+end

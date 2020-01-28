@@ -11,3 +11,6 @@ staging:
 
 production:
   url: <%= ENV['DATABASE_URL'].gsub('?', '_production?') %>
+
+data:
+  url: <%= ENV['DATABASE_URL'].gsub('?', '_data_v4?') %>

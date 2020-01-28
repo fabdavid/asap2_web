@@ -1,18 +1,143 @@
-<div id="summary_graph"></div>
+<%= render :partial => 'filter_runs' %>
 
-<%# @project.project_steps.to_json %>
+<%# @h_articles.to_json %>
 
-<%# Redis.new.pubsub("channels") %>
-<%# Redis.new.pubsub("NUMPAT") %>
+<% if @project.cloned_project_id %>
+<% if @cloned_project %>
+<div class='alert alert-info'>This project has been cloned from <%= link_to "#{@cloned_project.name} [#{@cloned_project.key}]", project_path({:key => @cloned_project.key}) %></div>
+<% else %>
+<div class='alert alert-danger'>This project has been cloned from a deleted project</div>
+<% end %>
+<% end %>
+<div class='row'>
+  <div class="col-md-5">
+    <div class='float-right'>
+      <%= link_to 'List of commands', get_commands_project_path(@project.key), {:class => 'btn btn-primary'} %>
+    </div>
+    <h4>Pipeline
+      <% if session[:activated_filter][@project.id] == true %>
+      (filtered)
+      <% end %>
+    </h4>
+    <div id="cy" class="cy"></div>
+  </div>
+  <!--  <div id="summary_graph"></div> -->
+  <%# @log %>
+  <%# @project_steps.to_json %>
+  <%# @runs.to_json %>
+  
+  <%# @project.project_steps.to_json %>
+  
+  <%# Redis.new.pubsub("channels") %>
+  <%# Redis.new.pubsub("NUMPAT") %>
+  
+  <%# ActionCable.server.connections.to_json %>
+  <%# Run.where(:project_id => @project.id, :step_id => 1).first.to_json %>
+  <div class="col-md-7">
+    <% if @project.pmid %>
+      <h4>Analysis publications</h4>
+      <% @project.pmid.to_s.split(",").each do |pmid| %>
+       <% a = Article.where(:pmid => pmid).first %>
+       <% if a %>
+         <% authors =  a.authors.split(";") %>
+         <%= raw authors.first + ((authors.size > 1) ? '<i> et al.</i> ' : '. ') + "<b>#{a.title}</b>" + " " + ((j = a.journal) ? "<i>#{j.name}</i>" : '') + ". " + a.year.to_s + "."  %> <%= link_to "PubMed link", "https://www.ncbi.nlm.nih.gov/pubmed/" + a.pmid.to_s, {:class => 'badge badge-info'} %>
+        
+       <% end %>
+      <% end %>
+      <br/><br/>
+    <% end %>
+    
+    <% if @h_exp_entries.keys.size > 0 %>
+    <h4>Experimental data</h4>
 
-<%# ActionCable.server.connections.to_json %>
-<%# Run.where(:project_id => @project.id, :step_id => 1).first.to_json %>
-
-<%= link_to 'List of commands', get_commands_project_path(@project.key), {:class => 'btn btn-primary mb-4'} %>
-
-<%= render :partial => 'display_card_deck', :locals => {:cards => @list_cards} %>
-
+    <% @h_exp_entries.each_key do |k| %>
+     <% if @h_exp_entries[k].size > 0 %>
+    <table id='data_authors'>
+      <thead>
+	<tr>
+	  <th><%= @h_identifier_types[k].name %></th>
+	  <th>Other identifiers</th>
+	  <th>Publication</th>
+	  <th>Submitters</th>
+	</tr>
+      </thead>
+      <tbody>
+	<% @h_exp_entries[k].each do |exp_entry| %>
+  	 <tr>
+	   <td><span id='link_exp_<%= exp_entry.id %>' class='badge badge-dark pointer exp_entry'><%= exp_entry.identifier %></span></td>
+	   <td>
+	     <% h_ids = Basic.safe_parse_json(exp_entry.identifiers_json, {}) %>
+	     <%#  raw h_ids.keys.map{|k| h_ids[k].map{|id| "ID#{id} K#{k}"}}.flatten.join("<br/>") %>
+	     <%= raw h_ids.keys.map{|k| h_ids[k].map{|id| identifier_link(id, @h_identifier_types[k.to_i])}}.flatten.join("<br/>") %>
+	   </td>
+	   <td>
+	     <% if exp_entry.pmid %>
+	     <% exp_entry.pmid.split(";").map{|e| e.to_i}.each do |pmid| %>
+	     <span id='article_<%= @h_articles[pmid].id %>' class='badge badge-dark article_entry pointer'><%= display_reference(@h_articles[pmid]) %></span>
+	     <% end %>
+	     <% end %>
+	     <%# @h_articles[exp_entry.pmid.to_i].to_json + "," %>
+	   </td>
+	   <td><%= raw exp_entry.contributors.split(";").map{|e| "<span class='badge badge-info'>#{e.split(",").select{|e2| e2!=''}.join(" ")}</span>"}.join(" ") %></td></tr>
+	<% end %>
+      </tbody>
+    </table>
+    <br/>
+    <% end %>
+    <% end %>
+    <% end %>
+    <% if @project.provider_projects.size > 0 %>
+    <h4>Data downloaded from</h4>
+ <!--   <div class='alert alert-secondary'> -->
+      <% @project.provider_projects.each do |pp| %>
+        <% provider = pp.provider %>
+        <p><%= provider.name %> <%= link_to pp.provider_project_key, provider.url_mask.gsub(/\#\{id\}/, pp.provider_project_key) %></p>
+	<br/>
+      <% end %>
+<!--    </div> -->
+    <% end %>
+    <h4>All runs 
+      <% if session[:activated_filter][@project.id] == true %>
+      (not filtered)
+      <% end %>
+    </h4>
+    <%= render :partial => 'display_card_deck', :locals => {:cards => @list_cards, :card_class => 'card_sum'} %>
+  </div>
+</div>
 <%= javascript_tag do %>
+
+$("#data_authors").dataTable({"sDom": 'Wsrt'})
+
+ $(".exp_entry").click(function(e){
+  var id = this.id.split("_")[2]
+  e.stopPropagation();
+  e.preventDefault();
+  $("#popup_window").removeClass("hidden")
+  //  $("#popup_container").html("bla!")
+    refresh("popup_container", "<%= exp_entries_path %>/" + id + "/summary", {loading: 'fa-2x'})
+  var w = $(window).width();
+  $("#popup_window").css({
+        left: 200,
+        width:w - 250,
+        top: e.pageY + 10
+    }).stop().show(100);
+ })
+
+ $(".article_entry").click(function(e){
+  var id = this.id.split("_")[1]
+  e.stopPropagation();
+  e.preventDefault();
+  $("#popup_window").removeClass("hidden")
+  //  $("#popup_container").html("bla!")
+    refresh("popup_container", "<%= articles_path %>/" + id + "/summary", {loading: 'fa-2x'})
+  var w = $(window).width();
+  $("#popup_window").css({
+        left: 200,
+        width:w - 250,
+        top: e.pageY + 10
+    }).stop().show(100);
+ })
+
 
 $(".summary_step_card").mouseover(function(){
  $(this).css("border-color", 'rgba(0,0,0,0.425)')
@@ -28,8 +153,113 @@ $(".summary_step_card").click(function(){
  refresh("step_container", "<%= raw get_step_project_path(:key => @project.key, :nolayout => 1) %>&step_id=" + step_id, {loading: 'fa-2x loading-step'})
 })
 
+var data = <%= raw @klay_data.to_json %> 
+/*[
+  {data: {id: 'all' }},
+  {data: {id: 'female'}},
+  {data: { id: 'edge1', source: 'all', target: 'female'}},
+  {data: {id: 'male'}},
+    {data: { id: 'edge2', source: 'all', target: 'male'}},
 
+  {data: {id: 'female_2016'}},
+  {data: { id: 'edgef16', source: 'female', target: 'female_2016'}},
 
+  {data: {id: 'male_2017'}},
+  {data: { id: 'edgem17', source: 'male', target: 'male_2017'}},
+  {data: {id: 'male_2018'}},
+  {data: { id: 'edgem18', source: 'male', target: 'male_2018'}},
+];
+*/
+var style = [ // the stylesheet for the graph
+  {
+    selector: 'node',
+    style: {
+      label: 'data(label)',
+  //    'content': 'data(rank)',
+      'font-size': '1.5em',
+      'background-color': 'data(color)'
+    }
+  },
+/*  {
+    selector: 'edge',
+    style: {
+      'width': 1,
+      'curve-style': 'taxi',
+      'taxi-direction': 'rightward',
+      'line-color': '#ccc'
+    }
+  }
+*/
+{
+selector: 'edge',
+style: {
+'curve-style': 'bezier',
+'target-arrow-shape': 'triangle',
+'line-color': '#aaa',
+'target-arrow-color': '#aaa',
+'opacity': 0.5
+}
+}
+];
+
+//document.addEventListener('DOMContentLoaded', function(){
+$(document).ready(function(){
+
+var cy = window.cy = cytoscape({
+container: document.getElementById('cy'),
+
+// demo your layout
+layout: {
+name: 'klay',
+animate: true,
+fit:true,
+klay: {spacing: 60}
+// some more options here...
+},
+
+style: style, /*[
+{
+selector: 'node',
+style: {
+'background-color': '#ccc'
+}
+},
+
+{
+selector: 'edge',
+style: {
+'curve-style': 'bezier',
+'target-arrow-shape': 'triangle',
+'line-color': '#aaa',
+'target-arrow-color': '#aaa',
+'opacity': 0.5
+}
+}
+], */
+
+elements: data //fetch('./example-graphs/planar-chain.json').then(function( res ){ return res.json(); })
+});
+
+//cy.on('tap', 'node', function(e){
+cy.nodes().on('click', function(e){
+  var node = e.target;
+  console.log( 'tapped ' + node.id() );
+// $("#popup_window").css({display:'none'})
+// refresh("step_container", "<%= get_run_project_path(:key => @project.key, :nolayout => 1) %>&run_id=" + node.id(), {loading: 'fa-2x loading-step'})
+  e.stopPropagation();
+  e.preventDefault();
+  $("#popup_window").removeClass("hidden")
+  refresh("popup_container", "<%= raw get_lineage_project_path(:key => @project.key) %>?run_id=" + node.id() + "&include_query_node=1", {loading: 'fa-2x'})
+  var w = $(window).width();
+  $("#popup_window").css({
+        left: 200,
+        width:w - 250,
+        top: e.pageY + 10
+    }).stop().show(100);
+});
+
+//});
+});
 var treeData =
   {
   "name": "Root_Level",

@@ -1,0 +1,2 @@
+module EnsemblSubdomainsHelper
+end

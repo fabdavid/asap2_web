@@ -1,0 +1,91 @@
+<div id='<%= @step.name %>_step_container'>
+<% if @step and @ps and @run %>
+ <div id='step_header_container'>
+   <%= render :partial => 'projects/step_header_container' %>
+ </div>
+
+ <% if params[:errors] %>
+ <div class='alert alert-danger'><%= params[:errors] %></div>
+ <% end %>
+
+ <% if  @step.description and ! @step.description.empty? %>
+ <div id='step-info_<%= @step.id %>' class='alert alert-info <%= (@ps.status_id) ? 'hidden' : '' %>'><%= raw @step.description %></div>
+ <% end %>
+
+ <p id="notice"><%= notice %></p>
+
+<div class='container'>
+
+<div class='btn btn-sm btn-secondary' id='back-btn'><< Back</div>
+
+<div class='float-right'>
+  <b>Download all</b>
+  <%= link_to(raw("<button id='download-ge-table' class='btn btn-primary btn-sm' type='button'>JSON</button>"), 
+      get_ge_geneset_list_run_path(@run, :format => 'json', :type => params[:type], :download => 1), "target" => "_blank") if exportable?(@project) %>
+    <%= link_to(raw("<button id='download-ge-table' class='btn btn-primary btn-sm' type='button'>Tab-separated</button>"),
+      get_ge_geneset_list_run_path(@run, :format => 'text', :type => params[:type], :download => 1), "target" => "_blank") if exportable?(@project) %>
+</div>
+<h5><%= raw display_run2(@run, @step, @std_method) %> - List of <%= @nber_genes %> <%= params[:type] %>-regulated genes</h5>
+<%# raw display_run_attrs(@run, @h_run_attrs, @h_std_method_attrs) %>
+<% if @limit < @nber_genesets %>
+<div class='alert alert-danger'>Only <%= @limit %> genes with highest fold change displayed</div>
+<% end %>
+<!-- <div class='card' style='margin:10px'>
+   <div class='card-header'>List of <%= params[:type] %>-regulated genes
+     <div class='btn btn-secondary btn-sm back' style='float:right'>Back</div>
+   </div>
+   <div class='card-body'>
+-->
+     <table id='ge-gene_list'>
+       <thead>
+         <% @fields.each do |f| %>
+         <th><%= f %></th>
+         <% end %>
+       </thead>
+       <tbody>
+	 <% @data.each do |e| %>
+	 <tr>
+	 <% @fields.each_index do |i| %>
+	 <td><%= e[i] %></td>
+	 <% end %>
+	 </tr>
+	 <% end %>
+       </tbody>
+     </table>
+<!-- </div></div> -->
+</div>
+<% end %>
+</div>
+
+<%= javascript_tag do %>
+
+$("#back-btn").click(function(){
+ refresh("step_container", "<%= get_step_project_path(:key => @project.key, :step_id => @step.id, :nolayout => 1) %>", {loading: 'fa-2x loading-step'});
+})
+
+$("#ge-gene_list").dataTable({
+"order": [[ 3, "asc" ]]
+})
+
+$(".show_link").click(function(){
+ var t = this.id.split("_")
+ // alert("bla!")
+ $("#popup_window").css({display:'none'})
+ refresh("step_container", "<%= get_run_project_path(:key => @project.key, :nolayout => 1) %>&run_id=" + t[2], {loading: 'fa-2x loading-step'})
+})
+
+ $(".input_lineage").click(function(e){
+  var run_id = this.id.split("_")[2]
+  e.stopPropagation();
+  e.preventDefault();
+  $("#popup_window").removeClass("hidden")
+  refresh("popup_container", "<%= get_lineage_project_path(:key => @project.key) %>?run_id=" + run_id, {loading: 'fa-2x'})
+  var w = $(window).width();
+  $("#popup_window").css({
+        left: 200,
+        width:w - 250,
+        top: e.pageY + 10
+    }).stop().show(100);
+ })
+
+<% end %>

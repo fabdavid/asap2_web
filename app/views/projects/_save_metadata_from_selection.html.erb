@@ -1,0 +1,9 @@
+// refresh("plot_options_content", "<%= raw get_dr_options_project_path(@project.key, :run_id => params[:run_id]) %>", {loading:"fa-2x"});
+<% if @new_annot %>
+ $("#opt_cat_annot_id").append(`<option value="<%= @new_annot.id %>"> 
+                                       <%= @new_annot.name %> 
+                                  </option>`)
+// $("#popup_window").css({display:'none'})
+ $("#form_new_metadata").addClass("hidden")
+<% end %>
+

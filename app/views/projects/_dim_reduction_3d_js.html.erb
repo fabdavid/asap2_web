@@ -9,7 +9,24 @@ function Graph(config){
 	this.data			= [];
 	this.json			= config.json;
 	this.groupData		= [];
-	this.defaultConf	= {		modeBarButtonsToRemove	: ["hoverClosest3d","sendDataToCloud", "toggleSpikelines", "hoverClosestCartesian", "hoverCompareCartesian"],
+	this.defaultConf	= {		
+                                    modeBarButtonsToRemove	: ["hoverClosest3d","sendDataToCloud", "toggleSpikelines", "hoverClosestCartesian", "hoverCompareCartesian", "toImage"],
+                                    modeBarButtonsToAdd: [
+                                     {
+                                      name: 'Save PNG',
+                                      icon: Plotly.Icons.camera,
+                                      click: function(gd) {
+                                      Plotly.downloadImage(gd, {format: 'png', height:400,width:800})
+                                     }
+                                    },
+                                    {
+                                     name: 'Save SVG',
+                                     icon: Plotly.Icons.camera,
+                                     click: function(gd) {
+                                     Plotly.downloadImage(gd, {format: 'svg'})
+                                    }
+                                   }],
+
 								displaylogo				: false,
 								displayModeBar			: true,
 								showLink: false,
@@ -76,14 +93,15 @@ function Graph(config){
 								Plotly.restyle(this.config.target, update);
 							};
         this.updatePlotWidth = function(width){
-         console.log(width)
+      //   console.log(width)
          this.layout.width = width
          this.draw()
         };
 /*	this.addGeneExpression	= function(name, data){
+          var rows = data.rows;
 	  var o = this.config;
 	  // Plotly.d3.json(file+".json", function(err, json) {
-	  var geneExpression = data;									
+	  var geneExpression = rows;									
           var max = Math.max(geneExpression)
 	  var update = {	marker: {size		:o.size, 
 		blend		:true, 
@@ -98,11 +116,12 @@ function Graph(config){
 	this.shown=2;
 	};
 */
-       this.addGeneExpression  = function(name, data){
+       this.addGeneExpression  = function(name, data){       
          var o = this.config;
          var update = {}
+         var rows= data.rows
 
-         if (data.length == 0){
+         if (rows.length == 0){
           update = {
              marker: {
                size : o.size,
@@ -112,25 +131,27 @@ function Graph(config){
              }
            }
          }else{
-         if (data.length > 1){
+         if (rows.length > 1){
           var colors = []
           var max = []
           var min = []
           var diff = []
-          for (var i=0; i<data.length; i++){
-           max[i] = Math.max(...(data[i]) ? data[i] : [0])
-           min[i] = Math.min(...(data[i]) ? data[i] : [0])
+          for (var i=0; i<rows.length; i++){
+//          max[i] = Math.max(...(rows[i]) ? rows[i] : [0])
+//           min[i] = Math.min(...(rows[i]) ? rows[i] : [0])				       
+             max[i] = (rows[i]) ? list_max(rows[i]) : 0
+             min[i] = (rows[i]) ? list_min(rows[i]) : 0
            diff[i] = max[i] - min[i]
           }
-          for (var i=0; i<data[0].length; i++){
-           var rgb = [((data[0] && diff[0] > 0) ? 255 - Math.round((data[0][i]-min[0]) * 250 / diff[0]) : 255),
-            ((data[1] && diff[1] > 0) ? 255 - Math.round((data[1][i]-min[1]) * 250 / diff[1]) : 255),
-            ((data[2] && diff[2] > 0) ? 255 - Math.round((data[2][i]-min[2]) * 250 / diff[2]) : 255)]
+          for (var i=0; i<rows[0].length; i++){
+           var rgb = [((rows[0] && diff[0] > 0) ? 255 - Math.round((rows[0][i]-min[0]) * 250 / diff[0]) : 255),
+            ((rows[1] && diff[1] > 0) ? 255 - Math.round((rows[1][i]-min[1]) * 250 / diff[1]) : 255),
+            ((rows[2] && diff[2] > 0) ? 255 - Math.round((rows[2][i]-min[2]) * 250 / diff[2]) : 255)]
 
            var alpha = (rgb[0] >= 250 && rgb[1] >= 250 && rgb[2] >= 250) ? ",0" : ""
            colors.push("rgb(" + rgb.join(",") + alpha + ")")
           }
-          console.log(colors)
+        //  console.log(colors)
           update = {
             marker: {
               size : o.size,
@@ -141,8 +162,9 @@ function Graph(config){
           }
          }else{
           if ($("#opt_coloring_type").val()< 3){
-          var geneExpression = data[0]
-          var max = Math.max(...geneExpression) //.sort(function(a, b){return a-b})[geneExpression.length-1]
+          var geneExpression = rows[0]
+       //   var max = Math.max(...geneExpression) //.sort(function(a, b){return a-b})[geneExpression.length-1]
+	 var max = list_max(geneExpression)				     
           update = {
             marker: {
               size : o.size,
@@ -159,11 +181,33 @@ function Graph(config){
             var palette = Plotly.d3.scale.category10().range();
             var h_cats = {}
             var c_i = 0
-            for (var i=0; i<data[0].length; i++){
-              colors[i] = palette[c_i % 10]
-              if(!h_cats[data[0][i]]){
+            for (var i=0; i<rows[0].length; i++){
+            //  console.log(rows)
+            //  console.log(i + ":" + c_i + ":" + (c_i % 10))
+              if(!h_cats[rows[0][i]]){
                 c_i += 1
-                h_cats[data[0][i]]=1
+                h_cats[rows[0][i]]=c_i
+              }
+              colors[i] = palette[h_cats[rows[0][i]] % 10]
+            }
+            update = {
+             marker: {
+              size : o.size,
+              blend : true,
+              opacity : o.opacity,
+              color : colors
+             }
+            }
+
+/*            var colors = []
+            var palette = Plotly.d3.scale.category10().range();
+            var h_cats = {}
+            var c_i = 0
+            for (var i=0; i<rows[0].length; i++){
+              colors[i] = palette[c_i % 10]
+              if(!h_cats[rows[0][i]]){
+                c_i += 1
+                h_cats[rows[0][i]]=1
               }
             }
             update = {
@@ -174,6 +218,7 @@ function Graph(config){
               color : colors
              }
             }
+*/
            }
           }
 
@@ -245,7 +290,11 @@ function Graph(config){
 							};
 }
 
-var json_data = <%= raw @h_json_data %>
+// <%= @cmd %>
+ var json_data = <%= raw @h_json_data %>
+//var all_json_data = <%# raw @h_json_data %>
+//var json_data = (all_json_data['list_meta'] && all_json_data['list_meta'][0]) ? all_json_data['list_meta'][0] : {};
+
 
 var conf3D = {
 		target		: document.getElementById("dr_plot"),

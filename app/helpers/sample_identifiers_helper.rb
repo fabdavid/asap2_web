@@ -1,0 +1,2 @@
+module SampleIdentifiersHelper
+end

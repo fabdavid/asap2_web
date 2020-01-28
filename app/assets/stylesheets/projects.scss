@@ -10,7 +10,7 @@
 
 .info-btn {margin-top:-10px; cursor:pointer}
 
-.show_link {color:blue;text-decoration:underline}
+.show_run_link {color:blue;text-decoration:underline}
 
 #project_header {
  z-index:10;
@@ -60,6 +60,8 @@
 #opt_input {width:100%; text-align:center;margin-bottom:15px;}
 #opt_input .btn-group .choice_btn{width:250px}
 .hca_filter_badge {cursor:pointer}
+.total_nber_cells {font-size: 16px;color:green}
+
 
  .ui-autocomplete {
             max-height: 200px;
@@ -133,6 +135,18 @@
 .cell_label {color:#b411fb}
 
 /* Project Summary */
+
+.cy {
+  width: 100%;
+  height: 80vh;
+  background-color: #eee;
+}
+
+.grid_container {
+  display: grid;
+  grid-template-columns: 49% 49%;
+  grid-column-gap: 2%;
+}
 
 /* NEW analysis btn */
 
@@ -595,9 +609,12 @@ margin:15px
 
 .list_genes_container {position:relative}
 
+#cat_legend {width:100%}
 #plot_container {height:100%}
 
-#plot_options_btn { position:fixed; bottom:35px; right:35px; z-index:500}
+#plot_btns {position:fixed; bottom:15px; right:35px; z-index:500}
+#plot_options_btn {}
+#plot_clusters_btn {}
 
 #plot_options_window {
 z-index:10000;

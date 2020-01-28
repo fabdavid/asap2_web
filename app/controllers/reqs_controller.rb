@@ -119,7 +119,19 @@ class ReqsController < ApplicationController
         list_of_runs = add_runs(list_of_runs, h_attr_values, attr_name) #, applied_combinatorial_run_attrs)
         #        applied_combinatorial_run_attrs.push(attr_name)
       end
-      
+
+      ### update params
+      list_of_runs.each_index do |run_i|
+        run = list_of_runs[run_i]
+        h_run_attrs = JSON.parse(run[0].attrs_json)
+        if gp = h_run_attrs['group_pairs'] and gp.size > 0
+          h_run_attrs['group_ref'] = gp[0]
+          h_run_attrs['group_comp'] = gp[1]
+          h_run_attrs['group_pairs'] = nil
+          list_of_runs[run_i][0].attrs_json = h_run_attrs.to_json
+          list_of_runs[run_i][1] = h_run_attrs
+        end
+      end      
       ### add errors if runs already exists
       list_already_existing_run_i = [] 
       list_of_runs.each_index do |run_i|
@@ -279,7 +291,7 @@ class ReqsController < ApplicationController
 
     if tmp_attrs
       tmp_attrs.each_pair do |k, v|
-        if @h_attrs[k]['req_data_structure'] and ["array", "hash"].include? @h_attrs[k]['req_data_structure']
+        if @h_attrs[k] and @h_attrs[k]['req_data_structure'] and ["array", "hash"].include? @h_attrs[k]['req_data_structure']
           tmp_attrs[k] = JSON.parse(v)
         end
       end

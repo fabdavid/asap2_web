@@ -1,0 +1,17 @@
+<%= form_with(model: provider_project, local: true) do |form| %>
+  <% if provider_project.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(provider_project.errors.count, "error") %> prohibited this provider_project from being saved:</h2>
+
+      <ul>
+      <% provider_project.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

@@ -1,7 +1,13 @@
+<%# @h_dashboard_card[16] %>
 <%# @runs.size %>
-<% if @runs and @runs.size > 0 %>
 
 <%= render :partial => 'filter_runs' %>
+
+<% if @runs and @runs.size > 0 %>
+
+<div class='alert alert-info'>
+  <%= @runs.size %> run<%= (@runs.size > 1) ? 's' : '' %> found.
+</div>
 
 <%= render :partial => 'display_card_deck', :locals => {:cards => @list_cards} %>
 
@@ -33,30 +39,36 @@ for (var i = 0; i< running_run_ids.length; i++){
  timers.push(upd_time("Run ", start_time_el, duration_el, time_zone_offset))
 }
 */
-
-$(".show_link").click(function(){
+/*
+$(".show_link2").click(function(){
 //console.log($(this).parent().parent())
  var t = $(this).parent().parent().parent().attr('id').split("_")
  refresh("step_container", "<%= get_run_project_path(:key => @project.key, :nolayout => 1) %>&run_id=" + t[2], {loading: 'fa-2x loading-step'})
 })
-$(".show_link").mouseover(function(){
- $(this).parent().parent().css("border-color", 'rgba(0,0,0,0.425)')
+$(".show_link2").mouseover(function(){
+// $(this).parent().parent().css("border-color", 'rgba(0,0,0,0.425)')
 })
-$(".show_link").mouseout(function(){
- $(this).parent().parent().css("border-color", 'rgba(0,0,0,0.125)')
+$(".show_link2").mouseout(function(){
+// $(this).parent().parent().css("border-color", 'rgba(0,0,0,0.125)')
 })
-
+*/
 <% end %>
 
 <% else %>
 
-<!--<div class='badge badge-warning'>No run created yet</div> -->
-<div class="container-fluid">
- <div id='card_new_analysis' class='card text-md-center col-md-4 centered-card'>
-    <div class='card-body'>
-      <button id='new_job_main_btn' type='button' class='btn btn-primary btn-lg centered-card <%= @h_attrs['new_analysis_btn_class'] || 'new_job_popup' %>' <%= (@project.runs.select{|r| r.status_id == 3}.size == 0) ? "disabled='disabled'" : "" %>><i class='fa fa-plus'></i> New <%= @step.label.uncapitalize %></button>
-    </div>
+ <% if session[:activated_filter][@project.id] == true and !@disable_filter %>
+  div class='alert alert-danger'>No runs found with selected filter criteria</div>
+ <% else %>
+
+
+ <!--<div class='badge badge-warning'>No run created yet</div> -->
+ <div class="container-fluid">
+   <div id='card_new_analysis' class='card text-md-center col-md-4 centered-card'>
+     <div class='card-body'>
+       <button id='new_job_main_btn' type='button' class='btn btn-primary btn-lg centered-card <%= @h_attrs['new_analysis_btn_class'] || 'new_job_popup' %>' <%= (@project.runs.select{|r| r.status_id == 3}.size == 0) ? "disabled='disabled'" : "" %>><i class='fa fa-plus'></i> New <%= @step.label.uncapitalize %></button>
+     </div>
+   </div>
  </div>
-</div>
+ <% end %>
 <% end %>
 

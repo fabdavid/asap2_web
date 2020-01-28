@@ -1,0 +1,2 @@
+module ProviderProjectsHelper
+end

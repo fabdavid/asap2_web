@@ -5,6 +5,7 @@
   <%= render :partial => 'step_header_container' %>
 </div>
 
+
  <% if params[:errors] %>
  <div class='alert alert-danger'><%= params[:errors] %></div>
  <% end %>
@@ -16,19 +17,26 @@
  <div id='step_content'>
    <%# @h_attrs_by_run_id.to_json %>
 
-   <% if analyzable?(@project) %> 
+   <%= @error %>
+
+   <% if readable?(@project) %> 
     <% if @step.description and ! @step.description.empty? %>
-     <div id='step-info_<%= @step.id %>' class='alert alert-info <%= (@ps.status_id) ? 'hidden' : '' %>'>
+     <div id='step-info_<%= @step.id %>' class='alert alert-info <%= (@ps and @ps.status_id) ? 'hidden' : '' %>'>
        <%= raw @step.description %>
      </div>
+     <% if @step.warnings and !@step.warnings.empty? %>
+     <div id='step-info_<%= @step.id %>' class='alert alert-warning'>
+       <%= raw @step.warnings %>
+     </div>
+     <% end %>
     <% end %>
-    
     <div id='list_runs'>
       <%# dashboard_name = (@step.has_std_dashboard) ? 'std_runs' : session[:current_dashboard][@project.id][@step.id]  %>  
       <%# partial = (dashboard_name) ? dashboard_name :  @step.name  #(@step.has_std_dashboard) ? 'std_runs' : ((dashboard_name) ? dashboard_name : @step.name) %>
       <%# session[:current_dashboard] %>
       <%# session[:current_dashboard][@project.id][@step.id] %>
-      <% if dashboard_name = session[:current_dashboard][@project.id][@step.id] %> 
+      <% if dashboard_name = session[:current_dashboard][@project.id][@step.id] %>
+       <%# dashboard_name %> 
       <%= hidden_field_tag('dashboard', dashboard_name) %>
       <%# dashboard_name %>
       <%= render :partial => dashboard_name %>
@@ -90,4 +98,13 @@
  }
 
  <% end %>
+<% else %>
+
+<div class='row'>
+
+<span class='alert alert-danger mt-4'>
+Something went wrong. If this project has been generated through a cloning step, then please try it again. 
+<br/>If it happens again, maybe the original project was corrupted. Please contact us.
+</span>
+</div>
 <% end %>

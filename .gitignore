@@ -19,6 +19,8 @@
 *.old
 *.bkp
 *.bak
+/app/views/projects/old
+/app/views/projects/old/*
 
 # Ignore Byebug command history file.
 .byebug_history

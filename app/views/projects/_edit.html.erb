@@ -33,13 +33,24 @@
 
 <% if !@project.sandbox %>
 
-<div class='form-group'> 
+<!--<div class='form-group'> 
 <%= f.check_box :public %> <%= f.label :public, 'Analysis publicly available' %>
 </div>
+-->
 
 <div class='form-group'>
  <%= f.label :pmid, 'PMID of the article referencing this analysis' %>
 <%= f.text_field :pmid, {:class => 'form-control form-inline'} %>
+</div>
+
+<div class='form-group'>
+ <%= label_tag :gse_codes, 'GEO series (GSE identifiers) associated with this project (comma or space separated)' %>
+<%= text_area_tag :geo_codes, @project.exp_entries.select{|ge| ge.identifier_type_id == 5}.map{|ge| ge.identifier}.join(", "), {:class => 'form-control form-inline'} %>
+</div>
+
+<div class='form-group'>
+ <%= label_tag :array_express_codes, 'Array express IDs associated with this project (comma or space separated)' %>
+<%= text_area_tag :array_express_codes, @project.exp_entries.select{|ge| ge.identifier_type_id == 6}.map{|ge| ge.identifier}.join(", "), {:class => 'form-control form-inline'} %>
 </div>
 
 <% end %>

@@ -1,3 +1,8 @@
+<%# @log3 %>
+<%# session[:dr_params][@project.id][:run_id] %>
+
+<%= render :partial => 'filter_runs' %>
+
 <% if @runs.size > 0 %>
 
 <div id='plot_options_window' class='card hidden'>
@@ -7,17 +12,16 @@
         <i class='fa fa-times-circle'></i>
       </span>
     </div>
-    Plot options
+    <b>Controls</b>
   </div>
   <div id='plot_options_content' class='card-body'>
   </div>
 </div>
-
-<div id='plot_options_btn' class='btn btn-primary hidden'>Plot options</div>
-
+<div id='plot_btns'>
+<!--<div id='plot_clusters_btn' class='btn btn-primary hidden'>Clusters</div>-->
+<button type='button' id='plot_options_btn' class='btn btn-primary' disabled><i class='fa fa-spinner fa-pulse fa-fw fa-lg'/> Loading controls...</button>
+</div>
 <%# session[:current_dashboard] %>
-
-<%= render :partial => 'filter_runs' %>
 
 <!--<div class="btn-group" role="group" aria-label="Basic example">
   <button type="button" class="btn btn-secondary">2D</button>
@@ -39,7 +43,7 @@
 
 var h_opt = ($("#plot_options_window").hasClass("hidden")) ? {loading : 'fa-2x'} : {loading_full:"<i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'>"}
 
-refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form', :upd_plot => 1) %>&run_id=" + $("#plot_run_id").val() + "&nber_dims=" + $("#plot_nber_dims").val(), h_opt)
+refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form', :upd_plot => 1) %>&run_id=" + $("#plot_run_id").val() + "&displayed_nber_dims=" + $("#plot_displayed_nber_dims").val(), h_opt)
 
 function place_plot_options_window(){
 
@@ -75,11 +79,9 @@ $("#plot_options_close").click(function(){
    'bottom' : 10
    }, 200, function() {
    });
-
 })
 
 $("#plot_options_btn").click(function(){
-
  var w = $(window).width()
  var ww = 600;
 
@@ -111,12 +113,16 @@ plotly_graph.updatePlotWidth(w-ww-300);
 <% else %>
 
 <!--<div class='badge badge-warning'>No run created yet</div> -->
-<div class="container-fluid">
- <div id='card_new_analysis' class='card text-md-center col-md-4 centered-card'>
-    <div class='card-body'>
-      <button type='button' class='btn btn-primary btn-lg centered-card <%= @h_attrs['new_analysis_btn_class'] || 'new_job_popup' %>' <%= (@project.runs.select{|r| r.status_id == 3}.size == 0) ? "disabled='disabled'" : "" %>><i class='fa fa-plus'></i> New <%= @step.label.uncapitalize %></button>
-    </div>
+ <% if session[:activated_filter][@project.id] == true and !@disable_filter %>
+ <div class='alert alert-danger'>No runs found with selected filter criteria</div>
+ <% else %>
+ <div class="container-fluid">
+   <div id='card_new_analysis' class='card text-md-center col-md-4 centered-card'>
+     <div class='card-body'>
+       <button type='button' class='btn btn-primary btn-lg centered-card <%= @h_attrs['new_analysis_btn_class'] || 'new_job_popup' %>' <%= (@project.runs.select{|r| r.status_id == 3}.size == 0) ? "disabled='disabled'" : "" %>><i class='fa fa-plus'></i> New <%= @step.label.uncapitalize %></button>
+     </div>
+   </div>
  </div>
-</div>
+ <% end %>
 <% end %>
 

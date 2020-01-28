@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Hca Projects</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @hca_projects.each do |hca_project| %>
+      <tr>
+        <td><%= link_to 'Show', hca_project %></td>
+        <td><%= link_to 'Edit', edit_hca_project_path(hca_project) %></td>
+        <td><%= link_to 'Destroy', hca_project, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Hca Project', new_hca_project_path %>

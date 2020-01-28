@@ -33,10 +33,16 @@
   
   <div class='form-group col-12 col-sm-6'>
     <%= label_tag 'organism_id', "Organism" %>
-    <% l = {'Most popular species' => Organism.where(:id => [1, 2, 35]).map{|o|  [o.short_name.capitalize + " - #{o.name} [TaxID:#{o.tax_id}]", o.id]}, 
-    'All species' => Organism.all.select{|o| o.short_name}.map{|o|  [o.short_name.capitalize + " - #{o.name} [TaxID:#{o.tax_id}]", o.id]}.sort} %>
-    <%# l = [] %>
-    <%= f.select :organism_id, grouped_options_for_select(l), {}, {class: 'form-control', divider: '---------'} %>
+    <% h_list_organisms = {'Most popular species' => Organism.where(:id => [1, 2, 35]).map{|o|  [o.short_name.capitalize + " - #{o.name} [TaxID:#{o.tax_id}]", o.id]}}
+    EnsemblSubdomain.all.each do |e|
+    organisms = e.organisms.select{|o| o.name}.sort{|a, b| ((a.short_name && a.short_name.capitalize) || a.name) <=> ((b.short_name && b.short_name.capitalize) || b.name)}
+     if organisms.size > 0
+      h_list_organisms.merge!({e.name.capitalize => organisms.map{|o| [((o.short_name) ? "#{o.short_name.capitalize} - " : "")  + "#{o.name} [TaxID:#{o.tax_id}]", o.id]}})
+     end
+    end
+    %>
+
+    <%= f.select :organism_id, grouped_options_for_select(h_list_organisms), {}, {class: 'form-control', divider: '---------'} %>
   </div>
 </div>
 
@@ -80,13 +86,17 @@
 <%= f.hidden_field :key  %>
 <%= f.hidden_field :step_id, {:value => 1}  %>
 <%= hidden_field_tag :active_step, params[:active_step] %>
-<%= hidden_field_tag :hca_query, '{"file":{"fileFormat":{"is":["matrix"]}}}' %>
-<%= hidden_field_tag :sel_hca_projects, '{}' %>
+<%= hidden_field_tag :hca_query, '{"fileFormat":{"is":["matrix"]}}' %>
+<%= hidden_field_tag :provider_id, nil %>
+<%= hidden_field_tag :sel_provider_projects, '{}' %>
+<%= hidden_field_tag :provider_project_id, '' %>
+
 <!--<%= f.hidden_field :group_filename  %>-->
 
   <div class="actions">
     <% button_name = (controller.action_name == 'new') ? "Create project" : "Update project" %>
-    <%= f.submit button_name, {:disabled => 'disabled', :class => 'btn btn-primary ladda-button', :id =>'create_project_button'} %>
+    <%# f.submit button_name, {:disabled => 'disabled', :class => 'btn btn-primary ladda-button', :id =>'create_project_button'} %>
+    <button type='button' id='create_project_button' class='btn btn-primary ladda-button', disabled = 'disabled'><%= button_name %></button>
   <!--  <span class='alert alert-danger'>Write a project name</span> -->
   </div>
 <% end %>
@@ -159,7 +169,11 @@ test = false
 <%# code_piece =" && $('#project_input_filename').val() != ''" : '' %>
 //alert( $('#js-file-container tbody tr td div.alert-success').html());
 //if ($("#project_name").val() != '' && ($('#js-file-container tbody tr td div.alert-success').html() || test == true)){
-if ($("#project_name").val() != '' && (($("#nber_cols").val() > 1 && $("#nber_rows").val() > 0) || $("#sel_hca_projects").val() != '{}')){
+ 
+ // check if a checkbox is check in the hca table
+ var c = $(".hca-hit:checked")
+ //if (($("#project_name").val() != '' || c.length > 0) && (($("#nber_cols").val() > 1 && $("#nber_rows").val() > 0) || $("#provider_project_id").val() != '' || $("#sel_provider_projects").val() != '{}')){
+if ( ($("#nber_cols").val() > 1 && $("#nber_rows").val() > 0) || $("#provider_project_id").val() != '' || $("#sel_provider_projects").val() != '{}'){
 $("#create_project_button").removeAttr('disabled')
 }else{
 $("#create_project_button").attr('disabled', 'disabled')
@@ -181,6 +195,16 @@ validate_form()
 
 })
 
+$("#create_project_button").click(function(){
+ // check if a checkbox is check in the hca table and replace name if the project name field is empty 
+ var c = $(".hca-hit:checked")
+ if (c.length > 0 && $("#project_name").val().replace(/^\s+|\s+$/g, '') == ''){
+  var project_name = c.first().parent().parent().children()[1].innerHTML
+  $("#project_name").val(project_name)
+ }
+
+ $("#new_project").submit()
+})
 
 $("#project_organism_id").change(function(){validate_form()});
 

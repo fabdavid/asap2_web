@@ -106,9 +106,9 @@ class FusController < ApplicationController
       @h_json = @current_dataset
       @error = @current_dataset['displayed_error'] if @current_dataset['displayed_error'] 
     else
-#      cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T Preparsing #{options.join(" ")} -organism #{params['organism']} -f #{filepath} -o #{upload_dir}\""
+      #      cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T Preparsing #{options.join(" ")} -organism #{params['organism']} -f #{filepath} -o #{upload_dir}\""
       @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T Preparsing #{options.join(" ")} -organism #{params['organism']} -f #{filepath} -o #{upload_dir} -h localhost:5434/asap2_development"
-     @log += output_file.to_s
+      @log += output_file.to_s
       logger.debug "CMD #{@cmd}"
       @res = `#{@cmd}`
       @h_json = nil
@@ -129,7 +129,7 @@ class FusController < ApplicationController
             }
             
             File.open(upload_details_file, 'w') do |f|
-              f.write  @h_upload_details.to_json
+              f.write @h_upload_details.to_json
             end
           end
 
@@ -154,7 +154,7 @@ class FusController < ApplicationController
             end
             
             #File.delete output_file
-          elsif  @h_json['list_groups'] and @h_json['list_groups'].size > 1
+          elsif @h_json['list_groups'] and @h_json['list_groups'].size > 1
             @h_datasets = {}
             opt = []
             @list_datasets = []
@@ -325,7 +325,8 @@ class FusController < ApplicationController
   def update_status
     raise ArgumentError, "Wrong status provided " + params[:status] unless @fu.status == 'uploading' && params[:status] == 'uploaded'
     @fu.update!(status: params[:status])
-    head :ok
+#    head :ok
+    render json: @fu.to_jq_upload and return
   end
 
 

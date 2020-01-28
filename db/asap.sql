@@ -1,3 +1,11 @@
+create table hcoa_terms(
+id serial,
+hcoa_id int,
+name text,
+description text,
+primary key (id)
+);
+
 create table users(
 );
 
@@ -51,7 +59,9 @@ obj_name text,
 name text,
 label text,
 description text,
+warnings text,
 rank int,
+color text, 
 multiple_runs bool default true,
 -- method_obj_name text,
 -- is_std_step bool,
@@ -216,14 +226,40 @@ delayed_job_id int,
 speed_id int references speeds, -- queue              
 user_id int references users,
 created_at timestamp,
-updated_at timestamp
+updated_at timestamp,
 primary key (id)
 );
+
+create table journals(
+id serial,
+name text,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create table articles(
+id serial,
+authors text,
+title text,
+journal_id int references journals,
+pmid int,
+volume text,
+issue text,
+abstract text,
+year int,
+published_at timestamp,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create index pmid_articles on articles (pmid);
 
 create table projects(
 id serial,
 name text,
-key varchar(6),
+key text,
 input_filename text,
 input_status text,
 group_filename text,
@@ -249,16 +285,118 @@ cloned_project_id int,
 sandbox bool default false,
 session_id int,
 pmid int,
+--geo_entry_ids text,
 nber_cells int,
 nber_genes int,
-diff_expr_filter_json text,
-gene_enrichment_filter_json text,
+de_filter_json text,
+ge_filter_json text,
 nber_clones int default 0,
+public_id int,
 version_id int references versions,
+created_at timestamp,
+updated_at timestamp,
+public_at timestamp,
+updated_public_at timestamp,
+primary key (id)
+);
+
+
+--create table articles_projects(
+--article_id int references articles,
+--project_id int references projects
+--);
+
+create table data_repos(
+id serial,
+name text,
 created_at timestamp,
 updated_at timestamp,
 primary key (id)
 );
+
+create table exp_entries(
+id serial,
+identifier text,
+title text,
+description text,
+pmid int,
+contributors text,
+identifiers_json text,
+--srp text,
+--bio_project text,
+contact_emails text,
+--contact_institute text,
+--contact_department text,
+--contact_lab text,
+-- data_repository_id int references data_repos,
+submitted_at timestamp,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+
+create table identifier_types(
+id serial,
+name text
+prefix text,
+url_mask text,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create table sample_identifiers(
+id serial,
+identifier_type_id int references identifier_types,
+identifier text,
+url_mask text,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create table exp_entries_sample_identifiers(
+exp_entry_id int references exp_entries,
+sample_identifier_id int references sample_identifiers
+);
+
+create table exp_entries_projects(
+exp_entry_id int references geo_entries,
+project_id int references projects
+);
+
+create table providers(
+id serial,
+name text,
+url_mask text,
+primary key (id)
+);
+
+--create table hca_projects(
+--id serial,
+--provider_id int references providers, 
+--hca_project_key text,
+--primary key (id)
+--);
+
+--create table hca_projects_projects(
+--project_id int references projects,
+--hca_project_id int references hca_projects
+--);
+
+create table provider_projects(
+id serial,
+provider_id int references providers,
+provider_project_key text,
+primary key (id)
+);
+
+create table projects_provider_projects(
+project_id int references projects,
+provider_project_id int references provider_projects
+);
+
 
 create table uploads(
 id serial,
@@ -399,17 +537,28 @@ max_ram float,
 error text,
 async bool default true,
 status_id int references statuses,
+pred_params_json text, -- parameters used to feed the execution memory and execution time prediction algorithm 
 -- run_path_json text, -- full path until this std_run
 run_parents_json text, -- list the parents with the link properties (which data from each parent is used) = data origin
 run_children_json text, -- list the children with the link properties (which data are used by children)
 created_at timestamp,
+submitted_at timestamp, -- time the run execution starts 
 user_id int references users,
+return_stdout bool default false,
 primary key (id)
 );
 
 create table data_types(
 id serial,
 name text, -- int, float, text
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create table data_classes(
+id serial,
+name text, -- dataset, col_annot, row_annot                                       
 created_at timestamp,
 updated_at timestamp,
 primary key (id)
@@ -423,6 +572,7 @@ run_id int references runs,
 filename text,
 col bool, -- true col, false row
 data_type_id int references data_types,
+data_class_ids text,
 name text,
 nb_cat int, -- nber of categories (uniq values)
 nb_na int,
@@ -433,7 +583,17 @@ mean_val float,
 median_val float,
 attrs_json text,
 created_at timestamp,
-updated_at timestamp, 
+updated_at timestamp,
+label text, 
+nber_rows int,
+nber_cols int, 
+dim smallint, 
+categories_json text,       
+cat_aliases_json text, -- category names in the site
+mem_size bigint, 
+user_id int, 
+store_run_id integer, 
+headers_json text, 
 primary key (id)
 );
 
@@ -462,6 +622,7 @@ run_parents_json text, -- list the parents with the link properties (which data 
 run_children_json text, -- list the children with the link properties (which data are used by children)  
 created_at timestamp,
 user_id int references users,
+return_stdout bool default false,
 primary key (id)
 );
 
@@ -491,6 +652,7 @@ run_parents_json text, -- list the parents with the link properties (which data 
 run_children_json text, -- list the children with the link properties (which data are used by children)
 created_at timestamp,
 user_id int references users,
+return_stdout bool default false,
 primary key (id)
 );
 
@@ -714,6 +876,7 @@ primary key (id)
 create table genes(
 id serial,
 ensembl_id text,
+ncbi_gene_id int,
 name text,
 biotype text,
 chr text,
@@ -722,12 +885,37 @@ sum_exon_length int,
 organism_id int references organisms,
 alt_names text,
 latest_ensembl_release int,
+description text,
 created_at timestamp,
+updated_at timestamp,
 primary key (id)
 );
 
 create index genes_ensembl_id_idx on genes (ensembl_id);
 create index genes_name_idx on genes (name);
+
+create table tmp_genes(
+id serial,
+ensembl_id text,
+ncbi_gene_id int,
+name text,
+biotype text,
+chr text,
+gene_length int,
+sum_exon_length int,
+organism_id int references organisms,
+alt_names text,
+obsolete_alt_names text,
+latest_ensembl_release int,
+description text,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create index tmp_genes_ensembl_id_idx on tmp_genes (ensembl_id);
+create index tmp_genes_name_idx on tmp_genes (name);
+
 
 create table gene_names(
 id serial,
@@ -741,8 +929,13 @@ create table selections(
 id serial,
 label text, --"Manual x / Cluster x.y"
 manual_num int, -- identifier in case of manual selection else null
-obj_id int,-- references clusters, -- null if manual selection
-obj_num int, --null if manual selection
+--obj_id int,-- references clusters, -- null if manual selection
+--obj_num int, --null if manual selection
+ori_run_id int references runs,     -- run origin
+ori_annot_id int references annots, -- annot origin
+run_id int references runs, -- run of the selection
+annot_id int references annots, -- annot where the selection is stored
+cluster int, -- cluster number
 md5 text,
 nb_items int,
 project_id int references projects,
@@ -782,6 +975,20 @@ created_at timestamp,
 updated_at timestamp,
 primary key (id)
 );
+
+create table gene_set_items(
+id serial,
+gene_set_id int references gene_sets,
+identifier text,
+name text,
+content text,
+-- url text,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create index gene_set_items_gene_set_id_name on gene_set_items (gene_set_id, name);
 
 create table shares(
 id serial,

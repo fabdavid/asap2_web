@@ -1,0 +1,58 @@
+<%# @res %>
+<% if @res %>
+<%# @vals[0] %>
+<%# @list_cats[0] %>
+<%# @vals[0][@list_cats[0][0]] %>
+<%# @log %>
+<%# @cmd %>
+<%# @vals.to_json %>
+<%# @res.to_json %>
+
+<table id='cluster_comparison_table'>
+<thead>
+  <th>A \ B</th>
+  <% @list_cats[1].each_index do |i| %>
+  <th><%= @h_runs[params['run_id1']].num %>.<%= @list_cats[1][i] %> <span class='badge badge-light'><%= n = @vals[1][@list_cats[1][i]].size %> cell<%= (n > 1) ? 's' : '' %></span></th>
+  <% end %>
+</thead>
+<tbody>
+<% @list_cats[0].each_index do |i| %>
+  <tr>
+    <td><b><%= @h_runs[params['run_id2']].num %>.<%= @list_cats[0][i] %> <span class='badge badge-light'><%= n = @vals[0][@list_cats[0][i]].size %> cell<%= (n > 1) ? 's' : '' %></span></b></td>
+    <% @list_cats[1].each_index do |j| %>
+    <% nb =  @res[i][j].size %>
+    <td><span id='cell-group_<%= i %>_<%= j %>' class='cell-group pointer badge badge-<%= (nb > 0) ? 'success' : 'secondary' %>'><%= @res[i][j].size %></span></td>
+    <% end %>
+  </tr>
+<% end %>
+</tbody>
+</table>
+
+<%= javascript_tag do %>
+
+$("#cluster_comparison_table").dataTable({})
+
+var res = <%= raw @res.to_json %> 
+
+$(".cell-group").click(function(e){
+  var t = this.id.split("_")
+  var i = t[1]
+  var j = t[2]
+  var text = ''
+
+  for (var k=0; k < res[i][j].length; k++){
+    text += "<span class='badge badge-light'>" + res[i][j][k] + "</span> "
+  }
+
+  $("#popup_container").html(text)
+  var w = $(window).width();
+  $("#popup_window").css({
+        left: 200,
+        width:w - 250,
+        top: e.pageY + 10
+    }).stop().show(100);
+})
+
+<% end %>
+
+<% end %>

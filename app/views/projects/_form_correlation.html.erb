@@ -2,7 +2,7 @@
 <%# if Selection.where(:project_id => @project.id).count == 0 %>
 <!--<span class="label label-info">Please create first a selection from the manual selection (from PCA, tSNE, ZIFA views) or from a cluster</span>-->
 <%# else %>
-<% if analyzable? @project and owner? @project %>
+<% if analyzable? @project and owner_or_admin? @project %>
 
 <div class='form-inline'>
   <div id='div_correlation_widgets' class='form-group'>

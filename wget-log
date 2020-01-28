@@ -1,0 +1,71 @@
+
+--2019-09-06 15:37:34--  ftp://ftp.ensembl.org/pub/release-97/mysql/
+  (try: 7) => ‘.listing’
+Connecting to ftp.ensembl.org (ftp.ensembl.org)|193.62.193.8|:21... failed: Connection timed out.
+Retrying.
+
+--2019-09-06 15:39:48--  ftp://ftp.ensembl.org/pub/release-97/mysql/
+  (try: 8) => ‘.listing’
+Connecting to ftp.ensembl.org (ftp.ensembl.org)|193.62.193.8|:21... failed: Connection timed out.
+Retrying.
+
+--2019-09-06 15:42:03--  ftp://ftp.ensembl.org/pub/release-97/mysql/
+  (try: 9) => ‘.listing’
+Connecting to ftp.ensembl.org (ftp.ensembl.org)|193.62.193.8|:21... failed: Connection timed out.
+Retrying.
+
+--2019-09-06 15:44:19--  ftp://ftp.ensembl.org/pub/release-97/mysql/
+  (try:10) => ‘.listing’
+Connecting to ftp.ensembl.org (ftp.ensembl.org)|193.62.193.8|:21... failed: Connection timed out.
+Retrying.
+
+--2019-09-06 15:46:37--  ftp://ftp.ensembl.org/pub/release-97/mysql/
+  (try:11) => ‘.listing’
+Connecting to ftp.ensembl.org (ftp.ensembl.org)|193.62.193.8|:21... failed: Connection timed out.
+Retrying.
+
+--2019-09-06 15:48:54--  ftp://ftp.ensembl.org/pub/release-97/mysql/
+  (try:12) => ‘.listing’
+Connecting to ftp.ensembl.org (ftp.ensembl.org)|193.62.193.8|:21... failed: Connection timed out.
+Retrying.
+
+--2019-09-06 15:51:11--  ftp://ftp.ensembl.org/pub/release-97/mysql/
+  (try:13) => ‘.listing’
+Connecting to ftp.ensembl.org (ftp.ensembl.org)|193.62.193.8|:21... failed: Connection timed out.
+Retrying.
+
+--2019-09-06 15:53:29--  ftp://ftp.ensembl.org/pub/release-97/mysql/
+  (try:14) => ‘.listing’
+Connecting to ftp.ensembl.org (ftp.ensembl.org)|193.62.193.8|:21... failed: Connection timed out.
+Retrying.
+
+--2019-09-06 15:55:46--  ftp://ftp.ensembl.org/pub/release-97/mysql/
+  (try:15) => ‘.listing’
+Connecting to ftp.ensembl.org (ftp.ensembl.org)|193.62.193.8|:21... failed: Connection timed out.
+Retrying.
+
+--2019-09-06 15:58:03--  ftp://ftp.ensembl.org/pub/release-97/mysql/
+  (try:16) => ‘.listing’
+Connecting to ftp.ensembl.org (ftp.ensembl.org)|193.62.193.8|:21... failed: Connection timed out.
+Retrying.
+
+--2019-09-06 16:00:21--  ftp://ftp.ensembl.org/pub/release-97/mysql/
+  (try:17) => ‘.listing’
+Connecting to ftp.ensembl.org (ftp.ensembl.org)|193.62.193.8|:21... failed: Connection timed out.
+Retrying.
+
+--2019-09-06 16:02:38--  ftp://ftp.ensembl.org/pub/release-97/mysql/
+  (try:18) => ‘.listing’
+Connecting to ftp.ensembl.org (ftp.ensembl.org)|193.62.193.8|:21... failed: Connection timed out.
+Retrying.
+
+--2019-09-06 16:04:55--  ftp://ftp.ensembl.org/pub/release-97/mysql/
+  (try:19) => ‘.listing’
+Connecting to ftp.ensembl.org (ftp.ensembl.org)|193.62.193.8|:21... failed: Connection timed out.
+Retrying.
+
+--2019-09-06 16:07:13--  ftp://ftp.ensembl.org/pub/release-97/mysql/
+  (try:20) => ‘.listing’
+Connecting to ftp.ensembl.org (ftp.ensembl.org)|193.62.193.8|:21... failed: Connection timed out.
+Giving up.
+

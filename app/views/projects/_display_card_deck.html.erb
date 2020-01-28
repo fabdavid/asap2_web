@@ -1,10 +1,11 @@
 <%# @list_steps.to_json %>
 <%# @h_project_steps.to_json %>
 <%# cards.to_json %>
+<% card_class ||= 'card_std' %> 
 <div class="card-deck">
  <% cards.each_index do |i| %>
   <% card = cards[i] %>
-  <div id='<%= card[:card_id] %>' class="card <%= card[:card_class] %> card_std mb-4">
+  <div id='<%= card[:card_id] %>' class="card <%= card[:card_class] %> <%= card_class %> mb-4">
     <div class="card-body">
       <%= raw card[:body] %>
     </div>
@@ -46,9 +47,9 @@
   e.stopPropagation();
   e.preventDefault();
   $("#popup_window").removeClass("hidden")
-//  $("#popup_container").html("bla!")
- refresh("popup_container", "<%= get_lineage_project_path(:key => @project.key) %>?run_id=" + run_id, {loading: 'fa-2x'})
-var w = $(window).width();
+  //  $("#popup_container").html("bla!")
+  refresh("popup_container", "<%= get_lineage_project_path(:key => @project.key) %>?run_id=" + run_id, {loading: 'fa-2x'})
+  var w = $(window).width();
   $("#popup_window").css({
         left: 200,
         width:w - 250,
@@ -57,7 +58,7 @@ var w = $(window).width();
  })
 
 
-$(".show_link").click(function(){
+$(".run_card").click(function(){
  var t = this.id.split("_")
 // alert("bla!")
  $("#popup_window").css({display:'none'})

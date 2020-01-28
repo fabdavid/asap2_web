@@ -41,7 +41,30 @@
 :javascript
   $(document).ready(function () {
    var fu_id = $('#js-data').data('fu');
-   App.fu.subscribe(fu_id);
+   //   App.fu.subscribe(fu_id);
+
+   App.fu = App.cable.subscriptions.create({channel: 'FuChannel', fu_id: fu_id }, {
+    connected: function(){
+        console.log("Connected to fu_channel");
+    },
+    disconnected: function() {
+        console.log("Disconnected from fu_channel");
+    },
+
+   received: function(data) {
+     console.log("Download finished -> preparsing");
+     //hide upload box
+     $("#help_input_file").addClass('hidden');
+     $("#dropzone").addClass('hidden');
+     //visualize preparsing window
+     $("#preparsing").html("<div class='loading'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i><br/><span class='loading_text'>Please wait, loading preview...</span></div>")
+     $("#preparsing").removeClass("hidden")
+     //start preparsing the
+     var p = [{'name' : 'organism', 'value' : $("#project_organism_id").val()}];
+     refresh_post("preparsing", data['url_preparsing'], p, 'post', {loading : 'fa-2x'});
+    }
+   });
+
    var controller_name = $('body').data('controller');
     var model_instance_path = $("#path").val();
     //    var model_instance_path = '/asap/fus/1';
@@ -103,6 +126,10 @@
             //            $("#button_input_file").attr("disabled", "disabled");
             //$("#button_input_file").addClass('hidden');
             //$("#upload_indications").addClass('hidden');
+            //console.log(data)
+            if ($("#project_name").val().replace(/^\s+|\s+$/g, '') == ''){
+             $("#project_name").val(data.files[0].name.replace(/\..{2,6}$/, ''))
+            }
             $("#help_input_file").addClass('hidden');
             $("#dropzone").addClass('hidden');
             //visualize preparsing window

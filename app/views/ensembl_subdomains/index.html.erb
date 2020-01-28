@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Ensembl Subdomains</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @ensembl_subdomains.each do |ensembl_subdomain| %>
+      <tr>
+        <td><%= link_to 'Show', ensembl_subdomain %></td>
+        <td><%= link_to 'Edit', edit_ensembl_subdomain_path(ensembl_subdomain) %></td>
+        <td><%= link_to 'Destroy', ensembl_subdomain, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Ensembl Subdomain', new_ensembl_subdomain_path %>

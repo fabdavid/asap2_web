@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Tmp Genes</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @tmp_genes.each do |tmp_gene| %>
+      <tr>
+        <td><%= link_to 'Show', tmp_gene %></td>
+        <td><%= link_to 'Edit', edit_tmp_gene_path(tmp_gene) %></td>
+        <td><%= link_to 'Destroy', tmp_gene, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Tmp Gene', new_tmp_gene_path %>

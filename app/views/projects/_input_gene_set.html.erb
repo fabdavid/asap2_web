@@ -1,0 +1,46 @@
+<% ida = session[:input_data_attrs][@project.id][params[:step_id]] %>
+<%# ida.to_json %>
+<%# attr_name %>
+<%# params[:attr_name] %>
+<%# ida[attr_name] %>
+<%# @log3.to_json %>
+<% ida[:ge_geneset_type] ||= 'global' %>
+    <%# label_tag 'gene_set', 'Genes' %>
+    <% l=[['Global gene set', 'global'], ['Custom gene set', 'custom']] %>    
+    <% genesets= GeneSet.where(:project_id => @project.id).order("label").all %>
+    <% first_geneset = (genesets.size > 1) ? genesets.sort{|a, b| a.id <=> b.id}.first : genesets.first %>
+
+    <%= select_tag "#{attr_name}_type", options_for_select(l, ida[attr_name + "_type"]), {class: 'form-control'} %>
+    <% ConnectionSwitch.with_db(:data_with_version, @project.version_id) do %>
+    <% l= GeneSet.where(:user_id => 1, :project_id => nil, :organism_id => @project.organism_id).order("label").all.map{|e| [e.label, e.id]} %>
+    <% end %>
+    <% if ida[:ge_geneset_type] == 'global' %>
+    <%= select_tag "attrs[#{attr_name}]", options_for_select(l, ida[attr_name]), {class: 'form-control'} %>
+    <% else %>
+     <% l2 = genesets.map{|e| [e.label, e.id]} %>
+     <% l.pop if l2.size == 0 %>
+     <%= select_tag "attrs[#{attr_name}]", options_for_select(l2, ida[attr_name] || first_geneset), {class: 'hidden'} %>
+    <% end %>
+
+<%= javascript_tag do %>
+
+
+function upd_geneset_session(el){
+ console.log("bla")
+ var url = "<%= raw set_geneset_project_path(@project.key, :step_id => @step.id, :obj_id => @std_method.id, :attr_name => attr_name) %>&geneset_type=" + $("#<%= attr_name %>_type").val() + "&geneset=" + $("#attrs_<%= attr_name %>").val();
+ refresh("form-container_<%= attr_name %>", url, {loading:'fa-2x'})
+}
+
+$('#<%= attr_name %>_type').change(function(){
+// var el = $(this);
+// console.log("bla" + el.val())
+ upd_geneset_session();
+});
+
+$('#attrs_<%= attr_name %>').change(function(){
+ console.log("blammmmm")
+// var el = $("#attrs_geneset_type");
+ upd_geneset_session();
+});
+
+<% end %>

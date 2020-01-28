@@ -27,6 +27,13 @@
 .cursor-help {cursor:help}
 .clear {clear:both}
 
+.btn-group-xs > .btn, .btn-xs {
+  padding: .25rem .4rem;
+  font-size: .875rem;
+  line-height: .5;
+  border-radius: .2rem;
+}
+
 .flex-container {
     height: 100%;
     padding: 0;
@@ -86,6 +93,10 @@
              .card-deck .card_std {
                               flex: 0 0 calc(#{100/map-get($cards-per-line, $name)}% - #{$grid-gutter-width});
                                     }             
+	     .card-deck .card_sum {
+                              flex: 0 0 calc(#{100/map-get($cards-per-line_sum, $name)}% - #{$grid-gutter-width});
+                                    }
+
 	}
 }
 
@@ -106,12 +117,13 @@
     position: absolute;
     z-index:100000;
     margin-right:15px;
-    padding:15px;
+    padding:20px;
     display: none;
     background: #ccc;
     border: 1px solid;
+    border-radius: .5rem;
 }
-#popup_window_close {float:right; font-size:20px; margin-top:-19px; margin-right:-10px; cursor:pointer}
+#popup_window_close {float:right; font-size:20px; margin-top:-17px; margin-right:-13px; cursor:pointer}
 
 #form_container {margin:10px; height:calc(100% - 100px); padding:15px; overflow-y:scroll; background-color:white}
 

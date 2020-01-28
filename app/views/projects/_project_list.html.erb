@@ -36,7 +36,7 @@
   </thead>
   <!-- # "<i title='#{h_title[e]}' class='fa fa-" + e + "'></i>"  -->
   <tbody>
-    <% @projects.sort{|a, b| b.created_at <=> a.created_at}.each do |project| %>
+    <% @projects.sort{|a, b| b.modified_at <=> a.modified_at}.each do |project| %>
     <tr>
       <% if admin? %>
       <td><%= project.key %></td>
@@ -67,11 +67,11 @@
 }.join(" ") %>
 	   <% end %>
 	</td>
-<% if admin? %>
-        <% email = (project.user) ? project.user.email : 'NA' %>
-	<td class='email' title='<%= email %>'><%= email %></td>
-	<td><%= (project.sandbox == true) ? 'Yes' : 'No' %></td>
-<% end %>
+      <% if admin? %>
+      <% email = (project.user) ? project.user.email : 'NA' %>
+      <td class='email' title='<%= email %>'><%= email %></td>
+      <td><%= (project.sandbox == true) ? 'Yes' : 'No' %></td>
+      <% end %>
 <% if current_user %>
         <td><%= (project.public == true) ? 'Yes' : 'No' %></td>
 <% end %>
@@ -123,7 +123,7 @@ $("#projects .delete_item").click(function(){
  var t = this.id.split("_");
  var p = [];
  p.push({name : 'nolayout', value : 1})
- refresh_post("project_lists", '<%= projects_path() %>/' + t[1], p, 'delete', {h_loading:'fa-2x'});
+ refresh_post("project_lists", '<%= projects_path() %>/' + t[1], p, 'delete', {loading:'fa-2x'});
 });
 
 

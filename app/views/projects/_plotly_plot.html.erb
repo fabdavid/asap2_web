@@ -1,13 +1,14 @@
 <% output_name = horiz_element['output_name'] %>
 
 <div class='card-header'>
-<% if @h_outputs[output_name].keys.size == 1 %>
-<div class='top-right-buttons'>
-</div>
-<% end %>
+ <% if @h_outputs[output_name].keys.size == 1 %>
+  <div class='top-right-buttons'>
+  </div>
+ <% end %>
 
 <%= horiz_element['title'] %>
 </div>
+
 <div class='card-body'>
   <%# output_name %>
   <%# @h_outputs %>
@@ -17,8 +18,8 @@
    <%#  @h_outputs[output_name].keys.map{|f| "<button id='run_#{run.id}_#{@h_outputs[k][f]['onum']}' type='button' class='btn btn-sm btn-outline-secondary download_file_btn'>#{@h_outputs[k][f]["filename"]} <sub>#{display_mem(h_outputs[k][f]["size"])}</sub></button>"}}.flatten.join(" ") %>
  <% end %>
    <%# h_plot['x']['layout'].to_json %>
+  </div>
 </div>
-
 
 <%= javascript_tag do %>
 

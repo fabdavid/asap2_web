@@ -9,12 +9,12 @@ IMPLICIT FILTER <%= @implicit_filter_lineage_run_ids.to_json %>
 LOG <%= @log %> -->
 <%# session[:current_dashboard][@project.id] %>
  <div class='right-buttons'>
-    <% if analyzable?(@project) %>
-     <%# if @step.multiple_runs == false and [3,4].include? @ps.status_id and ((@step.name == 'parsing' and editable?(@project)) or @step.name != 'parsing') %>
+    <% if readable?(@project) %>
+     <%# if @step.multiple_runs == false and [3,4].include? @ps and @ps.status_id and ((@step.name == 'parsing' and editable?(@project)) or @step.name != 'parsing') %>
      <%# params[:activated_filter].to_json %>
      <%# session[:activated_filter].to_json %>
      <%= raw @header_btns %>
-     <% if @step.multiple_runs == true #and (session[:activated_filter] == false or @flag_nothing_to_filter == true) %>
+     <% if @step.multiple_runs == true or  @h_attrs['force_run_filter'] #and (session[:activated_filter] == false or @flag_nothing_to_filter == true) %>
 <!--
     <button id='filter-btn_0' type='button' class='btn btn-sm btn-primary filter-btn'>
 <span class="fa-stack fa-lg">
@@ -30,12 +30,14 @@ LOG <%= @log %> -->
       <% end %>
      <% end %>
      <% if @step.multiple_runs == false and editable?(@project) %>
-      <% if @step.name == 'parsing' and Fu.where(:project_id => @project.id, :upload_type => 1).first %>
+      
+      <% if editable?(@project) and @step.name == 'parsing' and Fu.where(:project_id => @project.id, :upload_type => 1).first %>
        <button class="btn btn-primary btn-sm reset_parsing">Reset</button>
       <% end %>     
      <% elsif @step.multiple_runs == true #and @step.has_std_form == true %>
+
 <%# @h_attrs['dashboards'].to_json %><%# @runs.to_json %>       
-<%# @h_attrs['dashboards'].to_json %>
+<%# @h_attrs.to_json %>
 <%# @runs.size %>
        <% if !@runs or (@runs.size > 0 and @h_attrs['dashboards']) %>
 
@@ -46,10 +48,12 @@ LOG <%= @log %> -->
            <button id='dashboard-btn-<%= d['name'] %>' class="btn btn-primary btn-sm standard_dashboard_btn dashboard-btn-<%= d['name'] %>"><i class="<%= d['icon_class'] %>"></i> <span class=''><%= d['label'] %></span></button>
 	 <% end %>
        <% end %>
-       <button class="btn btn-primary btn-sm <%= @h_attrs['new_analysis_btn_class'] || 'new_job_popup' %>" <%= (@project.runs.select{|r| r.status_id == 3}.size == 0) ? "disabled='disabled'" : "" %>><i class='fa fa-plus'></i> <span>New</span></button>
-     <% if @runs and @runs.size > 0 %>
-      <button class="btn btn-danger btn-sm delete_all_btn"><i class='fa fa-minus'></i> <span class=''>Delete all</span></button>
-     <% end %>
+       <% if analyzable?(@project) %>
+        <button class="btn btn-primary btn-sm <%= @h_attrs['new_analysis_btn_class'] || 'new_job_popup' %>" <%= (@project.runs.select{|r| r.status_id == 3}.size == 0) ? "disabled='disabled'" : "" %>><i class='fa fa-plus'></i> <span>New</span></button>
+        <% if @runs and @runs.size > 0 %>
+         <button class="btn btn-danger btn-sm delete_all_btn"><i class='fa fa-minus'></i> <span class=''>Delete all</span></button>
+        <% end %>
+       <% end %>
      <% end %>
     <% end %>
   </div>
@@ -58,11 +62,11 @@ LOG <%= @log %> -->
     <% if @h_steps[@step.id].description and !@h_steps[@step.id].description.empty? #and @ps.status_id %>
     <img class='info-btn info-btn_<%= @step.id %>' data-toggle="tooltip" data-placement="right" title="" src="/assets/info-453266b62416b17629bf926a65b845fd2cad77cb343302a827f326031ab1d963.svg" data-original-title="" width="20px">
     <% end %>
-    <% if @ps.status_id %>
+    <% if @ps and @ps.status_id %>
      <% if @step.multiple_runs == false %>
       <%= raw display_status @h_statuses[@ps.status_id] %>
      <% else %>
-       <%= raw (1 ..4).map{|sid| sid.to_s}.select{|sid| @h_nber_runs[sid]}.select{|sid| @h_statuses[sid.to_i]}.map{|sid| display_status_runs(@h_statuses[sid.to_i], @h_nber_runs[sid])}.join(" ") %>
+       <%= raw (1 ..4).map{|sid| sid.to_s}.select{|sid| @h_nber_runs and  @h_nber_runs[sid]}.select{|sid| @h_statuses[sid.to_i]}.map{|sid| display_status_runs(@h_statuses[sid.to_i], @h_nber_runs[sid])}.join(" ") %>
      <% end %>
     <% end %>
   </div>

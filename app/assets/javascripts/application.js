@@ -75,6 +75,102 @@ var fullColorHex = function(r,g,b) {
   return red+green+blue;
 };
 
+function list_max(list){
+    var max = list[0]
+    for (var i=1; i< list.length; i++){
+	if (max < list[i]){
+	    max = list[i]
+	}
+    }
+    return max
+}
+
+function list_min(list){
+    var min = list[0]
+    for (var i=1; i< list.length; i++){
+        if (min > list[i]){
+            min = list[i]
+        }
+    }
+    return min
+}
+
+/*function sendBase64Data(base64_data){
+   var a = window.document.createElement("a");
+   a.href = "hrefdata:application/octet-stream;charset=utf-8;base64," + base64_data
+   a.download = "exportData" + new Date().toDateString() + ".csv";
+   document.body.appendChild(a);
+   a.click();  // IE: "Access is denied"; see: https://connect.microsoft.com/IE/feedback/details/797361/ie-10-treats-blob-url-as-cross-origin-and-denies-access    
+   document.body.removeChild(a);
+}
+*/
+function sendData(filename, data){
+   var blob = new Blob([data], { type: 'text/csv' });
+   if (window.navigator.msSaveBlob) { // // IE hack; see http://msdn.microsoft.com/en-us/library/ie/hh779016.aspx
+    window.navigator.msSaveOrOpenBlob(blob, filename); //'exportData' + new Date().toDateString() + '.csv');
+   } else {
+    var a = window.document.createElement("a");
+    a.href = window.URL.createObjectURL(blob, { type: "text/plain" });
+    a.download = filename // + new Date().toDateString() + ".csv";
+    document.body.appendChild(a);
+    a.click();  // IE: "Access is denied"; see: https://connect.microsoft.com/IE/feedback/details/797361/ie-10-treats-blob-url-as-cross-origin-and-denies-access
+    document.body.removeChild(a);
+   }
+}
+
+function combinations(list){
+
+  var nber_items = list.length
+  var combi_list = []
+  for (var i=0; i<nber_items; i++){
+     for (var j=i+1; j<nber_items; j++){
+      combi_list.push([list[i], list[j]])
+     }
+    }
+  return combi_list
+}
+
+ function compute_combinations(obj){
+   var list = []
+   $(obj).each(function () {
+    var selText = $(this).val();
+    list.push(selText);
+   });
+   console.log("LIST:" + list)
+   var group_pairs = combinations(list)
+   console.log("COMBI:" +group_pairs)
+   for(var i=0; i<list.length; i++){
+    group_pairs.push([list[i], ""])
+   }
+   return group_pairs
+ }
+
+ function compute_all_against_compl(obj){
+   var group_pairs = []
+   $(obj).each(function () {
+    var selText = $(this).val();
+    group_pairs.push([selText, ""]);
+   });
+   return group_pairs
+ }
+
+function powerSet( list ){
+    var set = [],
+        listSize = list.length,
+        combinationsCount = (1 << listSize),
+        combination;
+
+    for (var i = 1; i < combinationsCount ; i++ ){
+        var combination = [];
+        for (var j=0;j<listSize;j++){
+            if ((i & (1 << j))){
+                combination.push(list[j]);
+            }
+        }
+        set.push(combination);
+    }
+    return set;
+}
 
 function uncompress(base64data){
     compressData = atob(base64data);
@@ -147,11 +243,18 @@ function sleep(delay) {
     while (new Date().getTime() < start + delay);
 }
 
+function abort_and_delete_xhrs(xhrs){
+ for (var i=0; i<xhrs.length; i++){
+  xhrs[i].abort()
+ }
+ return []
+}
+
 function refresh(container, url, h){
     var div= $("#" + container);
     var width = $(div).width();
     var height = $(div).height();
-    $.ajax({
+    var xhr = $.ajax({
 	url: url,
 	type: "get",
 	dataType: "html",
@@ -174,9 +277,14 @@ function refresh(container, url, h){
 	success: function(returnData){
 	    //  returnData = returnData.replace(/<!--\s*([\s\S]*?)\s*-->/, '$1')
 //	    if (container != 'dim_reduction_form_container'){
-	    if (!h['step_id'] || $("li#step_" + h['step_id']).hasClass('active')){
-		div.empty()
-		div.html(returnData);
+            if (container != 'step_container' || (container == 'step_container' && $(".run_container").length == 0) || ($("#dr_plot").length > 0 && container == 'plot_container')){
+		if (!h['step_id'] || $("li#step_" + h['step_id']).hasClass('active')){
+		    if ($("#dr_plot").length > 0 && container == 'plot_container'){
+			Plotly.purge("dr_plot");
+		    }
+		    div.empty()
+		    div.html(returnData);
+		}
 	    }
 //	    }
 	},
@@ -184,6 +292,8 @@ function refresh(container, url, h){
 	    //  alert(e);
 	}
     });
+
+    return xhr
     
 }
 
@@ -224,12 +334,17 @@ function refresh_post(container, url, data, method, h){
 		if (h.redirect == false){
 //		    var div= $("#" + container);
 		    // alert(returnData);
-//		    div.RemoveChildrenFromDom();
+		    //		    div.RemoveChildrenFromDom();
+		    if ($("#dr_plot").length > 0 && container == 'plot_container'){
+			Plotly.purge("dr_plot");
+                    }
 		    div.empty()     
 		    div.html(returnData);
 		}else{
 		    eval(returnData)
 		}
+	    }else{
+		eval(returnData)
 	    }
 	},
 	error: function(e){
@@ -374,6 +489,57 @@ function upd_time2(waiting_run_ids, running_run_ids, time_zone_offset){
  
 }
 
+function cancel_selection(){
+    $("#form_new_metadata").addClass("hidden");
+    $("#selection-desc").html("")
+    $("#selection-actions_container").addClass("hidden")
+    $("#selection_stats_container").removeClass("hidden")
+}
+
+function cancel_new_metadata(){
+    $("#form_new_metadata").addClass("hidden");
+    $("#selection_stats_container").removeClass("hidden")
+}
+
+function upd_cat_legend(cat_aliases, nber_cats, list_cats, palette, h_users, sel_cats, editable_project){
+  //update legend
+    var h_sel_cats = {}
+    for (var i=0; i<sel_cats.length; i++){
+	h_sel_cats[sel_cats[i]] = 1
+    }
+    var checked_global = (sel_cats.length > 0) ? "checked='true'" : ''
+    var indeterminate_global = (sel_cats.length > 0 && sel_cats.length < nber_cats) ? "indeterminate='true'" : ''
+    var t_cat_legend = ["<b>Legend</b><br/><br/>"]
+    t_cat_legend.push("<table id='cat_legend_table' width='100%'><thead><tr><th><input id='view_cluster_all' type='checkbox' " + checked_global + " " + indeterminate_global + " /> <i class='fa fa-eye'/></th><th>Color</th><th>ID</th><th>Name</th><th>User</th></tr></thead><tbody>")
+    for (var i = 1; i< nber_cats+1; i++){
+        var cat_alias = (cat_aliases.names[list_cats[i-1]]) ? cat_aliases.names[list_cats[i-1]] : ""
+        var user_email = (cat_aliases.names[list_cats[i-1]]) ? h_users[cat_aliases.user_ids[list_cats[i-1]]] : ""
+        var checked = (h_sel_cats[list_cats[i-1]]) ? "checked='true'" : ""
+        //console.log(list_cats[i-1] + ":" + h_sel_cats[list_cats[i-1]])
+        var html = "<tr><td><input type='checkbox' id='view_cluster_" + (i-1) + "' class='view_cluster' " + checked + " /></td><td style='background-color:" + palette[i % 10] + "'></td><td id='cat-name_" + (i-1) + "'>" + list_cats[i-1] + "</td>"
+	if (editable_project == true){
+	    html+="</td><td><button id='cat-alias_edit-btn_" + (i-1) + "' class='float-right cat-alias_edit-btn btn btn-sm btn-outline-secondary'><i class='fa fa-edit'/></button><input type='text' id='cat-alias_edit_" + (i-1) + "' class='hidden form-control cat-alias_edit' value='" + cat_alias + "'/><span id='cat-alias_" + (i-1) + "'>" + cat_alias + "</span></td><td>" + user_email + "</td>"
+	}
+	html += "</tr>"
+	t_cat_legend.push(html)
+    }
+    t_cat_legend.push("</tbody></table>")
+    $("#cat_legend").html(t_cat_legend.join(""))
+    $("#cat_legend_table").dataTable({
+	"sDom": 'Wsrt', 
+	//	       "ordering": false,
+        "iDisplayLength" : nber_cats,
+	"autoWidth": false,
+	"columnDefs": [
+	    { "width": "30px", "orderable": true, "targets": 0 },
+	    { "width": "30px", "orderable": true, "targets": 1 },
+	    { "width": "70px", "orderable": true, "targets": 2 },
+	    { "width": "100px", "orderable": true, "targets": 3 },
+	    { "width": "100px", "orderable": true, "targets": 4 }
+	    //		   { "width": "100", "className": 'dt-body-right', "sortable": false, "targets": [<%= raw (1 .. nber_cols).to_a.join(",") %>] }
+	]
+    })
+}
 
 $(document).ready(function(){
 

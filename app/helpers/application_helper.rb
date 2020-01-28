@@ -1,5 +1,18 @@
 module ApplicationHelper
 
+  def identifier_link id, id_type
+    return link_to (id_type.name.to_s + ":" + id.to_s), id_type.url_mask.gsub(/\#\{.+?\}/, id)
+ #   return 'bla'
+  end
+
+  def srp_link srp_code
+    return link_to srp_code, "https://www.ncbi.nlm.nih.gov/sra?term=#{srp_code}"
+  end
+
+  def display_reference a
+    return a.authors.split(";")[0] + ", #{a.year}"
+  end
+
   def display_archive_status archive_status
     html = ''
     if archive_status
@@ -34,7 +47,7 @@ module ApplicationHelper
         tmp_step = (tmp_run) ? @h_steps[tmp_run.step_id] : nil
         if tmp_run and tmp_step
           additional_classes = ''
-          additional_classes = 'input_lineage pointer' if action_name == 'get_step'
+          additional_classes = 'input_lineage pointer' if ['get_step', 'get_run', 'get_de_gene_list'].include? action_name
           txt = "<span id='input_lineage_#{tmp_run.id}' class='badge badge-dark #{additional_classes}'>#{attr}:#{tmp_step.name}" + ((tmp_step.multiple_runs == true) ? " #" + tmp_run.num.to_s : "") + "</span>"
         else
           txt = "<span class='badge badge-seconday input_lineage pointer'>#{attr}:NA</span>"
@@ -81,6 +94,42 @@ module ApplicationHelper
     }
     return list.join(" ")
   end
+
+  def display_attrs_txt step_id, h_attrs #, h_std_method_attrs
+     list = []
+     h_attrs.keys.reject{|attr| reject_attrs = @h_dashboard_card[step_id]["reject_attrs"] and reject_attrs.include? attr}.map{|attr|
+      v = h_attrs[attr]
+      txt = ''
+      list_datasets = []
+      if (v.is_a? Hash and v['run_id'])
+        list_datasets.push(v)
+      elsif (v.is_a? Array and v[0]['run_id'])
+        list_datasets = v
+      else
+       # std_method_attr = (h_std_method_attrs[std_method.id]) ? h_std_method_attrs[run.std_method_id][attr] : nil
+      #  if std_method_attr
+          txt = "#{attr}:" + v.to_s
+      #  else
+      #    txt = ''
+      #  end
+      end
+      list_datasets.each_index do |dataset_i|
+        v = list_datasets[dataset_i]
+        tmp_txt = ''
+        tmp_run = Run.where(:id => v['run_id']).first
+        tmp_step = (tmp_run) ? @h_steps[tmp_run.step_id] : nil
+        if tmp_run and tmp_step
+          additional_classes = ''
+          additional_classes = 'input_lineage pointer' if action_name == 'get_step'
+          txt = "#{attr}:#{tmp_step.name}" + ((tmp_step.multiple_runs == true) ? " #" + tmp_run.num.to_s : "")
+        else
+          txt = "#{attr}:NA"
+        end
+      end
+      list.push txt
+    }
+    return list.join(" ")
+  end
   
   def display_download_btn run, h_file
     h_output = h_file[:h_output]
@@ -90,7 +139,7 @@ module ApplicationHelper
       #+ ((h_output['dataset_size']) ? " [#{display_mem(h_output['dataset_size'])}]" : '') 
       
     end
-    return "<div id='run_#{run.id}_#{h_output["onum"]}' class='btn btn-sm btn-outline-secondary download_file_btn' #{title}><div class='float-right'><sub>#{display_mem(h_output["size"])}</sub></div><div class='download_btn_text'>#{h_output["filename"]}</div></div>"
+    return (h_output["size"] > 0) ? "<div id='run_#{run.id}_#{h_output["onum"]}' class='btn btn-sm btn-outline-secondary download_file_btn' #{title}><div class='float-right'><sub>#{display_mem(h_output["size"])}</sub></div><div class='download_btn_text'>#{h_output["filename"]}</div></div>" : ""
   end
 
   def get_run_attrs run
@@ -148,12 +197,16 @@ module ApplicationHelper
     end
   end
 
+  def display_run2 run, step, std_method
+    return "<span id='show_run_#{run.id}' class='show_link show_run_link pointer'><b>##{run.num}</b> #{(step.multiple_runs == false) ? step.label : ((std_method) ? ((!params[:step_id]) ? (step.label + " ") : "") + std_method.label : 'NA')}</span>"
+  end
+
   def display_run_short run
     if run and step = @h_steps[run.step_id]
       std_method_name = (std_method = run.std_method) ? std_method.name : nil
       return  "<span class='badge badge-secondary' title='#{get_run_attrs(run)}'>#{step.label}" + ((step and step.multiple_runs == true) ? " ##{run.num}" : "") + ((std_method_name) ? " #{std_method_name}" : "") + "</span>"
     else
-      return "NA"
+      return "NA#{run.to_json}#{step.to_json}"
     end
   end
 
@@ -161,6 +214,15 @@ module ApplicationHelper
      if run and step = @h_steps[run.step_id]
       std_method_name = (std_method = run.std_method) ? std_method.name : nil
       return  "#{step.label}" + ((step and step.multiple_runs == true) ? " ##{run.num}" : "") + ((std_method_name) ? " #{std_method_name}" : "")
+    else
+      return "NA"
+    end
+  end
+
+   def display_run_ultra_short_txt run
+     if run and step = @h_steps[run.step_id]
+      std_method_name = (std_method = run.std_method) ? std_method.name : nil
+      return  ((step and step.multiple_runs == true) ? "run#{run.num}" : "") + ((std_method_name) ? "_#{std_method_name}" : "")
     else
       return "NA"
     end
@@ -331,6 +393,10 @@ module ApplicationHelper
       html += "</div>"
     end
     return raw html
+  end
+
+  def display_output_dataset(run, output_filename, output_dataset)
+    return raw(display_run_short(run) + "<span class='badge badge-light'>#{output_filename}:#{output_dataset}</span>")
   end
 
   def display_batch_file()

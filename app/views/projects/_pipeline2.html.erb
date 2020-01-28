@@ -15,7 +15,9 @@
             }.join(" ") %>
 	<% end %>
 	Shared by
-        <span class='bold' title='<%= @project.user.email %>'><%= @project.user.email %></span>
+        <span class='bold' title='<%= shared_by = ((APP_CONFIG[:admin_emails].include?(@project.user.email)) ? 'Admin' : @project.user.email) %>'>
+	   <%= shared_by %>
+	</span>
       </div>
       <% elsif @project.sandbox == true %>
       <div id='shared_by'>
@@ -28,15 +30,19 @@
 	<% if editable? @project %> 
 	<span id='edit_project' title='Edit project'><i class='fa fa-cog'></i></span> 
 	<% end %>       
-	<% if exportable?(@project) %>   
+	<% if exportable?(@project) and @project.sandbox == false %>   
 	<span id='clone_button' title='Clone'><i class='fa fa-copy'></i></span>
 	<% end %>                          
       </h4>
     </div>
+    <% if owner? @project %>
+    <div id='public-btn' class='badge badge-success float-right mr-3 pointer'><%= (@project.public == false) ? "Set public" : "Freeze new analyses" %></div>
+    <% end %>
     <div style='clear:both'></div>
+   
   </div>
   <div id="left_menu" class="nav-side-menu">
-    <% h_steps = {}; Step.order("rank").all.map{|s| h_steps[s.group_name] ||=[]; h_steps[s.group_name].push s} %>
+    <% h_steps = {}; Step.where(:hidden => false).order("rank").all.map{|s| h_steps[s.group_name] ||=[]; h_steps[s.group_name].push s} %>
     <% h_steps.each_key do |group_name| %>
     <% group_name_tag = group_name.downcase.gsub(" ", '-') %>
     <div id="menu_<%= group_name_tag %>" class='menu_item pointer' data-toggle="collapse<%# (group_name_tag == 'report') ? ' active' : '' %>" data-target="#<%= group_name_tag %>_nav" aria-expanded="true" aria-controls="<%= group_name_tag %>_nav">
@@ -77,12 +83,33 @@ refresh("form_container", "<%= edit_project_path(@project.key) %>?global=1", {})
 $("#ontop_window").removeClass("hidden");
 });
 
+ $("#public-btn").click(function(e){
+  $("#popup_window").removeClass("hidden")
+  var html = "<div class='alert alert-info'>This operation allows to publish your results, which will be not editable anymore.<BR/>If more analyses are added to the project you can then freeze the results to let know to the users of the project that you validated them and will remain stable</div><div class='alert alert-danger'>WARNING: This procedure is not reversible!</div><div class='btn btn-success'>Confirm to set this project public</div>" 
+  $("#popup_container").html(html)
+ //   refresh("popup_container", "<%= exp_entries_path %>/" + id + "/summary", {loading: 'fa-2x'})
+  var w = $(window).width();
+  $("#popup_window").css({
+        left: 200,
+        width:w - 250,
+        top: e.pageY + 10
+    }).stop().show(100);
+ })
+
+$("#popup_window").on("click", "#confirm_set_public-btn", function(e){
+ //refresh("popup_container", "<%= exp_entries_path %>/" + id + "/summary", {loading: 'fa-2x'})
+
+ $("#popup_window").addClass("hidden")
+});
+
+
+
 $(".pipeline_step").click(function(){
  var step_id = this.id.split("_")[1];
  // alert("bla")
  console.log(step_id)
- for (var i=1; i<=<%= Step.count %>; i++){
-  $("#step_" + i).removeClass("active");
+ for (var i=0; i < step_ids.length; i++){
+  $("#step_" + step_ids[i]).removeClass("active");
  }
 
  if (!$(this).hasClass("disabled")){

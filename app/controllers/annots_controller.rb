@@ -1,11 +1,34 @@
 class AnnotsController < ApplicationController
-  before_action :set_annot, only: [:get_cats, :show, :edit, :update, :destroy]
+  before_action :set_annot, only: [:get_cats, :get_cat_details, :show, :edit, :update, :destroy]
+
+  def get_cat_details
+    @project = @annot.project
+    if readable?(@project) and @annot.data_type_id == 3
+      @project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
+      @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T MatchValues -loom #{@project_dir + @annot.filepath} -iAnnot #{@annot.name} -value #{params[:cat_value]}"
+      @h_results = JSON.parse(`#{@cmd}`)
+
+      @h_results['list_names'] = []
+      @test = nil
+      if @annot.dim == 1
+        ## get cell names
+        cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -loom #{@project_dir + @annot.filepath} -meta /col_attrs/CellID"
+        h_res = JSON.parse(`#{cmd}`)
+        @h_results["indexes_match"].each do |i|
+          @h_results["list_names"].push h_res["values"][i]
+        end
+      end
+
+    end
+
+    render :partial => 'get_cat_details'
+  end
 
   def get_cats
     @project = @annot.project
     if readable?(@project) and @annot.data_type_id == 3
       @project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
-      @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -f #{@project_dir + @annot.filepath} -meta #{@annot.name}"
+      @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -names -loom #{@project_dir + @annot.filepath} -meta #{@annot.name}"
       @h_results = JSON.parse(`#{@cmd}`)
       @cats = @h_results['values'].uniq
       
@@ -36,27 +59,41 @@ class AnnotsController < ApplicationController
     Status.all.map{|s| @h_statuses[s.id]=s}
 
     @project = @annot.project
-    @step = Step.find_by_name('metadata')
+#    @step = Step.find_by_name('cell_')
+    @step = @run.step
     @ps = ProjectStep.where(:project_id => @project.id, :step_id => @step.id).first
-    @h_attrs = JSON.parse(@step.attrs_json)
+    @h_attrs = Basic.safe_parse_json(@step.attrs_json, {})
  
     @project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
-    @run = @annot.run
+#    @run = @annot.run
     @h_dashboard_card = {}
     @h_dashboard_card[@run.step_id] = JSON.parse(@h_steps[@run.step_id].dashboard_card_json)
     
     ## get annot
-    @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -prec 2 -f #{@project_dir + @annot.filepath} -meta #{@annot.name}"
-    
-    @h_results = JSON.parse(`#{@cmd}`)
-    
-    if @h_results['values']
-      ### get the list of genes or cells
-      name = (@annot.dim == 2) ? '/row_attrs/Gene' : 'col_attrs/CellID'
-      cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -prec 2 -f #{@project_dir + @annot.filepath} -meta #{name}"
-      key = (@annot.dim == 2) ? 'genes' : 'cells'
-      @h_results[key] = JSON.parse(`#{cmd}`)['values']
-    end 
+    @h_results = {}
+    @cmd = ""
+
+    if @annot.dim == 3
+      @cmd = "docker run -it --network=asap2_asap_network -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --rm -v /data/asap2:/data/asap2  -v /srv/asap_run/srv:/srv fabdavid/asap_run:v2 h5dump -d #{@annot.name} #{@project_dir + @annot.filepath}"
+      #      @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractRow -prec 2 -i #{s[:row_i]} -f #{loom_path} -iAnnot #{@dataset_annot.name}"
+      row_txt = `#{@cmd}`
+      row = (row_txt.match(/^\{/)) ? JSON.parse(row_txt)['row'] : nil
+      
+    else
+      @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -prec 2 -names -loom #{@project_dir + @annot.filepath} -meta #{@annot.name}"
+      
+      begin
+      @h_results = JSON.parse(`#{@cmd}`)
+      rescue
+      end
+      if @h_results['values']
+        ### get the list of genes or cells
+        name = (@annot.dim == 2) ? '/row_attrs/Gene' : 'col_attrs/CellID'
+        cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -prec 2 -names -loom #{@project_dir + @annot.filepath} -meta #{name}"
+        key = (@annot.dim == 2) ? 'genes' : 'cells'
+        @h_results[key] = JSON.parse(`#{cmd}`)['values']
+      end 
+    end
 
 
     if !readable? @project
@@ -120,6 +157,7 @@ class AnnotsController < ApplicationController
     # Use callbacks to share common setup or constraints between actions.
     def set_annot
       @annot = Annot.find(params[:id])
+      @run = @annot.run
       @project = @annot.project
     end
 

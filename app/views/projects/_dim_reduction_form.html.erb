@@ -1,3 +1,11 @@
+<%# @log3.to_json %>
+<%# @default_run_id %>
+<%# session[:dr_params][@project.id].to_json %>
+<%# @error_message.to_json %>
+<%# @runs.to_json %>
+<%# @log3.to_json %>
+<%# @default_run_id.to_json %>
+<%# @log %>
 <%# @successful_runs.map{|r| r.id}.to_json %>
 <%# @runs.map{|r| r.id}.to_json %>
 <%# session[:dr_params].to_json %>
@@ -6,6 +14,11 @@
 <%# @default_run_id.to_json %>
 <pre><%= @error %></pre>
 <%# session[:dr_params] %>
+<!--<%# @runs.to_json %>
+<br/>==============================<br/>
+<%# @h_attrs_by_run_id.to_json %>
+-->
+<%# @successful_runs.to_json %>
 <% success_runs = @successful_runs.select{|r| r.status_id == 3} %>
 <% if success_runs.size > 0 %> 
 <!--  <div id='nber_dims_switch' class="switch">
@@ -22,59 +35,119 @@
   <%= select_tag 'plot[std_method_id]',  options_for_select(l, session[:dr_params][@project.id][:std_method_id]),  {:class => 'custom-select mr-4'} %>
   <%#  @h_std_method_attrs.to_json %>
   <%# success_runs.to_json %>
+ <% if ['tsne', 'umap'].include? @h_std_methods[session[:dr_params][@project.id][:std_method_id]].name %>
+  <%  success_runs =  success_runs.select{|e| @h_attrs_by_run_id[e.id]['nber_dims'] == session[:dr_params][@project.id][:displayed_nber_dims]} %>
+<% end %>
+ <%# success_runs.to_json %> 
+  <%# l = [] %>
+<%#  @h_std_method_attrs.to_json %>
+  <%# l = success_runs.map{|r| ["##{r.num} #{(step = @h_steps[r.step_id] and step.multiple_runs == false) ? step.label : ((std_method = @h_std_methods[r.std_method_id]) ? ((!params[:step_id]) ? (step.label + " ") : "") + std_method.label : 'NA')}", r.id]} %>
   <% l = success_runs.map{|r| ["##{r.num} #{(step = @h_steps[r.step_id] and step.multiple_runs == false) ? step.label : ((std_method = @h_std_methods[r.std_method_id]) ? ((!params[:step_id]) ? (step.label + " ") : "") + std_method.label : 'NA')} #{display_run_attrs_txt(r, @h_attrs_by_run_id[r.id], @h_std_method_attrs)}", r.id]} %>
   <%# @h_std_method_attrs.to_json %>
   <%# @step_ids.to_json %>
   <%# @h_dashboard_card.to_json %>
   <%# l = @runs.select{|r| r.status_id == 3}.map{|r| [display_run_attrs_txt(r, JSON.parse(r.attrs_json), @h_std_method_attrs), r.id]}.to_json %>
+  <%# @default_run.id %>
   <%= select_tag 'plot[run_id]', options_for_select(l, @default_run_id),  {:class => 'custom-select mr-4'} %>
 
 <!--  <button id='upd_plot_btn' type='button' class='btn btn-primary mr-4'>Select</button>-->
 
   <div class="btn-group" role="group">
-    <button id='2d-btn' type="button" class="btn btn-<%= (session[:dr_params][@project.id][:nber_dims] == 3) ? 'secondary' : 'primary' %> nber_dims_btn">2D</button>
-    <button id='3d-btn' type="button" class="btn btn-<%= (session[:dr_params][@project.id][:nber_dims] == 3) ? 'primary' : 'secondary' %> nber_dims_btn">3D</button>
+    <%# session[:dr_params][@project.id][:displayed_nber_dims].to_json %>
+    <button id='2d-btn' type="button" class="btn btn-<%= (session[:dr_params][@project.id][:displayed_nber_dims] == 3) ? 'secondary' : 'primary' %> nber_dims_btn">2D</button>
+    <button id='3d-btn' type="button" class="btn btn-<%= (session[:dr_params][@project.id][:displayed_nber_dims] == 3) ? 'primary' : 'secondary' %> nber_dims_btn">3D</button>
   </div>
-  <%= hidden_field_tag "plot[nber_dims]", session[:dr_params][@project.id][:nber_dims] || 2 %>
+
+  <%#  @h_attrs_by_run_id[@default_run_id]['nber_dims'].to_json %>
+
+  <%# session[:dr_params][@project.id][:std_method_id] %>
+  <%# @default_run.std_method_id %>
+  <%# @h_std_methods[@default_run.std_method_id].name %>
+  <% if !['tsne', 'umap'].include? @h_std_methods[@default_run.std_method_id].name %>
+  <% if @h_attrs_by_run_id[@default_run_id] and @h_attrs_by_run_id[@default_run_id]['nber_dims'].to_i > session[:dr_params][@project.id][:displayed_nber_dims] %>
+  <% dims = (1 .. @h_attrs_by_run_id[@default_run_id]['nber_dims'].to_i).map{|e| ["X: #{e}", e]} %>
+  <%# @h_attrs_by_run_id[@default_run_id]['nber_dims'].to_json %>
+  <%= select_tag 'plot[dim1]', options_for_select(dims, session[:dr_params][@project.id][:dim1] || 1),  {:class => 'dim-select custom-select ml-2'} %>
+  <% dims = (1 .. @h_attrs_by_run_id[@default_run_id]['nber_dims'].to_i).map{|e| ["Y: #{e}", e]} %>
+  <%= select_tag 'plot[dim2]', options_for_select(dims, session[:dr_params][@project.id][:dim2] || 2),  {:class => 'dim-select custom-select ml-2'} %>
+  <% if  session[:dr_params][@project.id][:displayed_nber_dims] == 3 %>
+  <% dims = (1 .. @h_attrs_by_run_id[@default_run_id]['nber_dims'].to_i).map{|e| ["Z: #{e}", e]} %>
+  <%= select_tag 'plot[dim3]', options_for_select(dims, session[:dr_params][@project.id][:dim3] || 3), {:class => 'dim-select custom-select ml-2'} %>
+  <% end %>
+  <% else %> 
+  <%#  @h_attrs_by_run_id[@default_run_id].to_json %>
+  <%# session[:dr_params][@project.id][:displayed_nber_dims] %>
+  <% end %>
+  <% else %> 
+ 
+  <% end %>
+  <div class='float-right ml-2'><button id='refresh_plot-btn' class='btn btn-primary'><i id='refresh_plot_icon' class='fa fa-sync'/> Refresh</button></div>
+  <div id='refresh_plot_status' class='float-right ml-2 hidden'> Updating plot...</div>
+  <%= hidden_field_tag "plot[displayed_nber_dims]", session[:dr_params][@project.id][:displayed_nber_dims] || 2 %>
+
+  <% if @error_message and @error_message!= '' %>
+  <br/>
+  <div class='alert alert-danger'><%= @error_message %></div>
+  <% end %>
 
 <%= javascript_tag do %>
 
 
 
-<% if params[:upd_plot] %>
+<% if params[:upd_plot] and @error_message == '' %>
 
   var p = [
             {'name' : 'plot[run_id]', 'value' : $("#plot_run_id").val()},
-            {'name' : 'nber_dims', 'value' : $("#plot_nber_dims").val()}
-          ] 
+            {'name' : 'displayed_nber_dims', 'value' : $("#plot_displayed_nber_dims").val()},
+            {'name' : 'browser_name', 'value' : window.navigator.userAgent}
+          ]
+  <% if !['tsne', 'umap'].include? @h_std_methods[@default_run.std_method_id].name and @h_attrs_by_run_id[@default_run_id]['nber_dims'].to_i > session[:dr_params][@project.id][:displayed_nber_dims] %>
+   p.push({'name' : 'plot[dim1]', 'value' : $("#plot_dim1").val()})
+   p.push({'name' : 'plot[dim2]', 'value' : $("#plot_dim2").val()})
+   <% if  session[:dr_params][@project.id][:displayed_nber_dims] == 3 %>
+    p.push({'name' : 'plot[dim3]', 'value' : $("#plot_dim3").val()})  
+   <% end %>
+  <% end %>
   var h_opt = ($("#plot_options_window").hasClass("hidden")) ? {loading : 'fa-2x'} : {loading_full:"<div style='padding:30px'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'/> <span class='italic'>Loading data...</span></div>"}
   refresh_post("plot_container", "<%= raw dr_plot_project_path(@project.key) %>", p, 'post', h_opt);
 
 <% end %>
 
 
+$(".dim-select").change(function(){
+ //var h_opt = {loading : 'fa-2x'}
+ //refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form', :upd_plot => 1) %>&run_id=" + $("#plot_run_id").val()  + "&displayed_nber_dims=" + $("#plot_displayed_nber_dims").val() + "&dim1=" + $("#plot_dim1").val() + "&dim2=" + $("#plot_dim2").val() + "&dim3=" + $("#plot_dim3").val(), h_opt)
+  refresh_plot()
+})
+
 $("#plot_run_id").change(function(){
- var h_opt = {loading : 'fa-2x'}
- refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form', :upd_plot => 1) %>&run_id=" + $("#plot_run_id").val()  + "&nber_dims=" + $("#plot_nber_dims").val(), h_opt)
+// var h_opt = {loading : 'fa-2x'}
+// refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form', :upd_plot => 1) %>&run_id=" + $("#plot_run_id").val()  + "&displayed_nber_dims=" + $("#plot_displayed_nber_dims").val() + "&dim1=" + $("#plot_dim1").val() + "&dim2=" + $("#plot_dim2").val() + "&dim3=" + $("#plot_dim3").val(), h_opt)
+  refresh_plot()
 })
 
 $("#plot_std_method_id").change(function(){
-var nber_dims = $("#plot_nber_dims").val();
+var nber_dims = $("#plot_displayed_nber_dims").val();
  var h_opt = {loading : 'fa-2x'}
- refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form', :upd_plot => 1) %>&run_id=" + $("#plot_run_id").val() + "&std_method_id=" + $("#plot_std_method_id").val(), h_opt)
+ refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form', :upd_plot => 1) %>&run_id=" + $("#plot_run_id").val() + "&std_method_id=" + $("#plot_std_method_id").val() + "&dim1=" + $("#plot_dim1").val() + "&dim2=" + $("#plot_dim2").val() + "&dim3=" + $("#plot_dim3").val(), h_opt)
+// refresh_plot()
 })
+
+function refresh_plot(){
+  var h_opt = {loading : 'fa-2x'}
+  refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form', :upd_plot => 1) %>&run_id=" + $("#plot_run_id").val()  + "&displayed_nber_dims=" + $("#plot_displayed_nber_dims").val() + "&dim1=" + $("#plot_dim1").val() + "&dim2=" + $("#plot_dim2").val() + "&dim3=" + $("#plot_dim3").val(), h_opt)
+}
 
 $(".nber_dims_btn").click(function(){
    var nber_dims = (this.id == '2d-btn') ? 2 : 3
  //  console.log(nber_dims + "d")
-   $("#plot_nber_dims").val(nber_dims)
-   var h_opt = {loading : 'fa-2x'}
-   refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form', :upd_plot => 1) %>&run_id=" + $("#plot_run_id").val()  + "&nber_dims=" + $("#plot_nber_dims").val(), h_opt)
+   $("#plot_displayed_nber_dims").val(nber_dims)
+   refresh_plot()
 })
 
 $(".switch input").bootstrapSwitch({
   // The checkbox state
-  state: <%= raw (session[:dr_params][@project.id][:nber_dims] == 2) ? "false" : "true" %>,
+  state: <%= raw (session[:dr_params][@project.id][:displayed_nber_dims] == 2) ? "false" : "true" %>,
   // null, 'mini', 'small', 'normal', 'large'
   size: null,
   // Enable animation
@@ -109,7 +182,7 @@ $(".switch input").bootstrapSwitch({
   wrapperClass: 'wrapper',
   // Callback function to execute on initialization
   onInit: () => {
-<% if session[:dr_params][@project.id][:nber_dims] == 3 %>
+<% if session[:dr_params][@project.id][:displayed_nber_dims] == 3 %>
     $(this).state = true
 <% end %>
         alert(this.state);
@@ -120,8 +193,8 @@ $(".switch input").bootstrapSwitch({
    var s = this
    var nber_dims = ($("#check_nber_dims").is(":checked")) ? 3 : 2
    console.log(nber_dims + "d")
-   $("#plot_nber_dims").val(nber_dims)
-   refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form') %>&run_id=" + $("#plot_run_id").val()  + "&nber_dims=" + $("#plot_nber_dims").val(), {loading : 'fa-2x'})
+   $("#plot_displayed_nber_dims").val(nber_dims)
+   refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form') %>&run_id=" + $("#plot_run_id").val()  + "&displayed_nber_dims=" + $("#plot_displayed_nber_dims").val(), {loading : 'fa-2x'})
   }
 });
 

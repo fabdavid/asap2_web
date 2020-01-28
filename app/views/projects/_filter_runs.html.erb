@@ -1,3 +1,6 @@
+<%# @log %>
+<%# session[:filter_lineage_run_ids][@project.id].to_json %>
+<%# session[:activated_filter][@project.id] %>
 <!--SESSION
 <%# session[:activated_filter].to_json %>
 <%# session[:filter_lineage_run_ids].to_json %>
@@ -21,6 +24,7 @@ SESSION
 t<%# @log %>u
 -->
 <%# if @h_union_lineage_run_ids_by_step_id.keys.size > 0 %>
+
 <% if session[:activated_filter][@project.id] == true and !@disable_filter #and !@flag_nothing_to_filter == true %>
 <div id='filter_box' class='alert alert-info <%# (session[:activated_filter] == true and !@disable_filter) ? "hidden" : '' %>'>
   <div class='row'>
@@ -39,6 +43,7 @@ t<%# @log %>u
      <% l = steps.map{|step| [step.label, @h_lineage_run_ids_by_step_id[step.id].map{|run_id| @h_all_runs[run_id]}.select{|r| r}.map{|r| [display_run(r), r.id]}]} %>
      <% l.unshift(["", [["Select runs from previous steps to filter", ""]]]) %>
      <%= select_tag 'possible_lineage_runs', grouped_options_for_select(l), {:class => 'custom-select'} %>
+
      <!--	</div>
 		</div>
   <div class='row'>

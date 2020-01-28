@@ -1,0 +1,17 @@
+<%= form_with(model: identifier_type, local: true) do |form| %>
+  <% if identifier_type.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(identifier_type.errors.count, "error") %> prohibited this identifier_type from being saved:</h2>
+
+      <ul>
+      <% identifier_type.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

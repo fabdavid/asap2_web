@@ -1,5 +1,5 @@
 class DbSet < ApplicationRecord
 
-belongs_to :tool
+belongs_to :tool, :optional => true
 
 end

@@ -1,0 +1,2 @@
+class HcaoTerm < ApplicationRecord
+end

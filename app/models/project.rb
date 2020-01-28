@@ -1,7 +1,6 @@
 class Project < ApplicationRecord
 
   #  before_save :broadcast_new_status, if: :will_save_change_to_status_id?
-
   belongs_to :user
   belongs_to :status
   belongs_to :step
@@ -31,6 +30,9 @@ class Project < ApplicationRecord
   has_many :runs
   has_many :annots
   has_many :fos
+  has_and_belongs_to_many :provider_projects
+  has_and_belongs_to_many :exp_entries
+  has_and_belongs_to_many :articles
 
   def broadcast step_id    
     ProjectBroadcastJob.perform_later self.id, step_id
@@ -346,19 +348,86 @@ class Project < ApplicationRecord
     end
     
   end
-  
+
   def parse
+  
+    f_log = File.open("./log/delayed_job_parsing.log", "w")
+    version = self.version
+    h_env = JSON.parse(version.env_json)
+    project_step = ProjectStep.where(:project_id => self.id, :step_id => 1).first
+
+    start_time = Time.now
+
+    project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + self.user_id.to_s + self.key
+    tmp_dir = project_dir + 'parsing'
+    Dir.mkdir(tmp_dir) if !File.exist?(tmp_dir)
+    
+    
+    h_cmd = {
+      :host_name => "localhost",
+      :time_call => h_env["time_call"].gsub(/\#output_dir/, tmp_dir.to_s),
+    #  :exec_stdout => h_env["exec_stdout"].gsub(/\#output_dir/, tmp_dir.to_s),
+    #  :exec_stderr => h_env["exec_stderr"].gsub(/\#output_dir/, tmp_dir.to_s),
+      # :container_name => 'to_define',
+      # :docker_call => h_env_docker_image['call'].gsub(/\#image_name/, image_name),
+      :program => "rails parse[#{self.key}]",  #(mem > 10) ? "java -Xms#{mem}g -Xmx#{mem}g -jar /srv/ASAP.jar" : 'java -jar /srv/ASAP.jar',   
+      :opts => [],
+      :args => []
+      }
+    
+    output_file = tmp_dir + "output.loom"
+    output_json = tmp_dir + "output.json"
+    
+    
+    f_log.write(self.to_json)
+    # run = Run.where(:project_id => self.id, :step_id => 1).first
+    
+    h_outputs = {
+      :output_matrix => { "parsing/output.loom" => {:types => ["num_matrix"], :dataset => "matrix", :row_filter => nil, :col_filter => nil}},
+      :output_json => { "parsing/output.json" => {:types => ["json_file"]}}
+    }
+        
+    h_run = {
+      :project_id => self.id,
+      :step_id => 1,
+      :status_id => 1, #status_id,                                                                  
+      :num => 1,
+      :user_id => self.user_id, 
+      :command_json => h_cmd.to_json,
+      :attrs_json => self.parsing_attrs_json,
+      :output_json => h_outputs.to_json
+    }
+    
+    run = Run.where({:project_id => self.id, :step_id => 1}).first
+    if !run
+      run = Run.new(h_run)
+      run.save
+      f_log.write("Created!")
+    else
+      f_log.write("Update run...")
+      run.update_attributes(h_run)
+      f_log.write("Updated run!")
+    end
+    
+    h_project_step =  Basic.get_project_step_details(self, 1)
+    f_log.write(h_project_step.to_json)
+    project_step.update_attributes(h_project_step)
+    self.broadcast run.step_id
+    
+  end
+  
+  def parse_old
     
     f_log = File.open("./log/delayed_job_parsing.log", "w")
 
     start_time = Time.now
 
-    self.update_attributes(:status_id => 2)
+#    self.update_attributes(:status_id => 2)
     version = self.version
     h_env = JSON.parse(version.env_json)
     project_step = ProjectStep.where(:project_id => self.id, :step_id => 1).first
-    project_step.update_attributes(:status_id => 2)
-    self.broadcast 1
+    #    project_step.update_attributes(:status_id => 2)
+    #    self.broadcast 1
     
     project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + self.user_id.to_s + self.key
     tmp_dir = project_dir + 'parsing'
@@ -390,7 +459,8 @@ class Project < ApplicationRecord
 
     ### write file from hca
     h_output_hca = nil
-    if p['sel_hca_projects'] and p['sel_hca_projects'] != '{}'
+    # if p['sel_hca_projects'] and p['sel_hca_projects'] != '{}'
+    if p['hca_project_id'] and p['hca_project_id'] != ''
       cmd = "rails get_loom_from_hca[#{self.key}] 2>&1 > #{tmp_dir + 'get_loom_from_hca.log'}"
       `#{cmd}`
       logger.debug("CMDx: " + cmd)
@@ -402,7 +472,7 @@ class Project < ApplicationRecord
         h_output_hca = {'status_id' => 4, 'error' => 'An error occured while getting Loom file from HCA'}
       end
     end
-    
+#    logger.debug("H_OUTPUT_HCA: " + h_output_hca.to_json)
 #    status_id = nil
 
     h_run = {}
@@ -414,11 +484,11 @@ class Project < ApplicationRecord
       f_log.write(self.id)
       project = Project.find(self.id)
       p = JSON.parse(project.parsing_attrs_json) if project.parsing_attrs_json
-      logger.debug("h_params2: " + p.to_json)
+      f_log.write("h_params2: " + p.to_json)
       
       #    Options:
       #-col %s                 Name Column [none, first, last].
-    #-o %s           Output folder
+      #-o %s           Output folder
       #-f %s   File to parse.
       #-organism %i    Id of the organism.
       #-header %b      The file has a header [true, false].
@@ -457,7 +527,8 @@ class Project < ApplicationRecord
                {:opt => "-o", :value => tmp_dir},
                {:opt => "-f", :value => filepath}
               ]
-      
+
+
       h_env_docker_image = h_env['docker_images']['asap_run']
       image_name = h_env_docker_image['name'] + ":" + h_env_docker_image['tag']
       
@@ -472,7 +543,7 @@ class Project < ApplicationRecord
         :opts => opts,
         :args => []
       }
-      
+
       output_file = tmp_dir + "output.loom"
       output_json = tmp_dir + "output.json"    
       #    status_id = 3
@@ -539,9 +610,11 @@ class Project < ApplicationRecord
       File.open(output_json_file, 'w') do |f|                                 
         f.write h_output.to_json                                 
       end      
-      
+
+      f_log.write("k1")
       h_outputs = {:output_json => { "parsing/output.json" => {:types => ["json_file"]}}}
-      
+      f_log.write("k2")
+
       h_run = {
         :project_id => self.id,
         :step_id => 1,
@@ -552,18 +625,34 @@ class Project < ApplicationRecord
       }
      
     end
+
+    f_log.write(h_run.to_json)
+
     
-    if !run = Run.where(h_run).first
+   run = Run.where({:project_id => self.id, :step_id => 1}).first
+    if !run
       run = Run.new(h_run)
       run.save
+      f_log.write("Created!")
     else
+      f_log.write("Update run...")
       run.update_attributes(h_run)
+      f_log.write("Updated run!")
     end
 
+    f_log.write("k3")
+
+    
     ## update container_name
-    h_cmd = JSON.parse(run.command_json)
+    h_cmd = Basic.safe_parse_json(run.command_json, {})
+    f_log.write("k4")
+    
     h_cmd['container_name'] = 'asap_dev_' + run.id.to_s
+    f_log.write("k5")
+    
     run.update_attributes({:command_json => h_cmd.to_json})
+    f_log.write("k6")
+    
     #    project.broadcast run.step_id
     #    cmd = "rails parse_batch_file[#{self.key}]"
     #    logger.debug("CMD: " + cmd)
@@ -617,11 +706,23 @@ class Project < ApplicationRecord
     #                           :nber_genes => h_parsing['nber_genes'] || nil
     #                           )
     #    ## get project_step info
-    
+#    fu = Fu.where(:project_id => self.id, :upload_type => 1).first
+ #   upload_dir = Pathname.new(APP_CONFIG[:data_dir]) +  'fus' + fu.id.to_s
+ #   output_file = upload_dir + "output.json"
+ #   f_log.write(output_file)
+ #   h_preparsing = Basic.safe_parse_json(File.read(output_file), {})
+ #   f_log.write(h_preparsing.to_json)
+#
+#    if h_preparsing["detected_format"] == "LOOM"
+#      h_preparsing["existing_metadata"].each do |annot_name|
+#        cmd = "java -jar ../asap_run/srv/ASAP.jar -T CopyMetaData -loomFrom  -loomTo -"
+#      end
+#    end
+
     h_project_step =  Basic.get_project_step_details(self, 1)
     f_log.write(h_project_step.to_json)
     project_step.update_attributes(h_project_step)   
-    project.broadcast run.step_id
+    self.broadcast run.step_id
   end
   
   def parse2

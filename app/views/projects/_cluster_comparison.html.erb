@@ -1,0 +1,74 @@
+<%= render :partial => 'filter_runs' %>
+
+<% if @runs and @runs.size > 0 %>
+
+<h5>Comparison of clusters</h5>
+
+<% s = @runs.select{|r| r.status_id == 3}.map{|r| [display_run(r), r.id]} %>
+
+<div class='form-inline mb-2'>
+  <div class='float-right mr-2 ml-2'>
+    Clustering A = 
+  </div>
+  <%= select_tag 'run_id1', options_for_select(s, session[:clust_comparison][@project.id][:run_id1]), {:class => 'form-control select_run_id'}  %>
+</div>
+<div class='form-inline mb-2'>
+  <div class='float-right mr-2 ml-2'>
+    Clustering B =
+  </div>
+  <%= select_tag 'run_id2', options_for_select(s, session[:clust_comparison][@project.id][:run_id2]), {:class => 'form-control select_run_id'}  %>
+</div>
+<div class='form-inline mb-2'>
+  <div class='float-right mr-2 ml-2'>
+    Operation
+  </div>
+  <div class="btn-group" role="group">
+    <button id='op-1-btn' type="button" class="btn btn-<%= (session[:clust_comparison][@project.id][:op] == "1") ? 'primary' : 'secondary' %> op_btn">A-B</button>
+    <button id='op-2-btn' type="button" class="btn btn-<%= (session[:clust_comparison][@project.id][:op] == "2") ? 'primary' : 'secondary' %> op_btn">B-A</button>
+    <button id='op-3-btn' type="button" class="btn btn-<%= (session[:clust_comparison][@project.id][:op] == "3") ? 'primary' : 'secondary' %> op_btn">A &cap; B</button>
+  </div>
+  <%= hidden_field_tag "op", session[:clust_comparison][@project.id][:op] || 2 %>
+</div>
+
+<div id='cluster_comparison_results'>
+  <%= render :partial => 'cluster_comparison_results' %>
+</div>
+
+<%= javascript_tag do %>
+
+function upd(v){
+ var p = [
+  {'name' : 'run_id1', 'value' : $("#run_id1").val()},
+  {'name' : 'run_id2', 'value' : $("#run_id2").val()},
+  {'name' : 'op', 'value' : v}
+ ]
+ refresh_post('cluster_comparison_results', '<%= cluster_comparison_project_path(@project.key) %>', p, 'post', {loading:'fa-2x'})
+}
+
+$(".op_btn").click(function(){
+ var v = this.id.split("-")[1]
+ $(".op_btn").removeClass("btn-primary")
+ $(".op_btn").addClass("btn-secondary")
+ $(this).removeClass("btn-secondary")
+ $(this).addClass("btn-primary")
+ upd(v)
+})
+
+$(".select_run_id").change(function(){
+ var v = $("#op").val()
+ upd(v)
+})
+
+var v = $("#op").val()
+upd(v)
+
+
+<% end %>
+
+<% else %>
+
+<% if session[:activated_filter][@project.id] == true and !@disable_filter %>
+<div class='alert alert-danger'>No clusters found with selected filter criteria</div>
+<% end %>
+
+<% end %>

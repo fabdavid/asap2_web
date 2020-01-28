@@ -1,27 +1,50 @@
-App.fu = App.cable.subscriptions.create("FuChannel", {
+/*App.fu = App.cable.subscriptions.create("FuChannel", {                                                                                                                        
+    subscribe: function( fu_id ) {                 
+        this.perform('follow', {                                                             
+            fu_id : fu_id                                                            
+        });        
+    },
+    connected: function(){     
+	console.log("Connected to fu_channel");                              
+    },                       
+    disconnected: function() {                                  
+        console.log("Disconnected from fu_channel");       
+    },
+    received: function(data) {
+	console.log("Download finished -> preparsing");
+    }
+
+});
+*/
+/*App.fu = App.cable.subscriptions.create("FuChannel", {
     subscribe: function( fu_id ) {
         this.perform('follow', {
             fu_id : fu_id
         });
     },
-    onConnected: function(callback){
+*/
+/*    onConnected: function(callback){
       this.connected = callback;
     },
     onReceived: function(callback){
       this.received = callback;
     },
+*/
+/*
     stopSubscriptions: function(){
       this.perform('unfollow');
     },
 
-    connected: function(project_id){
+    connected: function(){
         console.log("Connected to fu_channel");
-//       return this.perform("follow", {:project_id => project_id})                                                                                     
+	//       return this.perform("follow", {:project_id => project_id})                                                                                     
     },
     disconnected: function() {
         console.log("Disconnected from fu_channel");
     },
     received: function(data) {
+*/
+/*
         console.log("Download finished -> preparsing");
 	//hide upload box
 	$("#help_input_file").addClass('hidden');
@@ -32,6 +55,7 @@ App.fu = App.cable.subscriptions.create("FuChannel", {
         //start preparsing the
         var p = [{'name' : 'organism', 'value' : $("#project_organism_id").val()}];
         refresh_post("preparsing", data['url_preparsing'], p, 'post');
-
-    }
+  */
+/*	}
 });
+*/

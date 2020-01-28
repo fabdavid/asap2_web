@@ -1,4 +1,5 @@
-<%= @cmd.to_json %>
+<%# raw @h_datasets.to_json %>
+<%# @cmd.to_json %>
 <%# @res.to_json %>
 
 <% if @h_formats and detected_format = @h_formats[@h_upload_details['detected_format']] %>
@@ -227,12 +228,14 @@ $("#list_datasets a").click(function(){
 
 <% else %>
 
-Format not detected:
-1--
-<%= @h_formats %>
-2--
-<br/>
-3--
-<%= @h_upload_details.to_json %>
+Format not detected.
+<% if @h_json and @h_json['displayed_error'] %>
+<span class='badge badge-danger'><%= raw @h_json['displayed_error'] %></span>
+<% end %>
+<% if admin? %>
+<%= @cmd %>
+<% end %>
+
+<%# @h_upload_details.to_json %>
 
 <% end %>
