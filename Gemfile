@@ -47,7 +47,7 @@ gem 'turbolinks', '~> 5'
 
 # Use Bootstrap SASS for Bootstrap support
 #gem 'bootstrap-sass', '~> 3.3'
-gem 'bootstrap', '~> 4.1.3'
+gem 'bootstrap', '~> 4.3.1'
 gem "bootstrap-switch-rails"
 
 # Use Font Awesome Rails for Font Awesome icons
