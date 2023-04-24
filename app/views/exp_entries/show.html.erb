@@ -1,4 +1,34 @@
 <p id="notice"><%= notice %></p>
 
-<%= link_to 'Edit', edit_exp_entry_path(@exp_entry) %> |
-<%= link_to 'Back', exp_entries_path %>
+<div class='card m-2'>
+  <div class='card-header'>
+    <%= link_to(@exp_entry.identifier, search_projects_path(:q => @exp_entry.identifier), {:class => 'badge badge-light'}) + " " + @exp_entry.title %>
+  </div>
+  <div class='card-body'>
+    <p>
+      <% @exp_entry.exp_entry_identifiers.each do |eeid| %>
+       <span class='col-md-2'><a><%= @h_identifier_types[eeid.identifier_type_id].name %></a></span>
+       <% url =  @h_identifier_types[eeid.identifier_type_id].url_mask %>
+       <%= link_to eeid.identifier, search_projects_path(:q => eeid.identifier), {:class => 'badge badge-light'} %><sup><%= link_to(raw("<i class='fa fa-link'></i>"), url.gsub(/\#\{id\}/, eeid.identifier), {}) %></sup>
+      <% end %>
+    </p>
+    <p>
+      <b>Description</b>
+	<div class='alert alert-light'>
+	  <%= @exp_entry.description %>
+	</div>
+    </p>   
+    
+    <p>
+       <b>Sample identifiers</b>
+       <div>
+	 <%= raw @exp_entry.sample_identifiers.map{|s| url =  @h_identifier_types[s.identifier_type_id].url_mask; "<span class='nw'>" + link_to(s.identifier, search_projects_path(:q => s.identifier), {:class => 'badge badge-light'}) + raw("<sup>" + link_to(raw("<i class='fa fa-link'></i>"), ((url) ? url.gsub(/\#\{id\}/, s.identifier) : '')) + "</sup></span>")}.join(" ") %>
+</div>
+</p>
+
+</div>
+</div>
+
+
+<%# link_to 'Edit', edit_exp_entry_path(@exp_entry) %>
+<%# link_to 'Back', exp_entries_path %>

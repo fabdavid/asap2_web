@@ -10,7 +10,7 @@ task update_organism_tag: :environment do
   start = Time.now
 
   ## Download file
-  kegg_file = "/data/asap2/kegg_organisms.txt"
+  kegg_file = "/data/asap2/kegg_species/kegg_species.txt"
   `wget -O #{kegg_file} 'http://rest.kegg.jp/list/genome'`
 
   ActiveRecord::Base.transaction do

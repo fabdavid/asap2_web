@@ -4,8 +4,13 @@
 <!--</div>-->
 
 <span id='list_of_cats'>
-<% @h_list_indexes_by_cat.each_key do |cat| %>
+<% keys_are_int = true %>
+<% @h_list_indexes_by_cat.keys.map{|e|  keys_are_int = false if e != e.to_i.to_s} %> 
+<% ordered_keys = (keys_are_int) ? @h_list_indexes_by_cat.keys.sort{|a, b| a.to_i<=> b.to_i} : @h_list_indexes_by_cat.keys.sort %> 
+<%# ordered_keys = @h_list_indexes_by_cat.keys.sort{|a, b| a.to_i<=> b.to_i} %>
+<%# raw keys_are_int %>
 
+<% ordered_keys.each do |cat| %>
 <span class='badge badge-secondary'>
 <%= check_box_tag 'select_cat[]', cat, false, {:id => 'sc_' + cat.to_s, :class => 'check_box_cat'} %>  
 <%= cat %> (<%= @h_list_indexes_by_cat[cat].size %> cells)
@@ -18,12 +23,60 @@
 
 var h_cats = <%= raw @h_list_indexes_by_cat.to_json %>
 
+function upd_label(){
+ var h_existing = JSON.parse($("#attrs_discarded_metadata_json").val())
+ var current_metadata = h_annots[$("#annot_id").val()].name
+ var h_tmp = {sel : [], unsel : []}
+  h_existing[current_metadata]=[]
+  $('#list_of_cats input[type="checkbox"]').each(function(){
+    var t = this.id.split("_")
+    t.shift()
+    var cl = t.join("_")
+    if ($(this).prop("checked") == true){
+      h_tmp.sel.push(cl)
+    }else{
+      h_tmp.unsel.push(cl)
+    }
+ })
+
+ var h_chosen_label = {sel : 'discarded', unsel : 'kept'} 
+ 
+ var chosen_k = (h_tmp.sel.length < h_tmp.unsel.length) ? 'sel' : 'unsel'
+ h_existing[current_metadata] = {type : chosen_k, vals : h_tmp[chosen_k]}
+
+ // rewrite the discarded metadata JSON 
+ $("#attrs_discarded_metadata_json").val(JSON.stringify(h_existing))
+
+ //change placeholder of label
+ var placeholder = ''
+ var metas = Object.keys(h_existing)
+ console.log(h_existing)
+ 
+ placeholder = metas.filter(e =>  h_existing[e].vals.length > 0).map(e => e + ": " + h_chosen_label[h_existing[e].type] + "=" + h_existing[e].vals.join(",")).join(" ")
+ /*if (placeholder == ''){
+  placeholder = 'Label'
+ }*/
+ for (var i=0; i<metas.length; i++){ 
+    
+ }
+ console.log("Placeholder: " + placeholder)
+   $("#attrs_manual_selection").val(placeholder)
+// $("#attrs_label").prop("placeholder", placeholder)
+ /* if ($("#attrs_label").val() == ''){
+  ($("#attrs_label").val(placeholder)
+ } */
+}
+
 /*$("#discard_from_cat_btn").click(function(){
  var list_of_indexes = {}
  $('#list_of_cats input[type="checkbox"]').each(function(){
             $(this).prop("checked", false)
  })
 })*/
+
+$(".check_box_cat").click(function(){
+ upd_label()
+})
 
 $("#select-all-cats").click(function(){
   // $(".checkbox_cat").prop("checked")=true
@@ -34,16 +87,18 @@ $("#select-all-cats").click(function(){
          //span.addClass("badge-success")
          //span.removeClass("badge-secondary")         
   })  
+  upd_label()
 })
 
 $("#unselect-all-cats").click(function(){
  $('#list_of_cats input[type="checkbox"]').each(function(){
             $(this).prop("checked", false)
  })
+ upd_label()
 })
 
 // add button for cell filtering
-if ($("#discard_from_cat_btn").length > 0){
+/*if ($("#discard_from_cat_btn").length > 0){
  $("#discard_from_cat_btn").removeClass("hidden")
-}
+}*/
 <% end %>

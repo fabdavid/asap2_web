@@ -1,24 +1,52 @@
+<h5>Select groups of cells to be <b>filtered out</b></h5>
 <div class='alert alert-warning'>Interactive cell filtering loads faster with Chrome with a huge number of cells.</div>
 
-<div class='card'>
-  <div class='card-body'>
-    <table>
-      <% @list_p.each do |e| %> <%# select{|e| @h_data[e[:name]]}.each do |e| %>
-      <tr id='param_row_<%= e[:name] %>'><td>Filter out cells that have <%= (e[:type] == :greater) ? 'MORE' : 'LESS' %> than</td><td><input id="<%= e[:name] %>_value" name="attrs[<%= e[:attr_name] %>]" value=<%= e[:threshold] %>  type="text" style="width:60px" class='filter_input'/> <%= e[:label] %></td></tr>
-      <% end %>
-    </table>
+<div class ='card-deck'>
+  <div class='card'>
+    <div class='card-body'>
+      <table>
+	<% @list_p.each do |e| %> <%# select{|e| @h_data[e[:name]]}.each do |e| %>
+	<tr id='param_row_<%= e[:name] %>'><td>Filter out cells that have <%= (e[:type] == :greater) ? 'MORE' : 'LESS' %> than</td><td><input id="<%= e[:attr_name] %>_value" name="attrs[<%= e[:attr_name] %>]" value=<%= e[:threshold] %>  type="text" style="width:60px" class='filter_input'/><%= hidden_field_tag e[:attr_name] + "_saved", e[:threshold] %> <%= e[:label] %></td><td><button id='disable-btn-<%= e[:attr_name] %>' class='btn btn-sm btn-outline-danger disable-btn' type='button'>Disable</button></td></tr>
+	<% end %>
+      </table>
+    </div>
+  
+    
+    <input id='attrs_manually_discarded_cols' type="hidden" name="attrs[manually_discarded_cols]"/>
+    <input id='attrs_nber_manually_discarded_cols' type="hidden" name="attrs[nber_manually_discarded_cols]"/>
+    <input id='attrs_discarded_cols' type="hidden" name="attrs[discarded_cols]"/>
+    <% parsing_step = Step.where(:docker_image_id => @asap_docker_image.id, :name => 'parsing').first %>
+    <% parsing_run = Run.where(:project_id => @project.id, :step_id => parsing_step.id).first %>
+    <% h_run = {:run_id => parsing_run.id, :output_attr_name => "output_matrix",:output_filename => "parsing/output.loom", :output_dataset => "/matrix"} %>
+    <%= hidden_field_tag 'attrs[input_matrix]', "[#{h_run.to_json}]" %>
+    <!-- <button id='apply_filter_btn' class='btn btn-primary' type='button'>Apply</button> -->
+  </div>
+  <div class='card'>
+    <div id='cell_filtering_plotly_plot'>
+    </div>
   </div>
 </div>
-
-<input id='attrs_manually_discarded_cols' type="hidden" name="attrs[manually_discarded_cols]"/>
-<input id='attrs_nber_manually_discarded_cols' type="hidden" name="attrs[nber_manually_discarded_cols]"/>
-<input id='attrs_discarded_cols' type="hidden" name="attrs[discarded_cols]"/>
-<% parsing_run = Run.where(:project_id => @project.id, :step_id => 1).first %>
-<% h_run = {:run_id => parsing_run.id, :output_attr_name => "output_matrix",:output_filename => "parsing/output.loom", :output_dataset => "/matrix"} %>
-<%= hidden_field_tag 'attrs[input_matrix]', "[#{h_run.to_json}]" %>
-<!-- <button id='apply_filter_btn' class='btn btn-primary' type='button'>Apply</button> -->
-
 <%= javascript_tag do %>
+
+$(".disable-btn").click(function(){
+ var name = this.id.split("-")[2]
+ if ($(this).hasClass("btn-outline-danger")){
+  $(this).addClass("btn-danger")
+  $(this).removeClass("btn-outline-danger")
+  $(this).html("Disabled")
+  $("#" + name + "_saved").val($("#" + name + "_value").val())
+  $("#" + name + "_value").val('')
+  console.log("disable " + name)
+  $("#" + name + "_value").prop('disabled', true)
+ }else{
+  $(this).addClass("btn-outline-danger")
+  $(this).removeClass("btn-danger")
+  $(this).html("Disable")
+  $("#" + name + "_value").val($("#" + name + "_saved").val())
+  $("#" + name + "_value").prop('disabled', false)
+ }
+ changeCutoff(false)
+})
 
 var t0 = performance.now();
 var h_discarded = {}
@@ -73,28 +101,31 @@ for (var i=0; i < list_p.length; i++){
  // }
 }
 
+var h_annots = <%= raw @h_annots.to_json %>
+
 var h_p = <%= raw @h_p.to_json %>
 
 var list_types = Object.keys(h_p)
-
+//console.log(h_p)
 var list_p_greater = <%= raw @h_p[:greater].keys.to_json %> // Object.keys(h_p.greater)
 var list_p_lower = <%= raw @h_p[:lower].keys.to_json %>
 
-function changeCutoff(){
+console.log(h_data)
 
-
+function changeCutoff(update_manually_discarded){
 
    // discard cells that are associated with selected categories of a given cell annotation
    h_manually_discarded = {}
    h_discarded={}
 
-   // init from existing manully filtered cells
-   if ($("#attrs_manually_discarded_cols").val() != ''){
+   // init from existing manully filtered cells => not needed since we only use one metadata
+/*   if ($("#attrs_manually_discarded_cols").val() != ''){
     var existing = JSON.parse($("#attrs_manually_discarded_cols").val())
     for(var i=0;i<existing.manually_discarded_cols.length;i++){
      h_manually_discarded[existing.manually_discarded_cols[i]]=1
     }
    }
+*/
    $('#list_of_cats input[type="checkbox"]').each(function(){
     // If checkbox is checked
     if(this.checked){
@@ -120,21 +151,23 @@ function changeCutoff(){
  // do filtering from thresholds
 
 <% @h_p.each_key do |type| %>
- //console.log("<%= type %>")
- for (var i=0; i<list_p_<%= type %>.length; i++){
-  if (h_data[list_p_<%= type %>[i]]){
-   var threshold = $("#" + list_p_<%= type %>[i] + "_value").val()
-   //console.log("l -> " + list_p_<%= type %>[i])
-   l = h_data[list_p_<%= type %>[i]].values
-   //console.log(l)
-   for (var j=0; j<l.length; j++){
-    if (l[j] <%= raw (type == :lower) ? "<" : ">" %> threshold){ // h_p.<%= type %>[list_p_<%= type %>[i]].threshold){
-      h_discarded[j]= 1 //(!h_discarded[j]) ? 1 : h_discarded[j]+1
+ // check that the parameter is not disabled
+  //console.log("<%= type %>")
+  for (var i=0; i<list_p_<%= type %>.length; i++){
+   if ($("#disable-btn-" + list_p_<%= type %>[i]).hasClass('btn-outline-danger')){
+    if (h_data[list_p_<%= type %>[i]]){
+     var threshold = $("#" + list_p_<%= type %>[i] + "_value").val()
+     //console.log("l -> " + list_p_<%= type %>[i])
+     l = h_data[list_p_<%= type %>[i]].values
+     //console.log(l)
+     for (var j=0; j<l.length; j++){
+      if (l[j] <%= raw (type == :lower) ? "<" : ">" %> threshold){ // h_p.<%= type %>[list_p_<%= type %>[i]].threshold){
+        h_discarded[j]= 1 //(!h_discarded[j]) ? 1 : h_discarded[j]+1
+      }
+     }
     }
    }
-  }
  }
-
 <% end %>
 
  // update html
@@ -152,13 +185,16 @@ list_discarded =  Object.keys(h_discarded)
 // list_discarded =  Object.keys(h_discarded).filter(function(key){h_discarded[key]==<%= @h_data.values.compact.size %>})					
 
    $("#attrs_discarded_cols").val(JSON.stringify({discarded_cols : list_discarded})).trigger("change")
- $("#attrs_manually_discarded_cols").val(JSON.stringify({manually_discarded_cols : list_manually_discarded}))
+//if (update_manually_discarded == true){
+   $("#attrs_manually_discarded_cols").val(JSON.stringify({manually_discarded_cols : list_manually_discarded}))
+//}
         $("#attrs_nber_manually_discarded_cols").val(list_manually_discarded.length)
    filtered.innerHTML = "<span class=''>Discarded : " + list_discarded.length + "</span>";
         manually_filtered.innerHTML = "<span class=''>Manually discarded : " + list_manually_discarded.length + "</span>";
-   result.innerHTML = "<span class=''>Selected : " + (nber_cells - list_discarded.length) + "</span>"; 
+   result.innerHTML = "<span class=''>Kept : " + (nber_cells - list_discarded.length) + "</span>"; 
 
 }
+
 /*
 $("#apply_filter_btn").change(function(){
 changeCutoff()
@@ -166,23 +202,30 @@ changeCutoff()
 */
 
 $(".filter_input").change(function(){
-changeCutoff()
+changeCutoff(false)
 })
 $(".filter_input").keyup(function(){
-changeCutoff()
+ changeCutoff(false)
 })
 
+changeCutoff(false)
 
-changeCutoff()
-/*
 $("#discard_from_cat_btn").click(function(){
-changeCutoff()
+ changeCutoff(true)
+ //$("#annot_id").val('')
 })
-*/
 
-$("#discard_from_cat_btn").css({"display" : "none"});
+
+//$("#discard_from_cat_btn").css({"display" : "none"});
+$("#annot_categories").on("click", "#select-all-cats", function(){
+changeCutoff(false)
+})
+$("#annot_categories").on("click", "#unselect-all-cats", function(){
+changeCutoff(false)
+})
+
 $("#annot_categories").on("click", ".check_box_cat", function(){
-changeCutoff()
+changeCutoff(false)
 })
 
 function resetCheckboxes(){
@@ -194,14 +237,14 @@ function resetCheckboxes(){
 function resetFilters(){
         $("#attrs_manually_discarded_cols").val('');
         resetCheckboxes()
-      changeCutoff()
+      changeCutoff(false)
         return false;
 }
 
 function resetParams(){
         $("#attrs_manually_discarded_cols").val('');
         resetCheckboxes()
-	changeCutoff()
+	changeCutoff(false)
         return false;
 }
 
@@ -210,6 +253,34 @@ function sendValues(){
         var form = document.getElementById("form");
         form.submit();
 }
+
+  function highest(...arguments){
+      return arguments.sort(function(a,b){
+        return b - a;
+      });
+   }
+
+var vals = h_data.depth.values.map(a => parseInt(a))
+var trace = {
+  "x" : [...Array(vals.length).keys()],
+  "y" : vals.sort(function(a,b){return b-a}),
+ mode: 'lines+markers',
+  type: 'scattergl'
+}
+
+var traces = [trace]
+
+console.log(trace)
+
+var layout = {
+ title:'Ordered depth by cell',
+  xaxis: {title : 'Cell barcodes', type : 'log'},
+  yaxis: {title : 'UMI counts', type : 'log'},
+  hovermode: "closest"  
+}
+
+Plotly.newPlot("cell_filtering_plotly_plot", traces, layout, {})
+
 
 var t1 = performance.now();
 console.log(t1-t0 + "ms")

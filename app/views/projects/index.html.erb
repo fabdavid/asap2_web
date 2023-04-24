@@ -1,3 +1,4 @@
+<%# raw @h_res.to_json %>
 <% if notice %>
 <div id='notice' class='alert alert-secondary'><%= notice %></div>
 <% end %>
@@ -9,8 +10,27 @@
 Sorry for the inconvenience.
 </div>
 -->
+
+   <% if admin? %>
+   <% used_space = `df -h /data/asap2`.split(/\s+/)[11].gsub(/[^\d]/, '').to_i %>
+   <% if used_space > 90 %>
+   <div class='alert alert-danger'>
+     DANGER! <%= used_space %>% of disk space is used.
+   </div>
+   <% else used_space > 60 %>
+   <div class='alert alert-warning'>
+     WARNING <%= used_space %>% of disk space is used.
+   </div>
+   <% end %>
+
+   <% end %>
+
 <div id='infos' class='row row-eq-height'>
-  <div class='col-xs-12'>
+  <div class='col-md-12'>
+
+    <%= render :partial => 'shared/important_comm' %>
+
+<%# session.id %>
     
     <% if current_user %>
     
@@ -21,15 +41,18 @@ Sorry for the inconvenience.
     <% end %>
     
     
-    <div id='reference' class='alert alert-info'>
-      <i class='fa fa-bolt'></i> <b>New ASAP beta !</b> You can test our new ASAP server. Most of the methods have been implemented but we are still working on the visualization. User accounts have been copied from asap.epfl.ch on April 13th, but new accounts created on asap.epfl.ch will not be transfered automatically since then. Projects from asap.epfl.ch cannot be transfered on this new version at the moment.
+    <div id='reference' class='alert alert-info hidden'>
+<!--      <p><i class='fa fa-bolt'></i> <b>New ASAP!</b> You can now use our new ASAP server. If you prefer to use the old version of ASAP, please go to <a href='https://asap-old.epfl.ch'>asap-old.epfl.ch</a>.</p>
+      <p>You might need to create a new account on this new version. Projects from asap-old.epfl.ch cannot be transfered on this new version at the moment.
+</p>-->
+
       <!--<span class='glyphicon glyphicon-bullhorn'></span> This work has been published in <a href='https://doi.org/10.1093/bioinformatics/btx337'>Bioinformatics</a>.<br/>-->
 <!--      <span class='glyphicon glyphicon-fire'></span> <b>New sharing feature available.</b> Now you can share your project with other people and give specific permissions (view, analyze, or download/clone). To access this new feature, click on 'Settings' once you enter your project. Please let us know if you experience any problem.-->
    <!-- Current release (3) available. Check details <%= link_to 'here', last_version_versions_path() %>.-->
       <!--    <span class='glyphicon glyphicon-info-sign'></span> This page is refreshed automatically every minute. -->
     </div>
-<!--    <div class='alert alert-danger'>
-      We have currently issues with the clustering step. This message will be removed when they will be fixed.
+<!--    <div class='alert alert-warning'>
+      We experienced issues due to recent changes in the application on February 10th 2022. This problem should be fixed now but please let us know if you still notice something wrong using the Feedback link on the top right corner of this page.
     </div>-->
 <!-- <div class='alert alert-success'>
    Recent bug with the clustering step has been fixed.
@@ -64,13 +87,16 @@ Sorry for the inconvenience.
 </span></div>
 <% end %>
 
-<div id='project_lists' class='margin'>
-  <%= render :partial => 'index' %>
+<div id='project_lists' class=''>
+  <%# render :partial => 'index' %>
 </div>
 
 <%= javascript_tag do %>
 
 $(document).ready(function(){
+
+ refresh("project_lists", "<%= search_projects_path(:nolayout => 1) %>", {loading:'fa-2x'})
+
 
 // if (App.project_channel) App.project.subscriptions.remove(App.project_channel);
 
@@ -149,7 +175,5 @@ App.projects.onReceived( function(data){
 <% end %>
 
 //refresh_lists()
-
-
 
 <% end %>

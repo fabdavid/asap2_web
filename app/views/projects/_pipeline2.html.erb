@@ -30,19 +30,23 @@
 	<% if editable? @project %> 
 	<span id='edit_project' title='Edit project'><i class='fa fa-cog'></i></span> 
 	<% end %>       
+	<%# exportable?(@project) %>
 	<% if exportable?(@project) and @project.sandbox == false %>   
 	<span id='clone_button' title='Clone'><i class='fa fa-copy'></i></span>
 	<% end %>                          
       </h4>
     </div>
-    <% if owner? @project %>
-    <div id='public-btn' class='badge badge-success float-right mr-3 pointer'><%= (@project.public == false) ? "Set public" : "Freeze new analyses" %></div>
-    <% end %>
+    <div id="public_status" class='float-right'>
+      <span class='badge badge-light mr-2'><i><%= (@project.public == true) ? "Public project" : "Private project" %></i></span>
+      <span id='project_version-btn' class='badge badge-light mr-2 pointer'>v<%= @project.version_id %></span>
+    </div>
+
     <div style='clear:both'></div>
    
   </div>
   <div id="left_menu" class="nav-side-menu">
-    <% h_steps = {}; Step.where(:hidden => false).order("rank").all.map{|s| h_steps[s.group_name] ||=[]; h_steps[s.group_name].push s} %>
+    <%# h_steps = {}; Step.where(:version_id => @project.version_id, :hidden => false).order("rank").all.select{|s| (s.admin == false or admin?)}.map{|s| h_steps[s.group_name] ||=[]; h_steps[s.group_name].push s} %>
+    <% h_steps = {}; Step.where(:docker_image_id => @asap_docker_image.id, :hidden => false).order("rank").all.select{|s| (s.admin == false or admin?)}.map{|s| h_steps[s.group_name] ||=[]; h_steps[s.group_name].push s} %>
     <% h_steps.each_key do |group_name| %>
     <% group_name_tag = group_name.downcase.gsub(" ", '-') %>
     <div id="menu_<%= group_name_tag %>" class='menu_item pointer' data-toggle="collapse<%# (group_name_tag == 'report') ? ' active' : '' %>" data-target="#<%= group_name_tag %>_nav" aria-expanded="true" aria-controls="<%= group_name_tag %>_nav">
@@ -63,6 +67,26 @@
 </div>
 
 <%= javascript_tag do %>
+
+$("#clone_button").click(function(){
+ console.log("cloning")
+ $("#form_container").html("<div style='vertical-align:center'><i class='fas fa-spinner fa-pulse fa-2x'></i> Please wait while project is being cloned...</div>")
+ $("#ontop_window_close").addClass("hidden")
+ $("#ontop_window").removeClass("hidden")
+})
+
+$("#project_version-btn").click(function(e){
+ refresh("popup_container", "<%= version_path(@project.version_id, :nolayout => 1) %>", {loading: 'fa-2x'})
+ var w = $(window).width();
+  $("#popup_window").css({
+        left: 200,
+        width:w - 250,
+        top: e.pageY + 10
+    }).stop().show(100);
+
+ $("#popup_window").removeClass("hidden")
+
+})
 
 $(".menu_item").click(function(){
  var item_id = this.id.split("_")[1]
@@ -85,9 +109,13 @@ $("#ontop_window").removeClass("hidden");
 
  $("#public-btn").click(function(e){
   $("#popup_window").removeClass("hidden")
-  var html = "<div class='alert alert-info'>This operation allows to publish your results, which will be not editable anymore.<BR/>If more analyses are added to the project you can then freeze the results to let know to the users of the project that you validated them and will remain stable</div><div class='alert alert-danger'>WARNING: This procedure is not reversible!</div><div class='btn btn-success'>Confirm to set this project public</div>" 
+   var html = ''
+   <% if @project.public == false %>
+    html = "<div class='alert alert-info'>This operation allows to publish your results, which will be not editable anymore.<BR/>If more analyses are added to the project you can then freeze the results to let know to the users of the project that you validated them and will remain stable</div><div class='alert alert-danger'>WARNING: This procedure is not reversible!</div><div id='confirm_set_public-btn' class='btn btn-success'>Confirm to set this project public</div>"
+   <% else %>
+     html = "<div class='alert alert-info'>This operation allows to freeze results of a public project</div><div class='alert alert-danger'>WARNING: This procedure is not reversible!</div><div id='confirm_set_public-btn' class='btn btn-success'>Confirm to freeze all new analyses of this project</div>"
+   <% end %> 
   $("#popup_container").html(html)
- //   refresh("popup_container", "<%= exp_entries_path %>/" + id + "/summary", {loading: 'fa-2x'})
   var w = $(window).width();
   $("#popup_window").css({
         left: 200,
@@ -97,8 +125,7 @@ $("#ontop_window").removeClass("hidden");
  })
 
 $("#popup_window").on("click", "#confirm_set_public-btn", function(e){
- //refresh("popup_container", "<%= exp_entries_path %>/" + id + "/summary", {loading: 'fa-2x'})
-
+ refresh_post("popup_container", "<%= set_public_project_path(:key => @project.key) %>/", [], 'post', {loading: 'fa-2x'})
  $("#popup_window").addClass("hidden")
 });
 
@@ -115,7 +142,10 @@ $(".pipeline_step").click(function(){
  if (!$(this).hasClass("disabled")){
   $(this).addClass("active");
   $("#popup_window").addClass('hidden');
-  refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>&step_id=" + step_id, {loading: 'fa-2x loading-step'});
+  console.log("abort " + xhrs.length + " xhr")
+  abort_xhrs(xhrs)
+  var xhr = refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>&step_id=" + step_id, {loading: 'fa-2x loading-step'});
+  xhrs = [xhr]
  }
 
  $("#popup_window").addClass('hidden');

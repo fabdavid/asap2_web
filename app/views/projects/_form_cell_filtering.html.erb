@@ -6,7 +6,7 @@
 <%# raw @h_data[:protein_coding] %>
 <%# raw @h_data[:mito] %>
 <%# raw @h_data[:ribo] %>
-
+<%# @h_annots.to_json %>
 <pre><%= @error %></pre>
 <% if  @h_method_details %>
 <% @h_attrs = @h_method_details[:attrs] %>
@@ -17,7 +17,7 @@
 <div id="cell_filtering_form_container">
 <div id="cell_filtering_header">
 <!--  <div class="float-left"></div>-->
-  <div class="float-left badge badge-success mr-4"><span id="result">Selected : <i class='fa fa-spinner fa-pulse' /></span></div> 
+  <div class="float-left badge badge-success mr-4"><span id="result">Selected : <i class='fa fa-spinner fa-pulse'></i></span></div> 
   <div class="float-left badge badge-secondary mr-4"><span id="filtered" class="">Discarded : 0</span> <span id='cancel_discarded' class='pointer' title='Reset to original parameters'><i class='fa fa-times-circle'></i></span></div>
   <div class="float-left badge badge-secondary mr-4"><span id="manually_filtered" class="">Manually discarded : 0</span> <span id='cancel_manually_discarded' class='pointer' title='Reset manually discarded cells'><i class='fa fa-times-circle'></i></span></div>
 <!--  <div class='float-left'><button class='btn btn-primary btn-sm' type='button' onclick="sendValues()">Save Filters</button></div> -->
@@ -36,6 +36,11 @@
 
 <!-- add filter by annotation -->
 <div class='mb-3'>
+<!--  <div class='form-group'>
+    <label for='attrs_label'>Label</label> -->
+    <%= hidden_field_tag 'attrs[manual_selection]', '', {:placeholder => '', :class => 'form-control'} %>
+<!--  </div> -->
+  <%= hidden_field_tag 'attrs[discarded_metadata_json]', '{}' %>
  <%# render :partial => 'attribute', :locals => {:attr_name => 'group_annot', :horiz_element => {}} %>
   <%# annotations = Annot.where(:project_id => @project.id, :data_type_id => 3, :dim => 1).all %>
   <% if @annots.size > 0 %>
@@ -44,7 +49,12 @@
    <%# h_runs.to_json %>
    <%# l = annotations.map{|a| [display_run(h_runs[a.run_id]) + " " + a.name, a.id]} %> 
    <%# l = annotations.map{|a| [a.name + " " + display_run(@h_runs[a.run_id]), a.id]} %>
-   <% l = @annots.map{|a| [a.name + " ", a.id]} %>
+   <% l = ([@parsing_run] + @cell_filtering_runs + @gene_filtering_runs).map{|r| [display_run(r), r.id]} %>
+   <%= select_tag 'store_run_id', options_for_select(l, session[:cell_filtering_store_run_id]), {:class => 'form-control mr-4 mb-2'} %>
+  <!-- 1<%= @parsing_run if admin? %>
+   2<%= @cell_filtering_runs if admin? %>
+   3<%= @gene_filtering_runs if admin? %>--> 
+   <% l = @annots.map{|a| [a.name + " ", a.id]}.sort %>
    <% l.unshift ["Select an annotation to be used to discard cells", nil] %>
    <%= select_tag 'annot_id', options_for_select(l, nil),  {:class => 'form-control mr-4 mb-2'} %>
   <% end %>
@@ -53,9 +63,12 @@
     <button id='discard_from_cat_btn' type='button' class='btn btn-primary btn-sm hidden'>Discard cells from selected categories</button>
   </div>
   <div class='clear'></div>
+
 </div>
 
-<% if @project.nber_cols > 20000 %>
+
+
+<% if true %><%#@project.nber_cols > 20000 %>
  <%= render :partial => 'form_cell_filtering_scalable' %>
 <% else %>
 
@@ -140,7 +153,9 @@
 <input id='attrs_nber_manually_discarded_cols' type="hidden" name="attrs[nber_manually_discarded_cols]"/>
 <input id='attrs_discarded_cols' type="hidden" name="attrs[discarded_cols]"/>
 
-<% parsing_run = Run.where(:project_id => @project.id, :step_id => 1).first %>
+<%# parsing_step = Step.where(:version_id => @project.version_id, :name => 'parsing').first %>
+<% parsing_step = Step.where(:docker_image_id => @asap_docker_image.id, :name => 'parsing').first %>
+<% parsing_run = Run.where(:project_id => @project.id, :step_id => parsing_step.id).first %>
 <% h_run = {:run_id => parsing_run.id, :output_attr_name => "output_matrix",:output_filename => "parsing/output.loom", :output_dataset => "/matrix"} %>
 <%= hidden_field_tag 'attrs[input_matrix]', "[#{h_run.to_json}]" %>
 </div>
@@ -149,6 +164,7 @@
 <%# @h_data.to_json %>
 
 <%= javascript_tag do %>
+
 <%= render :partial => 'form_cell_filtering_js' %>
 
 $("#discard_from_cat_btn").click(function(){
@@ -163,6 +179,14 @@ $("#discard_from_cat_btn").click(function(){
 <% end %>
 
 <%= javascript_tag do %>
+
+$("#store_run_id").change(function(){
+refresh("step_content", "<%= raw form_new_analysis_project_path(:key => @project.key, :step_id => @step.id) %>" + "&store_run_id=" + $("#store_run_id").val(), {loading:'fa-2x'})
+$(".new_job_popup").click()})
+
+$("#<%= @step.name %>_button").click(function(){
+console.log("test_blaaaaaaaaaaaaa")
+})
 
 
 $( document ).ready(function(){

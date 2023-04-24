@@ -21,6 +21,23 @@ module Fetch
       
     end
 
+    def add_exp_entry_identifiers(exp_entry, h_identifiers)
+      h_identifiers.each_key do |k|
+        h_identifiers[k].each do |identifier|
+          h_eeid = {
+            :exp_entry_id => exp_entry.id,
+            :identifier_type_id => k,
+            :identifier => identifier
+          }
+          ee_identifier = ExpEntryIdentifier.where(h_eeid).first
+          if !ee_identifier
+            ee_identifier = ExpEntryIdentifier.new(h_eeid)
+            ee_identifier.save
+          end
+        end
+      end
+    end
+
     def add_upd_exp_codes h
       puts "LAAAAAAA"
       h_existing_exp_codes = {}
@@ -29,12 +46,12 @@ module Fetch
         h_existing_exp_codes[exp_entry.identifier_type_id][exp_entry.identifier] = exp_entry
       end
       puts "LAAAAAA" + h_existing_exp_codes.to_json
-      h_code_types = {:geo_codes => 5, :array_express_codes => 6}
+      h_code_types = {:geo_codes => 5, :array_express_codes => 6, :ega_codes => 10}
       
       h_code_types.each_key do |code_type|
         puts "BLIIII" + code_type.to_json
         h_codes = {}
-        h[code_type].strip!
+        h[code_type].strip! if h[code_type]
         if h[code_type] and !h[code_type].empty?
           
           h[code_type].split(/[\s,;]+/).each do |code|
@@ -49,7 +66,7 @@ module Fetch
               end
               exp_entry = ExpEntry.where(:identifier => code, :identifier_type_id => h_code_types[code_type]).first
               if exp_entry and !h[:project].exp_entries.include? exp_entry
-                h[:project].exp_entries << exp_entry
+                h[:project].exp_entries << exp_entry if !h[:project].exp_entries.include? exp_entry
               end
             end
           end
@@ -135,7 +152,6 @@ module Fetch
         :submitted_at =>  h_fields["Public Release Date"].compact.uniq.map{|e| Time.new(e)}.sort.first
       }
 
-
       exp_entry = ExpEntry.where(:identifier => array_express_id).first
       if ! exp_entry
         exp_entry = ExpEntry.new(h_exp_entry)
@@ -143,6 +159,8 @@ module Fetch
       else
         exp_entry.update_attributes(h_exp_entry)
       end
+
+      Fetch.add_exp_entry_identifiers(exp_entry, other_identifiers)
 
       Fetch.load_articles(exp_entry.pmid)
 
@@ -318,7 +336,7 @@ module Fetch
                 if m[2] == 'relation'
                   values.each do |val|
                     t = val.split(/\s*\:\s+/)
-                    if m2 = t[1].match(/[\/=]([A-Z0-9]+?)$/) #and m2[1].match(/(SAMN)|(.RX)/)
+                    if t[1] and m2 = t[1].match(/[\/=]([A-Z0-9]+?)$/) #and m2[1].match(/(SAMN)|(.RX)/)
                       sample_identifiers.push({:identifier_type => t[0], :identifier => m2[1]})
                     end
                   end
@@ -354,6 +372,9 @@ module Fetch
           exp_entry.update_attributes(h_exp_entry)
   #        puts "Updated!"
         end
+
+        Fetch.add_exp_entry_identifiers(exp_entry, h_identifiers)
+        
 
      #   puts "TIME: After save " + (Time.now-start_time).to_s
 
@@ -421,10 +442,14 @@ module Fetch
       
       require 'hpricot'
       require 'open-uri'
+
+      results = nil
+
+      if pmid
       
       doc = open("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=#{pmid}&retmode=xml") { |f| Hpricot(f) }
       p_article = doc.at("pubmedarticle")
-      results = nil
+    
       if p_article
         citation= p_article.at("medlinecitation")
         article = citation.at("article")
@@ -461,8 +486,10 @@ module Fetch
         abstract = article.at("abstract")
         results[:abstract]=abstract.at("abstracttext").innerHTML if abstract
       end
+
+      end
       return results
-      
+
     end
   end
 end

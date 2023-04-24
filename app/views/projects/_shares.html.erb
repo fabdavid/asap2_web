@@ -1,6 +1,18 @@
 <!--<div class='alert alert-warning'>Currently, we experience problems sending email.</div> -->
 <label>Permissions</label>
 
+<div class='alert alert-danger'>
+  <b>Please be aware that you have to comply with the usual ethical and legal rules for sharing this dataset. In the case of human data, you must ensure that the underlying personal data is not accessible.</b>
+</div>
+
+
+<%= text_area_tag 'batch_emails', '', {:rows => 5, :placeholder => 'List of emails', :class => 'form-control'} %>
+Default permissions 
+<%= check_box_tag "batch_analyze_perm", '1', true, {:class => ''} %> Analyze
+<%= check_box_tag "batch_export_perm", '1', true, {:class => ''} %> Export
+
+<button id='batch_upd-btn' class='btn btn-primary'>Batch update</button>
+ 
 <table id='share_table'>
 <thead>
 <tr id='shares_header' class='<%# (@shares.size == 0) ? 'hidden' : '' %>'>
@@ -54,7 +66,23 @@
 </table>
 <button type='button' id='add_email_button' class='btn btn-primary btn-sm'>Add new email</button>
 
+<br/>
+<button type="submit" class="btn btn-primary submit_project">Update project</button>
+
+
 <%= javascript_tag do %>
+
+$("#batch_upd-btn").click(function(){
+ let url = "<%= batch_add_shares_path %>"
+ let p = [
+  {name : 'batch_emails', value : $.trim($("#batch_emails").val().toLowerCase())},
+  {name : 'batch_analyze_perm', value : ($("#batch_analyze_perm").prop("checked") == true) ? true : false},
+  {name : 'batch_export_perm', value : ($("#batch_export_perm").prop("checked") == true) ? true : false},
+  {name : 'project_key', value : '<%= @project.key %>'}
+ ]
+
+ refresh_post("share_container", url, p, 'post', {loading:'fa-2x'});
+})
 
 $(".delete_share").click(function(){
   let t = this.id.split("_")
@@ -120,6 +148,7 @@ $("#invite_button").click(function(){
   let url = "<%= shares_path %>"
   let p = [];
   p.push({name : 'share[email]', value : $.trim($("#email_field").val().toLowerCase())});
+ 
   let t = ['view', 'analyze', 'export']
   for (let i=0; i<t.length; i++){
    p.push({name : 'share[' + t[i] + '_perm]', value : ($("#share_" + t[i] + "_perm").prop("checked") == true) ? true : false});

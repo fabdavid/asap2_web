@@ -1,26 +1,52 @@
 <%# @h_stats.to_json %>
-<%# @log.to_json %>
+<%# @log7.to_json %>
 <%# session[:input_data_attrs][@project.id] %>
 <%# params[:step_id] %>
 <%# session[:input_data_attrs][@project.id][params[:step_id]].to_json %>
-<%# @ida.to_json %>
+<%# @ida[attr_name].to_json %>
 <% if @ida and @ida[attr_name] and @h_stats %>
 <table>
   <% @ida[attr_name].each_index do |i| %>
   <% e = @ida[attr_name][i] %>
-  <% if e[:run_id] and @h_stats[e[:run_id]] %>
+  <% if e[:run_id] and @h_stats[e[:run_id].to_s] %>
   <tr>
-    <td><span><%= raw(display_run_short(@h_runs[e[:run_id].to_i])) %></span></td>
+    <td><span><%= raw(display_run_short(@h_runs[e[:run_id]])) %></span></td>
     <%# @h_stats.to_json %>
-    <td><span id='ge_de_up_<%= e[:run_id] %>' class='badge-nber_genes pointer badge badge-<%= (@h_stats[e[:run_id]]["up"] > 0) ? "success" : "secondary" %>'><%= @h_stats[e[:run_id]]["up"] %> genes</span></td>
-    <td><span id='ge_de_down_<%= e[:run_id] %>' class='badge-nber_genes pointer badge badge-<%= (@h_stats[e[:run_id]]["down"] > 0) ? "danger" : "secondary" %>'><%= @h_stats[e[:run_id]]["down"] %> genes</span></td>
+    <td><span id='ge_de_up_<%= e[:run_id] %>' class='badge-ge-nber_genes pointer badge badge-<%= (@h_stats[e[:run_id].to_s]["up"] > 0) ? "success" : "secondary" %>'><%= @h_stats[e[:run_id].to_s]["up"] %> genes</span></td>
+    <td><span id='ge_de_down_<%= e[:run_id] %>' class='badge-ge-nber_genes pointer badge badge-<%= (@h_stats[e[:run_id].to_s]["down"] > 0) ? "danger" : "secondary" %>'><%= @h_stats[e[:run_id].to_s]["down"] %> genes</span></td>
   </tr>
+  <% else %>
+ <%=  @h_stats[e[:run_id].to_s].to_json  %> => <%= e[:run_id] %>
   <% end %>
 <% end %>
 </table>
 <% end %>
 
 <%= javascript_tag do %>
+
+$(".badge-ge-nber_genes").click(function(e){ //("click", ".badge-ge-nber_genes", function(e){
+// var t = this.id.split("_")
+// var run_id = t[1]
+// var de_type = t[0]
+ var t = this.id.split("_")
+ var run_id = t[3]
+ var de_type = t[2]
+
+  e.stopPropagation();
+  e.preventDefault();
+  $("#ontop_window").removeClass("hidden")
+  refresh("form_container", "<%=raw runs_path() %>/" + run_id + "/get_de_gene_list?type=" + de_type, {loading: 'fa-2x'})
+  var w = $(window).width();
+/*  $("#ontop_popup_window").css({
+        left: 200,
+        width:w - 250,
+        height:'auto',
+        top: e.pageY + 10
+    }).stop().show(100); */
+// refresh("step_container", "<%= raw runs_path() %>/" + run_id + "/get_de_gene_list?type=" + de_type, {loading:'fa-2x'})
+})
+
+/*
 
 $(".badge-nber_genes").click(function(){
  var t = this.id.split("_")
@@ -34,6 +60,7 @@ $(".badge-nber_genes").click(function(){
  }
 
  refresh("step_container", "<%= raw runs_path() %>/" + run_id + "/get_de_gene_list?from=ge_form&type=" + de_type, {loading:'fa-2x'})
-})
 
+})
+*/
 <% end %>

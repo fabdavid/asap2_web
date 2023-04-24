@@ -1,6 +1,32 @@
 class GeneSetItemsController < ApplicationController
   before_action :set_gene_set_item, only: [:show, :edit, :update, :destroy]
 
+  def get_version
+    @version = Version.where(:id => params[:version_id]).first
+    @h_env = (@version) ? Basic.safe_parse_json(@version.env_json, {}) : {"bla" => "test"}
+  end
+  
+
+  def search
+ 
+    get_version()
+
+    @log = "gene_set_id = #{params[:gene_set_id]} and identifier = '#{params[:name]}'"
+    @gsi = Basic.sql_query2(:asap_data, @h_env['asap_data_db_version'], 'gene_set_items', '', '*', "gene_set_id = #{params[:gene_set_id]} and identifier = '#{params[:identifier]}'").first
+    if @gsi
+      @genes =  Basic.sql_query2(:asap_data, @h_env['asap_data_db_version'], 'genes', '', '*', "id IN (#{@gsi.content})")
+    end
+    #    res.each do |gs|                                                                                                                                                                                    
+#      @h_gene_set_items[gsi.name] = gsi                                                                                                                                                                 
+#    end                  
+#    ConnectionSwitch.with_db(:data_with_version, @h_env['asap_data_db_version']) do
+#      @gsi = GeneSetItem.where(:gene_set_id => params[:gene_set_id], :name => params[:name]).first
+#      # @gene = nil                                                                                                                                                                                    #  
+#    end
+    render :partial => "search"
+    
+  end
+
   # GET /gene_set_items
   # GET /gene_set_items.json
   def index

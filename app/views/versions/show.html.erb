@@ -1,4 +1,9 @@
 <p id="notice"><%= notice %></p>
 
+<div class='m-4'>
+<%= render :partial => 'show', :locals => {:version => @version} %>
+</div>
+
+<% if admin? %>
 <%= link_to 'Edit', edit_version_path(@version) %> |
-<%= link_to 'Back', versions_path %>
+<% end %>

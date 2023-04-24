@@ -1,0 +1,126 @@
+<div class="card card-default mt-2" style="display: block;">
+  <div class="card-header">
+<span class='version_header'>Release <%= version.id %>: <%= raw display_date2(version.release_date) %></span>
+</div>
+  <div class="card-body">
+<div class='alert alert-info'>
+<%= raw version.description.split("\n").join("<br/>") %>
+</div>
+
+<% if admin? %>
+  <%= link_to 'Edit', edit_version_path(version) %>
+  <%# link_to 'Destroy', version, method: :delete, data: { confirm: 'Are you sure?' } %>
+<% end %>
+
+  <% h_tools = JSON.parse(version.env_json)['tool_versions'] %>
+  <table id='tool_list_<%= version.id %>' class='tool_list'>
+    <thead>
+      <tr>
+        <th>Tool/DB</th>
+	<th>Version</th>
+        <th>Details</th>
+	<th>Tool type</th>
+      </tr>
+    </thead>
+
+    <tbody>
+<!--      <% if di = @h_env[version.id]["docker_images"] and di["asap_run"] %>
+      <tr>
+	<td>ASAP_run image
+	   <%= link_to raw("<sup><i class='fa fa-link'></i></sup>"), "https://hub.docker.com/r/fabdavid/asap_run/tags" %>
+	</td>
+	<td>Docker</td>
+	<td></td>
+	<td><%= di["asap_run"]["tag"] %></td>
+      </tr>
+      <% end %>
+-->
+      <% if asap_data_db_version = @h_env[version.id]["asap_data_db_version"] %>
+       <tr>
+        <td>ASAP_data PostgreSQL database
+	   <%= link_to raw("<sup><i class='fa fa-link'></i></sup>"),  APP_CONFIG[:server_url] + "/dumps/asap_data_v#{asap_data_db_version}.sql.gz" %>
+	</td>
+	<td>v<%= asap_data_db_version %></td>
+	<td></td>
+	<td>Database</td>
+       </tr>
+      <% end %>
+      <% h_tools.keys.select{|k| version.id < 4 or (@h_all_tools[k] and !["Python", "R", "Java"].include?(@h_tool_types[@h_all_tools[k].tool_type_id].name))}.each do |k| %>
+      <tr>
+        <td><%= (@h_all_tools[k]) ? @h_all_tools[k].label : 'NA' %>
+	  <% if @h_all_tools[k] and @h_all_tools[k].url %>
+	  <%= link_to raw("<sup><i class='fa fa-link'></i></sup>"),  @h_all_tools[k].url %>
+	  <% end %>
+	</td>
+	<td><%= h_tools[k] || 'NA' %></td>
+        <td><%= (@h_all_tools[k]) ? @h_all_tools[k].description : 'NA' %></td>
+	<td><%= (@h_all_tools[k]) ? @h_tool_types[@h_all_tools[k].tool_type_id].name : 'NA' %></td>
+      </tr>
+      <% end %>
+      <% if @h_env[version.id]["docker_images"] %>
+      <%  @h_env[version.id]["docker_images"].each_key do |k| %>
+        <% di = @h_env[version.id]["docker_images"][k] %>     
+        <% docker_version = DockerVersion.where(:name => di["name"], :tag => di["tag"]).first %>
+      <tr>
+        <td><%= di['name'] %>
+          <%= link_to raw("<sup><i class='fa fa-link'></i></sup>"), "https://hub.docker.com/r/fabdavid/asap_run/tags" %>
+        </td>
+        <td><%= di['tag'] %></td>
+        <td>
+        <% if docker_version %>
+        <% docker_version_tools = Basic.safe_parse_json(docker_version.tools_json, {}) %>
+	<%# docker_version_tools.keys.to_json %>
+	<%# docker_version_tools.each_key do |k| %>
+    <!-- <tr>
+        <td><%= (@h_all_tools[k]) ? @h_all_tools[k].label : 'NA' %>
+	   <% if @h_all_tools[k] and @h_all_tools[k].url %>
+          <%= link_to raw("<sup><i class='fa fa-link'></i></sup>"),  @h_all_tools[k].url %>
+          <% end %>
+	</td>
+        <td><%= (@h_all_tools[k]) ? @h_tool_types[@h_all_tools[k].tool_type_id].name : 'NA' %></td>
+        <td><%= (@h_all_tools[k]) ? @h_all_tools[k].description : 'NA' %><%# docker_version_tools.to_json %></td>
+        <td><%= docker_version_tools[k] || 'NA' %></td>
+      </tr>
+    -->
+    <% ["Python", "R", "Java"].each do |tool_type_name| %>
+    <div class='mb-3'>
+     <div class='float-left mr-2 mr-3'><b><%= tool_type_name %></b></div>
+     <% docker_version_tools.each_key do |k| %>
+      <% if @h_all_tools[k] and @h_tool_types[@h_all_tools[k].tool_type_id].name == tool_type_name %>
+       <div class='float-left mr-2'>
+        <button  type='button' class='btn btn-sm btn-outline-secondary mb-2'>
+ 	 <%= @h_all_tools[k].package %> 
+	 <span class='badge badge-success'><%= docker_version_tools[k] || 'NA' %></span>
+        </button>
+        <%= link_to(raw("<sup><i class='fa fa-link'></i></sup>"),  @h_all_tools[k].url) if @h_all_tools[k].url %>
+       </div>
+      <% end %>
+      <% end %>
+     <div class='clear'></div>
+    </div>
+
+    <%# end %>
+        <% end %>
+        <% end %>
+	</td>
+        <td>Docker</td>
+      </tr>
+
+       <% end %>
+      <% end %>
+    </tbody>
+  </table>
+
+<%= javascript_tag do %>
+
+ $('#tool_list_<%= version.id %>').dataTable( {
+        "dom" : "t",
+        "pageLength":-1,
+        "order": [[ 3, "asc" ], [0, "asc"]]
+ });
+
+<% end %>
+
+
+</div>
+</div>

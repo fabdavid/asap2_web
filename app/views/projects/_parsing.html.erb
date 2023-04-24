@@ -1,143 +1,161 @@
+<%# @log %>
 <%# params[:active_step] %>
 <%# @project.parsing_attrs_json %>
-<% run = Run.where(:project_id => @project.id).first %>
+
+<% run = Run.joins("join steps on (steps.id = step_id)").where(:project_id => @project.id, :steps => {:name => 'parsing'}).first %>
+<%# @all_results.to_json %>
 <% if run.status_id == 3 and @results and !@results['displayed_error'] %>
-<div class="card" id="result_summary">
-  <div class="card-header">Parsing results
-    <!--<% if editable?(@project) and File.exist?(Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key + ('input.' + @project.extension)) %>
-	<div style='float:right'><button id='reset_parsing' class="btn btn-primary btn-sm" style="margin-top:-7px">Reset</button></div>
-	<% end %>
-	-->
+<%
+    @h_formats={}
+    FileFormat.all.map{|f| @h_formats[f.name] = f}
+%>
+
+<div class='col-md-8'>
+  <div class="card mb-2" id="result_summary">
+    <div class="card-header">
+      Parsing results
+    </div>
+    <div class="card-body">
+      
+      <div class='float-right'>
+        <!--<p class='card-title'>-->
+	<% if @h_formats and @results and @results["detected_format"] and @h_formats[@results["detected_format"]] %>
+	  <%= raw display_file_format @h_formats[@results["detected_format"]] %>
+	  <% else %>
+<%=	  @results["detected_format"] %>
+	  <% end %>
+         <!--   <div style='position:relative;top:-30px;left:6px;width:35px;font-size:10px;font-weight:bold;text-align:center;background-color:<%= @h_formats[@results["detected_format"]].color %>;color:white;padding:3px;border:2px solid white'><%= @h_formats[@results["detected_format"]].label %></div></i> -->
+        <!--</p>-->
+      </div>
+      
+      <%#  @results["detected_format"] %>
+      
+      <%= display_warnings(@results['warnings']) %>
+      <%= display_errors(@results['errors']) %>
+      
+      <!--      <div class='row'> -->
+      <!--	<div class='col-xl-8' style='margin-bottom:25px'>-->
+      
+      <% if admin? %>
+      <% end %>
+      <% h_attrs = JSON.parse(@project.parsing_attrs_json) %>
+      
+      <% if !['LOOM', 'H5_10x', 'MEX'].include? @results["detected_format"] %>
+      <p class='sub-run_card'>Parameters</p>
+      <% h_delimiter = {"\\t" => 'Tab', "\t" => "Tab",  " " => "Space", "," => "Comma", ":" => "Colon"} %>
+      <% if h_attrs['delimiter'] != '' %>
+      <p><span class="badge badge-secondary">Delimiter: <%= h_delimiter[h_attrs['delimiter']] %></span>
+      <% end %>
+      <% h_gene_name_col = {"0" => "First", "first" => "First", "-1" => "Last", "last" => "Last", "NA" => "None", 'none' => "None"} %>
+      <span class="badge badge-secondary">Gene name column: <%= h_gene_name_col[h_attrs['gene_name_col']] %></span>
+      <span class="badge badge-secondary">Skip lines: <%= h_attrs['skip_line'] %></span>
+      <span class="badge badge-secondary">Has header: <%= (h_attrs['has_header']== "1") ? 'Yes' : 'No' %></span> 
+      </p>
+      <% end %>
+      <p class='sub-run_card'>Output summary</p>
+      <p>
+	<span class='badge badge-info'>genes:<%= @results['nber_rows'] %></span>
+	<span class='badge badge-info'>cells:<%= @results['nber_cols'] %></span>
+	<!--      <%# (@results['nber_unique_genes']) ? " [#{@results['nber_unique_genes']} uniques]" : '' %> -->
+      </p>
+      
+      <% if @results['nber_rows'] < 3 %> 
+      <i class="fas fa-exclamation-triangle warning-icon"></i>
+      <div class='alert alert-danger'>
+	For many steps of the pipeline at least three genes are required
+      </div>
+      <% end %>
+
+      <% if @results['nber_cols'] == 0 %>
+      <div class='alert alert-danger'>
+	You may have selected wrong parameters for the parsing, in particular not the appropriated delimiter
+      </div>
+      <% elsif @results['nber_cols'] < 3 %>
+	 <div class='alert alert-danger'>
+	   <i class="fas fa-exclamation-triangle warning-icon"></i>
+	   Original dataset has less than 3 cells 
+	   <span class='badge badge-danger'>  
+	     For many steps of the pipeline at least three cells are required
+	   </span>
+	 </div>
+      <% end %>
+	 
+      <% if (@results['is_count_table']==1)  %>
+      <div class='alert alert-success'>
+	<i class="fas fa-check-circle"></i>
+	The original matrix contains only counts 
+      </div>
+      <% else %>
+      
+      <div class='alert alert-danger'>
+	<i class='fas fa-exclamation-triangle warning-icon'></i>
+	The original matrix contains floats
+	<span class='badge badge-danger'>
+	  Many methods will NOT be available if your original file is not a count matrix
+	</span>
+      </div>
+      <% end %>
+ 
+      <div class='alert alert-info'>
+	<%= ((@results['nber_zeros'].to_f * 100) / (@results['nber_rows'] * @results['nber_cols'])).round(2) %>% of values are zeros
+      </div>
+      
+      <% if nber_not_found_genes = @results['nber_not_found_genes'] and nber_not_found_genes > 0 %>
+      <div class='alert alert-danger'>
+	<i class="fas fa-exclamation-triangle warning-icon"></i>
+	<%= nber_not_found_genes %> (<%= (nber_not_found_genes.to_f * 100 / @results['nber_rows']).round(2) %>%) genes were not found in Ensembl
+	<span class='badge badge-danger'><i class='fa fa-lightbulb'></i> Did you select the right species (now <%= @project.organism.name %>)? If not, create a new project</span>
+      </div>
+      
+      <% else %>
+      <div class='alert alert-success'>
+	<i class="fas fa-check-circle"></i>
+	All <%= @results['nber_rows'] %> genes were found in Ensembl 
+      </div>
+      <% end %> 
+
+      <p class='sub-run_card'>Results</p>
+   
+      <p>
+        <%= link_to(raw("<button class='btn btn-outline-secondary btn-sm'>Loom file</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'output.loom'), "target" => "_blank") if exportable?(@project) %> <span class='link_to_loom_tuto info-btn pointer'><sup><i class='fas fa-info-circle fa-lg'></i></sup></span>
+      </p>
+       <% if admin? %>
+      <p>
+        <%= link_to(raw("<button class='btn btn-outline-secondary btn-sm'>JSON file</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'output.json'), "target" => "_blank") if exportable?(@project) %>
+      </p>
+      <p>
+        <%= link_to(raw("<button class='btn btn-outline-secondary btn-sm'>Log file</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'output.log'), "target" => "_blank") if exportable?(@project) %>
+      </p>
+      <% end %>
+      
+    </div>
+    <div class='card-footer'>
+      <small class='text-muted'>
+	<%= ((admin?) ? "##{run.id}, "  : "") %>
+	<%= raw ["<span class='nowrap'>#{display_date_short(run.created_at)}</span><span id='created_time_#{run.id}' class='hidden'>#{run.submitted_at.strftime "%Y-%m-%d %H:%M:%S"}</span><span id='start_time_#{run.id}' class='hidden'>#{(run.start_time) ? run.start_time.strftime("%Y-%m-%d %H:%M:%S") : ""}</span>",
+            ((run.waiting_duration) ? "<span class='nowrap'>Wait #{duration(run.waiting_duration.to_i)}</span>" : ((run.status_id == 1) ? "<span id='ongoing_wait_#{run.id}' class='nowrap'>Wait #{duration((Time.now-run.submitted_at).to_i)}</span>" : nil)),
+            ((run.duration) ? "<span class='nowrap'>Run #{duration(run.duration.to_i)}</span>" : ((run.status_id == 2) ? "<span id='ongoing_run_#{run.id}' class='nowrap'>Run #{duration((run.start_time) ? (Time.now-run.start_time).to_i : 0)}</span>" : nil)),
+            ((@results['time_idle']) ? "<span class='nowrap'>Idle #{@results['time_idle']}</span>" : nil),
+            ((run.max_ram) ? "<span class='nowrap'>Max. RAM #{display_mem(run.max_ram*1000)}</span>" : nil)].compact.join(", ") %>
+      </small>
+      
+    </div>
   </div>
-  <div class="card-body" id="realtimedata">
-    
-    
-    <%= display_warnings(@results['warnings']) %>
-    <%= display_errors(@results['errors']) %>
-    
-    <div class='row'>
-      <div class='col-xl-8' style='margin-bottom:25px'>
-	
-	<table class="table-hover"><tbody>
-	    <% if admin? %>
-	    <tr><td>#</td><td><%= run.id %></td></tr>
-	    <% end %>
-	    <% h_attrs = JSON.parse(@project.parsing_attrs_json) %>
-	    <%#  h_attrs.to_json %>
-	    <% if !['LOOM', 'H5_10x'].include? @results["detected_format"] %>
-	    <tr><td width="">Parameters</td><td width="">
-		<% h_delimiter = {"\\t" => 'Tab', "\t" => "Tab",  " " => "Space", "," => "Comma", ":" => "Colon"} %>
-		<% if h_attrs['delimiter'] != '' %>
-		<span class="badge badge-secondary">Delimiter: <%= h_delimiter[h_attrs['delimiter']] %></span>
-		<% end %>
-		<% h_gene_name_col = {"0" => "First", "first" => "First", "-1" => "Last", "last" => "Last", "NA" => "None", 'none' => "None"} %>
-		<span class="badge badge-secondary">Gene name column: <%= h_gene_name_col[h_attrs['gene_name_col']] %></span>
-		<span class="badge badge-secondary">Skip lines: <%= h_attrs['skip_line'] %></span>
-		<span class="badge badge-secondary">Has header: <%= (h_attrs['has_header']== "1") ? 'Yes' : 'No' %></span> 
-		
-	    </td></tr>
-	    <% end %>
-            <tr><td width="">Genes (rows)</td><td width=""><%= @results['nber_rows'] %><%= (@results['nber_unique_genes']) ? " [#{@results['nber_unique_genes']} uniques]" : '' %> 
-		<% if @results['nber_rows'] < 3 %>
-		   <i class="fas fa-exclamation-triangle warning-icon"/> <span class='badge badge-danger'>For many steps of the pipeline at least three genes are required</span>
-		   <% end %>
-	    </td></tr>                            
-	    <tr><td>Cells (columns)</td><td><%= @results['nber_cols'] %>
-		<% if @results['nber_cols'] == 0 %>
-		<span class='badge badge-danger'>You may have selected wrong parameters for the parsing, in particular not the appropriated delimiter</span>
-		<% elsif @results['nber_cols'] < 3 %>
-		   <i class="fas fa-exclamation-triangle warning-icon"/> <span class='badge badge-danger'>For many steps of the pipeline at least three cells are required</span>  
-		   <% end %>
-	    </td></tr>                            
-	    <tr><td><span data-toggle="tooltip" title="The input data are detected as count tables if all numbers are integers. Some functions only work with count tables.">
-		  Original file is a count table</span></td><td><%= raw (@results['is_count_table']==1) ? "true <span class='glyphicon glyphicon-ok'></span>" : "false  <i class='fas fa-exclamation-triangle warning-icon'/> <span class='badge badge-warning'>Many methods will NOT be available if your original file is not a count matrix</span>" %></td></tr>      	
-	    <!--
-		<% if @results['nber_protein_coding'] and @results['nber_total_biotypes'] and @results['nber_total_biotypes'].to_i > 0 %>
-		<tr><td>
-		    <span data-toggle="tooltip" title="Percentage reads mapping to Ensembl protein coding genes.">Percentage reads mapping to Ensembl protein coding genes</span></td><td>
-		    <%= (@results['nber_protein_coding'].to_f * 100 /  @results['nber_total_biotypes'].to_f).round(2) %>%</td></tr>
-		<% end %>
-		<% if @results['nber_rRNA'] and @results['nber_total_biotypes'] and @results['nber_total_biotypes'].to_i > 0 %>
-		<tr><td>
-		    <span data-toggle="tooltip" title="Percentage reads mapping to ribosomal Ensembl biotype.">Percentage reads mapping to ribosomal Ensembl biotype</span></td><td>
-		    <%= (@results['nber_rRNA'].to_f * 100 /  @results['nber_total_biotypes'].to_f).round(2) %>%</td></tr>
-		<% end %>
-		<% if @results['nber_MT'] and  @results['nber_total_chr'] and  @results['nber_total_chr'].to_i > 0 %>
-		<tr><td>
-		    <span data-toggle="tooltip" title="Percentage reads mapping to chromosome MT.">Percentage reads mapping to chromosome MT</span></td><td>
-		    <%= (@results['nber_MT'].to_f * 100 /  @results['nber_total_chr'].to_f).round(2) %>%</td></tr>
-		<% end %>
-		-->
-	    <%# if @results['empty_columns'] and @results['empty_columns'].size > 0 %>
-	    <!--        <tr><td>
-			<span data-toggle="tooltip" title="Cells without any read (excluded from dataset)">Cells without any read</span></td><td>
-		<%# @results['empty_columns'].size %> <span class="fa fa-warning"></span></td></tr> <!-- map{|e| "<span class='badge badge-warning'>#{e}</span>"}.join(" ") %></td></tr>-->
-	    <%# end %>
-	    
-	    <tr><td><span data-toggle="tooltip" title="Percentage of genes with zero expression.">Percentage of zeros</span></td><td><%= ((@results['nber_zeros'].to_f * 100) / (@results['nber_rows'] * @results['nber_cols'])).round(2) %>%</td></tr>                            
-	    <!--	<tr><td data-toggle="tooltip" title="Average of the all genes expression">Mean of gene expression</td><td><%# ((@results['total_signal'].to_f * 100) / (@results['nber_genes'] * @results['nber_cells'])).round(2) %></td></tr>                            
-			<	<tr><td data-toggle="tooltip" title="Standard deviation is calculated for every gene, and then all SDs are averaged over all genes.">Mean SD by gene</td><td><%# ((@results['mean_sd'].to_f * 100) / @results['nber_genes']).round(2) %></td></tr>-->
-	    <!--	<tr><td data-toggle="tooltip" title="In case of duplicate genes (genes with the same gene name), only the most expressed gene is retained.">Duplicate genes</td><td><%= nber_duplicated_genes = @results['nber_duplicated_genes'] %> <%= raw "<span class='glyphicon " + ((nber_duplicated_genes == 0) ? 'glyphicon-ok' : 'glyphicon-warning-sign') + "'></span>" %></td></tr>-->
-            <!--<tr><td>
-		<span data-toggle="tooltip" title="Number of detected ERCC (they are removed from the result datatable)">Number of ERCC</span></td>
-	      <td>
-		<%# if @results['nber_ercc'] > 0 %>
-			  <%# link_to raw("<button class='btn btn-primary btn-xs'>#{@results['nber_ercc']} ERCC</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'ercc.tab') %>
-			  <%# else %>
-			  <%# end %>
-			  <%= @results['nber_ercc'] %>
-			  <span class='badge badge-info'>ERCCs are automatically detected as genes starting with "ERCC-"</span>
-             </td></tr>-->
-<%# display_batch_file() %>
-
-            <tr><td>
-		Unmapped genes </td><td> 
-		<% if nber_not_found_genes = @results['nber_not_found_genes'] and nber_not_found_genes > 0 %>
-		<%= nber_not_found_genes %>, <%= (nber_not_found_genes.to_f * 100 / @results['nber_rows']).round(2) %>% 
-		<i class="fas fa-exclamation-triangle warning-icon"/> 
-		<%# link_to(raw("<button class='btn btn-primary btn-xs'>Details</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'not_found_genes.txt')) if exportable? @project %>
-		<% else %>
-		<%= nber_not_found_genes %> <span class="fa fa-check"></span>
-		<% end %> 
-	    </td></tr>
-	    
-	    <% if nber_duplicated_genes = @results['nber_duplicated_genes'] and nber_duplicated_genes > 0 %>
-	    <% nber_all_duplicated_genes = @results['nber_all_duplicated_genes'] %> 
-<tr><td>
-    Duplicated genes </td><td> <%= nber_all_duplicated_genes %> [<%= nber_duplicated_genes %> uniques], <%= (nber_all_duplicated_genes.to_f * 100 / @results['nber_genes']).round(2) %>%
-    <i class="fas fa-exclamation-triangle warning-icon"/>
-    <%# link_to raw("<button class='btn btn-primary btn-xs'>Details</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'duplicated_genes.txt') %>
-    <span class='badge badge-warning'>Duplicated genes are kept in the dataset but renamed with a incremented number</span>
-    <br/>
-</td></tr>
-<% end %>
-</tbody></table>
-
+  <!--  </div> -->
+  <!--  <div class='col-md-6 mb-2'> -->
+<!--  <div class='card mb-2' >
+    <div class='card-header'>Downloads</div>
+    <div class='card-body'>
+-->
+      <!--	<div class='col-xl-4' style='display:flex;align-items: center;justify-content:center'> -->
+      
+   
+<!--      
+    </div>
+   </div>
+  
 </div>
-
-<div class='col-xl-4' style='display:flex;align-items: center;justify-content:center'>
-
-<p><%= link_to(raw("<button class='btn btn-outline-secondary btn-sm'>Download Loom file</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'output.loom'), "target" => "_blank") if exportable?(@project) %></p>   
-<% if admin? %>
-<p><%= link_to(raw("<button class='btn btn-outline-secondary btn-sm'>Download JSON file</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'output.json'), "target" => "_blank") if exportable?(@project) %></p>
-<p><%= link_to(raw("<button class='btn btn-outline-secondary btn-sm'>Download Log file</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'output.log'), "target" => "_blank") if exportable?(@project) %></p>
-<% end %> 
-
-</div>
-</div></div>
-<div class='card-footer'>
-<small class='text-muted'>
-       <%= ((admin?) ? "##{run.id}, "  : "") %>
-       <%= raw ["<span class='nowrap'>#{display_date_short(run.created_at)}</span><span id='created_time_#{run.id}' class='hidden'>#{run.submitted_at.strftime "%Y-%m-%d %H:%M:%S"}</span><span id='start_time_#{run.id}' class='hidden'>#{(run.start_time) ? run.start_time.strftime("%Y-%m-%d %H:%M:%S") : ""}</span>",
-           ((run.waiting_duration) ? "<span class='nowrap'>Wait #{duration(run.waiting_duration.to_i)}</span>" : ((run.status_id == 1) ? "<span id='ongoing_wait_#{run.id}' class='nowrap'>Wait #{duration((Time.now-run.submitted_at).to_i)}</span>" : nil)),
-           ((run.duration) ? "<span class='nowrap'>Run #{duration(run.duration.to_i)}</span>" : ((run.status_id == 2) ? "<span id='ongoing_run_#{run.id}' class='nowrap'>Run #{duration((run.start_time) ? (Time.now-run.start_time).to_i : 0)}</span>" : nil)),
-           ((@results['time_idle']) ? "<span class='nowrap'>Idle #{@results['time_idle']}</span>" : nil),
-           ((run.max_ram) ? "<span class='nowrap'>Max. RAM #{display_mem(run.max_ram*1000)}</span>" : nil)].compact.join(", ") %>
-</small>
-
-  </div>
-</div>
-
+-->
 <% else %>
 <%# raw ((status = @project.status) ? "<span class='badge badge-#{status.label}'>#{status.name}</span>" : 'NA') %>
 <%# @results.to_json %>
@@ -152,6 +170,15 @@
 <% end %>
 
 <%= javascript_tag do %>
+
+ $(".link_to_loom_tuto").click(function(e){
+   var url = '<%= tutorial_home_index_path(:t => 'loom') %>'
+  var win = window.open(url, '_blank');
+  win.focus();
+  e.stopPropagation();
+  e.preventDefault();
+  return false;
+})
 
 $(".reset_parsing").click(function(){
 refresh("step_content", "<%= parse_form_project_path(:key => @project.key, :nolayout => 1) %>", {});

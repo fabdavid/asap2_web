@@ -17,9 +17,38 @@
   <div id='plot_options_content' class='card-body'>
   </div>
 </div>
+
+<div id='plot_annotation_window' class='card hidden'>
+  <div class='card-header'>
+    <div class='top-right-buttons'>
+      <span id='plot_annotation_close' class='pointer'>
+        <i class='fa fa-times-circle'></i>
+      </span>
+    </div>
+    <b>Annotation</b>
+    <div id='annotation_title' class='mb-1'></div>
+    <ul class='nav nav-tabs mt-2' id="main_menu-nav" role="tablist">                                                                                           
+      <% if editable? @project or @project.public == true %>                  
+      <li class="nav-item">
+	<a class="nav-link active" id="new_annot-tab" data-toggle="tab" href="#pane-new_annot" role="tab" aria-controls="new_annot" aria-selected="true">New annotation</a>
+      </li>
+      <% end %>
+      <li class="nav-item">
+	<a class="nav-link <%= (!editable?(@project)) ? 'active' : '' %>" id="existing_annot-tab" data-toggle="tab" href="#pane-existing_annot" role="tab" aria-controls="existing_annot"  aria-selected="true">Existing annotation</a>
+      </li>
+      <li class="nav-item">
+	<a class="nav-link" id="annot_evidences-tab" data-toggle="tab" href="#pane-annot_evidences" role="tab" aria-controls="annot_evidences" aria-selected="true">Evidences</a>
+      </li>
+    </ul>
+  </div>
+  <div id='plot_annotation_content' class='card-body'>
+  </div>
+</div>
+
+
 <div id='plot_btns'>
 <!--<div id='plot_clusters_btn' class='btn btn-primary hidden'>Clusters</div>-->
-<button type='button' id='plot_options_btn' class='btn btn-primary' disabled><i class='fa fa-spinner fa-pulse fa-fw fa-lg'/> Loading controls...</button>
+<button type='button' id='plot_options_btn' class='btn btn-primary' disabled><i class='fa fa-spinner fa-pulse fa-fw fa-lg'></i> Loading controls...</button>
 </div>
 <%# session[:current_dashboard] %>
 
@@ -36,12 +65,12 @@
 </div>
 
 <div id='plot_container'></div>
-
+<div id='min_max_legend'></div>
 <%= javascript_tag do %>
 
 <%# render :partial => "dim_reduction_js" %>
 
-var h_opt = ($("#plot_options_window").hasClass("hidden")) ? {loading : 'fa-2x'} : {loading_full:"<i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'>"}
+var h_opt = ($("#plot_options_window").hasClass("hidden")) ? {loading : 'fa-2x'} : {loading_full:"<i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i>"}
 
 refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form', :upd_plot => 1) %>&run_id=" + $("#plot_run_id").val() + "&displayed_nber_dims=" + $("#plot_displayed_nber_dims").val(), h_opt)
 
@@ -81,6 +110,22 @@ $("#plot_options_close").click(function(){
    });
 })
 
+$("#plot_annotation_close").click(function(){
+ var w = $(window).width()
+ var ww = 600;
+
+ plotly_graph.updatePlotWidth(w-300);
+ $( "#plot_annotation_window" ).addClass("hidden");
+ $( "#plot_annotation_window" ).animate({
+   'top' : 150,
+   'width' : ww,
+   'left' : w,
+   'bottom' : 10
+   }, 200, function() {
+   });
+})
+
+
 $("#plot_options_btn").click(function(){
  var w = $(window).width()
  var ww = 600;
@@ -112,10 +157,12 @@ plotly_graph.updatePlotWidth(w-ww-300);
 
 <% else %>
 
-<!--<div class='badge badge-warning'>No run created yet</div> -->
+<!--<div class='badge badge-warning'>No run created yet</div> --> 
  <% if session[:activated_filter][@project.id] == true and !@disable_filter %>
  <div class='alert alert-danger'>No runs found with selected filter criteria</div>
  <% else %>
+  <%# raw analyzable?(@project).to_json %>
+  <% if analyzable? @project %>
  <div class="container-fluid">
    <div id='card_new_analysis' class='card text-md-center col-md-4 centered-card'>
      <div class='card-body'>
@@ -124,5 +171,7 @@ plotly_graph.updatePlotWidth(w-ww-300);
    </div>
  </div>
  <% end %>
+ <% end %>
+
 <% end %>
 

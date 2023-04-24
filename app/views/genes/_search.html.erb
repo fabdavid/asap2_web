@@ -1,19 +1,26 @@
+<% if @gene %>
 <div class='row'>
   <div class='col-md-6'>Ensembl ID</div>
   <div class='col-md-6'><span id='ensembl_id' class='pointer badge badge-dark'><%= @gene.ensembl_id %></span></div>
 </div>
 <div class='row'>
-  <div class='col-md-6'>Gene name</div>
+  <div class='col-md-6'><b>Gene symbol</b></div>
   <div class='col-md-6'><span id='ensembl_symbol' class='badge badge-light'><%= @gene.name %></span></div>
+</div>
+<div class='row mt-2 mb-2'>
+  <div class='col-md-6'><b>Gene name</b></div>
+  <div class='col-md-6'><b><%= @gene.description %></b></div>
 </div>
 <div class='row'>
   <div class='col-md-6'>Biotype</div>
   <div class='col-md-6'><span id='ensembl_biotype' class='badge badge-info'><%= @gene.biotype %></span></div>
 </div>
+<% if @gene.function_description %>
 <div class='row mt-2 mb-2'>
-  <div class='col-md-6'><b>Description</b></div>
-  <div class='col-md-6'><b><%= @gene.description %></b></div>
+  <div class='col-md-6'>Function</div>
+  <div class='col-md-6'><%= @gene.function_description %></div>
 </div>
+<% end %>
 <div class='row'>
   <div class='col-md-6'>Alt gene names</div>
   <div class='col-md-6'><%= raw @gene.alt_names.split(",").map{|e| "<span class='badge badge-light'>#{e}</span>"}.join(" ") %></div>
@@ -31,4 +38,5 @@
 $("#ensembl_id").click(function(){
  window.open("http://www.ensembl.org/Gene/Summary?g=" + $(this).html(), "_blank")
 })
+<% end %>
 <% end %>

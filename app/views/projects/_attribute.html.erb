@@ -2,9 +2,20 @@
  <% @h_attr_vals ||= {} %>
  <% attr_val = @h_attr_vals[attr_name] %>
  <% form_attr_name = "attrs[" + attr_name + "]" %>
+ <%# attr.to_json %>
  <% if attr['widget']!='checkbox' and attr['widget']!='hidden' %>
-  <%= label_tag form_attr_name, attr['label'], {'data-toggle' => 'tooltip', 'title' => attr['description'], 'class' => horiz_element['label_class'] || 'col-md-6'} %>
+<!-- <span class='row'>
+  <span class='<%= horiz_element['label_class'] || 'col-md-6' %>'>
+-->
+<%= label_tag form_attr_name, raw(attr['label'] + ((attr['description'] and attr['description'] != '') ? " <span id='description-#{attr_name}' class='info-btn pointer'><sup><i class='fas fa-info-circle fa-lg'></i></sup></span>" : '')), {'data-toggle' => 'tooltip', 'title' => attr['description'], :class=> horiz_element['label_class'] || 'col-md-6'} %> 
+<!--    <span id='description_<%= attr_name %>' class='info-btn pointer'>
+      <i class='fa fa-info'></i>
+    </span>
+  </span>
+-->
  <% end %>
+ <%# if attr['widget']=='static_text' %>
+
  <% if attr['widget']=='input_data' %>
   <%= render :partial => 'input_data', :locals => {:attr_name => attr_name, :attr => attr} %>
  <% elsif attr['widget']=='input_gene_set' %>
@@ -24,7 +35,8 @@
  <%# h_checkbox.to_json %>
  <%# ((attr_val and attr_val != false) or (!attr_val and attr['default'] != false)).to_json %>
  <%# check_box_tag attr_name, '1', ((@ps.status_id != nil and attr_val and attr_val != false) or (!@ps.status_id and !attr_val and attr['default'] != false)),  h_checkbox %>
- <%= check_box_tag ("checkbox-" + attr_name), ((attr_val and @attr_val != false) or (!attr_val and attr['default'] != false)), {},  h_checkbox %>
+ <%= check_box_tag ("checkbox-" + attr_name), 'true', ((attr_val and @attr_val != false) or (!attr_val and attr['default'] != false)),  h_checkbox %>
+ <%# (attr_val and @attr_val != false) or (!attr_val and attr['default'] != false) %>
  <%= hidden_field_tag form_attr_name, ((attr_val and @attr_val != false) or (!attr_val and attr['default'] != false)) ? 'true' : 'false' %>
  <%= label_tag form_attr_name, attr['label'], {'data-toggle' => 'tooltip', 'title' => attr['description']} %>
  <% elsif attr['widget'] == 'select' and !attr['grouped_list'] %>
@@ -39,7 +51,12 @@
  <% elsif attr['widget'] == 'select' and attr['grouped_list'] %>
    <%= select_tag form_attr_name, grouped_options_for_select(attr['grouped_list'], attr_val || attr['default']), {class: 'custom-select'} %>
  <% end %>
- 
+
+ <% if @std_method.name == 'tsne' and attr_name == 'perplexity' %>
+ <% ida = session[:input_data_attrs][@project.id] %>
+ <% if ida and ida[@step.id.to_s] and ida[@step.id.to_s][attr_name] and ida[@step.id.to_s][attr_name].size > 0 %>
+ <% end %>
+ <% end %>
  <% if attr_name == 'batch_file_exists' %>
  <b>using <a href='https://www.bu.edu/jlab/wp-assets/ComBat/Abstract.html' target='_blank'>ComBat</a>.</b>
  <% end %>
@@ -50,6 +67,10 @@
 <div id='validation_<%= attr_name %>'></div>
 
 <%= javascript_tag do %>    
+
+<% if @step.name == 'de' %> 
+// set_group_pairs()
+<% end %>
 
 /*
 function validate_req_<%=attr_name %>(){

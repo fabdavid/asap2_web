@@ -1,0 +1,74 @@
+<%# @all_clas.size if admin? %>
+<%# @cla.cell_set_id if admin? %>
+<!-- <div class='row flex-container2 mb-2 mt-2'>
+      <div class="btn-group" role="group">
+        <button id='annot_info_tab_0_btn' type="button" class="btn btn-<%# (annot_info_tab == "0") ? 'primary' : 'secondary' %> annot_info_tab_btn">New annotation</button>
+        <button id='annot_info_tab_1_btn' type="button" class="btn btn-<%# (annot_info_tab == "1") ? 'primary' : 'secondary' %> annot_info_tab_btn">Evidences</button>
+        <button id='annot_info_tab_2_btn' type="button" class="btn btn-<%# (annot_info_tab == "2") ? 'primary' : 'secondary' %> annot_info_tab_btn">Existing annotations</button>
+      </div>
+      <%# hidden_field_tag 'annot_info_tab', coloring_type %>
+</div>
+-->
+
+<!--<div class='position-fixed' style='z-index:1000;background-color:white'>
+
+ <span style='background-color:<%= @palette[@cat_i % @palette.size] %>' class="dot"></span>
+ Group <span class='badge badge-light'><%= @annot.name.gsub(/\/col_attrs\//, '') %></span> > <span class='badge badge-light'><%= params[:cat_name] %></span> <br/> in <span class='badge badge-info'><%= display_run_short_txt(Run.where(:id => @annot.store_run_id).first) %></span>
+
+<ul class="nav nav-tabs mt-2" id="main_menu-nav" role="tablist">
+  <% if editable? @project %>
+  <li class="nav-item">
+    <a class="nav-link active" id="new_annot-tab" data-toggle="tab" href="#pane-new_annot" role="tab" aria-controls="new_annot" aria-selected="true">New annotation</a>
+  </li>
+  <% end %>
+  <li class="nav-item">
+    <a class="nav-link <%= (!editable?(@project)) ? 'active' : '' %>" id="existing_annot-tab" data-toggle="tab" href="#pane-existing_annot" role="tab" aria-controls="existing_annot" aria-selected="true">Existing annotation</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="annot_evidences-tab" data-toggle="tab" href="#pane-annot_evidences" role="tab" aria-controls="annot_evidences" aria-selected="true">Evidences</a>
+  </li>
+</ul>
+
+</div>
+-->
+<%# @all_clas.to_json if admin? %>
+<div class="tab-content"><!-- style='margin-top:100px' -->
+   <%# if editable? @project %>
+  <div class="tab-pane <%= (!params[:tab] or params[:tab] == 'new') ? 'active' : '' %>" id="pane-new_annot" role="tabpanel" aria-labelledby="new_annot-tab">
+    <%= render :partial => 'clas/form', :locals => {:cla => @cla} %>
+  </div>
+  <%# end %>
+  <div class="tab-pane <%= (!editable?(@project) or params[:tab] == 'existing') ? 'active' : '' %>" id="pane-existing_annot" role="tabpanel" aria-labelledby="existing_annot-tab">
+    <%# @all_clas.to_json %>
+    <%= render :partial => 'clas/index', :locals => {:clas => @all_clas, :h_votes => @h_votes} %>
+  </div>
+  <div class="tab-pane <%= (params[:tab] == 'evidences') ? 'active' : '' %>" id="pane-evidences_annot" role="tabpanel" aria-labelledby="evidences_annot-tab">
+    <%# @h_statuses.to_json %>
+    <%= render :partial => 'marker_genes' %>
+  </div>
+</div>
+
+<%= javascript_tag do %>
+
+//$("#annotation-tab").click()
+//$("#plot_options_content").scrollTop(0)
+
+var depth_by_cell = <%= raw @depth['values'].to_json %> 
+
+$("#evidences_icon").html("<i class='<%= raw @h_statuses[@marker_genes_run.status_id].icon_class %>'></i>")
+
+$("#annotation_title").html("<span style='background-color:<%= @palette[@cat_i % @palette.size] %>' class='dot'></span> Group <span class='badge badge-light'><%= @annot.name.gsub(/\/col_attrs\//, '') %></span> > <span class='badge badge-light'><%= params[:cat_name] %></span> <br/> in <span class='badge badge-info'><%= display_run_short_txt(Run.where(:id => @annot.store_run_id).first) %></span>")
+
+$("#new_annot-tab").removeClass("show active")
+$("#existing_annot-tab").removeClass("show active")
+$("#evidences_annot-tab").removeClass("show active")
+<% if !params[:tab] or params[:tab] == 'new' %>
+ $("#new_annot-tab").addClass("active")
+<% elsif !editable?(@project) or params[:tab] == 'existing' %>
+ $("#existing_annot-tab").addClass("active")
+<% else %>
+ $("#evidences_annot-tab").addClass("active")
+<% end %>
+
+
+<% end %>

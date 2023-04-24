@@ -1,7 +1,8 @@
 <div id='<%= @step.name %>_step_container'>
+
 <% if @step and @ps and @run %>
  <div id='step_header_container'>
-   <%= render :partial => 'projects/step_header_container' %>
+   <%# render :partial => 'projects/step_header_container' %>
  </div>
 
  <% if params[:errors] %>
@@ -16,7 +17,9 @@
 
 <div class='container'>
 
-<div class='btn btn-sm btn-secondary' id='back-btn'><< Back</div>
+<!--<div class='btn btn-sm btn-secondary' id='back-btn'><< Back</div>-->
+
+<%# @data %>
 
 <div class='float-right'>
   <b>Download all</b>
@@ -26,7 +29,7 @@
       get_de_gene_list_run_path(@run, :format => 'text', :type => params[:type], :download => 1), "target" => "_blank") if exportable?(@project) %>
 </div>
 <h5><%= raw display_run2(@run, @step, @std_method) %> - List of <%= @nber_genes %> <%= params[:type] %>-regulated genes</h5>
-<%= raw display_run_attrs(@run, @h_run_attrs, @h_std_method_attrs) %>
+<%= raw display_run_attrs(@run, @h_run_attrs, @h_std_method_attrs, {}) %>
 <% if @limit < @nber_genes %>
 <div class='alert alert-danger'>Only <%= @limit %> genes with highest fold change displayed</div>
 <% end %>
@@ -49,7 +52,9 @@
            <td>
           <% if @fields[i] == 'EnsemblID' %>
            <span class='ensembl-gene pointer badge badge-light'><%= e[i] %></span>
-          <% else %>
+          <%# elsif ['fdr', 'size_effect', 'p-value'].include? @fields[i] %>
+	    <%# e[i].to_f.round(2) %>
+	  <% else %>
 	   <%= e[i] %>
           <% end %>
           </td>
@@ -73,16 +78,17 @@ $("#de-gene_list").dataTable({
 "order": [[ 5, "<%= (params[:type] == 'down') ? "asc" : "desc" %>" ]]
 })
 
-$(".ensembl-gene").click(function(e){
+$("#de-gene_list").on("click", ".ensembl-gene", function(e){
  var ensembl_id = $(this).html()
  var w = $(window).width()
  var ww = 600
-  $("#popup_window").css({
+  $("#ontop_popup_window").css({
         left: (w-e.pageX > ww) ? (e.pageX + 10) : w-ww+10,
         width:ww,
+        'z-index':1000000,
         top: e.pageY + 10
   }).stop().show(100);
- refresh("popup_container", "<%= search_genes_path() %>?ensembl_id=" + ensembl_id, {loading:true})
+ refresh("ontop_popup_container", "<%= search_genes_path() %>?ensembl_id=" + ensembl_id + "&version_id=<%= @project.version_id %>", {loading:true})
 })
 
 $(".show_link").click(function(){
@@ -93,17 +99,7 @@ $(".show_link").click(function(){
 })
 
  $(".input_lineage").click(function(e){
-  var run_id = this.id.split("_")[2]
-  e.stopPropagation();
-  e.preventDefault();
-  $("#popup_window").removeClass("hidden")
-  refresh("popup_container", "<%= get_lineage_project_path(:key => @project.key) %>?run_id=" + run_id, {loading: 'fa-2x'})
-  var w = $(window).width();
-  $("#popup_window").css({
-        left: 200,
-        width:w - 250,
-        top: e.pageY + 10
-    }).stop().show(100);
+<%= render :partial => 'projects/input_lineage_js' %>
  })
 
 <% end %>

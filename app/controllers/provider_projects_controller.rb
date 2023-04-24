@@ -1,6 +1,18 @@
 class ProviderProjectsController < ApplicationController
   before_action :set_provider_project, only: [:show, :edit, :update, :destroy]
 
+#  layout "welcome"
+
+
+  def get_list
+    @provider_projects = ProviderProject.where(:provider_id => session[:provider_id]).all
+  end
+
+  def hca_index
+    session[:settings][:provider_id] = 1
+  #  get_projects()
+  end
+
   # GET /provider_projects
   # GET /provider_projects.json
   def index
@@ -27,7 +39,7 @@ class ProviderProjectsController < ApplicationController
     @provider_project = ProviderProject.new(provider_project_params)
 
     respond_to do |format|
-      if @provider_project.save
+      if admin? and @provider_project.save
         format.html { redirect_to @provider_project, notice: 'Provider project was successfully created.' }
         format.json { render :show, status: :created, location: @provider_project }
       else
@@ -41,7 +53,7 @@ class ProviderProjectsController < ApplicationController
   # PATCH/PUT /provider_projects/1.json
   def update
     respond_to do |format|
-      if @provider_project.update(provider_project_params)
+      if admin? and @provider_project.update(provider_project_params)
         format.html { redirect_to @provider_project, notice: 'Provider project was successfully updated.' }
         format.json { render :show, status: :ok, location: @provider_project }
       else
@@ -54,10 +66,12 @@ class ProviderProjectsController < ApplicationController
   # DELETE /provider_projects/1
   # DELETE /provider_projects/1.json
   def destroy
-    @provider_project.destroy
-    respond_to do |format|
-      format.html { redirect_to provider_projects_url, notice: 'Provider project was successfully destroyed.' }
-      format.json { head :no_content }
+    if admin?
+      @provider_project.destroy
+      respond_to do |format|
+        format.html { redirect_to provider_projects_url, notice: 'Provider project was successfully destroyed.' }
+        format.json { head :no_content }
+      end
     end
   end
 
@@ -65,10 +79,12 @@ class ProviderProjectsController < ApplicationController
     # Use callbacks to share common setup or constraints between actions.
     def set_provider_project
       @provider_project = ProviderProject.find(params[:id])
+      @h_providers = {}
+      Provider.all.map{|p|  @h_providers[p.id] = p}
     end
 
     # Never trust parameters from the scary internet, only allow the white list through.
     def provider_project_params
-      params.fetch(:provider_project, {})
+      params.fetch(:provider_project).permit(:title, :comment, :not_add_in_asap)
     end
 end

@@ -83,7 +83,7 @@ function upd_job_popup(){
  })
 
  $(".delete_all_btn").click(function(){
-  refresh("form_container", "<%= confirm_delete_all_project_path(:key => @project.key, :step_id => @step.id) %>", {loading : 'fa-2x'})
+  refresh("form_container", "<%= raw confirm_delete_project_path(:key => @project.key, :step_id => @step.id) %>", {loading : 'fa-2x'})
   $("#ontop_window").removeClass("hidden")  
  })
 
@@ -95,6 +95,10 @@ function upd_job_popup(){
   }
    refresh("step_container", "<%= raw get_step_project_path(:key => @project.key, :nolayout => 1, :step_id => @step.id) %>&activated_filter=" + activated_filter, {loading: 'fa-2x loading-step'});
  })
+
+  $("#filter_store_run_id").change(function(){
+   refresh("step_container", "<%= raw get_step_project_path(:key => @project.key, :nolayout => 1, :step_id => @step.id) %>&store_run_id=" + $(this).val(), {loading: 'fa-2x loading-step'});
+  })
 
  $(".new_job").click(function(){
   let url = "<%= form_new_analysis_project_path(@project.key, :step_id => @step.id) %>";

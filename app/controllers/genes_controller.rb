@@ -1,34 +1,70 @@
 class GenesController < ApplicationController
   before_action :set_gene, only: [:show, :edit, :update, :destroy]
 
-  def autocomplete
+  def get_version
+    @version = Version.where(:id => params[:version_id]).first
+    @h_env = (@version) ? Basic.safe_parse_json(@version.env_json, {}) : {"bla" => "test"}
+  end
+
+  def check
     to_render = []
     final_list=[]
-    
-    project = Project.find_by_key(params[:project_key])
-    data_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + project.user_id.to_s + project.key
-    filename = data_dir + 'parsing' + "gene_names.json"
-
-    gene_list = JSON.parse(File.read(filename)).flatten
-    h_genes = {}
-    
-    gene_list.each do |identifier|
-      identifier.split(",").each do |tmp|
-        h_genes[tmp.downcase]=1
-      end
-    end
-    
-    gene_names = GeneName.select("gene_id, value").where("organism_id = ? and lower(value) ~ ?", params[:organism_id], ("^" + params[:term].downcase)).all
+    db_version = params[:db_version]
+    h_genes = nil
+    gene_names = []
+#    ConnectionSwitch.with_db(:data_with_version, db_version) do
+    gene_names = Basic.sql_query2(:asap_data, db_version, 'gene_names', '', 'gene_id, value', "organism_id = #{params[:organism_id]} and lower(value) = '#{params[:term].downcase}'")
+   
+    #      gene_names = GeneName.select("gene_id, value").where("organism_id = ? and lower(value) = ?", params[:organism_id], params[:term].downcase).all
     h_gene_names = {}
     h_all_gene_names = {}
     gene_names.each do |gn|
-        h_all_gene_names[gn.value.downcase]=1
+      h_all_gene_names[gn.value.downcase]=1
     end
+    final_list = Gene.select("id, name, ensembl_id, alt_names").where(:id => gene_names.map{|e| e.gene_id}.uniq)# | Gene.where(:id => gene_names[1].map{|e| e.gene_id}.uniq)    
     
-    final_list = Gene.select("id, name, ensembl_id, alt_names").where(:id => gene_names.map{|e| e.gene_id}.uniq)# | Gene.where(:id => gene_names[1].map{|e| e.gene_id}.uniq)                                                                                              
-    to_render = final_list.to_a.select{|e| h_genes[e.ensembl_id.downcase] or h_genes[e.name.downcase]}.first(20).map{|e| {:id => e.id, :label => "#{e.ensembl_id} #{e.name}" + ((e.alt_names.size > 0) ? " [" + e.alt_names.split(",").join(", ") + "]" : '')}}
+    to_render = final_list.to_a.select{|e| !h_genes or (h_genes[e.ensembl_id.downcase] or h_genes[e.name.downcase])}.first(20).map{|e| {:id => e.id, :label => "#{e.ensembl_id} #{e.name}" + ((e.alt_names.size > 0) ? " [" + e.alt_names.split(",").join(", ") + "]" : '')}}
+    #  end
+    render :json => to_render.to_json
+  end
+  
+  def autocomplete
+    to_render = []
+    final_list=[]
+    db_version = params[:db_version]
+    h_genes = nil
+    if params[:project_key]
+      project = Project.find_by_key(params[:project_key])
+      version = project.version
+      h_env =  Basic.safe_parse_json(version.env_json, {}) 
+      db_version = h_env['asap_data_db_version']
+      data_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + project.user_id.to_s + project.key
+      filename = data_dir + 'parsing' + "gene_names.json"
+      
+      gene_list = JSON.parse(File.read(filename)).flatten
+      h_genes = {}
+      
+      gene_list.each do |identifier|
+        identifier.split(",").each do |tmp|
+          h_genes[tmp.downcase]=1
+        end
+      end
+    end
+    gene_names = []
+    # ConnectionSwitch.with_db(:data_with_version, db_version) do
+    # gene_names = GeneName.select("gene_id, value").where("organism_id = ? and lower(value) ~ ?", params[:organism_id], ("^" + params[:term].downcase)).all
+    gene_names = Basic.sql_query2(:asap_data, db_version, 'gene_names', '', 'gene_id, value', "organism_id = #{params[:organism_id]} and lower(value) ~ '^#{params[:term].downcase}'")
     
-    render :text => to_render.to_json
+    h_gene_names = {}
+    h_all_gene_names = {}
+    gene_names.each do |gn|
+      h_all_gene_names[gn.value.downcase]=1
+    end
+    final_list = Gene.select("id, name, ensembl_id, alt_names").where(:id => gene_names.map{|e| e.gene_id}.uniq).order(:name)# | Gene.where(:id => gene_names[1].map{|e| e.gene_id}.uniq)                                                   
+    
+    to_render = final_list.to_a.select{|e| !h_genes or (h_genes[e.ensembl_id.downcase] or h_genes[e.name.downcase])}.first(50).map{|e| {:id => e.id, :label => "#{e.ensembl_id} #{e.name}" + ((e.alt_names.size > 0) ? " [" + e.alt_names.split(",").join(", ") + "]" : '')}}
+    # end
+    render :json => to_render.to_json
   end
   
 
@@ -51,9 +87,16 @@ class GenesController < ApplicationController
   end
 
   def search
-
-    @gene = Gene.where(:ensembl_id => params[:ensembl_id]).first
-
+    
+    get_version()
+    ConnectionSwitch.with_db(:data_with_version, @h_env['asap_data_db_version']) do
+      if params[:ensembl_id]
+        @gene = Gene.where(:ensembl_id => params[:ensembl_id]).first
+      elsif params[:gene_id]
+        @gene =  Gene.where(:id => params[:gene_id]).first
+      end
+        # @gene = nil
+    end
     render :partial => "search"
 
   end

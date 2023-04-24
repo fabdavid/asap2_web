@@ -7,13 +7,18 @@
 <% ida[:ge_geneset_type] ||= 'global' %>
     <%# label_tag 'gene_set', 'Genes' %>
     <% l=[['Global gene set', 'global'], ['Custom gene set', 'custom']] %>    
-    <% genesets= GeneSet.where(:project_id => @project.id).order("label").all %>
-    <% first_geneset = (genesets.size > 1) ? genesets.sort{|a, b| a.id <=> b.id}.first : genesets.first %>
-
+    <% genesets = [] %>
+    <%# ConnectionSwitch.with_db(:data_with_version, @h_env['asap_data_db_version']) do %>
+     <%# genesets= GeneSet.where(:project_id => @project.id).order("label").all %>
+     <% genesets = Basic.sql_query2(:asap_data, @h_env['asap_data_db_version'], 'gene_sets', '', '*', "project_id = #{@project.id}").sort{|a, b| a.label <=> b.label} %>
+     <% first_geneset = (genesets.size > 1) ? genesets.sort{|a, b| a.id <=> b.id}.first : genesets.first %>
+    <%# end %>
     <%= select_tag "#{attr_name}_type", options_for_select(l, ida[attr_name + "_type"]), {class: 'form-control'} %>
-    <% ConnectionSwitch.with_db(:data_with_version, @project.version_id) do %>
-    <% l= GeneSet.where(:user_id => 1, :project_id => nil, :organism_id => @project.organism_id).order("label").all.map{|e| [e.label, e.id]} %>
-    <% end %>
+    <%# @h_env.to_json %>
+    <%# ConnectionSwitch.with_db(:data_with_version, @h_env["asap_data_db_version"]) do %>
+    <%# l= GeneSet.where(:user_id => 1, :project_id => nil, :organism_id => @project.organism_id, :obsolete => false).order("label").all.map{|e| [e.label, e.id]} %>
+    <% l = Basic.sql_query2(:asap_data, @h_env['asap_data_db_version'], 'gene_sets', '', '*', "user_id = 1 and project_id is null and organism_id = #{@project.organism_id} and obsolete is false").map{|e| [e.label, e.id]} %> 
+    <%# end %>
     <% if ida[:ge_geneset_type] == 'global' %>
     <%= select_tag "attrs[#{attr_name}]", options_for_select(l, ida[attr_name]), {class: 'form-control'} %>
     <% else %>

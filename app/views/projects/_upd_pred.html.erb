@@ -1,0 +1,52 @@
+<%  if @annots.size > 0 %>
+console.log('<%= raw @cmd.gsub(/'/, '"') %>'); 
+console.log('<%# raw @h_results.to_json %>'); 
+$('#pred_process_duration').val('<%= pred_time = (@h_results['predicted_time']=='NA') ? '' : @h_results['predicted_time'].to_s %>');
+$('#pred_max_ram').val('<%= pred_ram = (@h_results['predicted_ram']=='NA') ? '' : @h_results['predicted_ram'].to_s %>');
+
+<% prevent_req_messages = [] 
+ class_ram = 'badge-light'
+ if pred_ram.to_i > 50000000 
+  class_ram = 'badge-warning' 
+  if pred_ram.to_i > 100000000 
+   class_ram = 'badge-danger'
+   prevent_req_messages.push("Predicted RAM exceeds 100Gb for the biggest input dataset selected.")  
+  end 
+ end 
+
+ class_time = 'badge-light'
+ if pred_time.to_i > 24 * 3600
+  class_time = 'badge-warning'
+  if pred_time.to_i > 48 * 3600
+   class_time = 'badge-danger'
+   prevent_req_messages.push("Predicted execution time exceeds 2 days for the biggest input dataset selected.")
+  end
+ end 
+%> 
+
+$('#method_pred').html("Resource prediction: <span class='badge <%= class_time %>' title='<%= @h_title[@h_results['predicted_ram']] %>'>\
+Execution time: <%= raw (@h_vals[@h_results['predicted_time'].to_s]) ? @h_vals[@h_results['predicted_time'].to_s] : duration(@h_results['predicted_time']) %>\
+</span>\
+ <span class=' badge <%= class_ram %>' title='<%= @h_title[@h_results['predicted_ram']] %>'>Required RAM: \
+<%= raw (@h_vals[@h_results['predicted_ram'].to_s]) ? @h_vals[@h_results['predicted_ram'].to_s] : display_mem(@h_results['predicted_ram']*1000) %>\
+</span>");
+
+<% if prevent_req_messages.size > 0 %>
+<% solution_messages = 'Please select smaller datasets or use a scalable method' 
+  if @step.name == 'dim_reduction' 
+   solution_message = 'Please launch you dimension reduction on a PCA 50 dimensions.'
+  end
+ %>
+$("#prevent_req_messages").html("<%= raw prevent_req_messages.join("<br/>") %><br/><b><i class='fa fa-lightbulb'></i> <%= solution_message %></b>")
+$("#prevent_req_messages").removeClass("hidden")
+$("#<%= @step.name %>_button").attr('disabled', true)
+<% else %>
+$("#prevent_req_messages").addClass("hidden")
+//$("#<%= @step.name %>_button").attr('disabled', false)
+<% end %>
+
+$('#method_pred').fadeOut(0).fadeIn(300);
+
+<% else %>
+$('#method_pred').html("");
+<% end %>

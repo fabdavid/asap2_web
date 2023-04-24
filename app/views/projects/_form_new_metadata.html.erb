@@ -33,7 +33,11 @@
     {'name' : 'list_cols', 'value' : $("#selection-content").val()},
     {'name' : 'selected_name', 'value' : $("#selected_name").val()},
     {'name' : 'unselected_name', 'value' : $("#unselected_name").val()},
+<% if params[:annot_id] %>
+    {name : 'annot_id', value : '<%= params[:annot_id] %>'}
+<% else %>
     {name : 'run_id', value : '<%= params[:run_id] %>'}
+<% end %>
    ]
    refresh_post(null, "<%= save_metadata_from_selection_project_path(:key => @project.key) %>", p, 'post', {loading:'fa-2x',redirect:true})
   })

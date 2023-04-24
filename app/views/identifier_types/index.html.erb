@@ -1,25 +1,11 @@
-<p id="notice"><%= notice %></p>
-
-<h1>Identifier Types</h1>
-
-<table>
-  <thead>
-    <tr>
-      <th colspan="3"></th>
-    </tr>
-  </thead>
-
-  <tbody>
-    <% @identifier_types.each do |identifier_type| %>
-      <tr>
-        <td><%= link_to 'Show', identifier_type %></td>
-        <td><%= link_to 'Edit', edit_identifier_type_path(identifier_type) %></td>
-        <td><%= link_to 'Destroy', identifier_type, method: :delete, data: { confirm: 'Are you sure?' } %></td>
-      </tr>
-    <% end %>
-  </tbody>
-</table>
-
-<br>
-
-<%= link_to 'New Identifier Type', new_identifier_type_path %>
+<div class='m-4'>
+<h4>Cross-references</h4>
+<ul>
+  <% ['GEO Series', 'ArrayExpress Experiment', 'BioProject', 'SRA Study'].each do |it_name| %>
+  <li>
+    <% identifier_type = @h_identifier_types[it_name] %>
+    <%= link_to ((identifier_type.pluralizable) ? identifier_type.name.pluralize : "#{identifier_type.name} items"), identifier_type_path(identifier_type) if identifier_type %>
+	</li>
+  <% end %> 
+</ul>
+</div>

@@ -9,10 +9,15 @@ task update_genes: :environment do
   
   start = Time.now
 
+  #  last_version = Version.last
+  #  h_env = JSON.parse(last_version.env_json)
+  #  prev_version = Version.find(last_version.id - 1)
+  #  h_env_prev = JSON.parse(prev_version.env_json)
+  
   def dt t, start
     d = (t - start).to_i
-#    return "#{d/60}:#{d%60}"
-     Time.at(d).strftime "%H:%M:%S"
+    #    return "#{d/60}:#{d%60}"
+    Time.at(d).strftime "%H:%M:%S"
   end
 
   def unquote txt
@@ -35,10 +40,11 @@ task update_genes: :environment do
     h_db_types = {
       :vertebrates => {:url => "ftp://ftp.ensembl.org/pub/release-#{release_num}/mysql/"}
     }
+
     [:bacteria, :fungi, :metazoa, :plants, :protists].each do |tmp_db_type|
       h_db_types[tmp_db_type]= {:url => "ftp://ftp.ensemblgenomes.org/pub/release-#{release_num}/#{tmp_db_type.to_s}/mysql/"}
     end
-
+    
     h_ensembl_subdomains = {}
     EnsemblSubdomain.all.each do |es|
       h_ensembl_subdomains[es.name.to_sym]= es
@@ -47,21 +53,21 @@ task update_genes: :environment do
     puts "#{db_type} => #{h_db_types[db_type][:url]}"
     
     base_url = h_db_types[db_type][:url] #"ftp://ftp.ensembl.org/pub/release-#{release_num}/mysql/"
-#    tmp_dir = Pathname.new("./tmp/")
+    #    tmp_dir = Pathname.new("./tmp/")
     
     h_db_names = {}
     list_folders = `wget -O - #{base_url}`
     list_folders.split("\n").each do |l|
       #  puts l
       if m = l.match(/>(\w+)\/</)
-       # puts m[1]
-       # t = m[1].split("_")
-       # t_ensembl_db_name = []
-       # t.each do |w|
-       #   break if w = core
-       #   t_ensembl_db_name.push w
-       # end
-       
+        # puts m[1]
+        # t = m[1].split("_")
+        # t_ensembl_db_name = []
+        # t.each do |w|
+        #   break if w = core
+        #   t_ensembl_db_name.push w
+        # end
+        
         #ensembl_db_name = (0 .. t.size-3).map{|i| t[i]}.join("_") 
         if m2 = m[1].match(/(.+?)_core_/)
           h_db_names[m2[1]] = m[1].strip
@@ -78,7 +84,7 @@ task update_genes: :environment do
         
 #    organisms = Organism.all.to_a.select{|o| o.name and !o.name.strip.empty?}
 #    organisms.each_index do |oid|
-     h_db_names.keys.select{|e| !e.match(/_collection$/)}.each do |db_name|
+     h_db_names.keys.select{|e| !e.match(/_collection$/)}.each do |db_name| # and e.match(/drosophila_melanogaster/)}.each do |db_name|
       o = Organism.where(:ensembl_db_name => db_name).first
       if ! o
         puts "Create new organism for #{db_name}..."
@@ -95,6 +101,29 @@ task update_genes: :environment do
                             :latest_ensembl_release => release_num
                             )
       end
+      
+#      ConnectionSwitch.with_db(:website_with_version, nil) do 
+#        o2 = Organism.where(:ensembl_db_name => db_name).first
+#        if ! o2
+#          puts "Create new organism for #{db_name}..."
+#          h_o = {
+#            :ensembl_db_name => db_name,
+#            :ensembl_subdomain_id => h_ensembl_subdomains[db_type].id,
+#            :latest_ensembl_release => release_num
+#          }
+#          o2 = Organism.new(h_o)
+#          o2.save
+#        else
+#          o2.update_attributes(
+#                               :ensembl_subdomain_id => h_ensembl_subdomains[db_type].id,
+#                               :latest_ensembl_release => release_num
+#                               )
+#        end
+#        
+#        if o2.id != o.id
+#          puts "DISCREPENCY #{o.id} #{o2.id}!"
+#        end
+#      end
       
       #      o = organisms[oid]
       puts "#{dt(Time.now, start)}: ====> Extract #{o.ensembl_db_name} RELEASE #{release_num} #{db_type.upcase}..."
@@ -169,7 +198,7 @@ task update_genes: :environment do
 	      l = l.force_encoding('iso-8859-1').encode('utf-8')
               t = l.chomp.split("\t")
               #              if [1100, 1300].include? t[1].to_i
-              h_xref[t[0]] = {:acc => t[2], :name => t[3], :type => t[1]}
+              h_xref[t[0]] = {:acc => t[2], :name => t[3], :type => t[1], :description => t[5]}
               #              end
             end
           end
@@ -178,9 +207,10 @@ task update_genes: :environment do
           File.open("#{tmp_dir}/object_xref.txt", "r") do |f|
             while l = f.gets
               t = l.chomp.split("\t")
-              if h_xref[t[3]] and t[2] == 'Gene'
-                h_object_xref[t[1]]||=[]
-                h_object_xref[t[1]].push(t[3])
+              if h_xref[t[3]] and ['Gene', 'Translation'].include? t[2]
+                h_object_xref[t[1]] ||={}
+                h_object_xref[t[1]][t[2]]||=[]
+                h_object_xref[t[1]][t[2]].push(t[3])
               end
             end
           end
@@ -239,6 +269,22 @@ task update_genes: :environment do
                 end
               end
               description.gsub!(/\s+\[.+?\]\s*$/, '') if description
+
+#              if description == '\\N'
+#                puts "description is null"
+#                if h_object_xref[t[0]]['Translation']
+#                #  list_xref_ids = h_object_xref[t[0]]['Translation'].select{|e| ["2000", "2200", "2202"].include? h_xref[e][:type]}.sort{|a, b| h_xref[a][:type].to_i <=> h_xref[b][:type].to_i}
+#		#  puts list_xref_ids.to_json 
+#                #  xref_id = list_xref_ids.last
+#		#  puts h_xref[xref_id.to_i].to_json
+#		#  puts h_xref[xref_id.to_s].to_json
+#                #  description = h_xref[xref_id][:description] if h_xref[xref_id]
+#                else
+#                  description = "" #nil
+#                end
+#                
+#              end
+              
               h_gene[ensembl_id]={
                 :id => t[0], 
                 :chr => h_seq_region[t[3]], 
@@ -427,12 +473,12 @@ task update_genes: :environment do
                 h_upd[:sum_exon_length] = ref_ranges.map{|r| r[1]-r[0]+1}.sum
               end
               alt_names = []
-	      if h_object_xref[h_gene[stable_id][:id]]
+	      if h_object_xref[h_gene[stable_id][:id]] and h_object_xref[h_gene[stable_id][:id]]['Gene']
                 #            j+=1
                # alt_names = []
 	   #    puts 'bla'
                 hgnc_xref_id = nil
-                h_object_xref[h_gene[stable_id][:id]].each do |xref_id|
+                h_object_xref[h_gene[stable_id][:id]]['Gene'].each do |xref_id|
                   if h_xref[xref_id]                    
                     if h_xref[xref_id][:type] == '1300'
                       h_upd[:ncbi_gene_id] = h_xref[xref_id][:acc].to_i
@@ -447,10 +493,10 @@ task update_genes: :environment do
                     end
                   end
                 end
-                #                xref_ids = h_object_xref[h_gene[stable_id][:id]].select{|e| h_external_db[h_xref[e][:type]][:priority]}
+                #                xref_ids = h_object_xref[h_gene[stable_id][:id]]['Gene'].select{|e| h_external_db[h_xref[e][:type]][:priority]}
 #                gene_name_xref_id = hgnc_xref_id
 #                if !gene_name_xref_id
-#                  highest_priority_xref_ids = h_object_xref[h_gene[stable_id][:id]].select{|e| h_xref[e] and h_external_db[h_xref[e][:type]] and h_external_db[h_xref[e][:type]][:priority#]}.sort{|a, b| h_external_db[h_xref[b][:type]][:priority] <=> h_external_db[h_xref[a][:type]][:priority]}
+#                  highest_priority_xref_ids = h_object_xref[h_gene[stable_id][:id]]['Gene'].select{|e| h_xref[e] and h_external_db[h_xref[e][:type]] and h_external_db[h_xref[e][:type]][:priority#]}.sort{|a, b| h_external_db[h_xref[b][:type]][:priority] <=> h_external_db[h_xref[a][:type]][:priority]}
 #                  primary_db_synonyms =  highest_priority_xref_ids.select{|e| h_external_db[h_xref[e][:type]][:cat] == 'PRIMARY_DB_SYNONYM'}
 #                  gene_name_xref_id = ( primary_db_synonyms.size > 0) ? primary_db_synonyms.first : highest_priority_xref_ids.first  
 #                  if stable_id == 'FBgn0263761'
@@ -495,7 +541,7 @@ task update_genes: :environment do
 #                puts h_upd[:name].to_json
 #                if h_upd[:name] == nil
 #                  puts h_gene[stable_id][:id].to_json
-#                  puts h_object_xref[h_gene[stable_id][:id]].to_json 
+#                  puts h_object_xref[h_gene[stable_id][:id]]['Gene'].to_json 
 #                end
                # h_upd[:alt_names] = (((gene_attr['alt_names']) ? gene_attr['alt_names'].split(",") : []) | alt_names).join(",") if alt_names.size > 0
                 h_upd[:alt_names] = alt_names.join(",")
@@ -583,26 +629,63 @@ task update_genes: :environment do
         end
       end
     end
+
+     h_ensembl_subdomains[db_type].update_attribute(:latest_ensembl_release, release_num)
     
   end
-
-#  initial_release = 97
-  initial_release = 54
-  final_release = 97
-  (initial_release .. final_release).to_a.each do |release_num|
-    puts "Parse Vertebrates #{release_num}..."
-    extract_genes(start, :vertebrates, release_num)
-  end
   
-  ##ensembl genomes                                                                                                                                                                                     
-  initial_release = 5
-  final_release = 44
-  (initial_release .. final_release).to_a.each do |release_num|
-    [:bacteria, :fungi, :metazoa, :plants, :protists].each do |db_type|
-      puts "Parse #{db_type} #{release_num}..."
-      extract_genes(start, db_type, release_num)
+  #  initial_release = 97
+  
+  #  initial_release = 99 #h_env_prev["tool_versions"]["ensembl_vertebrate"]
+  initial_release = EnsemblSubdomain.where(:name => "vertebrates").first.latest_ensembl_release + 1 #Gene.maximum("release") + 1
+  #  final_release = 102 #h_env["tool_versions"]["ensembl_vertebrate"]
+  
+  readme = `wget -O - 'http://ftp.ensembl.org/pub/current_README'`
+  if m = readme.match(/Ensembl Release (\d+) Databases./)
+    final_release = m[1].to_i
+    if initial_release <= final_release
+      puts "RELEASE update : from #{initial_release} to #{final_release}"
+      
+      (initial_release .. final_release).to_a.each do |release_num|
+        puts "Parse Vertebrates #{release_num}..."
+        extract_genes(start, :vertebrates, release_num)
+      end
+    else
+      puts "Vertebrates is ALREADY up to date!"
     end
   end
 
+  
+  ##ensembl genomes                                                                                                                                                                                     
+  #  initial_release = 46 #h_env_prev["tool_versions"]["ensembl_genomes"]
+
+  #    final_release = 49 #h_env["tool_versions"]["ensembl_genomes"]
+  [:bacteria, :fungi, :metazoa, :plants, :protists].each do |db_type|
+    initial_release = EnsemblSubdomain.where(:name => db_type.to_s).first.latest_ensembl_release + 1
+    
+    readme = `wget -O - 'http://ftp.ensemblgenomes.org/pub/current_README'`
+    if m = readme.match(/The current release is Ensembl Genomes (\d+)/)
+      final_release = m[1].to_i
+      if initial_release <= final_release
+        
+        puts "RELEASE update : from #{initial_release} to #{final_release}"
+        #  exit
+        (initial_release .. final_release).to_a.each do |release_num|
+          puts "Parse #{db_type} #{release_num}..."
+          extract_genes(start, db_type, release_num)
+        end
+        
+      else
+        puts "#{db_type.to_s.capitalize} is ALREADY up to date!"
+      end
+    end
+  end
+  
+  output_json = Pathname.new(APP_CONFIG[:data_dir]) + 'tmp' + 'tool_versions.json'
+  
+  File.open(output_json, 'w') do |f|
+    f.write({"ensembl_vertebrates" => EnsemblSubdomain.find_by_name("vertebrates").latest_ensembl_release,
+            "ensembl_genomes" => EnsemblSubdomain.find_by_name("bacteria").latest_ensembl_release}.to_json)
+  end
   
 end

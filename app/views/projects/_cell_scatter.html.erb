@@ -1,0 +1,175 @@
+<%# @log3 %>
+<%# session[:csp_params][@project.id][:run_id] %>
+
+<%# render :partial => 'filter_runs' %>
+<%# params.to_json if admin? %>
+
+<% if @annots.size > 0 %>
+
+<div id='plot_options_window' class='card hidden'>
+  <div class='card-header'>
+    <div class='top-right-buttons'>
+      <span id='plot_options_close' class='pointer'>
+        <i class='fa fa-times-circle'></i>
+      </span>
+    </div>
+    <b>Controls</b>
+  </div>
+  <div id='plot_options_content' class='card-body'>
+  </div>
+</div>
+
+<div id='plot_annotation_window' class='card hidden'>
+  <div class='card-header' style='padding-bottom:0'>
+    <div class='top-right-buttons'>
+      <span id='plot_annotation_close' class='pointer'>
+        <i class='fa fa-times-circle'></i>
+      </span>
+    </div>
+    <b>Annotation</b>
+    <div id='annotation_title' class='mb-1'></div>
+    <ul class='nav nav-tabs' id="annot_menu-nav" role="tablist">
+      <% if editable? @project or @project.public == true %>
+      <li class="nav-item">
+        <a class="nav-link active" id="new_annot-tab" data-toggle="tab" href="#pane-new_annot" role="tab" aria-controls="new_annot" aria-selected="true">New annotation</a>
+      </li>
+      <% end %>
+      <li class="nav-item">
+        <a class="nav-link <%= (!editable?(@project)) ? 'active' : '' %>" id="existing_annot-tab" data-toggle="tab" href="#pane-existing_annot" role="tab" aria-controls="existing_annot"  aria-selected="true">Existing annotations</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="evidences_annot-tab" data-toggle="tab" href="#pane-evidences_annot" role="tab" aria-controls="evidences_annot" aria-selected="true"><span id='evidences_icon'></span> Evidences</a>
+      </li>
+    </ul>
+  </div>
+  <div id='plot_annotation_content' class='card-body'>
+  </div>
+</div>
+
+<div id='plot_btns'>
+<!--<div id='plot_clusters_btn' class='btn btn-primary hidden'>Clusters</div>-->
+<button type='button' id='plot_options_btn' class='btn btn-primary' disabled><i class='fa fa-spinner fa-pulse fa-fw fa-lg'></i> Loading controls...</button>
+</div>
+<%# session[:current_dashboard] %>
+
+<!--<div class="btn-group" role="group" aria-label="Basic example">
+  <button type="button" class="btn btn-secondary">2D</button>
+  <button type="button" class="btn btn-secondary">3D</button>
+</div>
+-->
+
+<%# .to_json %>
+<%#  @h_attrs_by_run_id.to_json %>
+<div id='cell_scatter_form_container' class=''>
+<%# session[:store_run_id][@project.id] %>
+  <%= render :partial => 'cell_scatter_form' %>
+</div>
+
+<div id='plot_container'></div>
+<div id='plot_legend'></div>
+
+<%= javascript_tag do %>
+
+var h_opt = ($("#plot_options_window").hasClass("hidden")) ? {loading : 'fa-2x'} : {loading_full:"<i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i>"}
+
+//refresh("cell_scatter_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'cell_scatter_form', :upd_plot => 1) %>&annot_id=" + $("#plot_annot_id").val() + "&displayed_nber_dims=" + $("#plot_displayed_nber_dims").val(), h_opt)
+
+function place_plot_options_window(){
+
+  var w = $(window).width()
+  var ww = 600;
+
+//  $("#plot_options_window").removeClass("hidden")
+
+  $("#plot_options_window").animate({
+   'top' : 150,
+   'width' : ww,
+   'left' : w - ww,
+   'bottom' : 10
+  }, 200, function(){
+  })
+
+//  if (! $("#new_analysis_form").hasClass("hidden")){
+//   add_margin_step_container()
+//  }
+}
+
+
+$("#plot_options_close").click(function(){
+ var w = $(window).width()
+ var ww = 600;
+
+ plotly_graph.updatePlotWidth(w-300);
+ $( "#plot_options_window" ).addClass("hidden");
+ $( "#plot_options_window" ).animate({
+   'top' : 150,
+   'width' : ww,
+   'left' : w,
+   'bottom' : 10
+   }, 200, function() {
+   });
+})
+
+$("#plot_annotation_close").click(function(){
+ var w = $(window).width()
+ var ww = 600;
+
+// refresh the legend
+if ($("#opt_coloring_type").val() == 3){
+ refresh("cat_legend", "<%= raw annots_path() %>/" + $("#opt_cat_annot_id").val() + "/get_cat_legend", {loading:'fa-2x'})
+}
+// plotly_graph.updatePlotWidth(w-300);
+ $( "#plot_annotation_window" ).addClass("hidden");
+ $( "#plot_annotation_window" ).animate({
+   'top' : 150,
+   'width' : ww,
+   'left' : w,
+   'bottom' : 10
+   }, 200, function() {
+   });
+})
+
+
+$("#plot_options_btn").click(function(){
+ var w = $(window).width()
+ var ww = 600;
+
+/*   $( "#step_container" ).animate({
+    'margin-right': ww
+   }, 200, function() {
+   });
+*/
+
+plotly_graph.updatePlotWidth(w-ww-300);
+
+//refresh("plot_options_content", "<%= raw get_dr_options_project_path(@project.key) %>?run_id=" + , {loading:"fa-2x"})
+
+ $("#plot_options_window" ).removeClass("hidden");
+ $("#plot_options_window" ).css({"display" : '' })
+ $("#plot_options_window" ).animate({
+   'top' : 150,
+   'width' : ww,
+   'left' : w - ww,
+   'bottom' : 10
+   }, 200, function() {
+   });
+
+});
+
+<%# if params[:open_controls] == '1' %>
+/*$(document).ready(function(){
+$("#plot_options_btn").click()
+})
+*/
+<%# end %>
+
+<% end %>
+
+<% else %>
+
+<!--<div class='badge badge-warning'>No run created yet</div> -->
+ <% if session[:activated_filter][@project.id] == true and !@disable_filter %>
+  <div class='alert alert-danger'>No metadata found with selected filter criteria</div>
+ <% end %>
+<% end %>
+

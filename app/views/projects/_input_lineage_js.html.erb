@@ -1,0 +1,13 @@
+  var run_id = this.id.split("_")[2]
+  e.stopPropagation();
+  e.preventDefault();
+  $("#ontop_popup_window").removeClass("hidden")
+  //  $("#popup_container").html("bla!")
+  refresh("ontop_popup_container", "<%= get_lineage_project_path(:key => @project.key) %>?run_id=" + run_id, {loading: 'fa-2x'})
+  var w = $(window).width();
+  $("#ontop_popup_window").css({
+        left: 200,
+        width:w - 250,
+        height:'auto',
+        top: e.pageY + 10
+    }).stop().show(100);

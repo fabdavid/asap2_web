@@ -6,17 +6,19 @@
 <%# @h_outputs.to_json %>
 
 <% mt = session[:metadata_type][@project.id] %>
-
+<!--
 <% l= Fo.where(:project_id => @project.id, :ext => 'loom').all.map{|fo| [display_run_short_txt(fo.run) + " (#{display_mem(fo.filesize)})", fo.run_id]} %>
 <% l.unshift(["Select a Loom file to restrict the list of #{(mt!=3) ? 'metadata' : 'expression matrices'} [All Loom files by default]", nil]) %>
 <%= select_tag 'sel_loom_file', options_for_select(l, (session[:store_run_id][@project.id] || '')), {:class => "custom-select mb-4"} %>
+-->
 <%= hidden_field_tag 'metadata_type', mt %>
 
 <div id='opt_input'>
   <div class="btn-group" role="group" aria-label="Input">
     <button id='cell_metadata_btn' type="button" class="btn btn-<%= (mt == 1) ? 'primary' : 'secondary' %> choice_btn <%= (mt == 1) ? 'active' : '' %>">Cell metadata</button>
-    <button id='gene_metadata_btn' type="button" class="btn btn-<%= (mt == 2) ? 'primary' : 'secondary' %> choice_btn <%= (mt == 2) ? 'active' : '' %>">Gene metadata</button>
+    <button id='gene_metadata_btn' type="button" class="btn btn-<%= (mt == 2) ? 'primary' : 'secondary' %> choice_btn <%= (mt == 2) ? 'active' : '' %>">Gene metadata</button>    
     <button id='expression_matrices_btn' type="button" class="btn btn-<%= (mt == 3) ? 'primary' : 'secondary' %> choice_btn <%= (mt == 3) ? 'active' : '' %>">Expression matrices</button>
+    <button id='global_metadata_btn' type="button" class="btn btn-<%= (mt == 4) ? 'primary' : 'secondary' %> choice_btn <%= (mt == 4) ? 'active' : '' %>">Global metadata</button>
   </div>
 </div>
 
@@ -25,18 +27,24 @@
 <%# Annot.where(@h_annot).all.to_a %>
 
 <% if @annots %>
-<table id='annotations'>
+<table id='metadata_table'>
   <thead>
     <tr>
       <th>Produced by</th>
+      <% if session[:store_run_id][@project.id] == 0 %>
       <th>Stored in</th>
+      <% end %>
       <th>Name</th>
       <!--      <th>Type</th>-->
-      <th># cols</th>
-      <th># rows</th>
+      <% if mt !=4 %>
+      <th># <%= ([1, 3].include? mt) ? "cells" : "cols" %></th>
+      <th># <%= ([2, 3].include? mt) ? "genes" : "rows" %></th>
+      <% end %>
       <% if mt !=3 %>
       <th>Data type</th>
-      <th>Categories (first 10)</th>
+      <% if mt < 3 %>
+<!--      <th>Categories (first 10)</th> -->
+      <% end %>
       <% end %>
       <th>Size</th>
       <th>User</th>
@@ -47,16 +55,21 @@
     <% @annots.each do |annot| %>
     <tr>
       <td><%= (run = annot.run) ? raw(display_run_short(run)) : 'NA' %></td>
+      <% if session[:store_run_id][@project.id] == 0 %> 
       <td>
 	<%= (store_run = @h_store_runs[annot.store_run_id]) ? raw(display_run_short(store_run)) : 'NA' %>
       </td>
-      <td><%# annot.name %><%= annot.label || ((annot.dim == 3) ? annot.name : annot.name.split("/")[2]) %></td>
+      <% end %>
+      <td><%# annot.name %><span class='wrap'><%= annot.label || ((annot.dim == 3) ? annot.name : annot.name.split("/")[2]) %></span></td>
       <!--  <td><%= (annot.dim == 1) ? 'Cell' : 'Gene' %></td> -->
+      <% if mt !=4 %>
       <td><%= annot.nber_cols %></td>
       <td><%= annot.nber_rows %></td>
+      <% end %>
       <% if mt != 3 %>
-      <td><%= (dt = @h_data_types[annot.data_type_id]) ? dt.name : 'NA' %></td>
-      <td>
+      <td><%= (dt = @h_data_types[annot.data_type_id]) ? dt.label : 'NA' %></td>
+      <% if mt < 3 %>
+   <!--   <td>
 	<%# annot[:categories_json] %>
 	<% if annot[:categories_json] %>
           <% h_cat = JSON.parse(annot[:categories_json]) %>
@@ -65,7 +78,8 @@
   	   <%= (annot[:categories_json]) ? list_cat.first(10).map{|k| k + " (" + h_cat[k].to_s + ")"}.join(", ") : 'NA' %>
           <% end %>
 	<% end %>
-      </td>
+      </td> -->
+      <% end %>
       <% end %>
       <td><%= display_mem(annot.mem_size) %></td>
       <td><%= (u = annot.user) ? ((u == current_user) ? 'me' : u.email) : 'admin' %></td>
@@ -76,26 +90,29 @@
 </table>
 
 <% else %>
-No annotation found.
+No metadata found.
 <% end %>
 
 <%= javascript_tag do %>
 
-function upd_metadata(){
- var store_run_id = $("#sel_loom_file").val()
- var metadata_type = $("#metadata_type").val()
- refresh("step_container", "<%= raw get_step_project_path(:key => @project.key, :step_id => 18, :nolayout => 1) %>&store_run_id=" + store_run_id + "&metadata_type=" + metadata_type, {loading:'fa-2x'})
-}
+<%# metadata_expr_step = Step.where({:version_id => @project.version_id, :name => 'metadata_expr'}).first %>
+<% metadata_expr_step = Step.where({:docker_image_id => @asap_docker_image.id, :name => 'metadata_expr'}).first %>
 
+function upd_metadata(){
+// var store_run_id = $("#sel_loom_file").val()
+ var metadata_type = $("#metadata_type").val()
+ refresh("step_container", "<%= raw get_step_project_path(:key => @project.key, :step_id => metadata_expr_step.id, :nolayout => 1) %>&metadata_type=" + metadata_type, {loading:'fa-2x'})
+}
+/*
 $("#sel_loom_file").change(function(){
  //var store_run_id = $("#sel_loom_file").val()
  //var h_metadata = {'cell_metadata_btn' : 1, 'gene_metadata_btn' : 2, 'expression_matrices_btn' : 3} 
- // refresh("step_container", "<%= raw get_step_project_path(:key => @project.key, :step_id => 18, :nolayout => 1) %>&store_run_id=" +  + "metadata_type=" + h_metadata[this.id], {loading:'fa-2x'}) 
+ // refresh("step_container", "<%= raw get_step_project_path(:key => @project.key, :step_id => metadata_expr_step.id, :nolayout => 1) %>&store_run_id=" +  + "metadata_type=" + h_metadata[this.id], {loading:'fa-2x'}) 
  upd_metadata()
 })
-
+*/
 $(".choice_btn").click(function(){ 
- var h_metadata = {'cell_metadata_btn' : 1, 'gene_metadata_btn' : 2, 'expression_matrices_btn' : 3}
+ var h_metadata = {'cell_metadata_btn' : 1, 'gene_metadata_btn' : 2, 'expression_matrices_btn' : 3, 'global_metadata_btn' : 4}
  $("#metadata_type").val(h_metadata[this.id]) 
  upd_metadata()
 })
@@ -104,7 +121,7 @@ $(".annot_btn").click(function(){
  refresh("step_container", "<%= annots_path() %>/" + this.id.split("_")[1], {loading:'fa-2x'})
 })
 
-$("#annotations").dataTable({
+$("#metadata_table").dataTable({
 "pageLength": 100
 })
 

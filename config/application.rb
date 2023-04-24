@@ -10,19 +10,24 @@ module Asap2
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 5.2
+ config.exceptions_app = self.routes
 
     # Application configuration should go into files in config/initializers
     # -- all .rb files in that directory are automatically loaded.
 
     # Set up logging to be the same in all environments but control the level
     # through an environment variable.
-    config.action_dispatch.default_headers = {
-      'X-Frame-Options' => 'ALLOW-FROM http://net-kiosk.com'
-    }
+#    config.action_dispatch.default_headers = {
+#      'X-Frame-Options' => 'ALLOW-FROM http://net-kiosk.com',
+#      'Access-Control-Allow-Origin' => 'https://gecftools.epfl.ch'
+#    }
+ #   config.action_dispatch.x_sendfile_header = 'X-Accel-Redirect'
 
     config.log_level = ENV['LOG_LEVEL']
 
     config.middleware.delete Rack::Lock
+
+    config.middleware.use Rack::Deflater
 
 #    Rails.application.middleware.use Rack::Timeout
 #    Rack::Timeout.timeout = 20  # seconds
@@ -49,11 +54,11 @@ module Asap2
       enable_starttls_auto: ENV['SMTP_ENABLE_STARTTLS_AUTO'] == 'true'
     }
 
-    config.action_mailer.default_url_options = {
+   # config.action_mailer.default_url_options = {
       #   host: ENV['ACTION_MAILER_HOST']
-      :host => "mail.epfl.ch",
-      :port => 25
-    }
+     # :host => "mail.epfl.ch",
+     # :port => 25
+   # }
     config.action_mailer.default_options = {
       from: ENV['ACTION_MAILER_DEFAULT_FROM']
     }

@@ -60,7 +60,12 @@
      $("#preparsing").html("<div class='loading'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i><br/><span class='loading_text'>Please wait, loading preview...</span></div>")
      $("#preparsing").removeClass("hidden")
      //start preparsing the
-     var p = [{'name' : 'organism', 'value' : $("#project_organism_id").val()}];
+     var p = []
+     if ($("#project_organism_id").length == 1){ 
+      p = [{'name' : 'organism', 'value' : $("#project_organism_id").val()}, {'name' : 'version_id', 'value' : $("#project_version_id").val()}];
+     }else{
+      p = [{'name' : 'metadata_type', 'value' : $("#opt_metadata_type_id").val()}, {'name' : 'input_type', 'value' : $("#opt_input_type_id").val()}, {'name' : 'version_id', 'value' : $("#opt_version_id").val()}];
+     }
      refresh_post("preparsing", data['url_preparsing'], p, 'post', {loading : 'fa-2x'});
     }
    });
@@ -127,7 +132,7 @@
             //$("#button_input_file").addClass('hidden');
             //$("#upload_indications").addClass('hidden');
             //console.log(data)
-            if ($("#project_name").val().replace(/^\s+|\s+$/g, '') == ''){
+            if ($("#project_name").length == 1 && $("#project_name").val().replace(/^\s+|\s+$/g, '') == ''){
              $("#project_name").val(data.files[0].name.replace(/\..{2,6}$/, ''))
             }
             $("#help_input_file").addClass('hidden');
@@ -136,7 +141,12 @@
             $("#preparsing").html("<div class='loading'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i><br/><span class='loading_text'>Please wait, loading preview...</span></div>")
             $("#preparsing").removeClass("hidden")
             //start preparsing the
-            var p = [{'name' : 'organism', 'value' : $("#project_organism_id").val()}];
+            var p = []
+            if ($("#project_version_id").length == 1){
+             p = [{'name' : 'version_id', 'value' : $("#project_version_id").val()},{'name' : 'organism', 'value' : $("#project_organism_id").val()}];
+            }else{
+             p = [{'name' : 'metadata_type', 'value' : $("#opt_metadata_type_id").val()}, {'name' : 'input_type', 'value' : $("#opt_input_type_id").val()}, {'name' : 'version_id', 'value' : $("#opt_version_id").val()}];
+            }
             refresh_post("preparsing", "#{preparsing_fu_path(@fu)}", p, 'post', {}); 
           } 
         });

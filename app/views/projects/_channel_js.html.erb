@@ -38,7 +38,11 @@ App.project = App.cable.subscriptions.create({channel: 'ProjectChannel',
      console.log("time -> ", now, last_update, now-last_update)
 
      if (now - last_update > 500){
-      if ($("li#step_" + data['step_id']).hasClass('active')){
+       console.log("time ok")
+//      if (data['reload_project']){
+//       console.log("reload project")  
+//      }else{
+       if ($("li#step_" + data['step_id']).hasClass('active')){
           // check if the view is not on a current step                                                                                                                                                    
           console.log("run_container:" + $(".run_container").length)
           if ($(".run_container").length > 0){
@@ -60,10 +64,10 @@ App.project = App.cable.subscriptions.create({channel: 'ProjectChannel',
             //     refresh("step_container", data['url_base_callback'], {'h_loading' : 'fa-2x'});
             //   }
             //
-           }else{
+           }else{ // not dimension reduction
 //            if($("#dashboard").length > 0  && $("#dashboard").val() == 'std_runs'){
              console.log("refresh step " + data['step_id']);
-             refresh("step_container", data['url_base_callback'], {'h_loading' : 'fa-2x'});
+             refresh("step_container", data['url_base_callback'], {'h_loading' : 'fa-2x', 'step_id' : data['step_id']});
 /*            }else{             
              console.log("not a standard dashboard")             
              //xhrs = abort_and_delete_xhrs(xhrs)
@@ -79,12 +83,15 @@ App.project = App.cable.subscriptions.create({channel: 'ProjectChannel',
             }
            }
           }
-      }else{
-         if ($("li#step_14").hasClass('active')){
+       }else{
+         console.log("test")
+         console.log(data['summary_step_id'])
+         if ($("li#step_" + data['summary_step_id']).hasClass('active') && data['step'].hidden == false){
               console.log("condition4 ok");
               upd_summary()
          }
-      }
+       }
+//      }
       last_update = now    
      }
     }

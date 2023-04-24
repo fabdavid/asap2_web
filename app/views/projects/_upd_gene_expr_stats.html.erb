@@ -1,0 +1,127 @@
+<div id='gene_cat_boxplot_container' style='overflow-x:scroll'><div id='gene_cat_boxplot'  style='x-overflow:scroll'></div></div>
+
+<% if @list_cats %>
+<table id='list_best_annotations' class='stripe'>
+  <thead>
+    <tr>
+    <!--  <th>Reference</th> -->
+      <th>Category</th>
+      <th>Best annotation</th>
+ <!--     <th></th>-->
+    </tr>
+  </thead>
+  <tbody>
+    <% @list_cats.each_index do |i| %>
+    <tr>
+<!--      <td><%= i+1 %></td> -->
+      <td><%= @list_cats[i] %></td>
+      <td>
+	<div id='cat-best_annot'>
+	  <% if @sel_clas[i] %>
+	  <% sel_cla = @sel_clas[i] %>
+	  <%= raw display_cla(sel_cla, @h_cots, @h_genes) if sel_cla %>
+	  <% end %>
+	</div>
+      </td>
+<!--      <td>
+	<button type='button' id='annotate2-btn_<%= i %>' class='btn btn-sm btn-outline-secondary annotate-btn'>
+	  <i class='fa fa-edit'></i> 
+	  <%# @nber_clas[i] %> annotation<%# 's' if @nber_clas[i] >1 %>
+	</button>
+      </td>-->
+    </tr>
+    <% end %>
+  </tbody>
+</table>
+<% end %>
+
+<%= javascript_tag do %>
+
+$("#list_best_annotations").dataTable({})
+
+var cells_by_cat = <%= raw @cat_cells.to_json %>
+/*console.log("test")
+console.log(cells_by_cat)
+console.log("<%= @cmd %>")
+console.log("quantvector")
+console.log(plotly_conf.quant_vector[0])
+*/
+var traces = []
+
+var list_cats =  <%= raw @list_cats.to_json %>
+
+if (list_cats){
+//console.log(list_cats)
+var means = [];
+
+for (var i=0; i < list_cats.length; i++){
+ means.push(mean(cells_by_cat[list_cats[i]].map(y => plotly_conf.quant_vector[0][y])))
+}
+//console.log("means " + means)
+var sorted_list_cat_indices = sort_with_indices(means).reverse()
+//console.log(sorted_list_cat_indices) 
+//console.log("sorted means: " + sorted_list_cat_indices.map(x => means[x]))
+var longest_name = ""
+for (var k=0; k< list_cats.length; k++){
+ var i = sorted_list_cat_indices[k]
+//console.log("i=" + i)
+ y = []
+/* for (var j= 0; j< cells_by_cat[i].length; j++){
+ y.push(plotly_conf.quant_vector[cells_by_cat[i][j]])
+ }
+*/
+//var y =  cells_by_cat[list_cats[i]].map(x => plotly_conf.quant_vector[0][x])
+//if (i==8){console.log("QQQQQQQQQQ" + quantile(y, .75))}
+
+//console.log(y)
+//console.log(quantile(y, .5))
+ var name = (is_numeric(list_cats[i])) ? ("cat. " + list_cats[i]) : list_cats[i]
+ if (name.length > longest_name.length){longest_name = name}
+
+ var trace = {
+  name : name,
+  y : cells_by_cat[list_cats[i]].map(x => plotly_conf.quant_vector[0][x]),
+  mean : mean(y),
+  median : quantile(y, .5),
+  q1 : quantile(y, .25),
+  q3 : quantile(y, .75),
+  min : list_min(y),
+  max : list_max(y),
+
+  type : 'box',
+  showlegend :false,
+  customdata : {'cat' : list_cats[i]},		 
+  //boxpoints : 'all',
+  boxpoints : 'outliers',
+  //marker : {outlierwidth : 0.1},
+  outlierwidth: 0,
+  //width:0,
+//  markers: {outlierwidth:0.1, outliercolor:"white"},  
+  //line: {width:0.5, outlierwidth: 0},
+  //whiskerwidth : 0,
+  //notchwidth :0,
+  boxmean: true
+  //hovertemplate : "<b>toto</b>",
+  //text : 'toto'
+ }
+ traces.push(trace)
+}
+
+
+var bottom_margin = longest_name.length * 7 ;
+
+var layout = {
+title: 'Gene expression by category',
+height: 300 + bottom_margin,
+width: 300 + 30 * list_cats.length,
+hovermode:  'x unified',
+ margin:{
+  b:bottom_margin
+    }
+}
+
+console.log(traces)
+
+Plotly.newPlot('gene_cat_boxplot', traces, layout);
+}
+<% end %>

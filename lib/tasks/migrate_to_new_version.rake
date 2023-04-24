@@ -1,5 +1,6 @@
 desc '####################### Migrate to new version'
 task migrate_to_new_version: :environment do
+
   puts 'Executing...'
 
   now = Time.now

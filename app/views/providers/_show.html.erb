@@ -1,0 +1,74 @@
+<div class='jumbotron pb-2 pt-2 mb-2' >
+  <!--      <div class='card-header'>Welcome to ASAP</div> -->
+  <div class='card-body'>
+    <div class='float-right'><%= link_to(image_tag(@provider.tag.downcase + "_logo.png", height: '100px'),  @provider.url, {:target => '_blank'}) %></div>
+    <h1 class="display-4"><b><%= @provider.name %><%# link_to @provider.name, @provider.url, :style => 'color:black' %></b></h1>
+    <p class="lead"><%= raw @provider.description %> <%= link_to raw("<i class='fas fa-angle-double-right'></i> visit the #{@provider.tag} website"), @provider.url, {:class => 'ml-4', :target => '_blank'} %></p>
+  </div>
+</div>
+
+<div class='mr-3 ml-3'>
+<table id='pps'>
+  <thead>
+    <tr>
+      <th>Ref ASAP project</th>
+      <th>Title</th>
+      <th># cells</th>
+      <% @attrs.each_key do |k| %>
+      <th><%= @attrs[k]['label'] %></th>
+      <% end %>
+      <th>All ASAP projects</th>
+      <th></th>
+      <th></th>
+      <% if admin? %>
+      <th></th>
+      <% end %>
+    </tr>
+  </thead>
+  <tbody>
+    <% @provider_projects.select{|pp| admin? or @h_ref_projects[pp.id].size > 0}.each do |pp| %>
+    <tr>
+      <% ref_project =  @h_ref_projects[pp.id].select{|p| p.user_id == 1 and p.public == true}.first %> 
+      <td><%= (ref_project) ? link_to(ref_project.public_key, project_path(:key => ref_project.public_key)) : 'None' %></td>
+      <td><%= pp.title %><%# link_to pp.title, @provider.url_mask.gsub(/\#\{id\}/, pp.key) %></td>
+       <td><%= (ref_project) ? ref_project.nber_cols : 'NA' %></td>
+      <% pp_attrs = Basic.safe_parse_json(pp.attrs_json, {}) %>
+      <% @attrs.each_key do |k| %>
+      <td><%= raw pp_attrs[k] %>
+	<% if k == :loom %>
+	<p class='text-<%= (pp.not_add_in_asap) ? 'danger' : 'success' %>'><%= pp.comment %></p>
+	<% end %>
+      </td>
+      <% end %>
+      <td><%= (ref_project) ? link_to(@h_ref_projects[pp.id].size, projects_path(:free_text => "#{@provider.tag}:#{pp.key}")) : 0 %></td>
+      <td><%= (ref_project) ? button_to('View', project_path(ref_project.key), {:class => 'btn btn-primary btn-sm', :method => 'get'}) : '' %></td>
+      <td><%= (ref_project) ? button_to('Clone', clone_project_path(ref_project.key), {:class => 'btn btn-primary btn-sm clone-btn', :method => 'get'}) : '' %></td>
+      <% if admin? %>
+      <td><%= link_to "Edit", edit_provider_project_path(pp) %></td>
+      <% end %>
+    </tr>
+    <% end %>
+  </tbody>
+</table>
+</div>
+
+<%= javascript_tag do %>
+
+$("#pps").DataTable({
+  paging: false,
+  "columnDefs": [ {
+    "targets": <%= [4 + @attrs.keys.size, 5 + @attrs.keys.size].to_json %>,
+    "orderable": false
+  }] 
+})
+
+$(".clone-btn").click(function(){
+ console.log("cloning")
+ $("#form_container").html("<div style='vertical-align:center'><i class='fas fa-spinner fa-pulse fa-2x'></i> Please wait while project is being cloned...</div>")
+ $("#ontop_window_close").addClass("hidden")
+ $("#ontop_window").removeClass("hidden")
+})
+
+
+<% end %>
+

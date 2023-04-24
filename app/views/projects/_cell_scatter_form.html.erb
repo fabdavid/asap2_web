@@ -1,0 +1,213 @@
+
+<%# session[:dr_params].to_json if admin? %>
+<%# session[:store_run_id].to_json if admin? %>
+<%# @h_changed.to_json %>
+<%# params[:annot_id].to_json %>
+<%# @default_annot.to_json if admin? %>
+<%# @log3.to_json %>
+<%# @default_run_id %>
+<%# @new_annot.to_json if admin? %>
+<%# session[:csp_params][@project.id].to_json if admin? %>
+<%# session[:csp_params][@project.id]["dim3"] if admin? %>
+<%# @error_message.to_json %>
+<%# @runs.to_json %>
+<%# @log3.to_json %>
+<%# @default_run_id.to_json %>
+<%# @log %>
+<%# @successful_runs.map{|r| r.id}.to_json %>
+<%# @runs.map{|r| r.id}.to_json %>
+<%# session[:csp_params].to_json %>
+<%# @filter_runs.to_json %>
+<%# session[:csp_params].to_json %>
+<%# @default_run_id.to_json %>
+<!--<pre><%# @error %></pre> -->
+<%# session[:csp_params] %>
+<!--<%# @runs.to_json %>
+<br/>==============================<br/>
+<%# @h_attrs_by_run_id.to_json %>
+-->
+<%# @successful_runs.to_json %>
+<%# success_runs = @successful_runs.select{|r| r.status_id == 3} %>
+
+<%# @annots.to_json %>
+<%# @default_annot.to_json %>
+<% if @annots and @annots.size > 0 %> 
+
+  <%# l = StdMethod.where(:obsolete => false, :step_id => @step.id, :id => @h_std_method_ids.keys).all.map{|e| [e.label, e.id]} %>
+  <div class='form-inline'>
+  <%# select_tag 'plot[std_method_id]',  options_for_select(l, session[:csp_params][@project.id][:std_method_id]),  {:class => 'custom-select mr-4'} %>
+ <%# if ['tsne', 'umap'].include? @h_std_methods[session[:csp_params][@project.id][:std_method_id]].name %>
+  <%#  success_runs =  success_runs.select{|e| @h_attrs_by_run_id[e.id]['nber_dims'] == session[:csp_params][@project.id][:displayed_nber_dims]} %>
+<%# end %>
+  <%# l = success_runs.map{|r| ["##{r.num} #{(step = @h_steps[r.step_id] and step.multiple_runs == false) ? step.label : ((std_method = @h_std_methods[r.std_method_id]) ? ((!params[:step_id]) ? (step.label + " ") : "") + std_method.label : 'NA')} #{display_run_attrs_txt(r, @h_attrs_by_run_id[r.id], @h_std_method_attrs)}", r.id]} %>
+  <%# select_tag 'plot[run_id]', options_for_select(l, @default_run_id),  {:class => 'custom-select mr-4'} %>
+  <% if @annots %>
+  <% store_run_ids = @annots.map{|d| d.store_run_id}.uniq %>
+
+  <% l = @annots.map{|a| [(a.name.gsub(/\/col_attrs\//, '') + 
+   ((store_run_ids.size > 1) ? (" in " + display_run_short_txt(@h_store_runs[a.store_run_id]) + " [#{a.nber_rows.to_json}, #{a.nber_cols.to_json}]") : "")), a.id]} %>
+  <%= select_tag 'plot[annot_id]', options_for_select(l, (@default_annot) ? @default_annot.id : nil), {:class => 'form-control'} %>
+  <% end %>
+  <div class="btn-group ml-2" role="group">
+    <button id='2d-btn' type="button" class="btn btn-<%= (session[:csp_params][@project.id][:displayed_nber_dims] == 3) ? 'secondary' : 'primary' %> nber_dims_btn">2D</button>
+    <button id='3d-btn' type="button" class="btn btn-<%= (session[:csp_params][@project.id][:displayed_nber_dims] == 3) ? 'primary' : 'secondary' %> nber_dims_btn">3D</button>
+  </div>
+
+  <%# hidden_field_tag "cell_names_on_hover_" %>
+
+  <%# if !['tsne', 'umap'].include? @h_std_methods[@default_run.std_method_id].name %>
+  <%# if @h_attrs_by_run_id[@default_run_id] and @h_attrs_by_run_id[@default_run_id]['nber_dims'].to_i > session[:csp_params][@project.id][:displayed_nber_dims] %>
+  <% dims = (1 .. @default_annot.nber_rows).map{|e| ["X: #{e}", e]} %>
+  <%= select_tag 'plot[dim1]', options_for_select(dims, session[:csp_params][@project.id][:dim1] || 1),  {:class => 'dim-select custom-select ml-2'} %>
+  <% dims = (1 .. @default_annot.nber_rows).map{|e| ["Y: #{e}", e]} %>
+  <%= select_tag 'plot[dim2]', options_for_select(dims, session[:csp_params][@project.id][:dim2] || 2),  {:class => 'dim-select custom-select ml-2'} %>
+  <% if  session[:csp_params][@project.id][:displayed_nber_dims] == 3 %>
+   <%# session[:csp_params][@project.id][:dim3].to_json %>
+  <% dims = (1 .. @default_annot.nber_rows).map{|e| ["Z: #{e}", e]} %>
+<%# dims.to_json %>
+  <%= select_tag 'plot[dim3]', options_for_select(dims, session[:csp_params][@project.id][:dim3] || 3), {:class => 'dim-select custom-select ml-2'} %>
+  <% end %>
+  <%# else %> 
+  <%# end %>
+  <%# else %> 
+ 
+  <%# end %>
+  <div class='float-right ml-2'><button id='refresh_plot-btn' class='btn btn-primary'><i id='refresh_plot_icon' class='fa fa-sync'></i> Refresh</button></div>
+  <div id='refresh_plot_status' class='float-right ml-2 hidden'> Updating plot...</div>
+  <%= hidden_field_tag "plot[displayed_nber_dims]", session[:csp_params][@project.id][:displayed_nber_dims] || 2 %>
+  </div>
+  <% if admin? %>
+  <div class='float-right ml-2'><% text_field_tag 'plot[color_by_free_text]', '', {:placeholder => "color by gene or cell metadata", :class => 'form-control'} %></div>
+  <% end %>
+  <% if @error_message and @error_message!= '' %>
+  <br/>
+  <div class='alert alert-danger'><%= @error_message %></div>
+  <% end %>
+
+ <%= hidden_field_tag "plot[mode]", session[:csp_params][@project.id][:mode] || 1 %>
+
+<%= javascript_tag do %>
+
+function refresh_plot(){
+  var h_opt = {loading : 'fa-2x'}
+  var nber_dims = $("#plot_displayed_nber_dims").val()
+  var mode = $("#plot_mode").val()
+  var plot_annot_id =  $("#plot_annot_id").val()
+  console.log("#plot_annot_id : " + plot_annot_id)
+  refresh("cell_scatter_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'cell_scatter_form', :upd_plot => 1) %>&annot_id=" + plot_annot_id + "&mode=" + mode + "&displayed_nber_dims=" + nber_dims + "&dim1=" + $("#plot_dim1").val() + "&dim2=" + $("#plot_dim2").val() + "&dim3=" + $("#plot_dim3").val(), h_opt)
+}
+
+$(document).ready(function(){
+
+<% if params[:upd_plot] and @error_message == '' %>
+
+  var p = [
+            {'name' : 'plot[annot_id]', 'value' : $("#plot_annot_id").val()},
+            {'name' : 'displayed_nber_dims', 'value' : $("#plot_displayed_nber_dims").val()},
+            {'name' : 'browser_name', 'value' : browserName},
+            {'name' : 'cell_names_on_hover', 'value' : (($("#plot_cell_names_on_hover").length == 1) ? (($("#plot_cell_names_on_hover").prop("checked") == true) ? 1 : 0) : <%= session[:dr_params][@project.id][:cell_names_on_hover] || 0 %>)}
+          ]
+   p.push({'name' : 'plot[dim1]', 'value' : $("#plot_dim1").val()})
+   p.push({'name' : 'plot[dim2]', 'value' : $("#plot_dim2").val()})
+   <% if params[:open_controls] %>
+   p.push({'name' : 'open_controls', 'value' : <%= params[:open_controls] %>})
+  <% end %>
+   <% if  session[:csp_params][@project.id][:displayed_nber_dims] == 3 %>
+    p.push({'name' : 'plot[dim3]', 'value' : $("#plot_dim3").val()})  
+   <% end %>
+  var h_opt = ($("#plot_options_window").hasClass("hidden")) ? {loading : 'fa-2x'} : {loading_full:"<div style='padding:30px'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i> <span class='italic'>Loading data...</span></div>"}
+  h_opt['cache'] = true
+ abort_xhrs(xhrs)
+ query_str = p.map(e => e.name + "=" + e.value).join("&")
+ var xhr = refresh("plot_container", "<%= raw cell_scatter_plot_project_path(@project.key) %>?" + query_str, h_opt);
+ xhrs = [xhr]
+<% end %>
+
+
+$(".dim-select").change(function(){
+  refresh_plot()
+})
+
+$("#plot_annot_id").change(function(){
+  refresh_plot()
+})
+
+$(".nber_dims_btn").click(function(){
+   var nber_dims = (this.id == '2d-btn') ? 2 : 3
+    console.log(nber_dims + "d")
+   $("#plot_displayed_nber_dims").val(nber_dims)
+   refresh_plot()
+})
+
+$(".mode_btn").click(function(){
+  var mode = (this.id == 'simple_mode-btn') ? 1 : 2
+  $("#plot_mode").val(mode)
+  refresh_plot()
+})
+
+$(".switch input").bootstrapSwitch({
+  // The checkbox state
+  state: <%= raw (session[:csp_params][@project.id][:displayed_nber_dims] == 2) ? "false" : "true" %>,
+  // null, 'mini', 'small', 'normal', 'large'
+  size: null,
+  // Enable animation
+  animate: false,
+  // Disabled
+  disabled: false,
+  // Readonly
+  readonly: false,
+  // Indeterminate state
+  indeterminate: false,
+  // Inverse switch direction
+  inverse: false,
+  // Allow this radio button to be unchecked by the user
+  radioAllOff: false,
+  // Color of the left side of the switch
+  onColor: 'default',
+  // Color of the right side of the switch
+  offColor: 'default',
+  // Text of the left side of the switch
+  onText: '&nbsp;',
+  // Text of the right side of the switch
+  offText: '&nbsp;',
+  // Text of the center handle of the switch
+  labelText: '&nbsp',
+  // Width of the left and right sides in pixels
+  handleWidth: 'auto',
+  // Width of the center handle in pixels
+  labelWidth: 'auto',
+  // Global class prefix
+  baseClass: 'bootstrap-switch',
+  // Container element class(es)
+  wrapperClass: 'wrapper',
+  // Callback function to execute on initialization
+  onInit: () => {
+<% if session[:csp_params][@project.id][:displayed_nber_dims] == 3 %>
+    $(this).state = true
+<% end %>
+        alert(this.state);
+     },
+  // Callback function to execute on switch state change.
+  // If false is returned, the status will be reverted, otherwise nothing changes
+  onSwitchChange: () => {
+   var s = this
+   var nber_dims = ($("#check_nber_dims").is(":checked")) ? 3 : 2
+   console.log(nber_dims + "d")
+   $("#plot_displayed_nber_dims").val(nber_dims)
+   refresh("dim_reduction_form_container", "<%= raw get_step_project_path(@project.key, :step_id => @step.id, :partial => 'dim_reduction_form') %>&annot_id=" + $("#plot_annot_id").val()  + "&displayed_nber_dims=" + $("#plot_displayed_nber_dims").val(), {loading : 'fa-2x'})
+  }
+});
+
+ <%# if action_name == 'get_step' %>
+ // refresh_plot()
+ <%# end %>
+
+})
+
+<% end %>
+  
+<% else %>
+
+<div class='alert alert-warning'>No valid run to display</div>
+
+<% end %>

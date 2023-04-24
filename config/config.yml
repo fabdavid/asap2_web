@@ -6,10 +6,14 @@ development:
  docker_call:
 #  'docker run -ti -p 5434:5433 -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --rm --entrypoint "/bin/sh" -v /data/asap2:/data/asap2 fabdavid/asap_run'
   "docker run --network=asap2_asap_network -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2  -v /srv/asap_run/srv:/srv fabdavid/asap_run -c" 
+ v1_server_url:
+  https://asap-old.epfl.ch
  server_url:
-  https://asap-beta.epfl.ch
+  https://asap.epfl.ch
  server_name:
-  asap-beta.epfl.ch
+  asap.epfl.ch
+ version_id:
+  4
  data_dir:
   /data/asap2
  user_data_dir:
@@ -20,10 +24,12 @@ development:
   /srv/CMake-hdf5-1.10.2/HDF5-1.10.2-Linux/HDF_Group/HDF5/1.10.2/lib
  admin_emails:
   ['bbcf.epfl@gmail.com']
+ asap_docker_name:
+  fabdavid/asap_run
  authorized_services:
   asap_jar:
    key: 'hB7sgKCjyiu123' 
-
+   
 production:
  asap_instance_name:
   asap_prod
@@ -41,9 +47,13 @@ production:
   /data/asap2/fus
  admin_emails:
   ['bbcf.epfl@gmail.com']
+ asap_docker_name:
+  fabdavid/asap_run
 
 
 data:
+ asap_data_id:
+  5
  data_dir:
   /data/asap2
  user_data_dir:

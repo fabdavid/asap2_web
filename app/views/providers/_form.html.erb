@@ -11,6 +11,12 @@
     </div>
   <% end %>
 
+  <div class='form-group col-12 col-sm-4'>
+    <%= label_tag 'name', 'Name', {'data-toggle' => "tooltip"} %>
+    <%= form.text_field :name, {:class => "form-control", :placeholder => "Name of source"} %>
+  </div>
+
+
   <div class="actions">
     <%= form.submit %>
   </div>

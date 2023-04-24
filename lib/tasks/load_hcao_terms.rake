@@ -3,8 +3,8 @@ task load_hcao: :environment do
   puts 'Executing...'
 
   now = Time.now
-
-  filename = Pathname.new(APP_CONFIG[:data_dir]) + "hcao.obo"
+  
+  filename = Pathname.new(APP_CONFIG[:data_dir]) + "hcao" + "hcao.obo"
   
   h_term = {} 
 

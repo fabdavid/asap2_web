@@ -1,0 +1,137 @@
+<% if projects.size > 0 %>
+
+<table id='public_projects' class='' style='width:100%'>
+  <thead>
+    <tr>
+      <%# if admin? %>
+      <th>Public Key</th>
+      <th>Key</th>
+      <%# end %>
+      <th>Name</th>
+      <th>Organism</th>
+      <th>Technology</th>
+      <th>Tissue</th>
+      <th>Extra info</th>
+      <th># cells</th>
+      <th># genes</th>
+<!--      <th>Last step</th>
+      <th>Status</th>
+      <th>Duration</th>
+      <th>Submitted</th>-->
+      <th>Last update</th>
+      <% if current_user %>
+      <th>User</th>
+      <% end %>
+      <th>PMID</th>
+      <th></th>
+      <th></th>
+      <% if current_user %>
+      <th></th>
+      <% end %>
+    </tr>
+  </thead>
+
+  <tbody>
+    <%# projects.select{|p| !p.project_tags.map{|a| a.name}.include? 'FCA' or admin?}.each do |project| %>
+    <% projects.each do |project| %>
+    <tr>
+      <%# if admin? %>
+      <td>ASAP<%= project.public_id %></td>
+    <!--  <td><%= project.key %></td> -->
+      <%# end %>
+      <td><%= project.key %> <span class='badge badge-secondary'>v<%= project.version_id %></span></td>
+      <td class='project_name' title='<%= project.name %>'><%= project.name %></td>
+      <td><%= @h_organisms[project.organism_id].short_name.capitalize %></td>
+      <td><%= project.technology %></td>
+      <td><%= project.tissue %></td>
+      <td><%= project.extra_info %></td>
+      <td><%= project.nber_cols %></td>
+      <td><%= project.nber_rows %></td>
+      <!--        <td><%= ((step = project.step) ? step.label : 'NA') %></th>
+		  <td><%= raw ((status = project.status) ? "<span class='label label-#{status.label}'>#{status.name}</span>" : 'NA') %></td>
+<td><%= raw ((project.duration) ? (duration((project.status_id == 2) ? (Time.now - project.updated_at) : project.duration)) : '') %></td>
+<td><%= raw display_date(project.created_at) %></td>-->
+      <td><small><%= raw display_date(project.modified_at) %></small></td>
+      <% if current_user %>
+      <% email = (project.user) ? project.user.email.split("@")[0] : 'NA' %>
+      <td class='email' title='<%= email %>'><%= email %></td>
+      <% end %>
+      <td><%= (project.pmid and project.pmid != 0) ? link_to(project.pmid, "https://www.ncbi.nlm.nih.gov/pubmed/#{project.pmid}") : 'NA' %></td>
+      <td>
+	<% if project.version_id > 3 %>
+	<%# if project.input_filename %>
+	<%= link_to ((read_only?(project)) ? 'View (read-only)' : 'Open'), project_path(:key => "ASAP" + project.public_id.to_s), {:class => 'btn btn-primary', :method => 'get'} %>
+	<%# else %>
+	<%# button_to 'Upload', upload_form_project_path(project.key), {:class => 'btn btn-primary', :method => 'get'} %>
+	<%# end %>
+	<% else %>
+	<%= link_to 'Open', "http://asap-old.epfl.ch/projects/#{project.key}", {:class => 'btn btn-primary'} %>
+	<% end %>
+      </td><td>
+	<% if project.version_id > 3 %>
+	<% clone_text = (current_user) ? 'Clone' : 'Clone to sandbox' %>
+	<%= button_to clone_text, clone_project_path(project.key), {:class => 'btn btn-primary clone-btn', :method => 'get'} %>
+	<% end %>
+      </td>
+      <%# button_to('Destroy', project_path(project.key), method: :delete, data: { confirm: 'Are you sure?' }, :class => 'btn btn-danger') if current_user and current_user.id == project.user_id %>
+      <% if current_user %>
+      <td>
+	<% if ((current_user and current_user.id == project.user_id) or admin?) and project.public == false and project.version_id > 3 %>
+	<button class='delete_item btn btn-danger' id='delete-public_<%= project.key %>'>Delete</button>
+	<% end %>
+      </td>
+      <% end %>
+    </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<!--<iframe width="560" height="315" src="https://www.youtube.com/embed/bB_yCpaXH1E" frameborder="0" allowfullscreen></iframe>-->
+<!--<iframe width="560" height="315" src="https://www.youtube.com/embed/Qk3fwXt3RSM" frameborder="0" allowfullscreen></iframe>-->
+<%= javascript_tag do %>
+
+$(document).ready(function() {
+/* $('#public_projects').off().DataTable( {
+"dom" : "t",
+"bSort" : false,
+  "pageLength": <%= projects.size %>,
+"columnDefs": [
+    { "width": "60px", "targets": [3,4] },
+    { "width" : "150px", "targets": <%= (admin?) ? 8 : 7 %> },
+   { "width" : "60px", "targets": <%= (admin?) ? 9 : 8 %> },
+    { "sortable" : false, "targets": <%= ((admin?) ? [8, 9, 10] : ((current_user) ? [7, 8, 9] : [7, 8])).to_json %>}
+  ]
+})
+*/
+
+/* Build the DataTable with third column using our custom sort functions */
+//    var oTable = $('#projects').dataTable( {
+      //  "pageLength": 50
+      //  "order": [[ 6, "desc" ]]
+//"bSort": false,
+//aaSorting: []
+ //   });
+
+/*$("a").on('click',function(event){
+var href = this.href;
+event.preventDefault();
+window.clearInterval(timer);
+//window.clearTimeout(timer);
+window.location = href;
+});
+*/
+
+$("#public_projects .delete_item").click(function(){
+ var t = this.id.split("_");
+ var p = [];
+ p.push({name : 'nolayout', value : 1})
+ refresh_post("project_lists", '<%= projects_path() %>/' + t[1], p, 'delete', {loading:'fa-2x'});
+});
+
+
+});
+
+
+<% end %>
+
+<% end %>

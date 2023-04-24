@@ -1,9 +1,9 @@
 <%# @log %>
-
 <%# readable @project %>
 <% if @error and @error != '' %>
 
 <div class='label label-danger'><%= @error %></div>
+
 <br/><br/>
 <!--<div class='alert alert-danger'>
 Dear users, during a maintenance procedure on April 13th 2017, current sandbox projects were deleted by mistake. If your project disappeared please submit another one. We are sorry for the inconvenience.
@@ -36,9 +36,9 @@ Dear users, during a maintenance procedure on April 13th 2017, current sandbox p
   <button id='delete_sel' type='button' class='btn btn-danger btn-sm'>Delete</button>
  <%# end %>
 </div><div class='clear'></div>
-<div id='popup_window3' class='hidden'>
-  <div id='popup_window_close3'><span onclick="$('#popup_container3').html('');$('#popup_window3').addClass('hidden'); $('#popup_container3').attr('showed','');"><i class='fa fa-times-circle'></i></span></div>
-  <div id='popup_container3'></div>
+<div id='ontop_popup_window' class='hidden'>
+  <div id='ontop_popup_window_close'><span onclick="$('#ontop_popup_container').html('');$('#ontop_popup_window').addClass('hidden'); $('#ontop_popup_window').css({display : 'none'}); $('#ontop_popup_container').attr('showed','');"><i class='fa fa-times-circle'></i></span></div>
+  <div id='ontop_popup_container'></div>
 </div><div class='clear'></div>
 
 <div id='pipeline_container'><%= render :partial => 'pipeline2' %></div>
@@ -77,14 +77,14 @@ Dear users, during a maintenance procedure on April 13th 2017, current sandbox p
   <div id='step_container'></div>
 </div>
 
-<% gene_set = GeneSet.new %>
-<%= form_for(gene_set, :url => gene_sets_path(:project_key => @project.key))  do |f| %>
+<%# gene_set = GeneSet.new %>
+<%# form_for(gene_set, :url => gene_sets_path(:project_key => @project.key))  do |f| %>
 <div class='hidden'>
-  <%= file_field_tag :gene_set_file %>
+  <%# file_field_tag :gene_set_file %>
 <!--  <div id="kv-error-2" style="margin-top: 10px; display: none;" class="file-error-message"></div>   
   <div id="kv-success-2" class="alert alert-success fade in" style="margin-top: 10px;  display: none;"></div>-->
 </div>
-<% end %>
+<%# end %>
 
 <div id='cart'>
   <%# render :partial => 'projects/cart' %>
@@ -121,9 +121,29 @@ Dear users, during a maintenance procedure on April 13th 2017, current sandbox p
 }(window, location));
 */
 
-function upd_summary(){
+$("#ontop_popup_window").draggable()
+
+function upd_summary(){ 
 refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1, :step_id => @h_steps_by_name['summary'].id) %>", {loading: 'fa-2x loading-step'});
 }
+
+//$(document).ready(function(){
+function upd_landing_page(){
+<% h_landing_page = Basic.safe_parse_json(@project.landing_page_json, {}) %>
+<% if h_landing_page['step'] %>
+<% h_p = {:key => @project.key, :nolayout => 1, :fixed_session => 1, :step_id => @h_steps_by_name[h_landing_page['step']].id} %>
+<% h_landing_page['s'].keys.map{|k| h_p[k] = h_landing_page['s'][k] } %>
+refresh("step_container", "<%= raw get_step_project_path(h_p) %>", {loading: 'fa-2x loading-step'});
+<% else %>
+upd_summary()
+<% end %>
+
+}
+//})
+
+var palette = ["ff0000","ffc480","149900","307cbf","d580ff","cc0000","bf9360","1d331a","79baf2","deb6f2","990000","7f6240","283326","2d4459","8f00b3","4c0000","ccb499","00f220","accbe6","520066","330000","594f43","16591f","697c8c","290033","cc3333","e59900","ace6b4","262d33","ee00ff","e57373","8c5e00","2db350","295ba6","c233cc","994d4d","664400","336641","80b3ff","912699","663333","332200","86b392","4d6b99","3d1040","bf8f8f","cc9933","4d6653","202d40","c566cc","8c6969","e5bf73","008033","0044ff","944d99","664d4d","594a2d","39e67e","00144d","a37ca6","f2553d","403520","30bf7c","3d6df2","ff80f6","a63a29","ffeabf","208053","2d50b3","73396f","bf6c60","736956","134d32","13224d","4d264a","402420","f2c200","53a67f","7391e6","735671","ffc8bf","8c7000","003322","334166","40303f","ff4400","ccad33","3df2b6","a3b1d9","ff00cc","b23000","594c16","00bf99","737d99","8c0070","7f2200","ffe680","66ccb8","393e4d","331a2e","591800","b2a159","2d5950","00138c","ffbff2","330e00","7f7340","204039","364cd9","b30077","ff7340","ffee00","b6f2e6","1d2873","40002b","cc5c33","403e20","608079","404880","e639ac","994526","bfbc8f","00998f","1a1d33","731d56","f29979","8c8a69","00736b","0000f2","ff80d5","8c5946","778000","39e6da","0000d9","a6538a","59392d","535900","005359","0000bf","f20081","bf9c8f","3b4000","003c40","2929a6","660036","735e56","ced936","30b6bf","bfbfff","bf8fa9","403430","fbffbf","23858c","8273e6","d90057","f26100","ccff00","79eaf2","332d59","a60042","bf4d00","cfe673","7ca3a6","14004d","bf3069","331400","8a994d","394b4d","170d33","8c234d","ff8c40","494d39","005266","a799cc","bf6086","995426","a3d936","39c3e6","7d7399","804059","733f1d","739926","23778c","290066","59434c","f2aa79","88ff00","0d2b33","8c40ff","b20030","b27d59","3d7300","59a1b3","622db3","7f0022","7f5940","294d00","acdae6","2a134d","40101d","33241a","4e6633","566d73","7453a6","f27999","ffd9bf","bfd9a3","00aaff","4c4359","4d2630","8c7769","92a67c","006699","2b2633","ffbfd0","ff8800","52cc00","002b40","6d00cc","99737d","a65800","234010","3399cc","4b008c","33262a","663600","a1ff80","86a4b3","9c66cc","7f0011","331b00","79bf60","007ae6","583973","f23d55","cc8533","518040","003059","312040","59161f","4c3213","688060","001b33","69238c","bf606c"].map(x => "#" + x)
+
+var xhrs = []
 
 var timers = [];
 var run_timer = null;
@@ -131,7 +151,80 @@ var last_update = new Date();
 var d = new Date();
 var time_zone_offset = d.getTimezoneOffset() * 60; // in seconds
 
+/*
+window.onbeforeunload = function (e) {
+var message = "Do you really want to leave this project ?";
+*/
+/*var firefox = /Firefox[\/\s](\d+)/.test(navigator.userAgent);
+if (firefox) {
+//Add custom dialog
+//Firefox does not accept window.showModalDialog(), window.alert(), window.confirm(), and window.prompt() furthermore
+var dialog = document.createElement("div");
+document.body.appendChild(dialog);
+dialog.id = "dialog";
+dialog.style.visibility = "hidden";
+dialog.innerHTML = message;
+var left = document.body.clientWidth / 2 - dialog.clientWidth / 2;
+dialog.style.left = left + "px";
+dialog.style.visibility = "visible";
+var shadow = document.createElement("div");
+document.body.appendChild(shadow);
+shadow.id = "shadow";
+//tip with setTimeout
+setTimeout(function () {
+document.body.removeChild(document.getElementById("dialog"));
+document.body.removeChild(document.getElementById("shadow"));
+}, 0);
+}
+*/
+/* var w = $(window).width()
+ var h = $(window).height()
+ var ww = 600
+ var wh = 300
+  $("#ontop_popup_window").css({
+        left: w/2-ww/2,
+        width: ww,
+        'z-index': 1000000,
+        top: h/2-wh/2,
+        height: wh 
+  }).stop().show(100);
+ $("#ontop_popup_container").html("Do you really want to leave this project ?")
+ $("#ontop_popup_window").removeClass("hidden") 
+return true;
+
+}
+*/
+/*window.onbeforeunload=function() {
+    if ( /Firefox[\/\s](\d+)/.test(navigator.userAgent) && new Number(RegExp.$1) >= 4) {
+        alert("You have to confirm you are leaving this page in the next dialogue.");
+    }
+    return true; 
+}*/
+window.history.pushState({page: 1}, "", "");
+
+/*
+window.onpopstate = function(event) {
+
+  // "event" object seems to contain value only when the back button is clicked
+  // and if the pop state event fires due to clicks on a button
+  // or a link it comes up as "undefined" 
+
+  if(event){
+    // Code to handle back button or prevent from navigation
+//event.stopPropagation()
+//event.preventDefault()
+//   alert("This action is disabled")
+//   return true;
+  }
+  else{
+    // Continue user action through link or button
+  }
+}
+*/
+
 $(document).ready(function(){
+
+
 
  // Enable message when leaving the page
 /*window.onbeforeunload = function() {
@@ -141,7 +234,20 @@ $(document).ready(function(){
 */
 
  <%= render :partial => 'channel_js' %>
+/*
+ $(document).on('click', '.link_to_loom_tuto', function(e){
+    e.stopPropagation();
+  e.preventDefault();
+// window.location = '<%= tutorial_home_index_path(:t => 'loom') %>'
+  var url = '<%= tutorial_home_index_path(:t => 'loom') %>'
+  var win = window.open(url, '_blank');
+  win.focus();
+  e.stopPropagation();
+  e.preventDefault();
 
+ return false;
+})
+*/
  $("#new_analysis_form_detach").click(function(){
   var h = $(window).height()
   var window_status = $("#new_analysis_form_window_status").val()
@@ -195,7 +301,7 @@ $(document).ready(function(){
  //alert(<%= @project.id  %>);
  //  App.project_channel = App.project.subscribe( <%= @project.id %> );
 
-//  var ws = new WebSocket("ws://asap-beta.epfl.ch:28080");
+//  var ws = new WebSocket("ws://asap.epfl.ch:28080");
 
 //  $("#subscribe").click(function(){
 /*
@@ -246,7 +352,9 @@ $("#new_analysis_form_close").click(function(){
 
 })
 
- upd_summary();
+
+ upd_landing_page();
+
 
 $(".annot-btn").click(function(){
    $("#step_container").removeClass("col-12");

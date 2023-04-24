@@ -50,8 +50,8 @@
 	<% h_nber_runs = JSON.parse(project.nber_runs_json) %>
 	<div style='float:right;text-align:right'><%= raw h_nber_runs.keys.select{|sid| @h_statuses[sid.to_i] and h_nber_runs[sid]}.map{|sid| display_status_runs(@h_statuses[sid.to_i], h_nber_runs[sid]) + "<br/>"}.join(" ") %></div>
       </td>
-      <td><%= raw display_date(project.created_at) %></td>
-      <td><%= (project.modified_at) ? raw(display_date(project.modified_at)) : 'NA' %></td>
+      <td><small><%= raw display_date(project.created_at) %></small></td>
+      <td><small><%= (project.modified_at) ? raw(display_date(project.modified_at)) : 'NA' %></small></td>
       <td><%= display_mem(([1, 2].include?(project.archive_status_id)) ? project.disk_size : project.disk_size_archived) %></td>
       <% final_user = (u = project.user and current_user) ? ((u.email == current_user.email) ? 'Me' : u.email) : 'NA' %>
       <td title='<%= final_user %>'><%= final_user %></td>
@@ -85,11 +85,11 @@
 	<% if current_user %>
 <td> 
   <% clone_text = (current_user) ? 'Clone' : 'Clone to sandbox' %>
-  <%= button_to clone_text, clone_project_path(project.key), {:class => 'btn btn-primary btn-sm', :method => 'get'} if project.project_steps.select{|ps| [1,2].include?(ps.status_id)}.size == 0 and exportable? project %>
+  <%= button_to clone_text, clone_project_path(project.key), {:class => 'btn btn-primary btn-sm clone-btn', :method => 'get'} if project.project_steps.select{|ps| [1,2].include?(ps.status_id)}.size == 0 and exportable? project %>
 </td>
 <% end %>
 <td><%# button_to('Destroy', project_path(project.key), method: :delete, data: { confirm: 'Are you sure?' }, :class => 'btn btn-danger btn-sm') if current_user and current_user.id == project.user_id %>
-	  <% if (current_user and current_user.id == project.user_id) or admin? %>
+	  <% if ((current_user and current_user.id == project.user_id) or admin?) and project.public == false %>
 	  <button class='delete_item btn btn-danger btn-sm' id='delete_<%= project.key %>'>Delete</button>
           <% end %>
 	</td>
@@ -125,7 +125,6 @@ $("#projects .delete_item").click(function(){
  p.push({name : 'nolayout', value : 1})
  refresh_post("project_lists", '<%= projects_path() %>/' + t[1], p, 'delete', {loading:'fa-2x'});
 });
-
 
 });
 

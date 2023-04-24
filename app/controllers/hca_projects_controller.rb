@@ -1,6 +1,8 @@
 class HcaProjectsController < ApplicationController
   before_action :set_hca_project, only: [:show, :edit, :update, :destroy]
 
+#  layout "welcome"
+
   # GET /hca_projects
   # GET /hca_projects.json
   def index

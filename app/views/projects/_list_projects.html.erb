@@ -1,0 +1,159 @@
+<% if projects.size > 0 %>
+
+<table id='projects' class='job_list'>
+  <thead>
+    <tr>
+      <% if admin? %>
+      <th></th>
+      <% end %>
+      <% if admin? %>
+      <th>Key</th>
+      <% end %>
+      <th>Name</th>
+      <th>Tags</th>
+      <th>Organism</th>
+      <th>#cells</th>
+      <th>#genes</th>
+      <!--      <th>Last step</th>
+		<th>Status</th>
+      <th>Duration</th>-->
+      <th>Status</th>
+      <th>Submitted (GMT)</th>
+      <th>Updated (GMT)</th>
+      <th>Size</th>      
+      <th>Owner</th>
+      <th>Share</th>
+      
+      <% if admin? %>
+      <th>User</th>
+      <th>Sandbox?</th>
+      <% end %>
+      <% if current_user %>
+      <th>Public?</th>
+      <% end %>
+      <th></th>
+      <% if current_user %>     
+      <th></th>
+      <% end %>
+      <th></th>
+    </tr>
+  </thead>
+  <!-- # "<i title='#{h_title[e]}' class='fa fa-" + e + "'></i>"  -->
+  <tbody>
+    <% projects.each do |project| %> <%#sort{|a, b| b.modified_at <=> a.modified_at}.each do |project| %>
+    <tr>
+      <% if admin? %>
+      <td>
+	<%= check_box_tag 'project_checkbox[#{project.key}]', project.key, (session[:project_cart][project.key]), {:class => 'sel_project'} %>
+      </td>
+      <% end %>
+      <% if admin? %>
+      <td>
+	<%= project.key %> <span class='badge badge-secondary'>v<%= project.version_id %></span>
+      </td>
+      <% end %>
+      <td class='project_name' title='<%= project.name %>'>
+	<%= project.name %>
+      </td>
+      <td>
+	<%= raw project.project_tags.map{|tag| "<span class='badge badge-secondary'>#{tag.name}</span>"}.join("\n") %>
+      </td>
+      <td><%= (@h_organisms[project.organism_id].short_name) ? @h_organisms[project.organism_id].short_name.capitalize : 'NA' %></td>
+      <td><%= project.nber_cols %></td>
+      <td><%= project.nber_rows %></td>
+      <td class='status_cell'>
+	<%= raw display_archive_status(@h_archive_statuses[project.archive_status_id]) %>
+	<% h_nber_runs = JSON.parse(project.nber_runs_json) %>
+	<div style='float:right;text-align:right'>
+	  <%= raw h_nber_runs.keys.select{|sid| @h_statuses[sid.to_i] and h_nber_runs[sid]}.map{|sid| display_status_runs(@h_statuses[sid.to_i], h_nber_runs[sid]) + "<br/>"}.join(" ") %></div>
+      </td>
+      <td><small><%= raw display_date(project.created_at) %></small></td>
+      <td><small><%= (project.modified_at) ? raw(display_date(project.modified_at)) : 'NA' %></small></td>
+      <td>
+	<%= display_mem(project.disk_size) %> 
+	<small><%= display_mem(project.disk_size_archived) if ([1, 2].include?(project.archive_status_id)) %></small>
+      </td>
+      <% final_user = (u = project.user and current_user) ? ((u.email == current_user.email) ? 'Me' : u.email) : 'NA' %>
+      <td title='<%= final_user %>'><%= final_user %></td>
+      <td>
+	<% shares = project.shares %>
+	  <% if (current_user and u and u.email == current_user.email) or admin? %>
+	  <%= raw ((nb_shares = shares.size) > 0) ? ("<span title='" + shares.map{|s| s.email + "[" + [s.view_perm && 'V', s.analyze_perm && 'A', s.export_perm && 'E'].select{|e| e}.join(",") + "]"}.join(", ") + "'>Shared <span class='badge badge-info'>#{nb_shares}</span></span>") : "Not shared" %>
+ <% elsif s = shares.select{|s| s.email == current_user.email}.first %>
+	   <%# (read_only?(project)) ? ' : 'Read/Write' %> 
+	   <% h_title = {'eye-open' => 'View', 'stats' => 'Analyze', 'export' => 'Export'} %>
+	   <%= raw [s.view_perm && 'eye-open', s.analyze_perm && 'stats', s.export_perm && 'export'].select{|e| e}.map{|e| 
+"<i title='#{h_title[e]}' class='glyphicon glyphicon-" + e + "'></i>" 
+}.join(" ") %>
+	   <% end %>
+	</td>
+      <% if admin? %>
+      <% email = (project.user) ? project.user.email : 'NA' %>
+      <td class='email' title='<%= email %>'><%= email %></td>
+      <td><%= (project.sandbox == true) ? 'Yes' : 'No' %></td>
+      <% end %>
+      <% if current_user %>
+      <td><%= (project.public == true) ? 'Yes' : 'No' %></td>
+      <% end %>
+      <td>
+	<%# if project.input_filename %>
+    	<%= link_to ((!analyzable?(project)) ? 'View' : 'Open'), project_path(:key => project.key), {:class => 'btn btn-primary btn-sm', :method => 'get'} %>
+	<%# else %>
+	<%# button_to 'Upload', upload_form_project_path(project.key), {:class => 'btn btn-primary', :method => 'get'} %>
+	<%# end %>
+      </td>
+      <% if current_user %>
+      <td> 
+	<% clone_text = (current_user) ? 'Clone' : 'Clone to sandbox' %>
+	<%= button_to clone_text, clone_project_path(project.key), {:class => 'btn btn-primary btn-sm clone-btn', :method => 'get'} if project.project_steps.select{|ps| [1,2].include?(ps.status_id)}.size == 0 and exportable? project %>
+      </td>
+      <% end %>
+      <td><%# button_to('Destroy', project_path(project.key), method: :delete, data: { confirm: 'Are you sure?' }, :class => 'btn btn-danger btn-sm') if current_user and current_user.id == project.user_id %>
+	<% if ((current_user and current_user.id == project.user_id) or admin?) and project.public == false %>
+	<button class='delete_item btn btn-danger btn-sm' id='delete_<%= project.key %>' disabled=true><%= raw (project.being_deleted == false) ? "Delete" : "<i class='fas fa-spinner fa-pulse'></i>" %></button>
+        <% end %>
+      </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+
+<%= javascript_tag do %>
+
+$(document).ready(function() {
+
+setTimeout(function(){ $(".delete_item").each(function(){if ($(this).html() == 'Delete'){ $(this).attr("disabled", false) }}) }, 2000);
+
+/*  $('#projects').off().DataTable({
+    "dom" : "t",
+    "bSort": false,
+    "pageLength": <%= projects.size %>
+    //aaSorting: []
+   });
+*/
+$("#projects a").on('click',function(event){
+var href = this.href;
+event.preventDefault();
+window.clearInterval(timer);
+//window.clearTimeout(timer);
+window.location = href;
+});
+
+$("#projects .delete_item").click(function(){
+ var t = this.id.split("_");
+ var p = [];
+ $(this).attr("disabled", true)
+ $(this).html("<i class='fas fa-spinner fa-pulse'></i>")
+/* $("#ontop_window").removeClass("hidden")
+ $("#ontop_window_content").html("<i class='fas fa-spinner fa-pulse fa-2x'></i> Please wait while project is being deleted...") */
+ p.push({name : 'nolayout', value : 1})
+ refresh_post(null, '<%= projects_path() %>/' + t[1], p, 'delete', {loading:'fa-2x'});
+});
+
+
+});
+
+<% end %>
+
+<% end %>

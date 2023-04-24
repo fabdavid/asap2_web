@@ -2,6 +2,8 @@ class StepsController < ApplicationController
   before_action :set_step, only: [:show, :edit, :update, :destroy]
   before_action :check_access #, :only => [:new, :create, :destroy, :update]
 
+  layout "welcome"
+
   # GET /steps
   # GET /steps.json
   def index
@@ -26,7 +28,8 @@ class StepsController < ApplicationController
   # POST /steps.json
   def create
     @step = Step.new(step_params)
-
+   # @step.version_id = APP_CONFIG[:version_id]
+    @step.docker_image_id = DockerImage.where(:name => APP_CONFIG[:asap_docker_name]).last.id
     respond_to do |format|
       if admin? and @step.save
         format.html { redirect_to @step, notice: 'Step was successfully created.' }
@@ -74,10 +77,10 @@ class StepsController < ApplicationController
   
   # Never trust parameters from the scary internet, only allow the white list through.
   def step_params
-    params.fetch(:step).permit(:obj_name, :name, :label, :description, :warnings, :rank, 
+    params.fetch(:step).permit(:obj_name, :name, :label, :tag, :description, :warnings, :rank, 
                                :multiple_runs, :attrs_json, :method_attrs_json, :output_json, 
                                :command_json, :has_std_dashboard, :has_std_view, :has_std_form,
-                               :dashboard_card_json, :show_view_json, :hidden, :group_name
+                               :dashboard_card_json, :show_view_json, :hidden, :group_name, :version_id, :docker_image_id
                                )
   end
   

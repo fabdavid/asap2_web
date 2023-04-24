@@ -22,10 +22,36 @@
 
 /* GENERAL PURPOSE */
 
+.nobullets {list-style-type:none}
+
+.dot {
+  height: 25px;
+  width: 25px;
+  background-color: #bbb;
+  border-radius: 50%;
+  display: inline-block;
+}
 .hidden {display:none}
 .pointer {cursor:pointer} 
 .cursor-help {cursor:help}
 .clear {clear:both}
+.wrap { 
+   white-space: pre-wrap;      /* CSS3 */   
+   white-space: -moz-pre-wrap; /* Firefox */    
+   white-space: -pre-wrap;     /* Opera <7 */   
+   white-space: -o-pre-wrap;   /* Opera 7 */    
+   word-wrap: break-word;      /* IE */
+   word-break: break-word;
+}
+
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 80%;
+}
+.nobullet {list-style-type: none}
+.white-bg {background-color:white}
 
 .btn-group-xs > .btn, .btn-xs {
   padding: .25rem .4rem;
@@ -71,6 +97,30 @@
 
 .warning-icon {color:red;}
 
+/* NAV */
+
+/* TUTORIALS */
+.link-sm{
+cursor:pointer;
+color:blue
+}
+.tuto-image {
+  display: block;
+ margin-bottom:2em;
+ margin-top:2em;
+  margin-left: auto;
+  margin-right: auto;
+  width: 80%;
+}
+
+.sm {margin-top:1em;margin-bottom:1em}
+
+#tuto-menu {
+  position:fixed;
+  z-index:10;
+  background-color:white
+}
+
 /* VERSIONS */
 
 #version_list li {
@@ -113,6 +163,7 @@
 #ontop_window .title {padding:15px}
 .window_close {position:absolute; right:0px; top:0px; font-size:20px; margin-top:5px; margin-right:10px; cursor:pointer; z-index:100030}
 
+
 #popup_window {
     position: absolute;
     z-index:100000;
@@ -124,6 +175,19 @@
     border-radius: .5rem;
 }
 #popup_window_close {float:right; font-size:20px; margin-top:-17px; margin-right:-13px; cursor:pointer}
+
+#ontop_popup_window {
+    position: absolute;
+    z-index:1000000;
+    margin-right:15px;
+    padding:20px;
+    display: none;
+    background: #ccc;
+    border: 1px solid;
+    border-radius: .5rem;
+    cursor:hand
+}
+#ontop_popup_window_close {float:right; font-size:20px; margin-top:-17px; margin-right:-13px; cursor:pointer}
 
 #form_container {margin:10px; height:calc(100% - 100px); padding:15px; overflow-y:scroll; background-color:white}
 
@@ -144,6 +208,7 @@ box-shadow: 0 19px 38px rgba(0,0,0,0.30), 0 15px 12px rgba(0,0,0,0.22);
 }
 
 .nowrap {white-space:nowrap}
+.nw {white-space:nowrap}
 .white-background-btn button{background-color:white; border-color:white}
 
 #method_desc a{
@@ -199,5 +264,6 @@ margin-bottom:0rem}
 @media (max-width: 767px) {
 
 #main {margin-bottom:100px; margin-top:105px;}
+#tuto-menu {float:left;margin-top:-55px;padding-top:10px}
 
 }

@@ -1,34 +1,178 @@
+
 <% occ_key = ("occ_#{occ}").to_sym %>
 
 <div class='row'>
   <div class='col-6' style='padding-top:5px'>Data type</div>
   <% data_type = session[:dr_params][@project.id][occ_key][:data_type] %>
-  <% l = [['Gene expression', '1'], ['Numerical annotation', '2']] %>
+  <% l = [['Gene expression', '1'], ['Numerical continuous metadata', '2']] %>
+  <% if occ == 1 %>
+  <% l.push ['Custom gene set (ModuleScore)', '3'] %>
+  <% l.push ['Global gene set (ModuleScore)', '4'] %>
+  <% end %>
   <%= select_tag "opt[data_type_#{occ}]", options_for_select(l, data_type),  {:class => 'custom-select col-6 data_type'} %>
 </div>
 
-<div id='data_type_2_container_<%= occ %>' class='data_type_container_<%= occ %> row <%= (data_type == "1") ? "hidden" : "" %>'>
+<div id='data_type_2_container_<%= occ %>' class='data_type_container_<%= occ %> row <%= (data_type == "2") ? "" : "hidden" %>'>
   <div class='col-6' style='padding-top:5px'>Data source</div>
   <% if @annot and @num_annots %>
-  <% l = @num_annots.map{|a| [a.name, a.id]} %>
-  <% l.unshift(["Select an annotation", '']) %>
-  <%= select_tag "opt[num_annot_id_#{occ}]", options_for_select(l, session[:dr_params][@project.id][occ_key][:num_annot_id] || ''), {:class => 'custom-select col-6 sel_num_annot_id'} %>
+     <%# h = {} %>
+   <%# @num_annots.select{|a| a.step_id and @h_steps[a.step_id]}.map{|a| k = (a.imported or @h_steps[a.step_id].label == 'Imported metadata') ? 0 : a.step_id; h[k] ||=[]; h[k].push([a.name, a.id])} %> <%#.sort %>
+   <%# l = []; h.keys.map{|k| l.push([k, h[k]])} %>
+   <%# l.sort!{|a, b| ((@h_steps[a[0]]) ? @h_steps[a[0]].rank : 0) <=> ((@h_steps[b[0]]) ? @h_steps[b[0]].rank : 0)} %>
+   <%# l.map!{|e| [((e[0] != 0) ? @h_steps[e[0]].label : 'Imported metadata'), e[1]]} %>
+   <%# l.unshift(["-------------", [["Select a metadata", '']]]) %>
+  <% l = prepare_metadata_grouped_list(@num_annots) %>
+  <%= select_tag "opt[num_annot_id_#{occ}]", grouped_options_for_select(l, session[:dr_params][@project.id][occ_key][:num_annot_id] || ''), {:class => 'custom-select col-6 sel_num_annot_id'} %>
   <% end %>
-  <div id='field_label_<%= occ %>' class='col-6' style='padding-top:5px'>Field</div>
+<% cl = (session[:dr_params][@project.id][occ_key][:num_annot_id] != '' and session[:dr_params][@project.id][occ_key][:header_i] != '') ? '' : 'hidden' %>
+  <div id='field_label_<%= occ %>' class='col-6 <%= cl %>' style='padding-top:5px'>Field</div>
   <% if @annot %>
   <% l = [] %>
-  <%= select_tag "opt[header_i_#{occ}]", options_for_select(l, session[:dr_params][@project.id][occ_key][:header_i] || ''), {:class => 'custom-select col-6 sel_header_i'} %>
+  <%= select_tag "opt[header_i_#{occ}]", options_for_select(l, session[:dr_params][@project.id][occ_key][:header_i] || ''), {:class => "custom-select col-6 sel_header_i #{cl}"} %>
   <% end %>
+  <% if admin? and occ == 1 %>
+  <div class='row'>
+    <div class='col-md-5'>Dot ordering</div>
+    <div class='col-md-7'>
+      <% l = [['Negative to positive', 0], ['0 to absolute value', 1]] %>
+      <% default_order = (occ == 1 and (session[:dr_params][@project.id][:occ_1][:data_type].to_i > 2 or (num_annot = Annot.where(:id => session[:dr_params][@project.id][occ_key][:num_annot_id]).first and @h_steps[@num_annot.step_id].name == 'module_score' )) ? 1 : 0) %>
+      <%= select_tag "opt[order_#{occ}]", options_for_select(l, default_order) %>
+    </div>
+  </div>
+  <% end %>
+
 </div>
 
-<div id='data_type_1_container_<%= occ %>' class='data_type_container_<%= occ %> row <%= (data_type == "2") ? "hidden" : "" %>'>
+<div id='data_type_1_container_<%= occ %>' class='data_type_container_<%= occ %> row <%= (data_type == "1") ? "" : "hidden" %>'>
   <div class='col-6' style='padding-top:5px'>Data source</div>
-  <% l = @datasets.map{|d| [display_run_short_txt(d.run), d.id]} %>
+  <% store_run_ids = @datasets.map{|d| d.store_run_id}.uniq %>
+  <% l = @datasets.map{|d| 
+    name = (d.name.match(/^\/matrix/)) ? d.name.gsub(/\/matrix/, "Raw data (count)") : d.name.gsub(/\/layers\//, ""); 
+ [(name + ((store_run_ids.size > 1) ? (" in " + display_run_short_txt(Run.where(:id => d.store_run_id).first)) : '')) , d.id]}.sort %>
   <%# l.unshift(["Select a dataset", nil]) %>
-  <%= select_tag "opt[dataset_#{occ}]", options_for_select(l, session[:dr_params][@project.id][occ_key][:dataset_annot_id]), {:class => 'custom-select col-6 dataset'} %>
+ <% norm_datasets = @datasets.select{|e| e.ori_step_id == @h_steps_by_name['normalization'].id} %>
+  <% last_norm_dataset_id = (norm_datasets.size > 0) ? norm_datasets.last.id : nil %>
+  <%# last_norm_dataset_id  if admin? %>
+  <%# "toto" + @h_steps_by_name['normalization'].id.to_s  + last_norm_dataset_id.to_json if occ == 1 and admin? %>
+
+  <%= select_tag "opt[dataset_#{occ}]", options_for_select(l, session[:dr_params][@project.id][occ_key][:dataset_annot_id] || last_norm_dataset_id), {:class => 'custom-select col-6 dataset'} %>
   <div class='col-6' style='padding-top:5px'>Gene symbol / Ensembl ID</div>
-  <%= text_field_tag "gene_free_text_#{occ}", session[:dr_params][@project.id][occ_key][:gene_free_text] || '', {:class => 'custom-select col-6 gene_free_text'} %>
+  <%# text_field_tag "gene_free_text_#{occ}", session[:dr_params][@project.id][occ_key][:gene_free_text] || '', {:class => 'custom-select col-6 gene_free_text', :placeholder => 'Loading...', :disabled => true} %>
+  <%= text_field_tag "gene_free_text_#{occ}", session[:dr_params][@project.id][occ_key][:gene_free_text] || '', {:class => 'form-control col-6 gene_free_text', :placeholder => 'enter your gene'} %>
   <div id='list_genes_container_<%= occ %>' class='list_genes_container'></div>
-  <div id="gene_selected_<%= occ %>"><%= session[:dr_params][@project.id][occ_key][:gene_selected] %></div>
+  <%# session[:dr_params][@project.id][occ_key].to_json %>
+  <div id='searched-gene_<%= occ %>' class='container mt-1 <%= (session[:dr_params][@project.id][occ_key][:gene_selected] and session[:dr_params][@project.id][occ_key][:gene_selected] != '') ? '' : 'hidden' %>'>
+    <span id="gene_selected_<%= occ %>"><%= session[:dr_params][@project.id][occ_key][:gene_selected] %></span>
+    <span id="info-gene_<%= occ %>" class='ml-2'></span>
+    <% if occ > 1 %> 
+    <button id='del_gene_<%= occ %>' type='button' class='del_gene_btn btn btn-danger btn-xs'><i class='fa fa-times'></i></button>
+    <% end %>
+  </div>
+  <div id="displayed-gene_<%= occ %>" class='container mt-1'></div> 
   <%= hidden_field_tag "opt[row_i_#{occ}]", session[:dr_params][@project.id][occ_key][:row_i] %>
 </div>
+
+<% if occ == 1 %>
+<div id='data_type_3_container_<%= occ %>' class='data_type_container_<%= occ %> row <%= (data_type == "3") ? "" : "hidden" %>'>
+  <div class='col-6' style='padding-top:5px'>Categorical gene metadata</div>
+  <% l = @geneset_annots.map{|a| [a.name.gsub(/^\/row_attrs\//,'') + " [#{a.nber_cats} categories]", a.id]}.sort %>
+  <% l.unshift(["Select an annotation", '']) %>
+  <%= select_tag "opt[geneset_annot_id_#{occ}]", options_for_select(l, session[:dr_params][@project.id][occ_key][:geneset_annot_id] || ''), {:class => 'custom-select col-6 sel_geneset_annot_id'} %>
+<!--  <div id='geneset_annot_category'></div> -->
+  <div class='col-6' style='padding-top:5px'>Category</div>
+  <% l = [] %>
+  <%= select_tag "opt[geneset_annot_cat_#{occ}]", options_for_select(l, session[:dr_params][@project.id][occ_key][:geneset_annot_cat] || ''), {:class => 'custom-select col-6 sel_geneset_annot_cat'} %>
+</div>
+
+<div id='data_type_4_container_<%= occ %>' class='data_type_container_<%= occ %> row <%= (data_type == "4") ? "" : "hidden" %>'>
+  <div class='col-6' style='padding-top:5px'>Global gene set</div>
+  <%# session[:dr_params][@project.id][occ_key].to_json %>
+  <% l = @genesets.map{|a| [a.label, a.id]} %>
+  <% l.unshift(["Select a global gene set", '']) %>
+  <%= select_tag "opt[geneset_id_#{occ}]", options_for_select(l, session[:dr_params][@project.id][occ_key][:geneset_id] || ''), {:class => 'custom-select col-6 sel_geneset_id'} %>
+  <!--  <div id='geneset_annot_category'></div> -->
+  <div class='col-6' style='padding-top:5px'>Category</div>
+  <%# l = (@geneset_items) ? @geneset_items.map{|e| [e.name, e.id]} : [] %>
+  <%# select_tag "opt[geneset_item_id_#{occ}]", options_for_select(l, session[:dr_params][@project.id][occ_key][:geneset_item_id] || ''), {:class => 'custom-select col-6 sel_geneset_item_id'} %>
+  <%= text_field_tag "autocomplete_geneset_item_#{occ}", session[:dr_params][@project.id][occ_key][:autocomplete_geneset_item] || '', {:class => 'form-control col-6'} %>
+  <div id='list_geneset_items_container_<%= occ %>' class='list_geneset_items_container'></div>  
+  <%= hidden_field_tag "opt[geneset_item_id_#{occ}]", session[:dr_params][@project.id][occ_key][:geneset_item_id] || '' %>
+  <div id='geneset_content'></div>
+</div>
+
+<div id='result_modulescore'></div>
+
+<% end %>
+
+<% if admin? %>
+<% end %>
+<!--<div id="amount_<%= occ %>"></div> -->
+<%= hidden_field_tag "min_range_#{occ}", 0 %>
+<%= hidden_field_tag "max_range_#{occ}", 0 %>
+Min: <input type="text" id="sel_min_range_<%= occ %>" readonly style="border:0; color:#f6931f; font-weight:bold;width: 50px;">
+Max: <input type="text" id="sel_max_range_<%= occ %>" readonly style="border:0; color:#f6931f; font-weight:bold;width: 50px;">
+<div id="slider-range_<%= occ %>" class='slider-range'></div>
+
+<%= javascript_tag do %>
+
+    $("#slider-range_<%= occ %>").slider({
+      range: true,
+      min: 0,
+      max: 0,
+      values: [ 0, 0 ],
+      slide: function( event, ui ) {
+        $("#sel_range_<%= occ %>").val("$" + ui.values[ 0 ] + " - $" + ui.values[ 1 ] );
+      }
+    });
+
+<% if occ == 1 %>
+//$("#opt_data_type_1").change(function(){
+//$("#data_type_2_container_1").addClass("hidden")
+//})
+/*
+var geneset_annots = <%= raw @geneset_annots.to_json %>;
+
+function compute_modulescore(){
+$("#result_modulescore").html("Computing...")
+ var p = [
+  {'name' : 'geneset_annot_id', 'value' : $("#opt_geneset_annot_id_1").val()},
+  {'name' : 'geneset_annot_cat', 'value' : $("#opt_geneset_annot_cat_1").val()}
+ ]
+ refresh_post("result_modulescore", "<%= compute_module_score_project_path(:key => @project.key) %>", p, 'post', {})
+}
+
+$("#opt_geneset_cat_1").change(function(){
+compute_modulescore()
+})
+
+$("#opt_geneset_annot_id_1").change(function(){
+ var sel_geneset = null
+ var geneset_annot_id = $(this).val()
+ for(var i=0; i<geneset_annots.length; i++){
+  if (geneset_annot_id == geneset_annots[i].id){
+    sel_geneset = geneset_annots[i]
+    break
+  }
+ }
+ var h_cats = JSON.parse(sel_geneset.categories_json)				       
+ var cat_names = Object.keys(h_cats)
+ var results = []
+ for (var i=0; i< cat_names.length; i++){
+   if (cat_names[i] != ''){
+    results.push([cat_names[i] + " (" + h_cats[cat_names[i]] + ")", cat_names[i]])
+   }
+ }
+ var $dropdown = $("#opt_geneset_annot_cat_1");
+ $dropdown.empty()
+ $dropdown.append(new Option("Select a category", ""));
+ $.each(results, function() {
+    $dropdown.append($("<option />").val(this[1]).text(this[0]));
+});
+
+ console.log("sel_categories:" + sel_geneset.categories_json)
+compute_modulescore()
+})
+*/
+<% end %>
+
+<% end %>

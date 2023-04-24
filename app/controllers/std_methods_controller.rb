@@ -1,7 +1,9 @@
 class StdMethodsController < ApplicationController
   before_action :set_std_method, only: [:show, :edit, :update, :destroy]
-
-  # GET /std_methods
+ 
+  layout "welcome"
+ 
+ # GET /std_methods
   # GET /std_methods.json
   def index
     @std_methods = StdMethod.all
@@ -15,16 +17,18 @@ class StdMethodsController < ApplicationController
   # GET /std_methods/new
   def new
     @std_method = StdMethod.new
+    @std_method.version_id = params[:version_id]
   end
 
   # GET /std_methods/1/edit
-  def edit
+  def edit    
   end
 
   # POST /std_methods
   # POST /std_methods.json
   def create
     @std_method = StdMethod.new(std_method_params)
+  #  @std_method.version_id ||= APP_CONFIG[:version_id]
 
     respond_to do |format|
       if admin? and @std_method.save
@@ -71,7 +75,7 @@ class StdMethodsController < ApplicationController
 
     # Never trust parameters from the scary internet, only allow the white list through.
     def std_method_params
-      params.fetch(:std_method).permit(:name, :label, :step_id, :description, :short_label, :program, :command_json, 
-                                       :link, :speed_id, :attrs_json, :attr_layout_json, :obj_attrs_json, :obsolete)
+      params.fetch(:std_method).permit(:name, :label, :step_id, :description, :short_label, :program, :command_json, :nber_cores,
+                                       :link, :speed_id, :attrs_json, :attr_layout_json, :obj_attrs_json, :obsolete, :version_id)
     end
 end

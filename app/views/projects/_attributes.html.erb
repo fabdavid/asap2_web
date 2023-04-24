@@ -1,11 +1,17 @@
 <%# @h_global_params.to_json %>
 <%# @attrs.to_json %>
-<%# h_attrs.to_json %>
+<%# @h_attrs.to_json %>
+<% h_attrs = {} %>
+<% @h_attrs.keys.map{|k| h_attrs[k] = {:description => @h_attrs[k]['description']}} %>
 <% @h_attr_vals ||= {} %>
 <%# h_attrs = @h_attrs %>
-<%= raw "<div class='form-inline'>" if @form_inline %>
+<%# raw "<div class='form-inline'>" if @form_inline %>
 
+<%# @h_attrs.keys.to_json %>
+<%# @log %>
 <% @attr_layout.each do |vertical_el| %>
+
+
 
 <div class="vert_element row">
 
@@ -18,6 +24,7 @@
     <% end %>
     <div class="card-body">
    <% if  horiz_element['attr_list'] %> 
+    <%# @h_attrs.to_json %>
    <% horiz_element['attr_list'].select{|k| attr = @h_attrs[k]; attr and attr['widget'] and !attr['obsolete']}.each do |attr_name| %>
    <div id='form-container_<%= attr_name %>' class='form-group <%= @div_class || '' %>'>
      <%= render :partial => 'attribute', :locals => {:attr_name => attr_name, :horiz_element => horiz_element} %> 
@@ -40,9 +47,24 @@
 
 <%= javascript_tag do %>
 
-// var h_attrs = <%= raw @h_attrs.to_json %>
+var h_attrs = <%= raw h_attrs.to_json %>
 
- $('[data-toggle="tooltip"]').tooltip();
+$(".info-btn").click(function(e){
+ var attr_name = this.id.split("-")[1]
+ var description = h_attrs[attr_name]['description']
+ if (description && description != ''){
+  $("#popup_container").html(description)
+  $("#popup_window").removeClass("hidden")
+  var w = $(window).width();
+   $("#popup_window").css({
+         left: e.pageX - 300,
+         width: 400,
+         top: e.pageY + 10
+   }).stop().show(100);
+  }
+})
+
+$('[data-toggle="tooltip"]').tooltip();
 
 $(".std_form_checkbox").click(function(){
  var attr_name = this.id.split("-")[1]
@@ -54,9 +76,15 @@ function validate_req(){
  var valid_message = ""
  var messages = []
  var valid = true
-console.log("blou")
+ console.log("blouii")
+ console.log(<%= raw @h_attrs.to_json %>) 
  <% @h_attrs.each_key do |attr_name| %>
-  <% attr = @h_attrs[attr_name] %>
+  <% attr = @h_attrs[attr_name] %>  
+  console.log(<%= raw attr.to_json %>) 
+  <% if attr['set_to_placeholder_if_empty'] %>
+   console.log("set label to placeholder")
+   $("#attrs_<%= attr_name %>").val($("#attrs_<%= attr_name %>").prop('placeholder'))
+  <% end %>
   <% if attr['min_nber_items'] %>
    console.log("min_nber_items set for <%= attr_name %>")
    var size = 0  
@@ -78,12 +106,17 @@ console.log("blou")
  $("#validation_<%= attr_name %>").html(messages.join("<br/>"))
  <% end %>
 
+ // estimate the time and memory this run will take
+
+
  if (valid == true){
     console.log("the form is valid!")
    $(".req_submit").removeAttr('disabled')
  }else{
-   $(".req_submit").attr("disabled", "disabled")
-  console.log("something's wrong")
+   $(".req_submit").prop("disabled", "disabled")
+ // alert("test")
+  console.log("something's wrong bla <%= raw @h_attrs.keys.join(",") %>")
+  $(".req_submit").attr("disabled")
  }
 }
 
@@ -153,20 +186,23 @@ $("#infos").html(infos);
 });
 
 function set_group_pairs(){
- if ($("#attrs_all_against_compl").prop("checked")== true){
+ console.log("blaaaaaaaa-allagainstall")
+ if ($("#checkbox-all_against_compl").prop("checked")== true){
   // fill group_pairs
+  console.log("bliiiiiiii")
   var group_pairs = compute_all_against_compl("#attrs_group_ref option") 
   $("#attrs_group_pairs").val(JSON.stringify(group_pairs)) 
   $("#form-container_group_ref").addClass("hidden")
   $("#form-container_group_comp").addClass("hidden")
  }else{
+  console.log("buuuuuu")
   $("#attrs_group_pairs").val("[]")
   $("#form-container_group_ref").removeClass("hidden")
   $("#form-container_group_comp").removeClass("hidden")
  }
 }
 
-$("#attrs_all_against_compl").click(function(){
+$("#checkbox-all_against_compl").click(function(){
 set_group_pairs()
 })
 
@@ -196,5 +232,20 @@ refresh("form_container", "<%= edit_project_path(@project.key) %>?global=1", {})
 $("#ontop_window").removeClass("hidden");
 });
 }
+
+// upd prediction
+
+ // console.log("test change_method")
+ var annot_ids = []
+ // console.log($("#attrs_input_matrix").val())
+ var input_fields = ['input_matrix', 'input_de'];
+ for (var j=0; j<input_fields.length; j++){
+  var list_datasets = ($("#attrs_" + input_fields[j]).length > 0 && $("#attrs_" + input_fields[j]).val()!='') ? JSON.parse($("#attrs_" + input_fields[j]).val()) : []
+  for (var i=0; i< list_datasets.length; i++){
+   annot_ids.push(list_datasets[i]['annot_id'])
+  }
+ }
+ upd_pred(annot_ids.join(","))
+
 
 <% end %>

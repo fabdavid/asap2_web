@@ -2,6 +2,8 @@ class TodosController < ApplicationController
   before_action :set_todo, only: [:show, :edit, :update, :destroy]
 
   include ApplicationHelper
+  
+  layout "welcome"
 
   # GET /todos
   # GET /todos.json
@@ -30,10 +32,11 @@ class TodosController < ApplicationController
       3 => "Done"
     }
 
-    todos.each do |todo|
+    todos.select{|td| td.status_id != 1 or current_user}.each do |todo|
+      
       h_card = {
         :card_id => "todo_card-#{todo.id}",
-        :card_class => "todo_card pointer",
+        :card_class => "todo_card",
         :body => "<div class='float-right'>#{display_status_todo(@h_statuses[todo.status_id], h_todo_statuses)}</div><h5 class='card-title'>#{todo.title}</h5><p class='card-text'>#{todo.description}</p>",
         :footer => "<span>Last update: #{display_date2(todo.updated_at)}</span>" + ((current_user) ? ("<div class='float-right'>" +
 ((admin? or current_user.id == todo.user_id) ? "<button type='button' onclick=\"window.location='#{edit_todo_path(todo)}'\" class='btn btn-primary btn-sm'>Edit</button> " : "") +  

@@ -5,15 +5,18 @@
 <table id='list_methods'>
   <thead>
     <tr>
+      <th>ID</th>
+      <th>Docker image ID</th>
       <th>Step</th>
       <th>Name</th>
       <th>Label</th>
 <!--      <th>Description</th>-->
       <th>Speed</th>
       <th>Link</th>
-      <th>Optional object attributes (JSON)</th>
+      <th>Predict params</th>
       <th>Attributes</th>
       <th>Command line</th>
+      <th>Used</th>
       <!--      <th>Handles log</th>-->
       <th></th>
       <th></th>
@@ -24,19 +27,22 @@
   <tbody>
     <% @std_methods.each do |std_method| %>
     <tr>
+      <td><%= std_method.id %></td>
+      <td><%= std_method.docker_image_id %></td>
       <td><%= (step = std_method.step) ? step.label : 'NA' %></td>
       <td><%= std_method.name %></td>
       <td><%= std_method.label %></td>
    <!--   <td><%= std_method.description %></td>-->
       <td><%= std_method.speed_id %></td>
       <td><%= raw std_method.link %></td>
-      <td><%= std_method.obj_attrs_json %></td>
-      <td><%= (j = JSON.parse(std_method.attrs_json) and j.kind_of?(Array)) ? j.map{|e| e['name']}.join(", ") : j.keys.join(", ") %></td>
+      <td><%= (l = Basic.safe_parse_json(std_method.command_json, {})['predict_params']) ? l.join(", ") : 'NA' %></td>
+      <td><%= (j = Basic.safe_parse_json(std_method.attrs_json, {}) and j.kind_of?(Array)) ? j.map{|e| e['name']}.join(", ") : j.keys.join(", ") %></td>
       <td><%= std_method.program %></td>
+      <td><%= raw (std_method.obsolete == false) ? "<span class='badge badge-success'>yes</span>" : "<span class='badge badge-danger'>no</span>" %></td>
       <!-- <td><%# (filter.handles_log == true) ? 'Yes' : 'No' %></td>-->
       <td><%= link_to 'Show', std_method_path(std_method) %></td>
       <td><%= link_to 'Edit', edit_std_method_path(std_method) %></td>
-      <td><%= link_to 'Destroy', std_method, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      <td><%# link_to 'Destroy', std_method, method: :delete, data: { confirm: 'Are you sure?' } %></td>
     </tr>
     <% end %>
   </tbody>

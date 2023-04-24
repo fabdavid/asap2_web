@@ -22,29 +22,62 @@
 
 <% if @h_std_method_attrs %>
 
+<%# @h_gene_sets.to_json %>
+
 <table id='ge_table'>
   <thead>
     <th>Run ID</th>
     <th>Label</th>
-    <th>Parameters</th>
+    <th>Dataset & parameters</th>
+    <th>DE method</th>
+    <th>Clustering</th>
+<!--    <th>Reference cluster</th>
+    <th>Compared cluster</th> -->
     <th>Up-regulated pathways</th>
     <th>Down-regulated pathways</th>
   </thead>
   <tbody>
     <% @runs.select{|run| run.status_id == 3}.each do |run| %>
     <% h_attrs = (run.attrs_json) ? JSON.parse(run.attrs_json) : {} %>
+    <% h_attrs['gene_set'] = (gene_set = @h_gene_sets[h_attrs['gene_set_id'].to_i] ) ? gene_set.label : 'NA' %>
+    
     <tr>
-      <td><%= run.id %></td>
+      <td><%= run.id %><%# h_attrs['gene_set_id'].to_json %></td>      
       <td><%= raw display_run2(run, @h_steps[run.step_id], @h_std_methods[run.std_method_id]) %></td>
-      <td><%= raw display_run_attrs(run, h_attrs, @h_std_method_attrs) %></td>
+      <td><%= raw display_run_attrs(run, h_attrs, @h_std_method_attrs, {:reject_if_default => true}) %></td>
+      <td><% de_run =  @h_ge_lineage_runs[:de][run.id] %>
+	<% if de_run %>
+	<%= raw display_run2(de_run, @h_steps[de_run.step_id], @h_std_methods[de_run.std_method_id]) %>
+	<% de_run =  @h_ge_lineage_runs[:de][run.id]
+	     de_run_attrs = @h_ge_lineage_run_attrs[:de][run.id] %>
+	<%= raw display_run_attrs(de_run, de_run_attrs, @h_std_method_attrs, {:reject_if_default => true}) %>
+	<% end %>
+      </td>
       <td>
+	<% cl_run = @h_ge_lineage_runs[:clustering][run.id] %>
+        <% if cl_run %> 
+	<%= raw display_run2(cl_run, @h_steps[cl_run.step_id], @h_std_methods[cl_run.std_method_id]) %>
+        <%  cl_run_attrs = @h_ge_lineage_run_attrs[:clustering][run.id] %>
+        <%= raw display_run_attrs(cl_run, cl_run_attrs, @h_std_method_attrs, {:reject_if_default => true}) %>
+	<% else %>
+	None
+	<% end %>
+      </td>
+      <!--  <td><%=  %></td>
+      <td><%= %></td> -->
+      <td>
+<%# @h_stats.to_json %>
         <% if @h_stats[run.id.to_s] and @h_stats[run.id.to_s]["up"] %>
-        <span id='up_<%= run.id %>' class='badge-nber_genesets pointer badge badge-<%= (@h_stats[run.id.to_s]["up"] > 0) ? "success" : "secondary" %>'><%= @h_stats[run.id.to_s]["up"] %> gene sets</span>
+        <span id='up_<%= run.id %>' class='badge-nber_genesets pointer badge badge-<%= (@h_stats[run.id.to_s]["up"] > 0) ? "success" : "secondary" %>'>
+	  <%= @h_stats[run.id.to_s]["up"] %> gene sets
+	</span>
         <% end %>
       </td>
       <td>
         <% if @h_stats[run.id.to_s] and @h_stats[run.id.to_s]["down"] %>
-        <span id='down_<%= run.id %>' class='badge-nber_genesets pointer badge badge-<%= (@h_stats[run.id.to_s]["down"] > 0) ? "danger" : "secondary" %>'><%= @h_stats[run.id.to_s]["down"] %> gene sets</span>
+        <span id='down_<%= run.id %>' class='badge-nber_genesets pointer badge badge-<%= (@h_stats[run.id.to_s]["down"] > 0) ? "danger" : "secondary" %>'>
+	  <%= @h_stats[run.id.to_s]["down"] %> gene sets
+	</span>
         <% end %>
       </td>
     </tr>
@@ -58,11 +91,16 @@
 
 $("#ge_table").dataTable()
 
-$("#ge_table").on("click", ".badge-nber_genesets", function(){
+$("#ge_table").on("click", ".badge-nber_genesets", function(e){
  var t = this.id.split("_")
  var run_id = t[1]
  var ge_type = t[0]
- refresh("step_container", "<%= raw runs_path() %>/" + run_id + "/get_ge_geneset_list?type=" + ge_type, {loading:'fa-2x'})
+  e.stopPropagation();
+  e.preventDefault();
+  $("#ontop_window").removeClass("hidden")
+  refresh("form_container", "<%=raw runs_path() %>/" + run_id + "/get_ge_geneset_list?type=" + ge_type, {loading: 'fa-2x'})
+  var w = $(window).width();
+// refresh("step_container", "<%= raw runs_path() %>/" + run_id + "/get_ge_geneset_list?type=" + ge_type, {loading:'fa-2x'})
 })
 
 $(".form-ge-filter").keyup(function(event){
@@ -79,22 +117,11 @@ $(this).attr('disabled', 'disabled');
 //  {'name' : 'filter[fc_cutoff]', 'value' : $("#filter_fc_cutoff").val()},
   {'name' : 'filter[fdr_cutoff]', 'value' : $("#filter_fdr_cutoff").val()}
  ];
-  refresh_post("step_container", "<%= filter_ge_results_project_path(:key => @project.key) %>", p, 'post', {loading:'fa-2x', redirect:true});
+  refresh_post("step_content", "<%= filter_ge_results_project_path(:key => @project.key) %>", p, 'post', {loading:'fa-2x', redirect:true});
 });
 
  $("#ge_table").on("click", ".input_lineage", function(e){
-  var run_id = this.id.split("_")[2]
-  e.stopPropagation();
-  e.preventDefault();
-  $("#popup_window").removeClass("hidden")
-  //  $("#popup_container").html("bla!")
-  refresh("popup_container", "<%= get_lineage_project_path(:key => @project.key) %>?run_id=" + run_id, {loading: 'fa-2x'})
-  var w = $(window).width();
-  $("#popup_window").css({
-        left: 200,
-        width:w - 250,
-        top: e.pageY + 10
-    }).stop().show(100);
+<%= render :partial => 'input_lineage_js' %>
  })
 
 $("#ge_table").on("click", ".show_link", function(){

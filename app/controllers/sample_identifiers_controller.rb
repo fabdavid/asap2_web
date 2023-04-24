@@ -27,7 +27,7 @@ class SampleIdentifiersController < ApplicationController
     @sample_identifier = SampleIdentifier.new(sample_identifier_params)
 
     respond_to do |format|
-      if @sample_identifier.save
+      if admin? and @sample_identifier.save
         format.html { redirect_to @sample_identifier, notice: 'Sample identifier was successfully created.' }
         format.json { render :show, status: :created, location: @sample_identifier }
       else
@@ -41,7 +41,7 @@ class SampleIdentifiersController < ApplicationController
   # PATCH/PUT /sample_identifiers/1.json
   def update
     respond_to do |format|
-      if @sample_identifier.update(sample_identifier_params)
+      if admin? and @sample_identifier.update(sample_identifier_params)
         format.html { redirect_to @sample_identifier, notice: 'Sample identifier was successfully updated.' }
         format.json { render :show, status: :ok, location: @sample_identifier }
       else
@@ -54,10 +54,12 @@ class SampleIdentifiersController < ApplicationController
   # DELETE /sample_identifiers/1
   # DELETE /sample_identifiers/1.json
   def destroy
-    @sample_identifier.destroy
-    respond_to do |format|
-      format.html { redirect_to sample_identifiers_url, notice: 'Sample identifier was successfully destroyed.' }
-      format.json { head :no_content }
+    if admin?
+      @sample_identifier.destroy
+      respond_to do |format|
+        format.html { redirect_to sample_identifiers_url, notice: 'Sample identifier was successfully destroyed.' }
+        format.json { head :no_content }
+      end
     end
   end
 

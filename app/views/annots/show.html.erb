@@ -2,115 +2,157 @@
   <%= render :partial => 'projects/step_header_container' %>
 </div>
 
+<%# @h_sums.to_json if admin? %>
+
 <div id='step_content'>
   <p id="notice"><%= notice %></p>
+  <%# @cmd = "docker run -it --network=asap2_asap_network -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --rm -v /data/asap2:/data/asap2 -v /srv/asap_run/srv:/srv fabdavid/asap_run:v5 ./h5dump" %>
+  <%# @cmd if admin? %>
+  <%# `#{@cmd}`.to_json if admin? %>
+  <%# @h_results.keys.to_json if admin? %>
   
-<% if @annot.dim %>
-<h4>
-  <% if @annot.dim == 3 %> 
-  Expression matrix 
-  <% else %>
-  Annotation
-  <% end %>
-  <%= @annot.label || @annot.name %>  
-</h4>
-<div class='row mb-4'>
-  <div class='col-md-6 col-lg-5'>
-    <div class='card'>
-      <div class='card-header'>General info</div>
-      <div class='card-body'>
-	<table>
-	  <% if @annot.dim !=3 %>
-	  <tr>
-	    <td>Annotation type</td><td><%= (@annot.dim == 1) ? 'Cell' : 'Gene' %></td>
-	  </tr>
-	  <% end %>
-	  <tr>
-	    <td>Data type</td><td><%= (dt = @annot.data_type) ? dt.name : 'NA' %></td>
-	  </tr><tr>
-	    <td>Number of cells</td><td><%= @annot.nber_cols %></td>
-	  </tr><tr>
-	    <td>Number of genes</td><td><%= @annot.nber_rows %></td>
-	  </tr><tr>
-	    <td>Produced by analysis</td><td>
-	      <% if run = @annot.run %>
-	      <span id='show_run_<%= run.id %>' class='show_link pointer'><%= raw display_run2(run, run.step, run.std_method) %><i class='fa fa-arrow-circle-right'></i></span>
-	      <% else %>
-	      NA
+  <% if @annot.dim %>
+  <h4>
+    <% if @annot.dim == 3 %> 
+    Expression matrix 
+    <% else %>
+    Annotation
+    <% end %>
+    <%= @annot.label || @annot.name %>  
+  </h4>
+  <div class='row mb-4'>
+    <div class='col-md-6 col-lg-5'>
+      <div class='card'>
+	<div class='card-header'>General info</div>
+	<div class='card-body'>
+	  <table>
+	    <% if @annot.dim !=3 %>
+	    <tr>
+	      <td>Annotation type</td><td><%= (@annot.dim == 1) ? 'Cell' : 'Gene' %></td>
+	    </tr>
+	    <% end %>
+	    <tr>
+	      <td>Data type</td><td><%= (dt = @annot.data_type) ? dt.label : 'NA' %></td>
+	    </tr><tr>
+	      <td>Number of cells</td><td><%= @annot.nber_cols %></td>
+	    </tr><tr>
+	      <td>Number of genes</td><td><%= @annot.nber_rows %></td>
+	    </tr><tr>
+	      <td>Produced by analysis</td><td>
+		<% if run = @annot.run %>
+		<span id='show_run_<%= run.id %>' class='show_link pointer'><%= raw display_run2(run, run.step, run.std_method) %><i class='fa fa-arrow-circle-right'></i></span>
+		<% else %>
+		NA
 	      <% end %>
-	    </td>
-	  </tr><tr>
-	    <td>Created by</td><td><%= (u = @annot.user) ? ((u == current_user) ? 'me' : u.email) : 'admin' %></td>
-	  </tr>
-	</table>
+	      </td>
+	    </tr><tr>
+	      <td>Created by</td><td><%= (u = @annot.user) ? ((u == current_user) ? 'me' : u.email) : 'admin' %></td>
+	    </tr>
+	  </table>
+	</div>
       </div>
     </div>
-  </div>
-  <div class='col-md-6 col-lg-7'>
-    <div class='card'>
-      <div class='card-header'>Access</div>
-      <div class='card-body'>
-	<% if @annot.dim != 3 %>
-	<b>Download</b>
-	<p>
-	  <button id='download_json' class='btn btn-primary' type='button'>JSON</button>
-	  <button id='download_text' class='btn btn-primary' type='button'>Tab-separated</button>
-	</p>
-	<% end %>
-	<b>Programmatic Access</b>
-	<% if @cmd %>
-	<pre><%= @cmd.gsub("#{@project_dir}", '$PROJECT_DIR').gsub("lib/ASAP.jar", "ASAP.jar") %></pre>
-	<% end %>
+    <div class='col-md-6 col-lg-7'>
+      <div class='card'>
+	<div class='card-header'>Access</div>
+	<div class='card-body'>
+	  <b>Download</b>
+	  <p>
+	    <% if @annot.dim != 3 %>
+	    <% if @annot.dim == 4 %>
+  	    <button id='download_text' class='btn btn-primary' type='button'>Raw content</button>
+	    <% else %>
+	    <button id='download_json' class='btn btn-primary' type='button'>JSON</button>
+	    <button id='download_text' class='btn btn-primary' type='button'>Tab-separated</button>
+	    <button id='download_text_scope' class='btn btn-primary' type='button'>Tab-separated (data-only)</button>
+	    <% end %>
+	    <% else %>
+	    <% if @annot.nber_cols *  @annot.nber_rows > 300000000  %>
+	    <i>Too big dataset</i>
+	    <% else %>
+            <button id='download_text' class='btn btn-primary' type='button'>CSV</button>
+	    <%# @cells_annot.to_json if admin? %>
+	    <% if @genes_annot %>
+	    <button id='download_genes_text' class='btn btn-primary' type='button'>Gene list</button>
+	    <% end %>
+	    <% if @cells_annot %>
+	    <button id='download_cells_text' class='btn btn-primary' type='button'>Cell list</button>
+	    <% end %>
+	    
+	    <% end %>
+	    <% end %>
+	  </p>
+	  <b>Programmatic Access</b>
+	  <% if @cmd %>
+	  <pre><%= @cmd.gsub("#{@project_dir}", '$PROJECT_DIR').gsub("lib/ASAP.jar", "ASAP.jar").gsub("hdf5/bin/", "") %></pre>
+	  <% end %>
+	</div>
       </div>
     </div>
+    
+    <div style='clear:both'></div>
   </div>
   
-  <div style='clear:both'></div>
-</div>
-
-<% if categories_json = @annot.categories_json and !categories_json.empty? %>
- <div class='card'>
-   <div class='card-header'>Categories</div>
-   <div class='card-body'>
-     <%= JSON.parse(categories_json).to_json %>
-   </div>
- </div>
-<% end %>
-
-<div class='row'>
-
-<%#  @h_results['values'].to_json %>
-
-<% nber_cols = ((@annot.dim == 1) ? @annot.nber_cols : @annot.nber_rows) %>
-
-<div class='col-md-<%= (nber_cols == 1) ? '5' : '12' %> mb-4'>
-<div class='card'>
-  <div class='card-header'>Preview</div>
-  <div class='card-body'>
+  <% if categories_json = @annot.categories_json and !categories_json.empty? %>
+  <div class='row mb-4'>
+    <div class='col-md-12'>
+      <div class='card'>
+	<div class='card-header'>Categories</div>
+	<div class='card-body'>
+	  <% h_cat = Basic.safe_parse_json(categories_json, {}) %> 
+	  <% base_label = (@annot.dim == 1) ? "cell" : "gene" %>
+	  <%= raw h_cat.keys.map{|k| label = (h_cat[k] > 1) ? base_label.pluralize : base_label; "<button type='button' id='cat-details_#{@annot.id}_#{k}' class='cat-details btn btn-sm btn-outline-secondary'>#{k} <span class='badge badge-light'>#{h_cat[k]} #{label}</span></button>"}.join(" ") %>
+	</div>
+      </div>
+    </div>
+  </div>
+  <% end %>
+  
+  <div class='row'>
+    <%# @res.to_json if admin? %>
+    <%#  @h_results['values'].to_json %>
     
-    <% if @h_results %>
-     <% nber_cols = ((@annot.dim == 1) ? @annot.nber_rows : @annot.nber_cols) %>
+    <% nber_cols = ((@annot.dim == 1) ? @annot.nber_rows : @annot.nber_cols) %>
+    <%# nber_cols %>
+    <div class='col-md-<%= (nber_cols < 4 and @annot.dim < 4) ? '5' : '12' %> mb-4'>
+			   <div class='card'>
+			     <div class='card-header'>Preview</div>
+			     <div class='card-body'>
+			       
+			       <% if @h_results %>
+    <% if @h_results['values'] %>
+    <p><%= @h_results['values'].size %> values and <%= @h_results['values'].uniq.size %> unique values</p>
+    <% end %>
+
+     <%# nber_cols = ((@annot.dim == 1) ? @annot.nber_rows : @annot.nber_cols) %>
      <% nber_shown_cols = (nber_cols > 10) ? 10 : nber_cols %>
+     <%# nber_shown_cols %>
      <% rows = (@annot.dim == 1) ? @h_results['cells'] : @h_results['genes'] %>
+     <%# rows ||= @h_results['values'] %>
      <% limit = 100 %>
-     <% if rows and nber_cols %>
-      <% nber_rows = (rows.size < limit) ? rows.size : limit %>
-      <% total_nber_rows = rows.size %>
+     <% limit = @h_results['values'].size if  @h_results['values'] and @h_results['values'].size < 100 %>
+     <% if @h_results['values'] and nber_cols %>
+      <% total_nber_rows =  @h_results['values'].size %>
+      <% nber_rows = (total_nber_rows < limit) ? total_nber_rows : limit %>
+      <%# total_nber_rows = .size %>
        
       <p>
-      <% if total_nber_rows > limit %>
-        First <%= limit %> rows over <%= total_nber_rows %>
+	<% if total_nber_rows > limit %>
+      First <%= limit %> rows over <%= total_nber_rows %>
       <% else %>
-        List of <%= total_nber_rows %> values
+      List of <%= total_nber_rows %> values
       <% end %>
-      </p>
-<p><%= (nber_cols != nber_shown_cols) ? "First #{nber_shown_cols} columns over #{nber_cols}" : "#{nber_cols} columns." %></p>
+</p>
+<p><%= (nber_cols != nber_shown_cols) ? "First #{nber_shown_cols} columns over #{nber_cols}" : ("#{nber_cols} column" + ((nber_cols > 1) ? 's' : '')) %></p>
+
    <% if @h_results['values'] %>
       <table>
       <thead>
 	<tr>
 	  <th>Index in Loom</th>
-	  <th><%= (@annot.dim == 1) ? 'Cell' : 'Gene' %></th>
+	<% if rows %>
+	   <th><%= (@annot.dim == 1) ? 'Cell' : 'Gene' %></th>
+	 <% end  %>
 	  <% (0 .. nber_shown_cols-1).each do |i| %>
 	  <th>Value <%= (nber_cols == 1) ? '' : i+1 %></th>
 	  <% end %>
@@ -121,9 +163,11 @@
 	<% (0 .. limit-1).each do |i| %>
 	<tr>
 	  <td><%= i %></td>
-	  <td><%= rows[i] %></td>
+	  <% if rows %>
+	  <td><span class='wrap'><%= rows[i] %></span></td>
+	  <% end %>
 	  <% if nber_cols == 1 %>
-	  <td><%= @h_results['values'][i] %></td>
+	  <td><%= (@h_results['values'][i].is_a? Hash) ? @h_results['values'][i].to_json :  @h_results['values'][i] %></td>
 	  <% else  %>
           <%# if @h_results['values'][i] %>
 	  <% (0 .. nber_shown_cols-1).each do |j| %> 
@@ -139,12 +183,51 @@
       </tbody>
       </table>
    <% end %>
-     <% else %>
-     No results available.
-    <!--  rows : <%= raw @rows.to_json %>
-     nber_cols : <%= @nber_cols %>-->
-      <%# @h_results.to_json %>
-     <% end %>
+  <% elsif @annot.dim == 3 and @res and @res.size == 10 %>
+   Preview <%= nber_shown_cols %>x10
+   <table>
+      <thead>
+        <tr>
+          <th>Genes\Cells</th>
+          <% (0 .. nber_shown_cols-1).each do |i| %>
+          <th>Cell <%= i+1 %></th>
+          <% end %>
+        </tr>
+      </thead>
+      <tbody>
+
+        <% (0 .. @res.size-1).each do |i| %>
+        <tr>
+          <td>Gene <%= i+1 %></td>
+          <% (0 .. nber_shown_cols-1).each do |j| %>
+          <td><span class='wrap'><%= @res[i][j] %></span></td>
+          <% end %>
+        </tr>
+        <% end %>
+      </tbody>
+   </table>
+
+   <div id='plotly_histo_sum'></div>
+   <div id='plotly_histo_depth'></div>
+
+   <% elsif @annot.dim == 4 and @h_results["values"] %>
+     <% json_res = Basic.safe_parse_json(@h_results["values"][0], {}) %>
+      <% if json_res != {} %>
+       <div id='json_content'></div>
+       <%# raw @json_str %>
+       <%= javascript_tag do %>
+         var data=<%= raw @h_results["values"][0] %>
+         $('#json_content').jsonViewer(data);
+       <% end %>
+      <% else %>
+       <%= @h_results["values"][0] %>
+      <% end %>
+    <% else %>
+       No results available.
+<!--        rows : <%= raw @rows.to_json %> -->
+<!--      nber_cols : <%= @nber_cols %> -->
+       <%= @h_results.to_json if admin? %>
+   <% end %>
     
     <% end %>
   </div>
@@ -154,35 +237,119 @@
 <% if @annot.data_type_id != 2 and nber_cols == 1 %>
 <div class='col-md-7 mb-4'>
   <div class='card'>
-    <div class='card-header'>Histogram</div>
+    <div class='card-header'>Histogram <%= "(25 most represented categories)" if @annot.data_type_id == 3 %></div>
     <div class='card-body'>
       <div id='plotly_histo'></div>
     </div>
   </div>
 </div>
 <% end %>
+
+<%# @h_results['values'] if admin? %>
+<%= @log %>
 </div>
+
+
 
 <%= javascript_tag do %>
 
 $("#download_json").click(function(){
- window.location = '<%= extract_metadata_project_path(:key => @project.key, :annot_id => @annot.id, :format => 'json') %>'
+ window.location = '<%= raw extract_metadata_project_path(:key => @project.key, :annot_id => @annot.id, :format => 'json') %>'
 })
 $("#download_text").click(function(){
- window.location = '<%= extract_metadata_project_path(:key => @project.key, :annot_id => @annot.id, :format => 'text') %>'
+ window.location = '<%= raw extract_metadata_project_path(:key => @project.key, :annot_id => @annot.id, :format => 'text') %>'
+})
+<% if @genes_annot %>
+$("#download_genes_text").click(function(){
+ window.location = '<%= raw extract_metadata_project_path(:key => @project.key, :annot_id => @genes_annot.id, :format => 'text') %>'
+})
+<% end %>
+<% if @cells_annot %>
+$("#download_cells_text").click(function(){
+ window.location = '<%= raw extract_metadata_project_path(:key => @project.key, :annot_id => @cells_annot.id, :format => 'text') %>'
+})
+<% end %>
+$("#download_text_scope").click(function(){
+ window.location = '<%= raw extract_metadata_project_path(:key => @project.key, :annot_id => @annot.id, :format => 'text', :header => 0, :first_col => 0) %>'
 })
 
-<% if @annot.data_type_id != 2 and nber_cols == 1 %>
+<% if @annot.dim == 3 %>
 
+//var h_sums = <%= raw @h_sums.to_json %>
+//var list_plots = Object.keys(h_sums)
+
+<% @h_sums.each_key do |k| %>
+<% if @h_sums[k][:bin_counts] %>
 var trace = {
-    x: <%= raw @h_results['values'].to_json %>,
+    x: <%= raw (0 .. @h_sums[k][:bin_counts].size-1).map{|bin_i| @h_sums[k][:min] + bin_i * @h_sums[k][:bin_size]}.to_json %>,
+    y: <%= raw @h_sums[k][:bin_counts].to_json %>,
+    type: 'bar'
+}
+var layout = {
+ title : "<%= (k == :sum) ? 'Distribution of total counts by gene' : 'Distribution of total counts by cell' %>",
+ xaxis : {
+  type: 'linear'
+ },
+ bargap :0
+}
+
+var data = [trace];
+Plotly.newPlot('plotly_histo_<%= k %>', data, layout);
+
+<% end %>
+<% end %>
+
+<% else %>
+
+<% if ![2, 4].include?(@annot.data_type_id) and nber_cols == 1 %>
+
+/*var trace = {
+    histfunc: "count",
+    x: <% raw @h_results['values'].to_json %>, <%# raw @h_results['values'].map{|e| (e== '') ? 0 : e}.to_json %>
     type: 'histogram',
   };
-var data = [trace];
-Plotly.newPlot('plotly_histo', data);
+*/
+
+<% if @annot.data_type_id == 3 %>
+
+<% ordered_keys = @h_counts.keys.sort{|a, b| @h_counts[b] <=> @h_counts[a]}.first(25) %>
+
+var trace = {
+    x: <%= raw ordered_keys.to_json %>,
+    y: <%= raw ordered_keys.map{|k| @h_counts[k]}.to_json %>,
+    type: 'bar'
+}
+
+var layout = {
+ xaxis : {
+  type: 'category'
+ },
+ bargap :0.05
+}
+
+<% else %>
+
+var trace = {
+    x: <%= raw (0 .. @bin_counts.size-1).map{|bin_i| @min + bin_i * @bin_size}.to_json %>,
+    y: <%= raw @bin_counts.to_json %>,
+    type: 'bar'
+}
+var layout = {
+ xaxis : {
+  type: 'linear'
+ },
+ bargap :0
+}
+
 
 <% end %>
 
+console.log(<%= raw ordered_keys.to_json %>)
+var data = [trace];
+Plotly.newPlot('plotly_histo', data, layout);
+
+<% end %>
+<% end %>
 $(".show_link").click(function(){
  var t = this.id.split("_")
 // alert("bla!")

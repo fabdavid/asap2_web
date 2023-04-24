@@ -1,6 +1,48 @@
 class SharesController < ApplicationController
   before_action :set_share, only: [:show, :edit, :update, :destroy]
 
+  def batch_add
+    @shares = []
+    @project = nil
+    if params[:batch_emails] and params[:project_key]
+      @project = Project.where(:key => params[:project_key]).first
+      emails =  params[:batch_emails].split(/[,;\s]+/).compact.uniq.map{|e| e.downcase}
+      emails.each do |email|
+        user = User.where(:email => email).first
+        existing_share = Share.where(:user_id => ((user) ? user.id : nil), :email => email, :project_id => @project.id).first
+        if @project and !existing_share
+          h_share = {
+            :user_id => ((user) ? user.id : nil), 
+            :email => email, 
+            :project_id => @project.id,
+            :analyze_perm => params[:batch_analyze_perm],
+            :export_perm => params[:batch_export_perm]
+          }
+          share = Share.new(h_share)
+          if share.save
+            #            @shares = @project.shares.to_a
+            UserMailer.invitation_mail(current_user, share).deliver
+          end
+        elsif @project and existing_share
+          existing_share.update_attributes({
+                                             :analyze_perm => params[:batch_analyze_perm],
+                                             :export_perm => params[:batch_export_perm]
+                                           })
+        end
+      end
+      
+      @shares = Share.where(:project_id => @project.id).all.to_a
+      
+      respond_to do |format|
+        format.html { render :partial => 'projects/shares' }
+        format.json { render :show, status: 'OK' }
+      end
+    else
+      
+      render :nothing => true
+    end
+  end
+
   # GET /shares
   # GET /shares.json
   def index   
@@ -27,7 +69,7 @@ class SharesController < ApplicationController
     @share = Share.new(share_params)
     @project = Project.where(:key => params[:project_key]).first
     user = User.where(:email => @share.email).first
-    existing_share = Share.where(:user_id => ((user) ? user.id : nil), :project_id => @project.id).first
+    existing_share = Share.where(:user_id => ((user) ? user.id : nil), :email => @share.email, :project_id => @project.id).first
     
     if @share.email and params[:project_key] and !existing_share
     

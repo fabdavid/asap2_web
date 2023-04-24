@@ -1,3 +1,9 @@
+<%# params.to_json if admin? %>
+<%# raw @h_steps.keys.to_json  if admin?%>
+<%# session[:dr_params][@project.id].to_json if admin? %>
+<%# session[:dr_params][@project.id][:sel_cats] %>
+
+<%# @list_cat_aliases.to_json %>
 <%# @h_std_methods.to_json %>
 <%# @log4 %>
 <%# @cmd %>
@@ -5,7 +11,8 @@
 <%# session[:dr_params][@project.id].to_json %>
 <%# @log4 %>
 <%# @h_annots["accesssion"] %>
-<%# @genes_annot.to_json %>
+<%# @all_geneset_annots.to_json if admin? %>
+<%# raw("[" + @all_geneset_annots.map{|ga| ga.categories_json || "null"}.join(",") + "]") if admin? %>
 <%# @annot.to_json %>
 <%# @cmd %>
 <%# @cmd2 %>
@@ -16,20 +23,45 @@
   <div id='plot_opt_container' class=''>
     <div id='plot_opt_close'></div>
     <div id='plot_opt_content'>-->
-
+<%# session[:dr_params][@project.id][:main_menu] if admin? %>
 <ul class="nav nav-tabs" id="main_menu-nav" role="tablist">
   <li class="nav-item">
     <a class="nav-link <%= (session[:dr_params][@project.id][:main_menu] == 'general') ? 'active' : '' %>" id="general-tab" data-toggle="tab" href="#pane-general" role="tab" aria-controls="general" aria-selected="true">General</a>
   </li>
+  <% if admin? %>
+  <li class="nav-item">
+    <a class="nav-link <%= (session[:dr_params][@project.id][:main_menu] == 'selection') ? 'active' : '' %>" id="coloring-tab" data-toggle="tab" href="#pane-selection" role="tab" aria-controls="selection" aria-selected="false">Selection</a>
+  </li>
+  <% end %>
+<% if ! admin? %>
   <li class="nav-item">
     <a class="nav-link <%= (session[:dr_params][@project.id][:main_menu] == 'coloring') ? 'active' : '' %>" id="coloring-tab" data-toggle="tab" href="#pane-coloring" role="tab" aria-controls="coloring" aria-selected="false">Coloring</a>
   </li>
+  <% end %>
+  <% if admin? %>
+  <li class="nav-item dropdown">
+    <a class="nav-link <%= (session[:dr_params][@project.id][:main_menu] == 'coloring') ? 'active' : '' %>" data-toggle="tab" id="coloring-tab" href="#pane-coloring" role="tab" aria-controls="coloring" aria-selected="false">Coloring</a>
+<!--    <div class="dropdown-menu">
+      <a class="dropdown-item" id="dropdown_coloring_1" class='dropdown_coloring'>by gene / continuous metadata</a>
+      <a class="dropdown-item" id="dropdown_coloring_2" class='dropdown_coloring'>by up to 3 genes / continuous metadata</a>
+     <div class="dropdown-divider"></div>
+      <a class="dropdown-item" id="dropdown_coloring_3" class='dropdown_coloring'>by categorical / discrete metadata</a>
+    </div>-->
+  </li>
+  <% end %>
+<!--
   <li class="nav-item">
     <a class="nav-link <%= (session[:dr_params][@project.id][:main_menu] == 'info') ? 'active' : '' %>" id="info-tab" data-toggle="tab" href="#pane-info" role="tab" aria-controls="info" aria-selected="false">Info</a>
   </li>
+-->
   <li class="nav-item">
     <a class="nav-link <%= (session[:dr_params][@project.id][:main_menu] == 'inspector') ? 'active' : '' %>" id="inspector-tab" data-toggle="tab" href="#pane-inspector" role="tab" aria-controls="inspector" aria-selected="false">Inspector</a>
   </li>
+<% if admin? %>
+  <li class="nav-item">
+    <a class="nav-link <%= (session[:dr_params][@project.id][:main_menu] == 'annotation') ? 'active' : '' %>" id="annotation-tab" data-toggle="tab" href="#pane-annotation" role="tab" aria-controls="annotation" aria-selected="false">Annotation</a>
+  </li>
+<% end %>
 </ul>
 
 <!-- Tab panes -->
@@ -43,7 +75,7 @@
       <div class='col-6'>
 	<input name='opt[dot_opacity]' type="range" value="<%= session[:dr_params][@project.id][:dot_opacity] %>" min="0.1" max="1" step="0.1" oninput="opacityChange()" id="dot_opacity" class="slider"/>
 	<span id="op_value"><%= session[:dr_params][@project.id][:dot_opacity] %></span>
-  </div>
+      </div>
     </div>
     <!-- <div width="300px" align="left">
 	 <input type="range" value="1" min="0.1" max="1" step="0.1" oninput="opacityChange()" id="opacity" class="slider"/>
@@ -65,7 +97,34 @@
 	<span id="size_value"><%= session[:dr_params][@project.id][:dot_size] %> px</span>
       </div>
     </div>
+    <%# if admin? %>
+    <div class='row'>
+      <div class='col-3'>
+	<%= check_box_tag 'plot_cell_names_on_hover', 1, session[:dr_params][@project.id][:cell_names_on_hover] == '1' %>
+      </div>
+      <div class='col-9'>Display cell names on hover</div>
+    </div>
+    <%# end %>
   </div>
+
+  <% if admin? %>
+
+  <div class="tab-pane <%= (session[:dr_params][@project.id][:main_menu] == 'selection') ? 'active' : '' %>" id="pane-selection" role="tabpanel" aria-labelledby="selection-tab">
+    
+    <% if @annot and @cat_annots %>
+    <div class='col-6' style='padding-top:5px'>Optional cell selection</div>
+    <% l = prepare_metadata_grouped_list(@cat_annots) %>
+    <%= select_tag "opt[cat_annot_id2]", grouped_options_for_select(l, session[:dr_params][@project.id][:sel_cat_annot_id] || ''), {:class => 'custom-select col-6'} %>
+    <div class='col-6' style='padding-top:5px'></div>
+    <% l = session[:dr_params][@project.id][:sel_cats2] || [] %>
+    <% l.unshift("Select a category") if l.size > 0 %>
+    <%= select_tag "opt[sel_cat2]", options_for_select(l, session[:dr_params][@project.id][:sel_cat2] || ''), {:class => 'custom-select col-6'} %>
+    <% end %>
+    
+  </div>
+
+  <% end %>
+
   <div class="tab-pane <%= (session[:dr_params][@project.id][:main_menu] == 'coloring') ? 'active' : '' %>" id="pane-coloring" role="tabpanel" aria-labelledby="coloring-tab">
 
 <!--    <div class='plot_option_category mb-2'>Coloring</div>-->
@@ -74,37 +133,63 @@
     
     <% coloring_type = session[:dr_params][@project.id][:coloring_type] %>
     <div class='row flex-container2 mb-2 mt-2'>
+      <% if !admin? %>
       <div class="btn-group" role="group">	  
 	<button id='coloring_type_0_btn' type="button" class="btn btn-<%= (coloring_type == "0") ? 'primary' : 'secondary' %> coloring_type_btn">None</button>
-	<button id='coloring_type_1_btn' type="button" class="btn btn-<%= (coloring_type == "1") ? 'primary' : 'secondary' %> coloring_type_btn">Single gradient</button>
+	<button id='coloring_type_1_btn' type="button" class="btn btn-<%= (coloring_type == "1") ? 'primary' : 'secondary' %> coloring_type_btn">Continuous</button>
 	<button id='coloring_type_2_btn' type="button" class="btn btn-<%= (coloring_type == "2") ? 'primary' : 'secondary' %> coloring_type_btn">3-Channels</button>
-	<button id='coloring_type_3_btn' type="button" class="btn btn-<%= (coloring_type == "3") ? 'primary' : 'secondary' %> coloring_type_btn">Categorical</button> 
+	<button id='coloring_type_3_btn' type="button" class="btn btn-<%= (coloring_type == "3") ? 'primary' : 'secondary' %> coloring_type_btn">Discrete</button> 
       </div>
-      <%= hidden_field_tag 'opt[coloring_type]', coloring_type %> 
+       <%= hidden_field_tag 'opt[coloring_type]', coloring_type %>
+
+      <% else %>
+      <% l = [["by gene / continuous metadata", "1"], ["by up to 3 genes / continuous metadata", "2"], ["by categorical / discrete metadata", "3"]] %>
+      <%= select_tag "opt[coloring_type]", options_for_select(l, coloring_type), {:class => 'custom-select'} %>
+      <% end %>
+
 </div>
     
     <div id='coloring_type_1_container' class='coloring_type_container <%= (coloring_type == "1") ? '' : 'hidden' %>'>
+    
+<!--      <b>by gene / continuous metadata</b>-->
+
       <%= render :partial => 'form_num_gradient', :locals => {:occ => 1} %>
+
+      <div class='row mt-2'>
+        <div class='col-6' style='padding-top:5px'>Showing stats according to</div>
+	<% l = prepare_metadata_grouped_list(@cat_annots) %>
+	<%= select_tag "opt[gene_expr_cat_annot_id]", grouped_options_for_select(l, session[:dr_params][@project.id][:gene_expr_cat_annot_id] || ''), {:class => 'custom-select col-6 sel_gene_expr_cat_annot_id'} %>
+      </div>
+      <div id='gene_expr_stats'>
+      </div>
     </div>
     
     <div id='coloring_type_2_container' class='coloring_type_container <%= (coloring_type == "2") ? '' : 'hidden' %>'>
-      <div class='col-6 bold'>Red channel</div>
+<!--      <b>by up to 3 genes / continuous metadata</b> -->
+
+      <div class='col-6 bold mt-2'>Red channel</div>
       <%= render :partial => 'form_num_gradient', :locals => {:occ => 2} %>
-      <div class='col-6 bold'>Green channel</div>
+      <div class='col-6 bold mt-2'>Green channel</div>
       <%= render :partial => 'form_num_gradient', :locals => {:occ => 3} %>
-      <div class='col-6 bold'>Blue channel</div>
+      <div class='col-6 bold mt-2'>Blue channel</div>
       <%= render :partial => 'form_num_gradient', :locals => {:occ => 4} %>
       <div class='fake' style='margin-bottom:200px'></div>
     </div>
     
     
     <div id='coloring_type_3_container' class='coloring_type_container <%= (coloring_type == "3") ? '' : 'hidden' %>'>
+<!--      <b>by categorical / discrete metadata</b> -->
       <div class='row'>
 	<div class='col-6' style='padding-top:5px'>Data source</div>
 	<% if @annot and @cat_annots %>
-	<% l = @cat_annots.map{|a| [a.name, a.id]} %>
-	<% l.unshift(["Select an annotation", '']) %>
-	<%= select_tag "opt[cat_annot_id]", options_for_select(l, session[:dr_params][@project.id][:cat_annot_id] || ''), {:class => 'custom-select col-6 sel_cat_annot_id'} %>
+	<%# h = {} %>
+	<%# @cat_annots.select{|a| a.step_id and @h_steps[a.step_id]}.map{|a| k = (a.imported or @h_steps[a.step_id].label == 'Imported metadata') ? 0 : a.step_id; h[k] ||=[]; h[k].push([a.name, a.id])} %> <%#.sort %>
+	<%# l = []; h.keys.map{|k| l.push([k, h[k]])} %>
+	<%# l.sort!{|a, b| ((@h_steps[a[0]]) ? @h_steps[a[0]].rank : 0) <=> ((@h_steps[b[0]]) ? @h_steps[b[0]].rank : 0)} %>
+	<%# l.map!{|e| [((e[0] != 0) ? @h_steps[e[0]].label : 'Imported metadata'), e[1]]} %>
+	<%# l.unshift(["-------------", [["Select a metadata", '']]]) %>
+	<% l = prepare_metadata_grouped_list(@cat_annots) %>
+	<%= select_tag "opt[cat_annot_id]", grouped_options_for_select(l, session[:dr_params][@project.id][:cat_annot_id] || ''), {:class => 'custom-select col-6 sel_cat_annot_id'} %>
       </div>
 <!--      <div id='hightlight_cluster_container' class='row <%= (session[:dr_params][@project.id][:displayed_nber_dims] == 3) ? 'hidden' : '' %>'>
         <div class='col-12' style='padding-top:5px'> 
@@ -129,12 +214,21 @@
   </div>
 
   <div class="tab-pane <%= (session[:dr_params][@project.id][:main_menu] == 'inspector') ? 'active' : '' %>" id="pane-inspector" role="tabpanel" aria-labelledby="inspector-tab">
-  <div id='clicked_point-desc' class=' mt-2'></div>
-    <div id='selection-desc' class='float-left mt-2'></div>
+    <div id='clicked_point-desc' class=' mt-2'></div>
+    <% if !analyzable? @project %>
+    <div class='alert alert-danger'>You don't have the permission to create selections on this project. Please clone the project first.</div>
+    <% end %>
+    <div id='selection-desc' class='float-left mt-2'>
+      <%# if analyzable?(@project) %>
+      <p class='alert alert-info'>Please select a group of cells in the plot by using the lasso tool; and inspect its content here</p>
+      <%# end %>
+    </div>    
 
     <div id='selection-actions_container' class='float-left mt-2 ml-1 hidden'>
+      <% if analyzable?(@project) %>
       <button id='create_new_metadata-btn' type='button' class='btn btn-success'>Create new metadata</button>
       <button id='cancel_selection-btn' type='button' class='btn btn-outline-danger'>Cancel selection</button>
+       <% end %>
       <!--      <button id='merge_metadata-btn' type='button' class='btn btn-success hidden'>Merge with existing metadata</button>-->
     </div>
     <div class='clear'></div>
@@ -142,7 +236,15 @@
     <div id='form_new_metadata' class='mt-4 hidden'></div>
     <div id='selection_stats_container' class='mt-4'></div>
   </div>
-
+  
+  <div class="tab-pane <%= (session[:dr_params][@project.id][:main_menu] == 'annotation') ? 'active' : '' %>" id="pane-annotation" role="tabpanel" aria-labelledby="annotation-tab">
+    <div id='annot_info_container' class='float-left mt-2'>      
+      <% if !session[:dr_params][@project.id][:active_annotated_cluster] %>
+      <p class='alert alert-info'>To edit or add new annotations, please select a cell clustering or selection in Coloring > Categorical metadata and click on the <i class='fa fa-edit'></i> button to annotate a group of cells.</p>  
+      <% end %>      
+    </div>
+  </div>
+  
 </div>
 
 <!--    </div>
@@ -153,22 +255,230 @@
 
 <%= javascript_tag do %>
 
+/*var h_autocomplete = {}
+
+$.ajax({
+      dataType: "json",
+      cache : true,
+      async : false,
+      url: "<%= raw get_autocomplete_genes_project_path(@project.key) %>",                            
+      success: function(returnData){
+        h_autocomplete = returnData
+        $(".gene_free_text").attr("placeholder", '')
+        $(".gene_free_text").prop("disabled", false)
+      }                                                                                                                                       
+});                
+*/
+
 var h_users = <%= raw @h_users.to_json %>
 
 <% h_headers = {};  @num_annots.select{|a| a.headers_json}.map{|a| h_headers[a.id] = JSON.parse(a.headers_json)} %>
 
 var h_headers = <%= raw h_headers.to_json %>
-var sel_cats = <%= raw session[:dr_params][@project.id][:sel_cats] %>;
+var sel_cats = <%= raw session[:dr_params][@project.id][:sel_cats].to_json %>;
+var h_minmax = {};
+var user_id = <%= (current_user) ? current_user.id : 1 %>
+var editable = <%= editable?(@project) %>
+var admin = <%= raw admin? %>
+var max_nber_items = 20
+var autocomplete_more_items = new Array(4)
+
+function start_refresh_plot(btn){
+// $(btn).addClass("hidden")
+ console.log("start_refresh")
+ $("#refresh_plot_status").removeClass("hidden")
+ $("#refresh_plot_icon").addClass("fa-pulse")
+ $("#refresh_plot-btn").prop("disabled", true)
+}
+function finish_refresh_plot(){
+// $(this).removeClass("hidden")
+ $("#refresh_plot_status").addClass("hidden")
+ $("#refresh_plot_icon").removeClass("fa-pulse")
+ $("#refresh_plot-btn").prop("disabled", false)
+}
+
+function opacityChange(){
+        opacity = document.getElementById("dot_opacity").value;
+        op_value.innerHTML = opacity
+        upd_params()
+        plotly_graph.updateOpacity(opacity);
+}
+
+function sizeChange(){
+        size = document.getElementById("dot_size").value;
+        size_value.innerHTML = size + "px";
+        upd_params()
+        plotly_graph.updateSize(size);
+}
+
+function refresh_sel_cat_view(){
+// var sel_cats = []
+ start_refresh_plot()
+ console.log("titi:" + sel_cats.length)
+ if ($(".view_cluster").length > 0){
+  sel_cats = []
+  $(".view_cluster").each(function(){
+   var cat_idx = this.id.split("_")[2]
+   console.log("titi")
+   if ($(this).prop("checked") == true){
+    sel_cats.push(plotly_conf.list_cats[cat_idx])
+   }
+  })
+ }
+ var p = [{name : 'sel_cats', value : JSON.stringify(sel_cats)}]
+ refresh_post(null, "<%= raw upd_sel_cats_project_path(:key => @project.key) %>", p, 'post', {})
+}
+
+function upd_main_menu(menu_item){
+  $.ajax({
+      url: '<%= save_plot_settings_project_path(:key => @project.key) %>?main_menu=' + menu_item,
+           dataType: "json",
+           success: function(data){
+           }
+       })
+}
+
+function upd_params(){
+<% if admin? %>
+//alert($("#plot_cell_names_on_hover").prop("checked"))
+<% end %>
+  $.ajax({
+      url: '<%= save_plot_settings_project_path(:key => @project.key) %>?dot_opacity=' + $("#dot_opacity").val() + "&dot_size=" + $("#dot_size").val() + "&cell_names_on_hover=" + (($("#plot_cell_names_on_hover").prop("checked") == true) ? '1' : '0'),
+           dataType: "json",
+           success: function(data){
+           }
+       })
+}
+
+/* MODULE_SCORE */
+
+var geneset_annots = <%= raw @geneset_annots.to_json %>;
+var genesets = <%= raw @genesets.to_json %>;
+
+
+function compute_modulescore(){
+$("#result_modulescore").html("Computing...")
+ var p = [
+  {'name' : 'geneset_annot_id', 'value' : $("#opt_geneset_annot_id_1").val()},
+  {'name' : 'geneset_annot_cat', 'value' : $("#opt_geneset_annot_cat_1").val()}
+ ]
+ refresh_post("result_modulescore", "<%= compute_module_score_project_path(:key => @project.key) %>", p, 'post', {})
+}
+
+function upd_dropdown_annot_cat(el_id, dropdown_id){
+ var sel_geneset = null
+ var geneset_annot_id = $("#" + el_id).val()
+ console.log(geneset_annots)
+ for(var j=0; j<geneset_annots.length; j++){
+  if (geneset_annot_id == geneset_annots[j].id){
+    sel_geneset = geneset_annots[j]
+    break
+  }
+ }
+ if (sel_geneset){
+ var h_cats = JSON.parse(sel_geneset.categories_json)
+ var cat_names = Object.keys(h_cats)
+ var results = []
+ for (var j=0; j< cat_names.length; j++){
+   if (cat_names[j] != ''){
+    results.push([cat_names[j] + " (" + h_cats[cat_names[j]] + ")", cat_names[j]])
+   }
+ }
+console.log("cat_names")
+console.log(cat_names)
+ var $dropdown = $("#" + dropdown_id);
+ $dropdown.empty()
+// $dropdown.append(new Option("Select a category", ""))
+ $.each(results, function() {
+    $dropdown.append($("<option />").val(this[1]).text(this[0]));
+ });
+ console.log("sel_categories:" + sel_geneset.categories_json)
+ }
+}
+
+
+function upd_sliders(rows){
+
+    for (var i=0; i<rows.length; i++){
+        var occ = ($("#opt_coloring_type").val() == '1') ? 1 : (i + 2);
+        var $slider = $("#slider-range_" + occ);
+        var min = list_min(rows[i]) // Math.round(list_min(rows[i]))
+        $("#min_range_" + occ).val(min)
+        console.log("MIN:" + min)
+        var max = list_max(rows[i]) // Math.round(list_max(rows[i]))
+        $("#max_range_" + occ).val(max)
+        var diff = max-min
+        h_minmax[occ] = [min, max, diff]
+//console.log("i=" + i + " min: " + min)
+ $slider.slider("destroy");
+
+ $slider.slider({
+      range: true,
+      min: 0,
+      max: 1000,
+//      min_val: min,
+//      max_val: max,
+//      diff: diff,
+      values: [ 0, 1000 ],
+      slide: function( event, ui ) {
+        var occ = this.id.split("_")[1]
+        var min_display = h_minmax[occ][0] + h_minmax[occ][2] * ui.values[0]/1000
+        var max_display = h_minmax[occ][0] + h_minmax[occ][2] * ui.values[1]/1000
+//      console.log(this)
+//      console.log(ui)
+//      console.log(ui.values[0] + "-" + this.min_val + "." + this.diff)
+       console.log(occ + ": " + Math.round(min_display*1000)/1000)
+        $("#sel_min_range_" + occ).val(Math.round(min_display*1000)/1000)
+        $("#sel_max_range_" + occ).val(Math.round(max_display*1000)/1000)
+      },
+      start:  function(event, ui) {
+$("#refresh_plot-btn").html("<i id='refresh_plot_icon' class='fa fa-pulse fa-sync'></i> Refreshing")
+                                 },
+      change: function(event, ui) {
+//$("#refresh_plot-btn").html("<i id='refresh_plot_icon' class='fa fa-pulse fa-sync'></i> Refreshing")
+// console.log($("#refresh_plot-btn").html())
+
+ var d = {
+   rows : plotly_conf.quant_vector,
+   ordered_idx: (plotly_graph.data[0]) ? plotly_graph.data[0].ids : nil
+ }
+//console.log("do it2")
+ addGeneExpression(plotly_graph, 'name', d, user_id, editable, admin)
+  $("#refresh_plot-btn").html("<i id='refresh_plot_icon' class='fa fa-sync'></i> Refresh")
+// $("#refresh_plot_icon").removeClass("fa-pulse")
+      }
+    });
+    $("#sel_min_range_" + occ).val(min)
+    $("#sel_max_range_" + occ).val(max)
+
+
+/*        var min = Math.round(list_min(rows[i]))
+        var max = Math.round(list_max(rows[i]))
+        //$slider.slider("min")
+        $( ".selector" ).slider( "option", "min", 0 );
+        $( ".selector" ).slider( "option", "max", 1000 );
+        $slider.slider("values", 0, 0);
+        $slider.slider("values", 1, 1000);
+        console.log(min + "-" + max)
+*/
+    }
+}
+
+
+
+
+$(document).ready(function(){
+
 
 function upd_headers(i){
- console.log(h_headers)
- console.log(<%= raw @num_annots.to_json %>)
- console.log("#opt_num_annot_id_" + i)
+// console.log(h_headers)
+// console.log(<%= raw @num_annots.to_json %>)
+// console.log("#opt_num_annot_id_" + i)
  var sel_annot = $("#opt_num_annot_id_" + i).val()
- console.log(sel_annot)
+// console.log(sel_annot)
  var headers = $("#opt_header_i_" + i)
  headers.empty()
- console.log(h_headers[sel_annot])
+// console.log(h_headers[sel_annot])
  var list_values = h_headers[sel_annot]
  if (list_values){
   for (var j=0; j<list_values.length; j++){
@@ -192,8 +502,28 @@ function upd_headers(i){
 //console.log("bla")
 //
 
+/*$(".dropdown_coloring").click(function(){
+alert($(this).html())
+})*/
+
+$("#opt_coloring_type").change(function(){
+var v = $(this).val()
+//console.log("VAL:" + v)
+ $(".coloring_type_container").addClass("hidden")
+ $("#coloring_type_" + v + "_container").removeClass("hidden")
+upd_plot((v == 1) ? 1 : 2)
+})
+
+$("#opt_cat_annot_id2").change(function(){
+
+})
+
 $("#pane-inspector").on("click", "#create_new_metadata-btn", function(e){
-  refresh("form_new_metadata", "<%= raw form_new_metadata_project_path(@project.key, :run_id => @run.id) %>", {loading : 'fa-2x'})
+  <% if @annot %> 
+   refresh("form_new_metadata", "<%= raw form_new_metadata_project_path(@project.key, :annot_id => @annot.id) %>", {loading : 'fa-2x'}) 
+  <% else %>
+   refresh("form_new_metadata", "<%= raw form_new_metadata_project_path(@project.key, :run_id => @run.id) %>", {loading : 'fa-2x'})
+  <% end %>
 })
 
 $("#pane-inspector").on("click", "#cancel_selection-btn", function(e){
@@ -217,42 +547,33 @@ $("#opt_highlight_clusters").click(function(){
 })
 
 $("#refresh_plot-btn").click(function(){
- start_refresh_plot()
+ start_refresh_plot(this)
  refresh_plot()
 })
 
-function start_refresh_plot(){
- $(this).addClass("hidden")
- $("#refresh_plot_status").removeClass("hidden")
- $("#refresh_plot_icon").addClass("fa-pulse")
- $("#refresh_plot-btn").prop("disabled", true)
-}
-function finish_refresh_plot(){
- $(this).removeClass("hidden")
- $("#refresh_plot_status").addClass("hidden")
- $("#refresh_plot_icon").removeClass("fa-pulse")
- $("#refresh_plot-btn").prop("disabled", false)
-}
+var resizeTimer;
+
+$(window).on('resize', function(e) {
+
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(function() {
+
+    // Run code here, resizing has "stopped"
+        // init_plot()
+       refresh_plot()
+  }, 1000);
+
+});
 
 $("#pane-coloring").on("click", "#view_cluster_all", function(e){
- var sel_cats = ($(this).prop("checked") == true) ? conf2D.list_cats  : []
+ var sel_cats = ($(this).prop("checked") == true) ? plotly_conf.list_cats  : []
+ console.log("sel_cats: ")
+  console.log(sel_cats)
  start_refresh_plot()
  var p = [{name : 'sel_cats', value : JSON.stringify(sel_cats)}]
- refresh_post(null, "<%= upd_sel_cats_project_path(:key => @project.key) %>", p, 'post', {})
+ refresh_post(null, "<%= raw upd_sel_cats_project_path(:key => @project.key) %>", p, 'post', {})
 })
 
-function refresh_sel_cat_view(){
- var sel_cats = []
- start_refresh_plot()
- $(".view_cluster").each(function(){
-  var cat_idx = this.id.split("_")[2]
-  if ($(this).prop("checked") == true){
-   sel_cats.push(conf2D.list_cats[cat_idx])
-  }
- })
-  var p = [{name : 'sel_cats', value : JSON.stringify(sel_cats)}]
-  refresh_post(null, "<%= upd_sel_cats_project_path(:key => @project.key) %>", p, 'post', {})
-}
 
 $("#pane-coloring").on("click", ".view_cluster", function(e){
  refresh_sel_cat_view()
@@ -272,7 +593,7 @@ $("#pane-coloring").on("click", ".view_cluster", function(e){
   }
 
   for (var i=0; i<limit; i++){
-    list_cell_names.push("<span class='badge badge-light'>" + conf2D.text_vector[list_cells[i]] + "</span>")
+    list_cell_names.push("<span class='badge badge-light'>" + plotly_conf.text_vector[list_cells[i]] + "</span>")
   }
   
   $("#popup_container").html(message + list_cell_names.join(" "))
@@ -291,7 +612,7 @@ $(document).on("click", "#download_all_list_cells-btn", function(e){
   var list_cells = JSON.parse($("#selection-content").val())
   var list_cell_names = []
   for (var i=0; i<list_cells.length; i++){
-   list_cell_names.push(conf2D.text_vector[list_cells[i]])
+   list_cell_names.push(plotly_conf.text_vector[list_cells[i]])
   }
 // alert("bla")
 //  $(this).attr('href', "hrefdata:application/octet-stream;charset=utf-8;base64," + window.btoa(list_cell_names.join("\n") + "\n"))
@@ -299,32 +620,11 @@ $(document).on("click", "#download_all_list_cells-btn", function(e){
   sendData(filename, list_cell_names.join("\n") + "\n")
 })
 
+$("#plot_cell_names_on_hover").click(function(){
+upd_params()
+$("#refresh_plot-btn").click()
+})
 
-function opacityChange(){
-        opacity = document.getElementById("dot_opacity").value;
-        op_value.innerHTML = opacity
-        upd_params()
-        plotly_graph.updateOpacity(opacity);
-}
-
-
-function sizeChange(){
-        size = document.getElementById("dot_size").value;
-        size_value.innerHTML = size + "px";
-        upd_params()
-        plotly_graph.updateSize(size);
-}
-
-
-function upd_params(){
-
-  $.ajax({
-      url: '<%= save_plot_settings_project_path(:key => @project.key) %>?dot_opacity=' + $("#dot_opacity").val() + "&dot_size=" + $("#dot_size").val(),
-           dataType: "json",
-           success: function(data){
-           }
-       })
-}
 
 // make hash for gene search
 
@@ -344,22 +644,35 @@ function upd_params(){
 //  // h_gene_idx[ensembl_ids.values[i]]=i
 // }
 
-console.log("1---")
-console.log(<%= raw @cmd.to_json %>)
-console.log(<%= raw @log4.to_json %>)
+//console.log("1---")
+//console.log(<%= raw @cmd.to_json %>)
+//console.log(<%= raw @log4.to_json %>)
 
-var h_autocomplete = <%= raw @autocomplete_json %>
+if ($("#opt_coloring_type").val() == '1'){
+console.log("test focus!")
+setTimeout(function() { $('input[name="gene_free_text_1"]').focus()}, 1000);
+// document.getElementById("gene_free_text_1").focus()
+}
 
-function upd_main_menu(menu_item){
-  $.ajax({
-      url: '<%= save_plot_settings_project_path(:key => @project.key) %>?main_menu=' + menu_item,
-           dataType: "json",
-           success: function(data){
-           }
-       })
-}					 
+
+//var h_autocomplete = <%= raw @autocomplete_json %>
+//console.log("bli")
+
+$("#opt_gene_expr_cat_annot_id").change(function(){
+upd_gene_expr_stats()
+})
+
+function upd_gene_expr_stats(){
+ console.log("refresh gene expr stats")
+ var p = [
+  {name : 'gene_stable_id', value : $("#opt_row_i_1").val()},
+  {name : 'annot_id', value : $("#opt_gene_expr_cat_annot_id").val()}
+ ]					 
+ refresh_post("gene_expr_stats", "<%= upd_gene_expr_stats_project_path(:key => @project.key) %>", p, 'post', {loading:'fa-2x'})
+}
 
 function upd_plot(i){
+// console.log("i2: " + i)
     var gene_str = $("#gene_selected_" + i).html()
     var data_type = $("#opt_data_type_" + i).val()				          
     var coloring_type = $("#opt_coloring_type").val()
@@ -367,28 +680,77 @@ function upd_plot(i){
     var gene_i = null
     if (gene_str){
      gene_i = rx.exec(gene_str)[1]
-     $("#opt_row_i_" + i).val(h_autocomplete["h_indexes"][gene_i])
+     $("#opt_row_i_" + i).val(gene_i) //h_autocomplete["h_indexes"][gene_i])
     }
     var header_i = $("#opt_header_i_" + i).val()
     var num_annot_id = $("#opt_num_annot_id_" + i).val()					 
-    var cat_annot_id =  $("#opt_cat_annot_id").val()
+  //  console.log("i3: " + i)
+    var cat_annot_id = $("#opt_cat_annot_id").val()
+    var cat_annot_id2 = $("#opt_cat_annot_id2").val()					 
     if (coloring_type == 3){
      i= null
     }					 
     var occ_txt = (i == null) ? '' : '&occ=' + i
+// do not update if module score and no metadata selected ("Select a metadata")
+					 console.log("data_type:" + data_type)
+    if (!((data_type == 3 && $("#opt_geneset_annot_id_" + i).val() == '')) || (data_type == 4 && $("#opt_geneset_id_" + i).val() == '')){
+//     console.log(data_type + " .> " + $("#opt_geneset_annot_id_" + i).val())
     $.ajax({
-      url: '<%= get_rows_project_path(:key => @project.key, :annot_id => @annot.id, :format => 'json') %>&coloring_type=' + coloring_type + occ_txt + '&row_i=' + h_autocomplete["h_indexes"][gene_i] + "&dataset_annot_id="  + $("#opt_dataset_" + i).val() + "&gene_selected=" + gene_str + "&data_type=" + data_type + "&num_annot_id=" + num_annot_id + "&header_i=" + header_i + "&cat_annot_id=" + cat_annot_id,
+      url: '<%= get_rows_project_path(:key => @project.key, :annot_id => @annot.id, :format => 'json') %>&coloring_type=' + coloring_type + occ_txt + '&row_i=' + gene_i + "&dataset_annot_id="  + $("#opt_dataset_" + i).val() + "&gene_selected=" + gene_str + "&data_type=" + data_type + "&num_annot_id=" + num_annot_id + "&header_i=" + header_i + "&cat_annot_id=" + cat_annot_id + "&cat_annot_id2=" + cat_annot_id2 + "&sel_cat2=" + $("#opt_sel_cat2").val() + "&geneset_annot_id=" +  $("#opt_geneset_annot_id_" + i).val() + "&geneset_annot_cat=" + $("#opt_geneset_annot_cat_" + i).val() + "&geneset_id=" + $("#opt_geneset_id_" + i).val() + "&geneset_item_id=" + $("#opt_geneset_item_id_" + i).val() + "&autocomplete_geneset_item=" + $("#autocomplete_geneset_item_" + i).val(),
            dataType: "json",
+           cache: true,
+           beforeSend: function(){
+            $("#refresh_plot-btn").prop("disabled", true)
+            $("#refresh_plot-btn").html("<i class='fa fa-pulse fa-sync'></i> <i>Refreshing...</i>")
+	    $("#info-gene_" + i).html("<i class='fa fa-spinner fa-pulse'></i>")		 
+           },
            success: function(data){
-             console.log("DATA:")
-             console.log(data)
-             plotly_graph.addGeneExpression('name', data)
-             if (coloring_type == 3){
-              refresh_sel_cat_view()
+             //console.log("DATA:")
+             //console.log(data)
+             //console.log("upd sliders")
+             if (coloring_type >0 && coloring_type < 3){
+              console.log("upd sliders")           
+	      upd_sliders(data.rows)
              }
+             if (coloring_type == 0){
+               console.log("test recolor")
+               addGeneExpression(plotly_graph, 'name', data, user_id, editable, admin)  
+             }else{
+              var warnings = ''
+              console.log(data.rows[i])
+              if (data.rows.length > 0){
+               addGeneExpression(plotly_graph, 'name', data, user_id, editable, admin)
+               if (coloring_type == 3){
+                refresh_sel_cat_view()
+               }
+	       if (coloring_type == 1){
+                upd_gene_expr_stats()
+               }		 
+               if (data.warnings){
+                warnings = "<br/><span class='badge badge-warning'>" + data.warnings + "</span>"
+               }
+               $("#info-gene_" + i).html("<span class='badge badge-success'>found</span>" + warnings)
+              // $("#displayed-gene_" + i).html("Displayed gene: " + gene_str)
+              }else{
+               addGeneExpression(plotly_graph, 'name', data, user_id, editable, admin)    
+               $("#info-gene_" + i).html("<span class='badge badge-danger'>missing in the specified dataset</span>")
+              }
+              
+            // $("#searched-gene_" + i).delay(2000).fadeOut( 1000, function() {
+             //  $(this).addClass("hidden")
+            // })
+            }
+
+            $("#refresh_plot-btn").prop("disabled", false)
+            $("#refresh_plot-btn").html("<i id='refresh_plot_icon' class='fa fa-sync'></i> Refresh")
+
            }
        })
+   }else{
+    console.log("test")
+  }
 }   
+
 
 $("#main_menu-nav .nav-item .nav-link").click(function(){
  var menu_item = this.id.split("-")[0]
@@ -412,46 +774,21 @@ $(".sel_header_i").change(function(){
 
 $(".dataset").change(function(){
  var i = this.id.split("_")[2]
- console.log("blaaaaa" + i)
+ //console.log("blaaaaa" + i)
  upd_plot(i)
 })
 
 
-// initialize all the numerical gradient occurences
-for (var i=1; i<5; i++){
-// if ($("#opt_num_annot_id_" + i).val() != ''){
-   upd_headers(i)
-// }
-}
-if ($("#opt_coloring_type").val() == "3" && $("#opt_cat_annot_id").val() != ''){
- upd_plot(null)
-}
-for (var i=1; i<3; i++){
- if ($("#opt_coloring_type").val() == i && i < 3){
-  if ($("#opt_row_i_" + i).val() != ''){
-   upd_plot(i)
-  }
-  if ($("#opt_num_annot_id_" + i).val() != ''){
- //  upd_headers(i)
-   upd_plot(i)
-  }
- }else{
-   if ($("#opt_cat_annot_id").val() != ''){
-    upd_plot(null)
-   }
- }
-}
+//console.log("bla")
 
 //for (var j=1; j<5; j++){
+
 <% (1 .. 4).each do |j| %>
+
+//console.log("autocomplete for field <%= j %>")
  $("#gene_free_text_<%= j %>").autocomplete({
-  minLength: 1,
-/*  appendTo: function(){
-   var j = this.id.split("_")[3];
-   console.log('#list_genes_container_' + j)
-   return '#list_genes_container_' + j
-  },
-*/
+//  more : false,
+  minLength: 0,
   appendTo: '#list_genes_container_<%= j %>',
   classes: {
    "ui-autocomplete": "test_ui",
@@ -459,55 +796,73 @@ for (var i=1; i<3; i++){
   position: {
    offset: '0 0' // Shift 0px left, 4px down.
   },
-  //  source: h_autocomplete['search'],  //Object.keys(<%= raw @autocomplete_json %>).sort(), #gene_idx.sort((a,b) => (a.label > b.label) ? 1 : ((b.label > a.label) ? -1 : 0)), //Object.keys(h_gene_idx)
-
   source: function(request, response) {   
             var t0 = performance.now();
+            //console.log("test")
             // filter array to only entries you want to display limited to 10
             var outputArray = new Array();
+            // var exactMatches = [];
+            var tmp_term = request.term.replace(/([\[\\^$.|?*+()])/g, "\\$1")
+            var re1 = new RegExp(tmp_term, 'i');
+            //             var re2 = new RegExp(tmp_term + "\b", 'i')
+            console.log(tmp_term);
+            var tmp_str = '';
             for (var i = 0; i < h_autocomplete['search'].length; i++ ) {
-                var re = new RegExp(request.term, 'i');
-                if ( h_autocomplete['search'][i].match(re) ) {
+             //   var tmp_term = request.term.replace(/([\[\\^$.|?*+()])/g, "\\$1")
+             //   var re1 = new RegExp(tmp_term, 'i');
+	     //		var re2 = new RegExp(tmp_term, '');
+             //console.log( h_autocomplete['search'][i])
+               // tmp_str =  h_autocomplete['search'][i].join(" ")
+                if (h_autocomplete['search'][i].split(" ")[0].toLowerCase() == request.term.toLowerCase()){
+                  console.log("test re")
+                  outputArray.unshift(h_autocomplete['search'][i])
+                }else{
+	         if (h_autocomplete['search'][i].match(re1) ) {
                    outputArray.push(h_autocomplete['search'][i]);
+                 }
                 }
             }
-	    var t1 = performance.now();
-            console.log("Time to process autocomplete <%= j %>: " + (t1-t0) + "ms")
-            response(outputArray.slice(0,10));
-      },
-// source: function( request, response ) {
-//        $.ajax({
-//          url: '<%= autocomplete_genes_project_path(:key => @project.key, :annot_id => @annot.id, :format => 'json') %>',
-//          dataType: "json",
-//          beforeSend: function(){
-//          //  var last_exp = $("#free_text").val().split(" and ").pop()
-//          //  return (last_exp.match(/,/)) ? false : true
-//         },
-//          data: {
-//                 q: request.term,
-//             //    list_genes: $("#list_genes").val()
-//          },
-//          success: function( data ) {
-//            response( data );
-//          }
-//        });
-//      },
 
-      select: function( event, ui ) {
+	    var t1 = performance.now();
+            //console.log("Time to process autocomplete <%= j %>: " + (t1-t0) + "ms")
+            autocomplete_more_items[<%= j-1 %>] = (outputArray.length > max_nber_items) ? true : false
+
+            response(outputArray.slice(0,max_nber_items));
+
+      },
+      select: function( event, ui ) {          
          var j = this.id.split("_")[3]
          if (ui.item){
            console.log(ui.item)
-	   console.log("field " + j)
+	   //console.log("field " + j)
+           
            $("#gene_selected_" + j).html(ui.item.label)
            upd_plot(j)
          }
-          
-        $(this).val(''); return false;
+        $("#searched-gene_" + j).fadeIn(50)
+	$("#searched-gene_" + j).removeClass("hidden")
+        $(this).val(''); 
+        $("#gene_free_text_" + j).blur()
+        return false;
+
+       }, 
+       open: function(event, ui) {
+        var ul = $("#list_genes_container_<%= j %>").find("ul")
+        console.log("ul:" + ul)
+        console.log(autocomplete_more_items)
+	if (ul && autocomplete_more_items[<%= j-1 %>] == true){
+         ul.append('<li><i>and more...</i></li>'); //See all results
+        }
        }
-      
- });
-//}
+
+}).focus(function () {
+    $(this).autocomplete("search");
+}).click(function(){
+    $(this).autocomplete("search");
+});
+
 <% end %>
+
 
 console.log("2...")
 
@@ -518,6 +873,76 @@ $(".data_type").change(function(){
  $("#data_type_" + v + "_container_" + i).removeClass("hidden")
  upd_plot(i)
 })
+
+
+$(".sel_geneset_id").change(function(){
+ var v = $(this).val()
+ var i = this.id.split("_")[3]
+ upd_plot(i)
+})
+
+$(".sel_geneset_annot_cat").change(function(){
+ var v = $(this).val()
+ var i = this.id.split("_")[4]
+ //compute_modulescore()
+// console.log("i:" + i)
+ upd_plot(i)
+})
+
+$(".sel_geneset_annot_id").change(function(){
+  var v = $(this).val()
+ var i = this.id.split("_")[4]
+// console.log("i:" + i)
+
+ upd_dropdown_annot_cat(this.id, "opt_geneset_annot_cat_1")
+ //compute_modulescore()
+ upd_plot(i)
+})
+
+upd_dropdown_annot_cat("opt_geneset_annot_id_1", "opt_geneset_annot_cat_1")
+$("#opt_geneset_annot_cat_1").val("<%= session[:dr_params][@project.id][:occ_1][:geneset_annot_cat] %>")
+
+$("#autocomplete_geneset_item_1").autocomplete({
+  minLength: 1,
+  appendTo: '#list_geneset_items_container_1',
+  classes: {
+   "ui-autocomplete": "test_ui",
+  },
+  position: {
+   offset: '0 0' // Shift 0px left, 4px down.
+  },
+  source: function(request, response){
+     $.ajax({
+           url: '<%= autocomplete_gene_set_items_project_path(:key => @project.key) %>',
+           dataType: "json",
+           beforeSend: function(){
+          },
+          data: {
+	   gene_set_id: $("#opt_geneset_id_1").val(),	  
+           q: request.term //,
+          },
+          success: function( data ) {
+           response( data );
+          }
+        })
+  },
+  _renderMenu: function( ul, items ) {
+  var that = this;
+  $.each( items, function( index, item ) {
+    that._renderItemData( ul, item );
+  });
+  $( ul ).find( "li" ).odd().addClass( "odd" );
+  },
+  select: function( event, ui ) {
+   $("#opt_geneset_item_id_1").val((ui.item) ? ui.item.id : '')
+   $("#autocomplete_geneset_item_1").val((ui.item) ? ui.item.label : '')
+   $("#geneset_content").html((ui.item) ? ui.item.gene_names.join(", ") : '')
+   console.log(ui.item)
+   upd_plot(1)
+  }		  
+})
+
+/* END MODULE_SCORE */
 
 $(".coloring_type_btn").click(function(){
  var v = this.id.split("_")[2]
@@ -534,6 +959,10 @@ $(".coloring_type_btn").click(function(){
 
 $("#plot_options_btn").html("Controls")
 $("#plot_options_btn").prop("disabled", false)
+
+<%# if params[:open_controls] == '1' %>
+$("#plot_options_btn").click()
+<%# end %>
 
 function upd_cat_alias(cat_i){
  var p = [
@@ -555,10 +984,12 @@ $("#cat_legend").on("click", ".cat-alias_edit-btn", function(){
 })
 
 $("#cat_legend").on("blur", ".cat-alias_edit", function(){
- var id = this.id.split("_")[2]
- $("#cat-alias_edit-btn_" + id).removeClass("hidden")
+ var i = this.id.split("_")[2]
+/* $("#cat-alias_edit-btn_" + i).removeClass("hidden")
  $(this).addClass("hidden")
- $("#cat-alias_" + id).removeClass("hidden")
+ $("#cat-alias_" + i).removeClass("hidden")
+*/
+ upd_cat_alias(i)
 })
 
 $("#cat_legend").on("keyup", ".cat-alias_edit", function(e){
@@ -570,6 +1001,123 @@ $("#cat_legend").on("keyup", ".cat-alias_edit", function(e){
  }
 })
 
+function load_annotations(e){
+ var cat_idx = e.id.split("_")[1]
+ var cat_name = $("#cat-name_" + cat_idx).html()
+ var h_opt = {loading:'fa-2x'}
+ var w = $(window).width()
+ var ww = 600;
+
+ $("#plot_annotation_window" ).removeClass("hidden");
+ $("#plot_annotation_window" ).css({"display" : '' })
+ $("#plot_annotation_window" ).animate({
+   'top' : 150,
+   'width' : ww,
+   'left' : w - ww,
+   'bottom' : 10
+   }, 200, function() {
+   });
+ var tmp_sel_cats = [cat_name]
+ var p = [{name : 'sel_cats', value : JSON.stringify(tmp_sel_cats)}]
+ refresh_post(null, "<%= raw upd_sel_cats_project_path(:key => @project.key) %>", p, 'post', {})
+ var txt = $(e).html()
+ var nber_clas = txt.match(/(\d+) annotation/)
+ console.log("nber_clas: " + nber_clas[1])
+ var tab = (parseInt(nber_clas[1]) >0) ? "&tab=existing" : ""
+ refresh("plot_annotation_content", "<%= raw get_annot_info_project_path(:key => @project.key) %>?annot_id=" + $("#opt_cat_annot_id").val() + "&cat_idx=" + cat_idx + "&cat_name=" + cat_name + tab, h_opt)
+}
+
+$("#cat_legend").on("click", ".annotate-btn", function(e){
+load_annotations(this)
+})
+
+/*$("#gene_expr_stats").on("click", ".annotate-btn", function(e){
+load_annotations(this)
+})*/
+
+function show_gene(e){
+  var gene_id = $(e).data('gene_id') //el_id.split("_")[3]
+  var w = $(window).width()
+  var ww = 600
+   $("#ontop_popup_window").css({
+         left: (w-e.pageX > ww) ? (e.pageX + 10) : w-ww+10,
+         width:ww,
+         top: e.pageY + 10
+   }).stop().show(100);
+  refresh("ontop_popup_container", "<%= search_genes_path() %>?gene_id=" + gene_id  + "&version_id=<%= @project.version_id %>", {loading:true})
+}
+
+ $("#plot_options_window").on("click", ".ensembl_gene", function(e){
+  show_gene(this)
+ })
+ $("#plot_annotation_window").on("click", ".ensembl_gene", function(e){
+  show_gene(this)
+ })
+
+
+function init_plot(){
+ // initialize all the numerical gradient occurences
+ for (var i=1; i<5; i++){
+  // if ($("#opt_num_annot_id_" + i).val() != ''){
+   upd_headers(i)
+  // }
+ }
+ if ($("#opt_coloring_type").val() == "3" && $("#opt_cat_annot_id").val() != ''){
+  console.log("bla")
+  upd_plot(null)
+ }else{
+  for (var i=1; i<3; i++){
+   if ($("#opt_coloring_type").val() == i){
+    if (i < 3){
+     if ($("#opt_row_i_" + i).val() != ''){
+      console.log("bllu")
+      upd_plot(i)
+     }else{
+      if ($("#opt_num_annot_id_" + i).val() != ''){
+       //  upd_headers(i)
+       console.log("bli")
+       upd_plot(i)
+      }
+     }
+    }else{
+     if ($("#opt_cat_annot_id").val() != ''){
+      console.log("blo")
+      upd_plot(null)
+     }
+    }
+   }
+  }
+ }
+}
+
+init_plot()
+
+$(".del_gene_btn").click(function(){
+ var occ = this.id.split("_")[2]
+ var gene_str = $("#gene_selected_" + i).html()
+ var data_type = $("#opt_data_type_" + i).val()
+ var coloring_type = $("#opt_coloring_type").val()
+
+ $.ajax({
+      url: '<%= del_gene_project_path(:key => @project.key, :annot_id => @annot.id, :format => 'json') %>&coloring_type=' + coloring_type + "&occ=" + occ, 
+           dataType: "json",
+           cache: true,
+           beforeSend: function(){
+            $("#refresh_plot-btn").prop("disabled", true)
+            $("#refresh_plot-btn").html("<i class='fa fa-pulse fa-sync'></i> <i>Refreshing...</i>")
+           },
+           success: function(data){
+		   $("#searched-gene_" + occ).fadeOut(50)
+		   $("#gene_selected_" + occ).html("")
+		   $("#opt_row_i_" + occ).val("")
+		   $("#displayed-gene_" + occ).html("")
+            upd_plot(occ)
+   	   }	  
+ })
+})
+
 finish_refresh_plot()
+
+})
 
 <% end %>

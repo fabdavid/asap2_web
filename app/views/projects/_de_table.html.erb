@@ -1,6 +1,10 @@
 
+
+<% if admin? %>
+<%# @log8 %>
 <%# @log4 %>
 <%# @h_stats.to_json %>
+<% end %>
 <%# @annots_to_filter.to_json %>
 <%# @h_de_filters.to_json %>
 <%# @cmd.to_json %>
@@ -14,7 +18,9 @@
 <%# @h_stats.to_json %>
 <%# @ts.to_json %>
 
-<%= render :partial => 'filter_runs' %>
+<%# render :partial => 'filter_runs' %>
+
+<%#  session[:current_dashboard][@project.id][6] %>
 
 <% if @runs and @runs.size > 0 and @h_de_filter %>
 
@@ -47,19 +53,23 @@
   </thead>
   <tbody>
     <% @runs.select{|run| run.status_id == 3}.each do |run| %>
+    <% run_id = run.id.to_s %>
     <% h_attrs = (run.attrs_json) ? JSON.parse(run.attrs_json) : {} %>
     <tr>
       <td><%= run.id %></td>
       <td><%= raw display_run2(run, @h_steps[run.step_id], @h_std_methods[run.std_method_id]) %></td>
-      <td><%= raw display_run_attrs(run, h_attrs, @h_std_method_attrs) %></td>
+      <td><%= raw display_run_attrs(run, h_attrs, @h_std_method_attrs, {}) %></td>
       <td>
-	<% if @h_stats[run.id.to_s] and @h_stats[run.id.to_s]["up"] %>
-	<span id='up_<%= run.id %>' class='badge-nber_genes pointer badge badge-<%= (@h_stats[run.id.to_s]["up"] > 0) ? "success" : "secondary" %>'><%= @h_stats[run.id.to_s]["up"] %> genes</span>
+	<% if @h_stats[run_id] %>
+	 <%# @h_stats[run_id].to_json %>
+	<% end %>
+	<% if @h_stats[run_id] and @h_stats[run_id]["up"] %>
+	<span id='up_<%= run_id %>' class='badge-nber_genes pointer badge badge-<%= (@h_stats[run_id]["up"] > 0) ? "success" : "secondary" %>'><%= @h_stats[run_id]["up"] %> genes</span>
 	<% end %>
       </td>
       <td>
-	<% if @h_stats[run.id.to_s] and @h_stats[run.id.to_s]["down"] %>
-	<span id='down_<%= run.id %>' class='badge-nber_genes pointer badge badge-<%= (@h_stats[run.id.to_s]["down"] > 0) ? "danger" : "secondary" %>'><%= @h_stats[run.id.to_s]["down"] %> genes</span>
+	<% if @h_stats[run_id] and @h_stats[run_id]["down"] %>
+	<span id='down_<%= run_id %>' class='badge-nber_genes pointer badge badge-<%= (@h_stats[run_id]["down"] > 0) ? "danger" : "secondary" %>'><%= @h_stats[run_id]["down"] %> genes</span>
 	<% end %>
       </td>
     </tr>
@@ -73,11 +83,22 @@
 
 $("#de_table").dataTable()
 
-$(".badge-nber_genes").click(function(){
+$("#de_table").on("click", ".badge-nber_genes", function(e){
  var t = this.id.split("_")
  var run_id = t[1]
  var de_type = t[0]
- refresh("step_container", "<%= raw runs_path() %>/" + run_id + "/get_de_gene_list?type=" + de_type, {loading:'fa-2x'})
+  e.stopPropagation();
+  e.preventDefault();
+  $("#ontop_window").removeClass("hidden")
+  refresh("form_container", "<%=raw runs_path() %>/" + run_id + "/get_de_gene_list?type=" + de_type, {loading: 'fa-2x'})
+  var w = $(window).width();
+/*  $("#ontop_popup_window").css({
+        left: 200,
+        width:w - 250,
+        height:'auto',
+        top: e.pageY + 10
+    }).stop().show(100); */
+// refresh("step_container", "<%= raw runs_path() %>/" + run_id + "/get_de_gene_list?type=" + de_type, {loading:'fa-2x'})
 })
 
 $(".form-de-filter").keyup(function(event){
@@ -97,22 +118,11 @@ $(this).attr('disabled', 'disabled');
   refresh_post("step_container", "<%= filter_de_results_project_path(:key => @project.key) %>", p, 'post', {loading:'fa-2x', redirect:true});
 });
 
- $(".input_lineage").click(function(e){
-  var run_id = this.id.split("_")[2]
-  e.stopPropagation();
-  e.preventDefault();
-  $("#popup_window").removeClass("hidden")
-  //  $("#popup_container").html("bla!")
-  refresh("popup_container", "<%= get_lineage_project_path(:key => @project.key) %>?run_id=" + run_id, {loading: 'fa-2x'})
-  var w = $(window).width();
-  $("#popup_window").css({
-        left: 200,
-        width:w - 250,
-        top: e.pageY + 10
-    }).stop().show(100);
+$("#de_table").on("click", ".input_lineage", function(e){
+<%= render :partial => 'input_lineage_js' %>
  })
 
-$(".show_link").click(function(){
+$("#de_table").on("click", ".show_link", function(){
  var t = this.id.split("_")
 // alert("bla!")
  $("#popup_window").css({display:'none'})

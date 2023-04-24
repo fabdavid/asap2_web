@@ -7,8 +7,11 @@ class ProjectBroadcastJob < ApplicationJob
 #                               project_id: project.id,
 #                               new_status: project.status_id
     project = Project.find(project_id)
+#    h_data = {:reload_project => 1}
+#    if step_id
     h_data = get_results(project, step_id)
     h_data.merge!({:project_id => project.id, :step_id => step_id, :new_status => project.status_id})
+#    end
     ActionCable.server.broadcast "project_#{project.id}", h_data
 #    ActionCable.server.broadcast "project", h_data 
 #{
@@ -23,15 +26,20 @@ class ProjectBroadcastJob < ApplicationJob
     step = Step.find(step_id)
     h_status = {}
     Status.all.map{|s| h_status[s.id]=s}
+#    summary_step = Step.where(:version_id => project.version_id, :name => 'summary').first
+    asap_docker_image = Basic.get_asap_docker(project.version)
+    summary_step = Step.where(:docker_image_id => asap_docker_image.id, :name => 'summary').first
 
     h_res = {
       :step_name => step.name,
+      :step => step,
       :h_nber_analyses => {},
       #      :h_statuses_json => h_status.to_json, 
       #      :summary_step_id => Step.find_by_name("summary").id,
       :url_base_callback => get_step_project_path(:key => project.key, :nolayout => 1, :step_id => step_id),
       :url_step_header_callback => get_step_header_project_path(:key => project.key, :nolayout => 1, :step_id => step_id),
-      :url_dim_reduction_callback => get_step_project_path(:key => project.key, :nolayout => 1, :step_id => step_id, :partial => 'dim_reduction_form') #get_dim_reduction_form_project_path(:key => project.key)
+      :url_dim_reduction_callback => get_step_project_path(:key => project.key, :nolayout => 1, :step_id => step_id, :partial => 'dim_reduction_form'), #get_dim_reduction_form_project_path(:key => project.key)
+      :summary_step_id => summary_step.id
     }
 
    # parsing_status = nil

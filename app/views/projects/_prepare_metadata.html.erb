@@ -1,0 +1,6 @@
+ var url = "<%= preparsing_fu_path(@fu.id) %>"
+ var p = [{'name' : 'metadata_type', 'value' : $("#opt_metadata_type_id").val()}, 
+          {'name' : 'input_type', 'value' : $("#opt_input_type_id").val()},
+          {'name' : 'version_id', 'value' : $("#opt_version_id").val()}];
+ refresh_post("preparsing_clipboard", url, p, 'post', {loading : 'fa-2x'});
+

@@ -1,0 +1,226 @@
+<%# raw @marker_genes_run.id %> 
+<%# raw  session[:marker_genes][@project.id].to_json %>
+<%# raw @marker_genes_data.to_json %>
+<%# raw @tmp_res.to_json %>
+<%# raw @res.to_json %>
+<%# raw @res.to_json %>
+<%# raw @h_res.to_json %>
+<%# raw session[:marker_genes][@project.id].to_json %>
+<% h_genes = {} %>
+<ul class="nav nav-tabs nav-fill" id='result_marker_genes' role='tablist'>
+  <li class="nav-item">
+    <a class="nav-link active" id='up_genes-tab' data-toggle="tab" href="#pane_up_genes" role="tab" aria-controls="up_genes" aria-selected="true"><i class='text-success fa fa-arrow-up'></i> <%= @h_res[:up_genes].size %>/<%= @h_res[:nber_up_genes] %> Up-regulated gene<%= (@h_res[:up_genes].size > 1) ? 's' : '' %></a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id='down_genes-tab' data-toggle="tab" href="#pane_down_genes" role="tab" aria-controls="down_genes" aria-selected="true"><i class='text-danger fa fa-arrow-down'></i> <%= @h_res[:down_genes].size %>/<%= @h_res[:nber_down_genes] %> Down-regulated gene<%= (@h_res[:down_genes].size > 1) ? 's' : '' %></a>
+  </li>
+</ul>
+<!--<div class='row'>
+  <div class='col-6'>
+    <%= @h_res[:up_genes].size %> Up-regulated genes
+  </div>
+  <div class='col-6'>
+    <%= @h_res[:down_genes].size %> Down-regulated genes
+  </div>
+</div>
+-->
+
+<div id='find_marker_result' class="tab-content mt-3">
+  <% [:up, :down].each do |k2| %>
+  <% k = (k2.to_s + "_genes").to_sym %>
+  <%# k3 = ("sel_genes_" + k2.to_s).to_sym %>
+  <div class="tab-pane <%= (k == :up_genes) ? 'active' : '' %>" id="pane_<%= k.to_s %>" role="tabpanel" aria-labelledby="<%= k.to_s %>-tab">
+    <table id='list_<%= k.to_s %>' class="display nowrap" style="width:100%">
+      <thead>
+	<th></th>
+	<th>Gene</th>
+	<th>EnsemblID</th>
+	<th>log<sub>2</sub>(FC)</th>
+	<th>p-value</th>
+	<th>FDR*</th>
+	<th>Avg<sub>ref</sub><sup>*</sup></th>
+	<th>Avg<sub>comp</sub><sup>*</sup></th>
+      </thead>
+      <tbody>
+	<% @h_res[k].each do |e| %>
+	<tr>
+	  <td>
+	    <%= check_box_tag 'sel_check_gene_' + e[0], e[0], (session[:marker_genes][@project.id][k2][e[0].to_i]) ? true : false, {:class => 'sel_check_gene_' + k2.to_s} %>
+	    <i id='show_gene_<%= e[0] %>' class='fa fa-eye pointer show_gene'></i>
+	  </td>
+	  <% h_genes[e[0]] = e[2] || e[1] %>
+	  <td><%= e[2] || e[1] %></td>
+	  <td><span class='ensembl-gene badge badge-info pointer'><%= e[3] %></span></td>
+	  <td><%= raw e[4].to_s.gsub(/E(-?)0*(\d+)/, 'e<sup>\1\2</sup>') %></td>
+	  <td><%= raw e[5].to_s.gsub(/E(-?)0*(\d+)/, 'e<sup>\1\2</sup>') %></td>
+	  <td><%= raw e[6].to_s.gsub(/E(-?)0*(\d+)/, 'e<sup>\1\2</sup>') %></td>
+          <td><%= raw e[7].to_s.gsub(/E(-?)0*(\d+)/, 'e<sup>\1\2</sup>') %></td>
+          <td><%= raw e[8].to_s.gsub(/E(-?)0*(\d+)/, 'e<sup>\1\2</sup>') %></td>
+ 	</tr>
+	<% end %>
+      </tbody>
+    </table>
+    <sup>*</sup> FDR: False Discovery Rate;<br/>
+    Avg Ref: Average log<sub>2</sub> gene expression in reference cell group;<br/>
+    Avg Comp: Average log<sub>2</sub> gene expression in complementary cell group;
+    <i>Avg Ref and Comp are computed on normalized data as log<sub>2</sub>(1 + (Count*10000/Depth))</i>
+    <div id='boxplot_<%= k2 %>' class='mt-3'>
+    </div>
+
+  </div>
+
+  <% end %>
+
+</div>
+
+<%= javascript_tag do %>
+
+var h_genes = <%= raw h_genes.to_json %>
+
+
+function upd_gene_stats(type){
+ //var gene_stable_ids = []
+ console.log("test" + type)
+/* $(".sel_check_gene_" + type).each(function(e) {
+  if ($(this).prop("checked") == true){
+   console.log($(e).attr("id"))
+   gene_stable_ids.push(this.value) 
+  }
+ });
+*/
+ var gene_stable_ids = $(".sel_check_gene_" + type + ":checked").toArray().map(e => e.value);
+ refresh(null, "<%= raw get_marker_gene_stats_project_path(:key => @project.key) %>?annot_id=<%= @annot.id %>&type=" + type + "&gene_stable_ids=" + gene_stable_ids.join(","), {loading:'fa-2x'})
+}
+
+$(".sel_check_gene_up").click(function(){
+ console.log("totoooooup")
+ upd_gene_stats("up")
+})
+$(".sel_check_gene_down").click(function(){
+ console.log("totoooooup")
+ upd_gene_stats("down")
+})
+
+
+$("#find_marker_result").on("click", ".show_gene", function(e){
+ console.log("test")
+ find_marker_result
+})
+
+$("#find_marker_result").on("click", ".ensembl-gene", function(e){
+ var ensembl_id = $(this).html()
+ var w = $(window).width()
+ var ww = 600
+  $("#ontop_popup_window").css({
+        left: (w-e.pageX > ww) ? (e.pageX + 10) : w-ww+10,
+        width:ww,
+        'z-index':1000000,
+        top: e.pageY + 10
+  }).stop().show(100);
+ refresh("ontop_popup_container", "<%= search_genes_path() %>?ensembl_id=" + ensembl_id + "&version_id=<%= @project.version_id %>", {loading:true})
+})
+
+
+var nber_cells = <%= raw @annot.nber_cols %>
+var cell_idx = <%= raw @h_res[:group_cell_idx].to_json %>
+
+/*
+var expr_data = <%= raw @h_res[:expr_data].to_json %>
+var sum_expr_data = <%= raw @h_res[:sum_expr_data].to_json %>
+*/
+var genes = {
+ down : <%= raw @h_res[:down_genes].map{|e| e[2] || e[1]}.to_json %>,
+ up : <%= raw @h_res[:up_genes].map{|e| e[2] || e[1]}.to_json %>
+}
+
+var types = ['up', 'down']
+
+for (var i=0; i< types.length; i++){
+
+var type = types[i]
+
+if ($("#list_" + type + "_genes").length != 0){ //expr_data[type].values){
+// datatables
+$("#list_" + type + "_genes").DataTable({
+ "order": [[ 3, (type == 'up') ? 'desc' : 'asc' ]],		 
+ "scrollX": true
+})
+}
+
+
+/*
+var x = []
+var y = []
+var x2 = []
+var y2 = []
+var m = 0
+
+for (var k=0; k < expr_data[type].values.length; k++){ //each gene
+
+  console.log("f")
+ m=0		  
+ for(var j=0; j< nber_cells-1; j++){  //each cell
+
+  if (cell_idx[m] == j){
+   x.push(genes[type][k])
+   v = Math.log2(1 + (expr_data[type].values[k][j] * 10000 / depth_by_cell[j]))	
+   if (expr_data[type].values[k][j]){	 
+    console.log(genes[k] + " " + expr_data[type].values[k][j] + " " + depth_by_cell[j] + " => " + v)
+   }
+   y.push(v)
+   m+=1
+  }else{
+   x2.push(genes[type][k])
+   y2.push(Math.log2(1 + (expr_data[type].values[k][j] * 10000 / depth_by_cell[j])))
+  }
+ }
+}
+}
+
+//console.log(x)
+//console.log(x2)
+
+//console.log(y)
+//console.log(y2)
+
+var ref = {
+  y: y,
+  x: x,
+  boxpoints: false,
+  boxmean: true,
+  name: 'Ref',
+  marker: {color: '#3D9970'},
+  type: 'box'
+};
+
+var comp = {
+  y: y2,
+  x: x2,
+  boxpoints: false,
+ boxmean: true,
+  name: 'Comp',
+  marker: {color: '#FF4136'},
+  type: 'box'
+};
+
+var data = [ref, comp];
+
+var layout = {
+  yaxis: {
+//    type: 'log',
+    title: 'log<sub>2</sub>(1 + (Count * 10000 / Depth))',
+    zeroline: false
+  },
+  boxmode: 'group'
+};
+
+if ($("#boxplot_" + type).length > 0){
+Plotly.newPlot('boxplot_' + type, data, layout);
+}
+
+*/
+
+upd_gene_stats(type)
+}
+
+<% end %>

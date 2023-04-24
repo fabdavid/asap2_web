@@ -1,0 +1,19 @@
+Do you really want to delete all runs from this step as well as all dependent runs from other steps?
+<button id='confirm_delete_all_btn' type='button' class='btn btn-primary'>Confirm</button>
+<button id='cancel_confirm_delete_all_btn' type='button' class='btn btn-secondary'>Cancel</button>
+
+
+<%= javascript_tag do %>
+
+$("#confirm_delete_all_btn").click(function(){
+ var p = [{name : 'step_id', value : <%= params[:step_id] %>}]
+ refresh_post("step_container", "<%= delete_all_runs_from_step_project_path(:key => @project.key) %>", p, 'post', {loading : 'fa-2x'})
+  $("#ontop_window").removeClass("hidden")
+})
+
+$("#cancel_confirm_delete_all_btn").click(function(){
+ //console.log("bla");
+ $('#ontop_window').addClass('hidden');
+})
+
+<% end %>

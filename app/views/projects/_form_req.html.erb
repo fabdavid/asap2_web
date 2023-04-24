@@ -17,9 +17,12 @@
 
 
  <% available_methods = @std_methods.select{|s| !@h_unavailable_methods[s.id]} %>
+ <% unavailable_methods = @std_methods.select{|s| @h_unavailable_methods[s.id]} %>
  <% default_methods = @h_step_attrs['default_std_method'].map{|method_name| @h_std_methods_by_name[method_name]} & available_methods %>
 <%# available_methods.first.id.to_json %>
 <%# default_methods.first.id.to_json %>
+<%# @h_std_method_attrs.to_json %>
+<%# @log5.to_json %>
 
 <% if !@h_step_attrs['hide_method'] %>
 
@@ -30,6 +33,7 @@
   <%# l.unshift(["None", nil]) %>
   <div class='col-sm-10'>
     <%# @h_unavailable_methods.to_json %>
+    <%# @log5 %>
     <%= f.select :std_method_id, options_for_select(l, ((d = default_methods.first) ?  d.id : ((d = available_methods.first) ?  d.id : nil))), {}, {class: 'custom-select'} %>
   </div>
 </div>
@@ -40,7 +44,10 @@
     <% end %> 
   </div>
   <div class='col-md-11'>
-    <span id='method_desc' class=''></span>
+    <span id='method_desc' class=''></span><br/>
+    <span id='method_pred' class=''></span>
+    <%= hidden_field_tag :pred_process_duration %>
+    <%= hidden_field_tag :pred_max_ram %>
   </div>
 </div>
 </div>
@@ -58,13 +65,18 @@
 <%= f.hidden_field :step_id, {:value => @step_id}  %>
 <%= hidden_field_tag :format, 'json' %>
 
+<% if !@h_step_attrs["hide_submit_btns"] %>
 <div class="actions mb-4">
   <%# button_name = @step.action_button_name %>
   <%# f.submit button_name, { :class => 'btn btn-primary', :id =>'filtering_button'} %>
+  <div id='prevent_req_messages' class='alert alert-danger hidden'></div>
   <button id='<%= @step.name %>_button' type='button' class='btn btn-primary req_submit'><%= @h_step_attrs['action_button_label'] || 'Submit' %></button>
   <button id='form_req_cancel' type='button' class='btn btn-secondary'>Cancel</button>
 </div>
 <% end %>
+<% end %>
+
+<%# raw @log5 %>
 
 <%= javascript_tag do %>
 
@@ -83,11 +95,21 @@ function validate_req_form(){
 }
 */
 
+function upd_pred(annot_ids){
+  $("#method_pred").html("<i class='fas fa-spinner fa-pulse'></i> <span class=''>Predicting required resources...</span>")
+  var p = [
+   {'name' : 'annot_ids', 'value' : annot_ids},
+   {'name' : 'std_method_id', 'value' : $("#req_std_method_id").val()}   
+  ]
+  refresh_post(null, '<%= upd_pred_project_path(:key => @project.key) %>', p, 'post', {}); // ?annot_ids=' + annot_ids + '&std_method_id=' + $("#req_std_method_id").val(), {})
+}
 
 function change_method(){
  var smid = $("#req_std_method_id").val()
  if (smid && h_methods[smid]){
-  $("#<%= @step.name %>_button").prop("disabled", ((h_unavailable_method_ids[smid]) ? "disabled" : false))
+//  if (h_unavailable_method_ids[smid]){
+   $("#<%= @step.name %>_button").prop("disabled", ((h_unavailable_method_ids[smid]) ? "disabled" : false) )
+//  }
   var url = '<%= get_attributes_project_path(:key => @project.key) %>' + '?step_id=<%= @step.id %>&obj_id=' + smid;
   refresh("attrs_container", url, {});
   var img = $("#speed_" + h_methods[smid][0]);
@@ -96,6 +118,7 @@ function change_method(){
  }else{
   $("#attrs_container").html("");
  }
+
 }
 
 var h_unavailable_method_ids = <%= raw @h_unavailable_methods.to_json %> 
@@ -106,6 +129,12 @@ $("#req_std_method_id > option").each(function() {
 });
 
 $("#<%= @step.name %>_button").click(function(){
+
+  validate_req()
+
+  $("#<%= @step.name %>_button").attr("disabled", true);
+  $("#<%= @step.name %>_button").html("<i class='fa fa-pulse fa-spinner'></i> <%= @h_step_attrs['action_button_label'] || 'Submit' %>");
+
  var p = $('#<%= @step.name %>_form').serializeArray();
  p.push({'name' : 'project_key', 'value' : '<%= @project.key %>'});
 /* p.push({'name' : 'render_nothing', 'value' : '1'}); */
@@ -125,7 +154,9 @@ $("#<%= @step.name %>_button").click(function(){
   if (returnData.errors){
    other_params += "&errors=" + returnData.errors 
   }
-
+  
+  $("#<%= @step.name %>_button").attr("disabled", false);
+  $("#<%= @step.name %>_button").html("<%= @h_step_attrs['action_button_label'] || 'Submit' %>");
 
   if ($("#dashboard").length > 0 && $("#dashboard").val() == 'std_runs'){
    refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>&step_id=<%= @step_id %>" + other_params, {loading: 'fa-2x loading-step'});  

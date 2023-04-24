@@ -1,0 +1,141 @@
+<div class="container">
+  <div class='row justify-content-md-center'>
+    <!-- <div class='col col-xs-6 col-md-6 col-lg-7 mb-2'> -->
+    <div class='col-md-6  mb-2'>
+      <div class="input-group btn-group" role="group" aria-label="Search ASAP">
+	<%= text_field_tag 'free_text', session[:settings][:free_text], {:size => 30, :class => "form-control", :placeholder => "Search"} %>
+	<button id='search-btn' type="button" class="btn btn-primary"><i class="fas fa-search"></i> Search</button>    
+	<%# label_tag 'Page size' %>
+      </div>
+    </div>
+    <!--  <div class='col col-xs-6 col-md-2 col-lg-1 mb-2'> -->
+    <div class='col-md-2 mb-2'>
+      <div class="btn-group ml-4" role="group" aria-label="search_result_view"'>
+	<button id='card_view_btn' type="button" class="search_view_btn btn btn<%= '-outline' if session[:settings][:search_view_type] == 'list' %>-success"><i class="fas fa-th"></i></button>
+	<button id='list_view_btn' type="button" class="search_view_btn btn btn<%= '-outline' if session[:settings][:search_view_type] == 'card' %>-success"><i class="fas fa-list"></i></button>
+      </div>
+    </div>
+    <div class='col-md-2 mb-2'>
+      <% if current_user %>
+      <%= link_to 'New project', new_project_path, {:class => 'btn btn-primary'} %> 
+      <% else %>
+      <%= link_to 'Try with your dataset', new_project_path, {:class => 'btn btn-success'} %>
+      <% end %>      
+    </div>
+    <% if admin? %>
+    <div class='col-md-2 mb-2'>
+      <div class="input-group btn-group" role="group" aria-label="Add tag">
+	<%= text_field_tag 'tag_name', "", {:size => 30, :class => "form-control", :placeholder => "Tag"} %>
+	<button class='btn btn-primary' id='upd_tag_btn' type='button' disabled=true title='First select some projects'>Add tag</button> <!--, new_project_path, {:class => 'btn btn-primary'} -->
+      </div>
+    </div>
+    <% end %>
+    <%= hidden_field_tag 'search_view_type', session[:settings][:search_view_type] %>
+    <!--  <div class='clear'></div> -->
+  </div>
+</div>
+
+<div id='search_results' class="m-4"></div>
+
+<%= javascript_tag do  %>
+
+$("#upd_tag_btn").click(function(){
+var add_project_keys = []
+var del_project_keys = []
+
+$(".sel_project").each(function(){
+if (this.checked){
+ add_project_keys.push($(this).val())
+}else{
+ del_project_keys.push($(this).val())
+}
+})
+
+
+var p = [
+{name : 'tag_name', value : $("#tag_name").val()},
+{name : 'add_project_keys', value : add_project_keys.join(",")}
+//,
+//{name : 'del_project_keys', value : del_project_keys.join(",")}
+];
+
+$(this).html("<i class='fa fa-spinner fa-pulse></i>'")
+$(this).prop("disabled", true)
+
+var url = "<%= upd_project_tag_projects_path %>"
+refresh_post(null, url, p, 'post', {})
+})
+
+$(".search_view_btn").click(function(){
+ var v = this.id.split("_")[0]
+ //console.log(v)
+ //console.log( $("#search_view_type").val())
+ var l = ['card', 'list']
+ if (v != $("#search_view_type").val()){
+  // console.log("v")
+   $("#search_view_type").val(v)
+   for (var i=0; i< l.length; i++){
+    // console.log("remove " + l[i])
+     $("#" + l[i] + "_view_btn").removeClass("btn-success")
+     $("#" + l[i] + "_view_btn").addClass("btn-outline-success")
+   }
+   $("#" + v + "_view_btn").addClass("btn-success")
+   $("#" + v + "_view_btn").removeClass("btn-outline-success")		    
+   var p = [{name : 'free_text', value : $("#free_text").val()}]
+   var h = {loading:'fa-2x'}
+   search(p, h)
+ }
+})
+
+<% if params[:q] %>
+ $("#free_text").val('<%= params[:q] %>')
+<% end %>
+
+function search(p, h) {
+ if (p.length > 0 && p[0].name == 'auto'){ // refresh without input if auto
+  h.not_upd_if_empty = 1 
+ }
+ if ($("#search_results").html() != ''){
+  var fields = ['my_per_page', 'public_per_page', 'my_page', 'public_page', 'my_project_ids', 'public_project_ids', 'search_view_type', 'my_order_by', 'public_order_by']
+  for (var i=0; i< fields.length; i++){
+   p.push({name : fields[i], value : $("#" + fields[i]).val()})
+  }
+ }
+ refresh_post("search_results", "<%= do_search_projects_path() %>", p, 'post', h);
+}
+
+function init_search(){
+  $("#public_page").val(1)
+  $("#my_page").val(1)
+}
+
+$("#search-btn").click(function(){
+  init_search()
+  console.log("bla")		   
+  var p = [{name : 'free_text', value : $("#free_text").val()}]		 
+  var h = {loading:'fa-2x'}  
+  search(p, h)
+})
+
+$("#free_text").keyup(function(e){
+ // console.log("KEY:" + e.key)
+ if (e.key == 'Enter'){
+  init_search()
+  var p = [{name : 'free_text', value : $("#free_text").val()}]
+  var h = {loading:'fa-2'}
+  search(p, h)
+ }
+})
+
+var p = [{name : 'free_text', value : $("#free_text").val()}]
+var h = {loading:'fa-2x'}
+search(p, h)
+
+function upd_search(){
+search([{name : 'auto', value : '1'}], {})
+}
+
+window.setInterval(upd_search, 10000)
+//window.setInterval(function(){ $("#ontop_window").addClass("hidden")}, 5000)
+
+<% end %>

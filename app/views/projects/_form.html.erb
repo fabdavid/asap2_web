@@ -9,6 +9,9 @@
 
 <div class='main_container'>
 <%= form_for(project, :url => projects_path, :html => {:class => 'fullscreen_form'}) do |f| %>
+
+<p id="notice"><%= raw notice %></p>
+
   <% if project.errors.any? %>
     <div id="error_explanation">
       <h2><%= pluralize(project.errors.count, "error") %> prohibited this project from being saved:</h2>
@@ -21,25 +24,39 @@
     </div>
   <% end %>
 
+<% if @notice %>
+<div class='alert alert-danger'><%= @notice %></div>
+<% end %>
+
 <div class='row'>
 
-  <div class='form-group col-12 col-sm-6'>
+  <div class='form-group col-12 col-sm-4'>
     <%= label_tag 'project_name', 'Project Name', {'data-toggle' => "tooltip"} %>
     <%= f.text_field :name, {:class => "form-control is-invalid", :placeholder => "Name of the project"} %>
     <div class="invalid-feedback">
       Mandatory
     </div>
   </div>
+  <div class='form-group col-12 col-sm-2'>
+    <%= label_tag 'version_id', 'ASAP version', {'data-toggle' => "tooltip"} %>
+    <% l = Version.where(:activated => true).order("id desc").all.select{|e| e.id > 3}.map{|e| [e.id.to_s + ((e.beta) ? ' (beta)' : ''), e.id]} %>
+    <%= f.select :version_id, l,  {}, {:class => "form-control", :placeholder => "ASAP version"} %>
+  </div>
   
-  <div class='form-group col-12 col-sm-6'>
+  <div id='list_organims' class='form-group col-12 col-sm-6'>
     <%= label_tag 'organism_id', "Organism" %>
+    <%# @h_env['asap_data_db_version'] %>
+
     <% h_list_organisms = {'Most popular species' => Organism.where(:id => [1, 2, 35]).map{|o|  [o.short_name.capitalize + " - #{o.name} [TaxID:#{o.tax_id}]", o.id]}}
-    EnsemblSubdomain.all.each do |e|
-    organisms = e.organisms.select{|o| o.name}.sort{|a, b| ((a.short_name && a.short_name.capitalize) || a.name) <=> ((b.short_name && b.short_name.capitalize) || b.name)}
+  #  ConnectionSwitch.with_db(:data_with_version, @h_env["asap_data_db_version"]) do
+    ensembl_subdomains = Basic.sql_query2(:asap_data, @h_env['asap_data_db_version'], 'ensembl_subdomains', '', '*', nil)
+    ensembl_subdomains.each do |e|
+    organisms = Organism.where(:ensembl_subdomain_id => e.id).select{|o| o.name}.sort{|a, b| ((a.short_name && a.short_name.capitalize) || a.name) <=> ((b.short_name && b.short_name.capitalize) || b.name)}
      if organisms.size > 0
       h_list_organisms.merge!({e.name.capitalize => organisms.map{|o| [((o.short_name) ? "#{o.short_name.capitalize} - " : "")  + "#{o.name} [TaxID:#{o.tax_id}]", o.id]}})
      end
     end
+  #  end
     %>
 
     <%= f.select :organism_id, grouped_options_for_select(h_list_organisms), {}, {class: 'form-control', divider: '---------'} %>
@@ -47,6 +64,7 @@
 </div>
 
 
+<% if admin? %>
 
 <!-- <div id='opt_input_select' class="btn-group btn-group-toggle" data-toggle="buttons">
   <label id='upload-choice_btn' class="btn btn-primary choice-btn active">
@@ -58,6 +76,7 @@
 </div>
 -->
 
+
 <div id='opt_input'>
   <div class="btn-group" role="group" aria-label="Input">
     <button id='upload-choice_btn' type="button" class="btn btn-primary choice_btn active">Upload file / Send URL</button>
@@ -65,16 +84,21 @@
   </div>
 </div>
 
+<% end %>
+
+<%= hidden_field_tag 'tab_choice', 'upload' %>
+
 <div id='upload_container' class='opt_input_container'>
   <div class='form-group2' style='margin-right:15px;margin-left:15px'>
     <%= label_tag 'input_file', "Upload count / normalized gene expression matrix" %>
     <span id='help_input_file'>
-      <span class='italic'>[10x(.h5 file), loom, text, zip, tar.gz formats supported]</span>
-      <%= link_to 'Help', file_format_home_index_path() + "#input_file" %> | <%= link_to 'Example txt file', "/data/input.tab" %>
+      <span class='italic'>[10x(.h5 file), loom, text, zip, tar.gz, MEX/MTX formats supported]</span>
+      <%= link_to 'Help on file formats', file_format_home_index_path() + "#input_file" %> | <%= link_to 'Example txt file', "/data/input.tab" %> | <%= link_to 'Tutorial: Getting started', tutorial_home_index_path(:t => 'getting_started') %> | <%= link_to 'Tutorial: Upload a 10x file (from Cell Ranger)', tutorial_home_index_path(:t => 'cell_ranger') %>
     </span>
   </div>
   <%= render :partial => 'upload_input_file' %>
 </div>
+
 <div id='hca_container' class='opt_input_container hidden'>
 </div>
 
@@ -86,11 +110,15 @@
 <%= f.hidden_field :key  %>
 <%= f.hidden_field :step_id, {:value => 1}  %>
 <%= hidden_field_tag :active_step, params[:active_step] %>
-<%= hidden_field_tag :hca_query, '{"fileFormat":{"is":["matrix"]}}' %>
+<%= hidden_field_tag :hca_query, '{"fileFormat":{"is":["loom"]},"fileSource":{"is":["HCA Release"]}}' %>
+<%#  hidden_field_tag :hca_query, '[{"facetName":"fileFormat","terms":["loom"]},{"facetName":"fileSource","terms":["HCA Release"]}]' %> 
 <%= hidden_field_tag :provider_id, nil %>
 <%= hidden_field_tag :sel_provider_projects, '{}' %>
 <%= hidden_field_tag :provider_project_id, '' %>
-
+<%= hidden_field_tag :provider_project_title, '' %>
+<%= hidden_field_tag :provider_project_filekey, '' %>
+<%= hidden_field_tag :provider_project_filename, '' %>
+<%= hidden_field_tag :provider_project_fileurl, '' %>
 <!--<%= f.hidden_field :group_filename  %>-->
 
   <div class="actions">
@@ -104,8 +132,16 @@
 
 <%= javascript_tag do %>
 
+/*
+$("#project_version_id").change(function(){
+$(".main_container").html("<i>Updating form...</i>")
+window.location = '<%= new_project_path() %>?version_id=' + $(this).val() 
+})
+*/
+
 function upd_hca_preview(){
  var p = []
+ console.log("test")
  p.push({name : 'q', value : $("#hca_query").val()})
  var url = "<%= hca_preview_projects_path() %>"
  refresh_post("hca_container", url, p, "post", {loading: 'fa-2x'})
@@ -113,6 +149,7 @@ function upd_hca_preview(){
 
 $(".choice_btn").click(function(){
  var t = this.id.split("-")[0]
+ $("#tab_choice").val(t)
  $(".opt_input_container").addClass("hidden")
  $(".choice_btn").removeClass("active")
  $(".choice_btn").removeClass("btn-primary")
@@ -124,9 +161,10 @@ $(".choice_btn").click(function(){
 })
 
 $("#hca-choice_btn").click(function(){
- if ($("#hca_container").children().length == 0){
+// console.log($("#hca_container").children().length)
+// if ($("#hca_container").children().length == 0){
   upd_hca_preview()
- }
+// }
 })
 
 /*
@@ -171,7 +209,8 @@ test = false
 //if ($("#project_name").val() != '' && ($('#js-file-container tbody tr td div.alert-success').html() || test == true)){
  
  // check if a checkbox is check in the hca table
- var c = $(".hca-hit:checked")
+ //var c = $(".hca-hit:checked")
+  var c = $('input[name="hca_loom_file"]:checked')
  //if (($("#project_name").val() != '' || c.length > 0) && (($("#nber_cols").val() > 1 && $("#nber_rows").val() > 0) || $("#provider_project_id").val() != '' || $("#sel_provider_projects").val() != '{}')){
 if ( ($("#nber_cols").val() > 1 && $("#nber_rows").val() > 0) || $("#provider_project_id").val() != '' || $("#sel_provider_projects").val() != '{}'){
 $("#create_project_button").removeAttr('disabled')
@@ -215,3 +254,4 @@ if ($("#project_name").val() != ''){
 }
 
 <% end %>
+

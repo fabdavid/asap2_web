@@ -1,7 +1,43 @@
+<%# session.id %>
+<%# if admin? %>
+<% if admin? %>
+<% u =  @project.updated_at %>
+<%  c = Time.new(u.year, u.month, u.day, 0, 0, 0) %>
+<%= c %>
+<%# Time.now %>
+<%# raw duration2((c + 3.days + 1.hour) - Time.now) %>
+<% end %>
+<%# now = Time.now %>
+<%# duration2(Time.new(now.year, now.month, now.day, 0, 0, 0) + 1.day - now) %>
+<%# end %>
+<% if @time_to_destroy %>
+<div class='alert alert-danger'>
+  This project will be destroyed after 2 days of inactivity (<%= raw duration2(@time_to_destroy) %> from now). If you want to keep your projects longer please log in.
+</div>
+<% end %>
+
+<%# Run.where(:project_id => @project.id).all.map{|e| (@h_steps[e.step_id]) ? @h_steps[e.step_id].rank : e.step_id}.to_json if admin? %>
+
 <%= render :partial => 'filter_runs' %>
+<%# session[:active_step] if admin? %>
+ <%# raw editable?(@project).to_json %>
+<%# current_user.to_json %>
+<%# APP_CONFIG[:admin_emails].include?(current_user.email).to_json if current_user %>
+<%#  admin?.to_json %>
+<%# (p and ((!current_user and (p.sandbox == true and session[:sandbox] == p.key)) or (current_user and p.user_id == current_user.id) or (current_user and share = p.shares.select{|s| s.user_id == current_user.id}.first and share.analyze_perm == true))).to_json %>
 
 <%# @h_articles.to_json %>
+<%# @runs.size %>
+<%# (Run.select("runs.*").joins("join annots on (annots.run_id = runs.id)").where(:project_id => @project.id, :annots => {:store_run_id => session[:store_run_id][@project.id]}).all | Run.select("runs.*").joins("join annots on (annots.run_id = runs.id)").where(:project_id => @project.id, :annots => {:store_run_id => session[:store_run_id][@project.id]}).all).size %>
 
+<% if admin? %>
+<%# @docker_images.to_json %>
+<% end %>
+
+<!--<% if @project.key == 'hwukxt' %>
+<div class='alert alert-danger'>This project is corrupted and should be removed</div>
+<% end %>
+-->
 <% if @project.cloned_project_id %>
 <% if @cloned_project %>
 <div class='alert alert-info'>This project has been cloned from <%= link_to "#{@cloned_project.name} [#{@cloned_project.key}]", project_path({:key => @cloned_project.key}) %></div>
@@ -11,10 +47,17 @@
 <% end %>
 <div class='row'>
   <div class="col-md-5">
-    <div class='float-right'>
-      <%= link_to 'List of commands', get_commands_project_path(@project.key), {:class => 'btn btn-primary'} %>
-    </div>
-    <h4>Pipeline
+    <!--    <div class='float-right'> -->
+    <h4>Reproducibility</h4>
+    <%= link_to(raw("<button class='btn btn-outline-info'>Instructions</button>"), instructions_project_path(@project.key), "target" => "_blank") %>
+    <%= link_to 'List of commands', get_commands_project_path(@project.key), {:class => 'btn btn-outline-secondary'} %>
+    <%= link_to(raw("<button class='btn btn-outline-secondary'>Initial Loom file</button>"), get_file_project_path(@project.key, :step => 'parsing', :filename => 'output.loom'), "target" => "_blank") if exportable?(@project) %>
+    <!--    </div >-->    
+    
+    <h4 class='mt-2'>Programmatic access & Downloads</h4>
+    <%= link_to 'List of Loom files (JSON)', get_loom_files_json_project_path(@project.key, {:download => 1}), {:class => 'btn btn-outline-secondary'} %>
+    <button id='loom_files_btn' class='btn btn-outline-secondary'>Downloads (Loom/H5AD)</button>
+    <h4 class='mt-2'>Pipeline
       <% if session[:activated_filter][@project.id] == true %>
       (filtered)
       <% end %>
@@ -73,7 +116,9 @@
 	   <td>
 	     <% if exp_entry.pmid %>
 	     <% exp_entry.pmid.split(";").map{|e| e.to_i}.each do |pmid| %>
-	     <span id='article_<%= @h_articles[pmid].id %>' class='badge badge-dark article_entry pointer'><%= display_reference(@h_articles[pmid]) %></span>
+	     <span id='article_<%= @h_articles[pmid].id %>' class='badge badge-dark article_entry pointer'>
+	       <%= display_reference(@h_articles[pmid]) %>
+	     </span>
 	     <% end %>
 	     <% end %>
 	     <%# @h_articles[exp_entry.pmid.to_i].to_json + "," %>
@@ -91,7 +136,7 @@
  <!--   <div class='alert alert-secondary'> -->
       <% @project.provider_projects.each do |pp| %>
         <% provider = pp.provider %>
-        <p><%= provider.name %> <%= link_to pp.provider_project_key, provider.url_mask.gsub(/\#\{id\}/, pp.provider_project_key) %></p>
+        <p><%= provider.name %> <%= link_to pp.key, provider.url_mask.gsub(/\#\{id\}/, pp.key) %></p>
 	<br/>
       <% end %>
 <!--    </div> -->
@@ -101,10 +146,26 @@
       (not filtered)
       <% end %>
     </h4>
-    <%= render :partial => 'display_card_deck', :locals => {:cards => @list_cards, :card_class => 'card_sum'} %>
+    <%= render :partial => 'display_card_deck', :locals => {:cards => @list_cards, :card_class => 'card_sum', :card_type => 'step'} %>
   </div>
 </div>
 <%= javascript_tag do %>
+
+var waiting_run_ids = <%= raw @runs.select{|r| r.status_id == 1}.map{|r| r.id}.to_json %>
+var running_run_ids = <%= raw @runs.select{|r| r.status_id == 2}.map{|r| r.id}.to_json %>
+run_timer = upd_time2(waiting_run_ids, running_run_ids, time_zone_offset)
+
+var adds = "<span class='badge badge-info ml-2'>KEY : <%= @project.key %></span>";
+<% if @project.public == true %>
+adds += "<span class='badge badge-info ml-2'>PUBLIC_KEY : ASAP<%= @project.public_id %></span>";
+<% end %>
+<% if @project.sandbox == false or admin? %>
+adds += "<span class='badge badge-info ml-2' title='Cumulative number of distinct sessions accessing this page each day. If the same session accesses the same page 2 different days, 2 views are counted.'>Views : <%= @project.nber_views + @project.last_day_session_ids.split(",").size %></span>"
+adds += "<span class='badge badge-info ml-2' title='Number of times the project has been cloned.'>Cloned : <%= @project.nber_cloned %></span>"
+<% end %>
+$(".step-adds_<%= @step.id %>").html(adds)
+
+
 
 $("#data_authors").dataTable({"sDom": 'Wsrt'})
 
@@ -152,6 +213,34 @@ $(".summary_step_card").click(function(){
 // $("#step_" + step_id).click()
  refresh("step_container", "<%= raw get_step_project_path(:key => @project.key, :nolayout => 1) %>&step_id=" + step_id, {loading: 'fa-2x loading-step'})
 })
+
+$("#loom_files_btn").click(function(e){
+ //console.log("bla")
+ $.getJSON( "<%= get_loom_files_json_project_path(@project.key) %>", function( data ) {
+  //var content = ["<tr><th>Loom file</th><th>Run attributes</th><th>Loom content</th></tr>"];
+  var content = ["<tr><th>Loom file</th><th>H5AD file</th><th>Run attributes</th></tr>"];
+  //console.log(data)
+   $.each( data, function(i, item) {
+    var list_annots = []
+    for (var i=0; i< item.content.length; i++){
+      list_annots.push("<span class='badge badge-light'>" + item.content[i].name + "</span>")
+    }
+//    content.push("<tr><td>" + ["<a target='_blank' href='" + item.url + "' class='btn btn-primary' style='width:100%'>" + item.run_name + "</a>", item.run_attrs, list_annots.join(" ")].join("</td><td>") + "</td></tr>")
+ content.push("<tr><td>" + ["<a target='_blank' href='" + item.url + "' class='btn btn-primary' style='width:100%'><div class='float-right'><sub>" + item.file_size + "</sub></div><div class='float-left'>"+ item.run_name + "</div></a>", "<a target='_blank' href='" + item.url_h5ad + "' class='btn btn-primary' style='width:100%'>H5AD export</a>", item.run_attrs].join("</td><td>") + "</td></tr>")
+   }) 
+  console.log(content)
+  $("#ontop_popup_container").html("<table>" + content.join(" ") + "</table>")
+  var w = $(window).width();
+  $("#ontop_popup_window").css({
+        left: 200,
+        width:w - 250,
+        top: e.pageY + 10,
+	height:'auto'	     
+  }).stop().show(100);
+ })
+})
+
+
 
 var data = <%= raw @klay_data.to_json %> 
 /*[

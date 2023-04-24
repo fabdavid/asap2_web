@@ -7,11 +7,11 @@ task :get_ensembl_species, [:run_id] => [:environment] do |t, args|
   vertebrate_file = data_dir + "Species.csv"
   other_species_file = data_dir + "Species2.csv"
   
-  `wget -O #{other_species_file} ftp://ftp.ensemblgenomes.org/pub/release-44/species.txt`
+  `wget -O #{other_species_file} ftp://ftp.ensemblgenomes.org/pub/release-46/species.txt`
   `dos2unix #{other_species_file}`
   #get list of species: https://www.ensembl.org/info/about/species.html
   
-  `wget -O #{vertebrate_file} ftp://ftp.ensembl.org/pub/release-97/species_EnsemblVertebrates.txt`
+  `wget -O #{vertebrate_file} ftp://ftp.ensembl.org/pub/release-99/species_EnsemblVertebrates.txt`
   `dos2unix #{vertebrate_file}`
   
   require 'csv'

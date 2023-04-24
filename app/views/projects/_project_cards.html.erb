@@ -1,0 +1,28 @@
+<div class='card-deck mt-4'>
+  <% projects.each do |p| %>
+  <div class='card run_card card_std mb-4'>
+    <div class='card-header'>
+      <div class='float-right' style='text-align:right'>
+        <% h_nber_runs = JSON.parse(p.nber_runs_json) %>
+      	<span class='nw'>
+	  <%= raw h_nber_runs.keys.select{|sid| @h_statuses[sid.to_i] and h_nber_runs[sid]}.map{|sid| display_status_runs(@h_statuses[sid.to_i], h_nber_runs[sid])}.join(" ") %>
+	  <small><%= display_mem(([1, 2].include?(p.archive_status_id)) ? p.disk_size : p.disk_size_archived) %></small>
+	  <%= raw display_archive_status(@h_archive_statuses[p.archive_status_id]) %>
+	</span>
+      </div>
+      <span class='badge badge-primary'><%= (p.public?) ? "#{p.public_key} / " : '' %><%= p.key %></span>
+    </div>
+    <div class='card-body'>
+      <span class='badge badge-secondary'><%= (@h_organisms[p.organism_id].short_name) ? @h_organisms[p.organism_id].short_name.capitalize : 'NA' %></span>
+      <span class='badge badge-info'><%= p.nber_cols %> genes</span>
+      <span class='badge badge-info'><%= p.nber_rows %> cells</span>
+      <% pps = p.provider_projects %>
+      <%= raw pps.map{|pp| pp.provider_id}.uniq.map{|provider_id| "<span class='badge badge-info'>" + @h_providers[provider_id].tag + "</span>"}.join(" ") if pps %>
+      <p><%= raw p.name %></p>
+    </div>
+    <div class='card-footer'>
+      <small><i>Last modified: <%= (p.modified_at) ? raw(display_date_short(p.modified_at)) : 'NA' %></i></small>
+    </div>
+  </div>
+  <% end %>
+</div>

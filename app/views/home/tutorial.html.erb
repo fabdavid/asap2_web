@@ -1,9 +1,49 @@
-<div class='container'>
-<h4>
-<i class='fa fa-exclamation-triangle'></i>
-<i class='fa fa-wrench'></i>
-TO COME
-<i class='fa fa-wrench'></i>
-<i class='fa fa-exclamation-triangle'></i>
-</h4>
+<div id='tuto' class='row'>
+  <div id='tuto-menu' class='col-md-3'>
+    <div class='m-2'>                                                                                                      
+      <%= link_to('Back to list of tutorials', tutorial_home_index_path(), {:class => 'btn btn-primary'}) %>
+    </div>
+  </div>
+  <div id='tuto-space' class='col-md-3'></div>
+  <div class='col-md-9 mt-4'>
+    <h3><%= @h_tutos[params[:t]] %></h3>
+    <%= render :partial => 'tutorial_' + params[:t] if params[:t] and File.exist?("app/views/home/_tutorial_" + params[:t] + ".html.erb") %>
+  </div>
 </div>
+
+<%= javascript_tag do %>
+
+$(document).ready(function(){
+
+ var l = $("#tuto .sm")
+ var links = []
+// console.log(l.length)
+ var main_menu = 0
+ for(var i=0; i<l.length; i++){
+  //  var el_id = l[i].attr('id')
+  var el = $(l[i])
+  el.prop('id', 'sm-' + i)   
+//  console.log(l[i])
+  var cl = (l[i].localName == 'h5') ? 'ml-2' : '';
+  if (l[i].localName == 'h4'){
+   main_menu++   	
+  }		  
+  links.push("<span class='link-sm " + cl + "' id='link-sm-" + i + "'>" + ((l[i].localName == 'h4') ? (main_menu + ". ") : '') + el.html() + "</a>")
+ }
+// console.log(links)
+ var html = "<ul class='nobullet'><li>" + links.join("</li><li>") + "</li></ul>"
+ $("#tuto-menu").append(html)
+ $("#tuto-space").css({'height' : $("#tuto-menu").css('height')})
+
+ $("#tuto").on("click", ".link-sm", function(){
+  var id = this.id.split("-")[2]
+  console.log("test" + id + "." + $("#sm-" + id).position().top)
+  $(window).scrollTop($("#sm-" + id).position().top)
+ })
+
+
+})
+
+
+
+<% end %>

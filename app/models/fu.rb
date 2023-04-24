@@ -3,7 +3,7 @@ class Fu < ActiveRecord::Base
   belongs_to :project, :optional => true
 
   # Variables
-  FU_STATUSES = %w(new uploading uploaded downloaded)
+  FU_STATUSES = %w(new uploading uploaded downloaded written)
 
   # Validations
   #  validates :name, presence: true
@@ -53,7 +53,7 @@ class Fu < ActiveRecord::Base
 
     require 'open-uri'
 
-    enc_url = URI.escape url
+    enc_url = (!url.match(/[\\ \"\<\>\{\}|\^\~\[\]]/)) ? url : URI.escape(url)
     
     filename = 'input_file'
     @valid_url = 0
@@ -65,6 +65,10 @@ class Fu < ActiveRecord::Base
       if m = enc_url.match(/([^\/]+)$/)
         filename = m[1]
       end
+      if filename.size > 40
+        filename = 'input_file'
+      end
+
       ## update url and filename                                                                                                                        
       self.update_attributes({
                               :upload_file_name => filename,
@@ -74,7 +78,10 @@ class Fu < ActiveRecord::Base
       upload_dir = Pathname.new(APP_CONFIG[:data_dir]) + 'fus' + self.id.to_s
       Dir.mkdir upload_dir if !File.exist? upload_dir
       filepath = upload_dir + self.upload_file_name
-      cmd = "wget -O #{filepath} #{enc_url} 2> log/wget.err 1> log/wget.log"
+      cmd = "wget -O '#{filepath}' '#{enc_url}' 2> log/wget.err 1> log/wget.log"
+      File.open('/data/asap2/toto', "w") do |f|
+        f.write cmd
+      end
       logger.debug(cmd)
       
       #            IO.copy_stream(open(url), filepath)                                                                                                     

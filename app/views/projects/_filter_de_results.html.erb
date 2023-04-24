@@ -1,4 +1,5 @@
 
-console.log(<%= @ts.to_json %>)
-console.log("<%= @log %>")
-refresh('step_container', '<%= get_step_project_path(:key => @project.key, :step_id => 6, :no_layout => 1) %>', {loading:'fa-2x'})
+console.log(<%# @ts.to_json %>)
+console.log("<%# raw @cmd %>")
+console.log("<%# raw @log7 %>")
+refresh('step_container', '<%= get_step_project_path(:key => @project.key, :step_id => @h_step_id_by_name['de'], :no_layout => 1) %>', {loading:'fa-2x'})

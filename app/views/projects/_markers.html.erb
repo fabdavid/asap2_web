@@ -1,64 +1,125 @@
 <div class='float-right'><button id='refresh_view-btn' type='button' class='btn btn-success hidden'>Refresh</button></div>
 <h5>Markers</h5>
 
+<%# @h_dashboard_card[25].to_json %>
+<% if admin? %>
+<%= @log2fc_threshold %>
+<%= params.to_json %>
+<% end %>
 <%# @res.to_json %>
 <%# @error %>
 <%# @log %>
 <%# @successful_ge_runs.map{|r| r.to_json}.join(", ") %>
+<%# @h_ensembl_ids.to_json %>
+<%# @h_highlight_gene_ids.to_json %>
 
-<% if @l %>
+<div class='row'>
+  <% if @l %>
+  <div class="form-group">
+     <div class='col-md-12'>
+       <label for="analysis_type">Analysis</label>
+       <%= select_tag 'analysis_type', options_for_select(@l, ((@list_runs) ? @list_runs.map{|e| e.id}.join(",") : '')), {:class => 'form-control mb-2'} %>
+     </div>
+  </div>
+  <% end %>
+</div>
 
-<%= select_tag 'analysis_type', options_for_select(@l, ((@list_runs) ? @list_runs.map{|e| e.id}.join(",") : '')), {:class => 'form-control mb-2'} %>
+<% if @h_gene_types %>
 
+<div class='row'>
+  <div class='col-md-3'>
+    <div class="form-group">
+      <label for="highlight_gene_type">Highlighted gene type</label>
+      <% l = [['All', nil], ['Transcription factors', 'transcription_factors'], ['Surface markers', 'surface_markers']] %>
+      <%= select_tag :highlight_gene_type, options_for_select(l, (params[:highlight_gene_type] || nil)), :class => 'form-control' %>
+    </div>
+  </div>
+  <div class='col-md-3'>
+    <div class="form-group">
+      <label for="highlight_gene_type">Max number genes displayed</label>
+      <% l = [10, 20, 50, 100, 1000].map{|e| [e, e]} %>
+       <%= select_tag :displayed_nber_genes, options_for_select(l, (params[:displayed_nber_genes] || 10)), :class => 'form-control' %>
+    </div>  
+  </div>
+  <div class='col-md-3'>
+    <div class="form-group">
+      <label for="fdr_threshold">FDR <=</label>
+      <%= text_field_tag :fdr_threshold, (params[:fdr_threshold] || 0.05), :class => 'form-control' %>
+    </div>
+  </div>
+  <div class='col-md-3'>
+    <div class="form-group">
+      <label for="fc_threshold">Fold change >=</label>
+      <%= text_field_tag :fc_threshold, (params[:fc_threshold] || 2), :class => 'form-control' %>
+    </div>
+  </div>
+
+</div>
 <% end %>
-
+  
 <% if @res and @res.size > 0 %>
 
-<table id='de-markers_table'>
+<table id='de-markers_table' class="hover">
   <thead>
     <th>Run</th>
-    <th>Cluster ID</th>
-    <th>Top10 up-regulated genes</th>
-    <th>Top10 down-regulated genes</th>
+    <th>Ref cluster</th>
+    <th>Comp cluster</th>
+    <th>Top up-regulated genes</th>
+    <th>Top down-regulated genes</th>
     <th>Cluster name</th>
     <th>Edited by</th>
   </thead>
   <tbody>
     <% @res.each_index do |i| %>
      <% t = @res[i] %>
-     <% annot_id = @h_annots_by_run_id[t[5]].id %>
+     <% annot_id = @h_annots_by_run_id[t[6]].id %>
     <tr>
       <td><%= t[0] %></td>
       <td><span id='cat-name_<%= annot_id %>_<%= i %>'><%= t[1] %></span></td>
+      <td><span><%= t[2] || '-' %></span></td>
       <td>
-	<%= raw t[2].map{|e| "<span id='ensembl-gene_#{e[1]}' class='ensembl_gene pointer badge badge-success' title='#{e[1]}'>" + e[2] + "</span>"}.join(" ") %>
-	<%# raw t[4].to_json %>
+	<%= t[3].size %> genes<br/>
+	<%# raw t[3].map{|e| badge_class = (params[:highlight_gene_type] and @h_highlight_gene_ids[e[1]]) %>
+<%= raw t[3].map{|e| cl = (!params[:highlight_gene_type] or @h_highlight_gene_ids[e[1]]) ? 'success' : 'light'; "<span id='ensembl-gene_#{e[1]}' class='ensembl_gene pointer badge badge-#{cl}' title='#{e[1]}'>" + e[2] + "</span>"}.join(" ") %>
 	<br/>	
-	<%# raw t[4].map{|e| "<span id='geneset_#{e[0]}' class='ensembl_gene pointer badge badge-light' title='#{e[0]}'>" + e[0] + ": " + e[1] + "</span>"}.join(" ") %>
-	<% if t[4] %>
-	<% t[4].each do |e| %>
-	<span id='geneset-run_<%= e[0] %>_up' class='badge badge-light'>
+
+	<%# raw t[5].map{|e| "<span id='geneset_#{e[0]}' class='ensembl_gene pointer badge badge-light' title='#{e[0]}'>" + e[0] + ": " + e[1] + "</span>"}.join(" ") %>
+	<% if t[5] %>
+	<% t[5].each do |e| %>
+	<span id='geneset-run_<%= e[0] %>_up' class='badge badge-secondary geneset_run pointer'>
 	  Enrichment #<%= @h_ge_runs[e[0]].num %> 
-	  <%= @h_gene_sets[e[1]['gene_set_id'].to_i].label %> 
+	  <%= @h_gene_sets[e[1]['gene_set_id'].to_i].label %>
+	  <% if @h_filtered_stats[e[0].to_s] %>
 	  <span class='badge badge-<%= (@h_filtered_stats[e[0].to_s]['up'] == 0) ? 'secondary' : 'success' %>'>
 	    <%= @h_filtered_stats[e[0].to_s]['up'] %>
 	  </span>
+	  <% if  @h_filtered_stats[e[0].to_s]['up'] < 6 %>
+             
+	  <% end %>
+	  <% else %>
+	
+	  <% end %>
 	</span>
 	<% end %>
 	<% end %>
       </td>
       <td>
-	<%= raw t[3].map{|e| "<span id='ensembl-gene_#{e[1]}' class='ensembl_gene pointer badge badge-danger' title='#{e[1]}'>" + e[2] + "</span>"}.join(" ") %>
+	<%= t[4].size %> genes<br/>
+	<%= raw t[4].map{|e| cl = (!params[:highlight_gene_type] or @h_highlight_gene_ids[e[1]]) ? 'danger' : 'light'; "<span id='ensembl-gene_#{e[1]}' class='ensembl_gene pointer badge badge-#{cl}' title='#{e[1]}'>" + e[2] + "</span>"}.join(" ") %>
 	<br/>	
-	<%# raw t[5].map{|e| "<span id='geneset_#{e[0]}' class='ensembl_gene pointer badge badge-light' title='#{e[0]}'>" + e[0] + ": " + e[1] + "</span>"}.join(" ") %>
-	<% if t[4] %>
-	<% t[4].each do |e| %>
-        <span id='geneset-run_<%= e[0] %>_down' class='badge badge-light'>
+	<%# raw t[6].map{|e| "<span id='geneset_#{e[0]}' class='ensembl_gene pointer badge badge-light' title='#{e[0]}'>" + e[0] + ": " + e[1] + "</span>"}.join(" ") %>
+	<% if t[5] %>
+	<% t[5].each do |e| %>
+        <span id='geneset-run_<%= e[0] %>_down' class='badge badge-secondary geneset_run pointer'>
           Enrichment #<%= @h_ge_runs[e[0]].num %>
           <%= @h_gene_sets[e[1]['gene_set_id'].to_i].label %>
+	  <% if @h_filtered_stats[e[0].to_s] %>
           <span class='badge badge-<%= (@h_filtered_stats[e[0].to_s]['down'] == 0) ? 'secondary' : 'danger' %>'>
             <%= @h_filtered_stats[e[0].to_s]['down'] %>
           </span>
+	  <% else %>
+	
+	  <% end %>
         </span>
         <% end %>
 	<% end %>
@@ -67,12 +128,12 @@
         <button id='cat-alias_edit-btn_<%= annot_id %>_<%= i %>' class='float-right cat-alias_edit-btn btn btn-sm btn-outline-secondary'>
           <i class='fa fa-edit'/>
         </button>
-	<%# @h_cat_aliases[9686].to_json %><%# t[5] %>
-        <input type='text' id='cat-alias_edit_<%= annot_id %>_<%= i %>' class='hidden form-control cat-alias_edit' value='<%= (@h_cat_aliases[t[5]]['names']) ? @h_cat_aliases[t[5]]['names'][t[1]] : '' %>'/>
-        <span id='cat-alias_<%= annot_id %>_<%= i %>'><%= (@h_cat_aliases[t[5]]['names']) ? @h_cat_aliases[t[5]]['names'][t[1]] : '' %></span>
+	<%# @h_cat_aliases[9686].to_json %><%# t[6] %>
+        <input type='text' id='cat-alias_edit_<%= annot_id %>_<%= i %>' class='hidden form-control cat-alias_edit' value='<%= (@h_cat_aliases[t[6]]['names']) ? @h_cat_aliases[t[6]]['names'][t[1]] : '' %>'/>
+        <span id='cat-alias_<%= annot_id %>_<%= i %>'><%= (@h_cat_aliases[t[6]]['names']) ? @h_cat_aliases[t[6]]['names'][t[1]] : '' %></span>
       </td>
       <td>
-	<%= (@h_cat_aliases[t[5]]['users_ids'] and @h_cat_aliases[t[5].to_s]['user_ids'][t[1]] != current_user.id) ? @h_users[@h_cat_aliases[t[5]]['user_ids'][t[1]]].email : "me" %>
+	<%= (@h_cat_aliases[t[6]]['users_ids'] and @h_cat_aliases[t[6].to_s]['user_ids'][t[1]] != current_user.id) ? @h_users[@h_cat_aliases[t[6]]['user_ids'][t[1]]].email : "me" %>
       </td>
     </tr>
     <% end %>
@@ -100,17 +161,47 @@ $(".ensembl_gene").click(function(e){
         width:ww,
         top: e.pageY + 10
   }).stop().show(100);
- refresh("popup_container", "<%= search_genes_path() %>?ensembl_id=" + ensembl_id, {loading:true})
+ refresh("popup_container", "<%= search_genes_path() %>?ensembl_id=" + ensembl_id  + "&version_id=<%= @project.version_id %>", {loading:true})
 })
 
 $("#de-markers_table").dataTable()
 
-$("#analysis_type").click(function(){
- refresh('step_container', '<%= raw get_step_project_path(:key => @project.key, :step_id => 6, :no_layout => 1) %>&de_markers_run_id=' + $(this).val().split(",")[0], {loading:'fa-2x'})
+function upd_markers_view(){
+var highlight_val = $('#highlight_gene_type').val()
+var highlight_opt = (highlight_val) ? ('&highlight_gene_type=' + highlight_val) : '';
+
+ refresh('step_container', '<%= raw get_step_project_path(:key => @project.key, :step_id => @step.id, :no_layout => 1) %>&de_markers_run_id=' + $('#analysis_type').val().split(",")[0] + '&displayed_nber_genes=' + $('#displayed_nber_genes').val() + highlight_opt + '&fdr_threshold=' + $('#fdr_threshold').val() + '&fc_threshold=' + $('#fc_threshold').val() , {loading:'fa-2x'})
+
+}
+
+$("#analysis_type").change(function(){
+ upd_markers_view()
 })
 
+$("#highlight_gene_type").change(function(){
+ upd_markers_view()
+})
+
+$("#displayed_nber_genes").change(function(){
+ upd_markers_view()
+})
+
+$("#fdr_threshold").keydown(function(e){
+ if (e.key == 'Enter'){
+  upd_markers_view()
+ }
+})
+$("#fc_threshold").keydown(function(e){
+ if (e.key == 'Enter'){
+  upd_markers_view()
+ }
+})
+
+
+
+
 $("#refresh_view-btn").click(function(){
- refresh('step_container', '<%= raw get_step_project_path(:key => @project.key, :step_id => 6, :no_layout => 1) %>&de_markers_run_id=' + $(this).val().split(",")[0], {loading:'fa-2x'})
+ refresh('step_container', '<%= raw get_step_project_path(:key => @project.key, :step_id => @step.id, :no_layout => 1) %>&de_markers_run_id=' + $(this).val().split(",")[0], {loading:'fa-2x'})
 })
 
 function upd_cat_alias(annot_id, cat_i){
@@ -122,6 +213,18 @@ function upd_cat_alias(annot_id, cat_i){
  ]
  refresh_post(null, "<%= upd_cat_alias_project_path(:key => @project.key) %>", p, 'post', {loading:'fa-2x'})
 }
+
+$("#de-markers_table").on("click", ".geneset_run", function(e){
+  var t = this.id.split("_")
+ var w = $(window).width()
+ var ww = 700
+  $("#popup_window").css({
+        left: (w-e.pageX > ww) ? (e.pageX + 10) : w-ww+10,
+        width:ww,
+        top: e.pageY + 10
+  }).stop().show(100);
+ refresh("popup_container", "<%= runs_path() %>/" + t[1] + "/" + "get_ge_geneset_list?from=markers&type=" + t[2], {loading:true})
+})
 
 $("#de-markers_table").on("click", ".cat-alias_edit-btn", function(){
  var t = this.id.split("_")

@@ -9,7 +9,8 @@ class RunsController < ApplicationController
     @h_attrs = (@step.attrs_json and !@step.attrs_json.empty?) ? JSON.parse(@step.attrs_json) : {}
     @h_nber_runs = JSON.parse(@ps.nber_runs_json)
     @h_steps = {}
-    Step.all.map{|s| @h_steps[s.id] = s}
+    #    Step.where(:version_id => @project.version_id).all.map{|s| @h_steps[s.id] = s}
+    Step.where(:docker_image_id => @asap_docker_image.id).all.map{|s| @h_steps[s.id] = s}
     @h_statuses = {}
     Status.all.map{|s| @h_statuses[s.id] = s}
     #    @h_std_methods = {}
@@ -21,6 +22,8 @@ class RunsController < ApplicationController
     @h_ge_filters = Basic.safe_parse_json(@project.ge_filter_json, {})
     @limit = 3000
     @data = []
+    @h_run_attrs = (@run.attrs_json) ? JSON.parse(@run.attrs_json) : {}
+
     @project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
     filename =  @project_dir + "ge" + @run.id.to_s + "output.json"
     h_output = Basic.safe_parse_json(File.read(filename), {})
@@ -29,10 +32,21 @@ class RunsController < ApplicationController
     @fields.each_index do |i|
       h_fields[@fields[i]] = i
     end
+#    h_fields['genes'] = h_fields.keys.size
 
+#    @h_gsis = {}
+#    res = Basic.sql_query2(:asap_data, @h_env['asap_data_db_version'], 'gene_set_items', '', '*', "gene_set_id = #{@h_run_attrs['gene_set_id']} and identifier IN (#{h_output[params[:type]].map{|e| e[0]}})")
+#    res.each do |gs|
+#      @h_gene_set_items[gsi.name] = gsi
+#    end
+
+#    h_genes = Basic.safe_parse_json(params[:genes_json], {})
+    
     if  h_output[params[:type]]
-      h_output[params[:type]].each do |e|
+      h_output[params[:type]].sort{|a, b| b[h_fields['effect size']].to_f <=> a[h_fields['effect size']].to_f}.each do |e|
+        #      h_output[params[:type]].each do |e|
         if e[h_fields['fdr']] <= @h_ge_filters['fdr_cutoff'].to_f
+   #       e['genes'] =  @h_gene_set_items[e['name']].content.split(",").map{|gid| gid.to_i}.select{|gid| h_genes[gid]}.map{|g| h_genes[gid]}]  
           @data.push e
         end
       end
@@ -40,11 +54,15 @@ class RunsController < ApplicationController
     @nber_genesets = @data.size
     
     if !params[:download]
-      render :partial => 'get_ge_geneset_list'
+      if params[:from] == 'ge_results'
+        render :partial => 'get_ge_geneset_list'
+      elsif params[:from] == 'markers'
+        render :partial => 'get_simple_ge_geneset_list'
+      end
     else
-         send_data ((params[:format]=='json') ? @data.to_json : @data.map{|e| e.join("\t")}.join("\n")), type: 'text', disposition: "attachment; filename=" + @project.key  + "_" + display_run_ultra_short_txt(@run) + "_de_table_#{params[:type]}"  + "." + ((params[:format]=='json') ? 'json' : 'txt')
+      send_data ((params[:format]=='json') ? @data.to_json : @data.map{|e| e.join("\t")}.join("\n")), type: 'text', disposition: "attachment; filename=" + @project.key  + "_" + display_run_ultra_short_txt(@run) + "_de_table_#{params[:type]}"  + "." + ((params[:format]=='json') ? 'json' : 'txt')
     end
-
+        
   end
   
   def get_de_gene_list
@@ -57,17 +75,22 @@ class RunsController < ApplicationController
     @h_run_attrs = (@run.attrs_json) ? JSON.parse(@run.attrs_json) : {}
     @data = []
     @project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
-    filename =  @project_dir + "de" + @run.id.to_s + "filtered.#{params[:type]}.json"
+    list_filtered_rows = []
     if params[:from]== 'ge_form'
-      filename = @project_dir + "tmp" + "#{current_user.id}_#{@run.id}_filtered.#{params[:type]}.json"
+      filename = @project_dir + "tmp" + "#{current_user.id}_#{@run.id}_filtered.json"
+      tmp_h = Basic.safe_parse_json(File.read(filename), {})
+      list_filtered_rows = tmp_h[params[:type]] if tmp_h[params[:type]]
+    else
+      filename = @project_dir + "de" + @run.id.to_s + "filtered.#{params[:type]}.json"
+      list_filtered_rows = Basic.safe_parse_json(File.read(filename), [])
     end
     @h_filtered_rows = {}
-    list_filtered_rows = []
-    begin
-      list_filtered_rows = JSON.parse(File.read(filename))
-    rescue
-    end
-    list_filtered_rows.map{|e| @h_filtered_rows[e] = 1}
+#    list_filtered_rows = []
+#    begin
+#      list_filtered_rows = JSON.parse(File.read(filename))
+#    rescue
+#    end
+    list_filtered_rows.map{|e| @h_filtered_rows[e.to_i] = 1}
     @nber_genes = list_filtered_rows.size
     
     filename = @project_dir + "de" + @run.id.to_s + "output.txt"
@@ -179,60 +202,121 @@ class RunsController < ApplicationController
     #run.annots.each do |annot|
     h_outputs = JSON.parse(run.output_json)
     logger.debug(h_outputs.to_json)
-    if h_outputs
-      h_outputs.each_key do |k|
-        h_outputs[k].each_key do |output_key|
-          t = output_key.split(":")
-          if t.size == 2 
-            if File.exist? (project_dir + t[0])
-              cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T RemoveMetaData -o #{tmp_dir} -loom #{project_dir + t[0]} -meta #{t[1]} 2>&1 > tmp/bla.txt"
-              logger.debug("CMD: " + cmd)
-              `#{cmd}`
-            end
-            #        elsif t.size == 1
-            #          if File.exist? (project_dir + t[0])
-            #            logger.debug("DEL_FILE: " + t.to_json + '---' + (project_dir + t[0]).to_s)
-            #            File.delete (project_dir + t[0]) 
-            #          end
-          end
+    
+    annots1 = run.annots 
+    annots2 = Annot.where(:ori_run_id => run.id).all
+    #store_run_annots = Annot.where(:store_run_id => run.id).all
+    now = Time.now.to_i
+    h_annots= {}
+    all_annots = (annots1 | annots2)
+    all_annots.each do |annot|
+      h_annots[annot.filepath]||=[] 
+      h_annots[annot.filepath].push annot
+    end
+    h_annots.each_key do |filepath|
+      if File.exist? (project_dir + filepath) and !["gene_filtering", "cell_filtering"].include? step.name
+        tmp_file = project_dir + "tmp" + ("remove_metadata_#{now}.json")
+        tmp_data = {:meta => h_annots[filepath].map{|a| a.name}}
+        File.open(tmp_file, 'w') do |f|
+          f.write tmp_data.to_json
+        end
+        cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T RemoveMetaData -loom #{project_dir + filepath} -metaJSON '#{tmp_file}' 2>&1 > tmp/remove_metadata_output_#{now}.json"
+        File.open(project_dir + "tmp" + "toto.txt", "w") do |f|
+          f.write("CMD: " + cmd)
+          `#{cmd}`
         end
       end
     end
-
+    ## delete loom file if it's a filtering 
+    #    if ["gene_filtering", "cell_filtering"].include? step.name
+    #      h_annots.each_key do |filepath|
+    #        File.delete(project_dir + filepath) if 
+    #      end
+    #    end
+    #    (annots1 | annots2).each do |annot|
+    #      if File.exist? (project_dir + annot.filepath)
+    #        cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T RemoveMetaData -o #{tmp_dir} -loom #{project_dir + annot.filepath} -meta '#{annot.name}' 2>&1 > tmp/bla.txt"
+    #        logger.debug("CMD: " + cmd)
+    #        `#{cmd}`
+    #      end
+    #    end
+    
+    #    if h_outputs
+    #      h_outputs.each_key do |k|
+    #        h_outputs[k].each_key do |output_key|
+    #          t = output_key.split(":")
+    #          if t.size == 2 
+    #            if File.exist? (project_dir + t[0])
+    #              cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T RemoveMetaData -o #{tmp_dir} -loom #{project_dir + t[0]} -meta #{t[1]} 2>&1 > tmp/bla.txt"
+    #              logger.debug("CMD: " + cmd)
+    #              `#{cmd}`
+    #            end
+    #            #        elsif t.size == 1
+    #            #          if File.exist? (project_dir + t[0])
+    #            #            logger.debug("DEL_FILE: " + t.to_json + '---' + (project_dir + t[0]).to_s)
+    #            #            File.delete (project_dir + t[0]) 
+    #            #          end
+    #          end
+    #        end
+    #      end
+    #    end
+    
     #    logger.debug()
     FileUtils.rm_r output_dir if File.exist? output_dir
     
     ### from the database
-    run.annots.destroy_all
-    Annot.where(:store_run_id => run.id).destroy_all ## shouldn't need to add this line if everything happens normally...
+    all_annots.map do |annot| 
+    #  cell_sets = CellSet.where(:id => annot.clas.map{|e| e.cell_set_id}).all
+    #  cell_sets.each do |cell_set|
+    #    other_clas = Cla.
+    #  end
+      annot.clas.map{|c| c.cla_votes.destroy_all}
+      annot.clas.destroy_all
+      annot.annot_cell_sets.destroy_all
+    end
+    annots1.destroy_all
+    annots2.destroy_all
+ 
+#    all_annots.destroy_all
+    store_run_annots = Annot.where(:store_run_id => run.id).all
+    store_run_annots.map{|annot| 
+      annot.clas.map{|c| c.cla_votes.destroy_all}
+      annot.clas.destroy_all
+      annot.annot_cell_sets.destroy_all
+    }
+    store_run_annots.destroy_all ## shouldn't need to add this line if everything happens normally...
     run.fos.destroy_all
     
     ## remove the run
     active_run = run.active_run
     active_run.destroy if active_run
-   
+    
     ## move run in the deleted_runs if it finished or failed                                                                                                                    
     if [3, 4].include? run.status_id
       h_run = run.as_json
-      if ! DelRun.where(h_run).first
-        del_run = DelRun.new(h_run)
-        del_run.run_id = h_run["id"]
-        del_run.save!        
-      end
+        if ! DelRun.where(h_run).first
+          del_run = DelRun.new(h_run)
+          del_run.run_id = h_run["id"]
+          del_run.save!        
+        end
     end
-
+    
     run.destroy  
+    
+      
   end
 
   def self.destroy_children project, step, run #, h_step_ids
-    run_children = run.children_run_ids.split(",")
-    if run_children.size > 0
-      @log += "children: " + run_children.to_json + ". "
-      runs = Run.where(:project_id => project.id, :id => run_children).all
-      runs.each do |run|
-        @h_step_ids[run.step_id] = 1
-        @log += "call destroy_children on #{run.id}. "
-        h_step_ids = destroy_children project, step, run
+    if run.children_run_ids
+      run_children = run.children_run_ids.split(",")
+      if run_children.size > 0
+        @log += "children: " + run_children.to_json + ". "
+        runs = Run.where(:project_id => project.id, :id => run_children).all
+        runs.each do |run|
+          @h_step_ids[run.step_id] = 1
+          @log += "call destroy_children on #{run.id}. "
+          h_step_ids = destroy_children project, step, run
+        end
       end
     end
     # else
@@ -294,6 +378,7 @@ class RunsController < ApplicationController
     start_time = Time.now
     @log += (Time.now - start_time).to_s + " start</br>"
     if editable?(@project)
+
       @log += RunsController.destroy_run_call(@project, @run)
       
       respond_to do |format|
@@ -311,6 +396,12 @@ class RunsController < ApplicationController
     def set_run
       @run = Run.find(params[:id])
       @project = @run.project
+      @version =@project.version
+      @h_env = Basic.safe_parse_json(@version.env_json, {})
+      @list_docker_image_names = @h_env['docker_images'].keys.map{|k| @h_env['docker_images'][k]["name"] + ":" + @h_env['docker_images'][k]["tag"]}
+      @docker_images = DockerImage.where("full_name in (#{@list_docker_image_names.map{|e| "'#{e}'"}.join(",")})").all
+      @asap_docker_image = @docker_images.select{|e| e.name == APP_CONFIG[:asap_docker_name]}.first
+
       @step = @run.step
       @std_method = @run.std_method
       @ps = ProjectStep.where(:project_id => @project.id, :step_id => @step.id).first

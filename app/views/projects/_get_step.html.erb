@@ -10,6 +10,12 @@
  <div class='alert alert-danger'><%= params[:errors] %></div>
  <% end %>
 
+<% if @project.key == 'hwukxt' %>
+<div class='alert alert-danger'>This project is corrupted. Further analysis may be failing because of this.</div>
+<% end %>
+
+<!--<div class='alert alert-warning'>New DE filtering implemented - please drop a message if something is not working properly</div>-->
+
 <% if notice and !notice.empty? %>
 <p id="notice"><%= notice %></p>
 <% end %>
@@ -17,7 +23,16 @@
  <div id='step_content'>
    <%# @h_attrs_by_run_id.to_json %>
 
+   <%# render :partial => 'alert_used_space' %>
+    
    <%= @error %>
+   <% if !analyzable? @project and !["cell_scatter"].include? @step.name  %>
+   <div class='alert alert-info'>Please <%= link_to "clone", clone_project_path(:key => @project.key) %> this project to run new analyses on it</div>
+   <% end %>
+
+   <%# session[:current_dashboard].to_json %>
+   <%# @log %>
+   <% if @project.archive_status_id == 1 %>
 
    <% if readable?(@project) %> 
     <% if @step.description and ! @step.description.empty? %>
@@ -42,6 +57,10 @@
       <%= render :partial => dashboard_name %>
       <% end %>
     </div>
+   <% end %>
+
+   <% else %>
+   Unarchiving project...
    <% end %>
 
  </div>

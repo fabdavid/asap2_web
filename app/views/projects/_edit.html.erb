@@ -1,5 +1,23 @@
-<%# admin? %>
+<ul class="nav nav-tabs mb-4" id="main_menu-nav" role="tablist">
+  <li class="nav-item">
+    <a class="nav-link active" id="general-tab" data-toggle="tab" href="#pane-general" role="tab" aria-controls="general" aria-selected="true">General</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="sharing-tab" data-toggle="tab" href="#pane-sharing" role="tab" aria-controls="sharing" aria-selected="false">Sharing</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="public-tab" data-toggle="tab" href="#pane-public" role="tab" aria-controls="public" aria-selected="false">Private/Public</a>
+  </li>
+</ul>
+
 <%= form_for(@project, :url => project_path(:key => @project.key))  do |f| %>
+
+<!-- Tab panes -->
+<div class="tab-content">
+  <div class="tab-pane active" id="pane-general" role="tabpanel" aria-labelledby="general-tab">
+
+<%# admin? %>
+
 <div class="form-group">
   <%= label_tag 'project[project_name]', "Project name" %>
   <%= f.text_field :name, :class => 'form-control' %>
@@ -39,6 +57,27 @@
 -->
 
 <div class='form-group'>
+ <%= f.label :technology, 'Technology' %>
+<%= f.text_field :technology, {:class => 'form-control form-inline'} %>
+</div>
+
+<div class='form-group'>
+ <%= f.label :tissue, 'Tissue/Organ' %>
+<%= f.text_field :tissue, {:class => 'form-control form-inline'} %>
+</div>
+
+<div class='form-group'>
+ <%= f.label :extra_info, 'Additional information' %>
+<%= f.text_field :extra_info, {:class => 'form-control form-inline'} %>
+</div>
+
+<div class='form-group'>
+ <%= f.label :description, 'Experimental details' %>
+<%= f.text_area :description, {:class => 'form-control form-inline'} %>
+</div>
+
+
+<div class='form-group'>
  <%= f.label :pmid, 'PMID of the article referencing this analysis' %>
 <%= f.text_field :pmid, {:class => 'form-control form-inline'} %>
 </div>
@@ -53,13 +92,33 @@
 <%= text_area_tag :array_express_codes, @project.exp_entries.select{|ge| ge.identifier_type_id == 6}.map{|ge| ge.identifier}.join(", "), {:class => 'form-control form-inline'} %>
 </div>
 
+<% if @project.public == true %>
+
+<div class='form-group'>
+ <%= f.label :replaced_by_project_key, 'If the project is obsolete, please provide the key of the project replacing it (this information will be shown in the report page with a link to the updated project)' %>
+<%= f.text_field :replaced_by_project_key, {:class => 'form-control form-inline', :placeholder => 'New project key'} %>
+<%= f.text_area :replaced_by_comment, {:class => 'form-control form-inline', :placeholder => 'You can provide here some comments here to explain the reasons why the project has been replaced'} %>
+</div>
+
 <% end %>
+
+
+<button type="submit" class="btn btn-primary submit_project">Update project</button>
+<button id='cancel_project' type="button" class="btn btn-default">Cancel</button>
+
+</div>
+ <div class="tab-pane" id="pane-sharing" role="tabpanel" aria-labelledby="sharing-tab">
 
 <%# if admin? %>
 <div id='share_container'>
 <%= render :partial => 'shares' %>
 </div>
 <br/>
+
+</div>
+
+<% end %>
+
 <!--
 <div class='form-group'>
   <%= label_tag 'read_access', 'Shared with read-only access', {'data-toggle' => "tooltip", 'title' => "Comma-separated list of emails to whom you autorize a read-only access"} %>
@@ -75,13 +134,52 @@
 <!--
 <%# f.hidden_field :group_filename  %>
 -->
+ <div class="tab-pane" id="pane-public" role="tabpanel" aria-labelledby="public-tab">
 
-<button id='submit_project' type="submit" class="btn btn-primary">Update project</button>
-<button id='cancel_project' type="button" class="btn btn-default">Cancel</button>
+<div class='alert alert-info'>This project is currently <%= (@project.public == false) ? 'private' : 'public' %>.</div>
 
+<% if owner? @project %>
+<div id='set_public_container'>
+<p>
+<span id='public-btn' class='btn btn-success'><%= (@project.public == false) ? "Set public" : "Freeze new analyses" %></span>
+<div id='set-public-details' class='hidden' >
+  <% if @project.public == false %>
+  <div class='alert alert-info'>
+   <!-- This operation allows to publish your results, which will be not editable anymore.<BR/>
+    If more analyses are added to the project you can then freeze the results to let know to the users of the project that you validated them and will remain stable.<br/> -->
+Once public, all analyses are frozen (and marked as such) and cannot be modified anymore.<br/>
+It will still be possible to create new analyses to your project and freeze them when you decide that they are stable.<br/>
+  </div>
+  <div class='alert alert-danger'>
+    <b>Please be aware that you have to comply with the usual ethical and legal rules for sharing this dataset. In the case of human data, you must ensure that the underlying personal data is not accessible.</b>
+  </div>
+  <div class='alert alert-danger'>
+    WARNING: This procedure is not reversible!
+  </div>
+ <div id='confirm_set_public-btn' class='btn btn-success'>Confirm to set this project public</div> 
+ <div id='cancel-public-btn' class='btn btn-outline-secondary'>Cancel</div>
+  <% else %>
+  <div>
+    This operation allows to freeze results of a public project
+  </div>
+  <div class='alert alert-danger'>
+    WARNING: This procedure is not reversible!
+  </div>
+  <div id='confirm_set_public-btn' class='btn btn-success'>
+    Confirm to freeze all new analyses of this project
+  </div>
+  <div id='cancel-public-btn' class='btn btn-outline-secondary'>Cancel</div>
+  <% end %>
+</div>
+</p>
+</div>
 <% end %>
 
+</div>
 
+</div>
+
+<% end %>
 
 <%= javascript_tag do %>
 
@@ -93,6 +191,7 @@ $("#delete_batch_file").click(function(){
 refresh_post("form_container", "<%= delete_batch_file_project_path(@project.key) %>", [], 'post');
 });
 
+/*
 $("#group_file").fileinput({
  uploadUrl: '<%= upload_file_projects_path(:type => 'group', :key => @project.key) %>', // server upload action
  uploadAsync: true,
@@ -117,6 +216,37 @@ $("#group_file").fileinput({
 }).on('fileclear', function(event, id){
  $("#kv-success-2").hide();
  $("#project_group_filename").val('');
+});
+*/
+
+ $("#public-btn").click(function(e){
+ $("#public_btn").addClass("hidden")
+  $("#set-public-details").removeClass("hidden")
+/*  $("#popup_window").removeClass("hidden")
+   var html = ''
+   <% if @project.public == false %>
+    html = "<div class='alert alert-info'>This operation allows to publish your results, which will be not editable anymore.<BR/>If more analyses are added to the project you can then freeze the results to let know to the users of the project that you validated them and will remain stable</div><div class='alert alert-danger'>WARNING: This procedure is not reversible!</div><div id='confirm_set_public-btn' class='btn btn-success'>Confirm to set this project public</div>"
+   <% else %>
+     html = "<div class='alert alert-info'>This operation allows to freeze results of a public project</div><div class='alert alert-danger'>WARNING: This procedure is not reversible!</div><div id='confirm_set_public-btn' class='btn btn-success'>Confirm to freeze all new analyses of this project</div>"
+   <% end %>
+  $("#popup_container").html(html)
+  var w = $(window).width();
+  $("#popup_window").css({
+        left: 500,
+        width:w - 250,
+        top: e.pageY - 200
+        z-index:10000
+    }).stop().show(100);
+*/
+ })
+ $("#cancel-public-btn").click(function(e){
+  $("#public_btn").removeClass("hidden")
+  $("#set-public-details").addClass("hidden")
+});
+
+$("#ontop_window").on("click", "#confirm_set_public-btn", function(e){
+ refresh_post("set_public_container", "<%= set_public_project_path(:key => @project.key) %>/", [], 'post', {loading: 'fa-2x'})
+ $("#ontop_window").addClass("hidden")
 });
 
 

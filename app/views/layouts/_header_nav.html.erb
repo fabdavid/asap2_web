@@ -1,45 +1,108 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top" style='z-index:100'>
-      <a class="navbar-brand" href="<%= root_path %>">ASAP2 <small style='color:grey;font-style:italic'>Automated Single-cell Analysis Pipeline</small></a>
+      <a class="navbar-brand" href="<%= root_path %>"><h5 style='letter-spacing:3px;font-weight:200'>ASAP <small style='font-size:9px;letter-spacing:1px;color:grey;font-style:italic'>Automated Single-cell Analysis Pipeline</small></h3></a>
+      
       <div style='position:fixed; top:10px;right:10px'><!-- class="navbar-nav ml-auto"> -->
         <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
         </button>
 
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
-          <ul class="navbar-nav mr-auto">
+          <ul id='main-nav' class="navbar-nav mr-auto">
              <% if user_signed_in? %>
+	      <li class='nav-item'>
+		<%# link_to 'New project', new_project_path, {:class => 'btn btn-outline-primary btn-sm'} %> <!--, {:class => 'btn btn-primary btn-sm'} -->
+		<%= link_to 'New project', new_project_path, {:class => 'nav-link'} %>
+	      </li>
 	     <li class='nav-item'>
                <%= link_to 'Projects', projects_path, {:class => 'nav-link'} %>
-             </li>
+	     </li>
 <!--	     <li class='nav-item'>
                <%# link_to 'Uploads', fus_path, {:class => 'nav-link'} %>
              </li>
 -->
-             <li class='nav-item'>
-               <%= link_to 'Development status', roadmap_path, {:class => 'nav-link'} %>
+             <% else %>
+	     <li class='nav-item'>
+               <%# link_to 'Try now', new_project_path, {:class => 'btn btn-outline-success btn-sm'} %> <!--, {:class => 'btn btn-primary btn-sm'} -->
+               <%= link_to 'New sandbox project', new_project_path, {:class => 'nav-link'} %>
+	     </li>
+
+<!--	     <li class='nav-item'>
+	       <%= link_to 'Quick tour', tutorial_home_index_path, {:class => 'nav-link'} %>
+	     </li>
+-->
+	     <% end %>
+	     <li class='nav-item'>
+               <%= link_to 'Tutorial', tutorial_home_index_path, {:class => 'nav-link'} %> <%#{:class => 'btn btn-sm btn-outline-light'} %>
+	      <!-- <button id='back-to-ol' type='button' class='btn btn-outline-danger btn-sm'>Back to old ASAP</button>-->
              </li>
-            <% end %>
-	     
+	      <li class="nav-item dropdown">
+               <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink_data" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                 Data
+               </a>
+	        <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink_data">
+		  <%# Provider.all.each do |p| %>
+		  <a class="dropdown-item" href="<%= fca_path %>">Fly Cell Atlas</a>
+		  <a class="dropdown-item" href="<%= hca_path %>">Human Cell Atlas</a>
+		  <%# end %>
+		</div>
+	      </li>
 	     <li class="nav-item dropdown">
                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink_infos" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                 Infos
-               </a>
+                 Info
+               </a>	       
                <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink_infos">
-                 <a class="dropdown-item" href="<%= faq_home_index_path %>">FAQ</a>
-                 <a class="dropdown-item" href="<%= tutorial_home_index_path %>">Tutorial</a>
+		 <!--<a class="dropdown-item" href="<%= tutorial_home_index_path %>">Tutorials</a> -->
+		 <a class="dropdown-item" href="<%= versions_path %>">Versions</a>
+		<!-- <a class="dropdown-item" href="<%= docker_images_path %>">Docker images</a>-->
+		 <a class="dropdown-item" href="<%= cell_ontologies_path %>">Cell ontologies</a>		
+		  <a class="dropdown-item" href="<%= identifier_types_path %>">Cross-references</a>
                  <a class="dropdown-item" href="<%= file_format_home_index_path %>">File formats</a>
-               </div>
+		 <a class="dropdown-item" href="<%= faq_home_index_path %>">FAQ</a>
+		  <a class="dropdown-item" href="<%= roadmap_path %>">Development status</a>
+		 <a class="dropdown-item" href="<%= citation_home_index_path %>">To cite us</a>
+		 <% if admin? %>
+		  <a class="dropdown-item" href="<%= admin_page_home_index_path %>">Admin stuffs</a>
+		 <% end %>
+	       </div>
              </li>
-	     
+	     <% if admin? %>
+	     <li class="nav-item dropdown">
+               <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink_admin" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                 Admin
+               </a>
+	        <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink_admin">
+		  <a class="dropdown-item" href="<%= cla_sources_path %>">Annotation sources</a>
+		</div>
+	     </li>
+	     <% end %>
+	      <% if user_signed_in? %>
+	     <li class="nav-item dropdown">
+	       <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink_options" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                 Options
+               </a>
+               <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink_options">
+		 <%= link_to 'IP-based access', ips_path, {:class => 'dropdown-item'} %>
+		 <%= link_to 'Associate with ORCID account', "https://orcid.org/oauth/authorize?client_id=APP-UIU8KR3XZNMUZ8ZY&response_type=code&scope=/authenticate&redirect_uri=https://asap.epfl.ch/associate_orcid",  {:class => 'dropdown-item'} %>
+	       </div>
+	     </li>
+	     <% end %>
 	     <li class='nav-item'>
 	       <% if user_signed_in? %>
 	       <%= link_to current_user.email, edit_user_registration_path, {:class => 'nav-link'} %>  </li>
-             <li class='nav-item'>
+	     <li class='nav-item'>
                <%= link_to 'Logout',  destroy_user_session_path, {:method => :delete, :class => 'nav-link'} %>
 	       <% else %>
 	       <%= link_to 'Login', new_user_session_path, {:class => 'nav-link'} %>
 	       <% end %>
 	     </li>
+	     <li class='mr-2'>
+               <button id='back-to-old-version' type='button' class='btn btn-outline-danger btn-sm'>Back to old ASAP</button>
+             </li>
+	     <li class='nav-item'>                                                                            
+               <!--<p class="navbar-btn"> -->                 
+                 <button type='button' class='btn btn-outline-warning btn-sm' onclick="location.href='mailto:webmaster.bbcf@epfl.ch?subject=ASAP feedback'">Feedback</button>   
+              <!-- </p> -->                                                                       
+             </li>          
 <!--	     
 	     <li class='nav-item'>
 	       <%= link_to( image_tag('youtube.svg', {:width => '45px'}), 'https://www.youtube.com/embed/Qk3fwXt3RSM?autoplay=1', {:target => '_blank', :class => 'youtube_link'}) %>
@@ -59,3 +122,10 @@
         </div>
       </div>
     </nav>
+<%= javascript_tag do %>
+
+$("#back-to-old-version").click(function(){
+window.location.href='https://asap-old.epfl.ch<%# APP_CONFIG[:v1_server_url] %>'
+})
+
+<% end %>

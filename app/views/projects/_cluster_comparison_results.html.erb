@@ -1,7 +1,10 @@
 <%# @res %>
 <% if @res %>
-<%# @vals[0] %>
-<%# @list_cats[0] %>
+<%# @list_cats[1] %>
+<%# @list_cats[1][0] %>
+<%#  @vals[1][@list_cats[1][0]].to_json %>
+<%# @vals[0].to_json %>
+
 <%# @vals[0][@list_cats[0][0]] %>
 <%# @log %>
 <%# @cmd %>
@@ -12,18 +15,24 @@
 <thead>
   <th>A \ B</th>
   <% @list_cats[1].each_index do |i| %>
+  <% if @vals[1][@list_cats[1][i]] %>
   <th><%= @h_runs[params['run_id1']].num %>.<%= @list_cats[1][i] %> <span class='badge badge-light'><%= n = @vals[1][@list_cats[1][i]].size %> cell<%= (n > 1) ? 's' : '' %></span></th>
+  <% end %>
   <% end %>
 </thead>
 <tbody>
 <% @list_cats[0].each_index do |i| %>
+<% if @vals[1][@list_cats[1][i]] %>
   <tr>
     <td><b><%= @h_runs[params['run_id2']].num %>.<%= @list_cats[0][i] %> <span class='badge badge-light'><%= n = @vals[0][@list_cats[0][i]].size %> cell<%= (n > 1) ? 's' : '' %></span></b></td>
     <% @list_cats[1].each_index do |j| %>
+    <% if @vals[1][@list_cats[1][j]] %>
     <% nb =  @res[i][j].size %>
     <td><span id='cell-group_<%= i %>_<%= j %>' class='cell-group pointer badge badge-<%= (nb > 0) ? 'success' : 'secondary' %>'><%= @res[i][j].size %></span></td>
     <% end %>
+    <% end %>
   </tr>
+<% end %>
 <% end %>
 </tbody>
 </table>

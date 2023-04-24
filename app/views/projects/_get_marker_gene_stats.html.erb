@@ -1,0 +1,102 @@
+console.log("titi")
+
+var type = <%= raw params[:type].to_json %>
+var res = <%= raw @h_res[:res] %> 
+var sum_expr_data = <%= raw @h_res[:sum_expr_data].to_json %>
+console.log("cmd " + type + ":" + '<%= raw  @h_res[:cmd] %>')
+
+if (sum_expr_data.stable_ids){
+
+
+console.log("toto" + type)
+
+
+var g =  sum_expr_data.stable_ids.map((e, i) => h_genes[e]);
+
+console.log(sum_expr_data)
+console.log(<%= raw @h_res[:cmd].to_json %>)
+for (var k=0; k < sum_expr_data.stable_ids.values.length; k++){ //each gene
+
+/*
+ console.log("f")
+ m=0
+
+  for(var j=0; j< nber_cells-1; j++){  //each cell
+
+  if (cell_idx[m] == j){
+   x.push(genes[type][k])
+   v = Math.log2(1 + (expr_data[type].values[k][j] * 10000 / depth_by_cell[j]))
+   if (expr_data[type].values[k][j]){
+    console.log(genes[k] + " " + expr_data[type].values[k][j] + " " + depth_by_cell[j] + " => " + v)
+   }
+   y.push(v)
+   m+=1
+
+  }else{
+   x2.push(genes[type][k])
+   y2.push(Math.log2(1 + (expr_data[type].values[k][j] * 10000 / depth_by_cell[j])))
+  }
+ }
+ */
+//}
+}
+
+var ref = {
+  q1: sum_expr_data.q1.map(e => e || 0),
+  q3: sum_expr_data.q3.map(e => e || 0),
+  mean: sum_expr_data.mean.map(e => e || 0),
+  median: sum_expr_data.median.map(e => e || 0),
+  min: sum_expr_data.min.map(e => e || 0),
+  max: sum_expr_data.max.map(e => e || 0),
+  x: g,
+  boxpoints: false,
+  boxmean: true,
+  name: 'Ref',
+  marker: {color: '#3D9970'},
+  type: 'box'
+};
+
+
+
+var comp = {
+//  y: y2,
+  x: g,
+  q1: sum_expr_data.q1_comp.map(e => e || 0),
+  q3: sum_expr_data.q3_comp.map(e => e || 0),
+  mean: sum_expr_data.mean_comp.map(e => e || 0),
+  median: sum_expr_data.median_comp.map(e => e || 0),
+  min: sum_expr_data.min_comp.map(e => e || 0),
+  max: sum_expr_data.max_comp.map(e => e || 0),
+  boxpoints: false,
+ boxmean: true,
+  name: 'Comp',
+  marker: {color: '#FF4136'},
+  type: 'box'
+};
+
+
+
+var data = [ref, comp];
+
+console.log(data)
+
+var layout = {
+  yaxis: {
+//    type: 'log',
+    title: 'log<sub>2</sub>(1 + (Count * 10000 / Depth))',
+    zeroline: false
+  },
+  boxmode: 'group'
+};
+
+
+console.log("display bloxplot " + type)
+
+if ($("#boxplot_" + type).length > 0){
+console.log("display boxplot " + type)
+Plotly.newPlot('boxplot_' + type, data, layout);
+}
+
+//Plotly.newPlot('boxplot_' + type, data, layout);
+
+}

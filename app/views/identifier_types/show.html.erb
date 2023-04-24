@@ -1,4 +1,19 @@
 <p id="notice"><%= notice %></p>
 
-<%= link_to 'Edit', edit_identifier_type_path(@identifier_type) %> |
-<%= link_to 'Back', identifier_types_path %>
+<div class='m-4'>
+<h4><%= (@identifier_type.pluralizable) ? @identifier_type.name.pluralize : "#{@identifier_type.name} items" %></h4>
+<% if @exp_entries.size > 0 %>
+
+<ul>
+  <%= raw @exp_entries.map{|ee| "<li>" + link_to(ee.identifier, search_projects_path(:q => ee.identifier), {:class => 'badge badge-light'}) + " " + ee.title + " " + link_to("details", exp_entry_path(ee.id), {:class => 'badge badge-info'}) + "</li>"}.join(" ") %>
+</ul>
+
+<% elsif @exp_entry_identifiers.size > 0 %>
+<ul>
+  <%= raw @exp_entry_identifiers.map{|eeid| ee = @h_exp_entries[eeid.exp_entry_id]; "<li>" + link_to(eeid.identifier, search_projects_path(:q => eeid.identifier), {:class => 'badge badge-light'}) + " " + ee.title + " " + link_to("details", exp_entry_path(ee.id), {:class => 'badge badge-info'}) + "</li>"}.join(" ") %>
+</ul>
+<% end %>
+</div>
+
+<%# link_to 'Edit', edit_identifier_type_path(@identifier_type) %>
+<%# link_to 'Back', identifier_types_path %>

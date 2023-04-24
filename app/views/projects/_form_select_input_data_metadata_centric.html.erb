@@ -1,0 +1,74 @@
+<% @h_res[:valid_step_ids].each do |source_step_id| %>
+<% step = @h_steps[source_step_id] %>
+
+<div id='step_title_<%= source_step_id %>'>
+<div style='width:200px' class='float-left'><b>Metadata</b></div>
+<button type='button' id='select_all_<%= source_step_id %>' class='btn btn-secondary btn-sm input_data_select_all sel_all'>Select all</button>
+<button type='button' id='deselect_all_<%= source_step_id %>' class='btn btn-secondary btn-sm input_data_deselect_all sel_all'>Deselect all</button>
+</div>
+
+<div class='card-deck' id='run_list'>
+
+  <% @h_res[:h_annots][source_step_id][run_id].each_key do |annot_name| %>                                                                                                                                                              
+    <% annot = @h_res[:h_annots][source_step_id][run_id][annot_name] %>
+    <div id='card-run-annot:<%= annot.id %>:<%= annot.run_id %>' class='pointer card card_std run_card_<%= run_id %> dataset_card<%#w (h_selected_runs[run_id]) ? ' selected_run' : '' %>'>
+      <div class='card-body'>
+        <span class='check-icon' style="color:green">
+          <% if h_selected[:annot][annot.id] %>                                                                                                                                                                                         
+          <i class="fa fa-circle"></i>
+          <% else %>                                                                                                                                                                                                                    
+          <i class="far fa-circle"></i>
+          <% end %>                                                                                                                                                                                                                     
+        </span>
+        <span>
+          <% if step.multiple_runs == true %>                                                                                                                                                                                           
+          #<%= run.num %> <%= @h_std_methods[run.std_method_id].label %>                                                                                                               
+          <%= raw display_run_attrs(run, h_attrs, @h_std_method_attrs, {}) %>                                                                                                                                                            
+          <% else %>
+          <%= step.label %>                                                                                                                                                                                                              
+          <% end %>                                                                                                                                                                                                                      
+        </span>                                                                                                                                                                                                                          
+        <%# output_key %>                                                                                                                                                                                                                
+        <%# if t_output_key.size > 1 and dataset_name = t_output_key[1] %>                                                                                                                                                               
+        <p><%= "Dataset: #{annot.name}" %></p>                                                                                                                                                                                           
+        <%= raw ((run.status_id == 3 and @h_dashboard_card[run.step_id]["output_values"] and @h_dashboard_card[run.step_id]["output_values"].size > 0) ? ("<p class='sub-run_card'>Output summary</p><p class='card-text'>" + @h_dashboard_card[run.step_id]["output_values"].map{|e| "<span class='badge badge-info'>#{e["label"]}:#{(@h_run_res[run.id][e["key"]]) ? @h_run_res[run.id][e["key"]] : 'NA'}</span>"}.join(" ") + "</p>") : '') %>                                
+        <%# end %>
+      </div>
+    </div>
+
+    <% end %>            
+
+<% if 1 == 0 %>
+  <% @h_res[:h_attr_outputs][source_step_id].keys.sort.reverse.each do |run_id| %>
+   <% run =  @h_res[:h_runs][run_id] %>
+   <% h_attrs = (run.attrs_json) ? JSON.parse(run.attrs_json) : {} %>
+   <% @h_res[:h_attr_outputs][source_step_id][run_id].each do |output_attr_name, output_key|%>
+    <% t_output_key = output_key.split(":") %>
+   <div id='card-run-<%= run_id %>:<%= output_attr_name %>:<%= output_key %>' class='pointer card card_std run_card_<%= run_id %> dataset_card<%#w (h_selected_runs[run_id]) ? ' selected_run' : '' %>'>
+    <div class='card-body'>
+      <span class='check-icon' style="color:green">
+        <% if h_selected_runs[run_id] %>
+        <i class="fa fa-circle"></i>
+        <% else %>
+        <i class="far fa-circle"></i>
+        <% end %>
+      </span>
+      <span>
+        <% if step.multiple_runs == true %>
+     <!--   #<%= run.num %> <%= @h_std_methods[run.std_method_id].label %> -->
+        <%# raw display_run_attrs(run, h_attrs, @h_std_method_attrs) %>
+        <% else %>
+        <%# step.label %>
+        <% end %>
+      </span>
+       <%# output_key %>
+      <% if t_output_key.size > 1 and dataset_name = t_output_key[1] %>
+      <p><%= "#{dataset_name}" %></p>
+      <% end %>
+    </div>
+   </div>
+   <% end %>
+ <% end %>
+<% end %>
+</div>
+<% end %>

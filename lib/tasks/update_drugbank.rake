@@ -15,8 +15,7 @@ task update_drugbank: :environment do
     h_organisms[o.tax_id] = o
   end
 
-  drugbank_db_set = DbSet.where(:label =>'DrugBank').first
-   
+  drugbank_db_set = DbSet.where(:label =>'DrugBank').first   
 
   def parse_xml drugbank_db_set
 
@@ -132,6 +131,8 @@ task update_drugbank: :environment do
       }
       gene_set = GeneSet.where(h_gene_set).first
       if !gene_set
+        h_gene_set[:user_id] = 1
+	h_gene_set[:asap_data_id] = APP_CONFIG[:asap_data_id]
         gene_set = GeneSet.new(h_gene_set)
         gene_set.save
       end
@@ -180,7 +181,9 @@ task update_drugbank: :environment do
             :identifier => id,
             :name => h_res["h_drug_names"][id],
             :gene_set_id => gene_set.id,
-            :content => gene_ids.join(",") #Gene.where(:organism_id => o.id, :name => h_res["h_drugs"][tax_id][id]).all.map{|e| e.id}.join(",")
+            :content => gene_ids.join(","), #Gene.where(:organism_id => o.id, :name => h_res["h_drugs"][tax_id][id]).all.map{|e| e.id}.join(",")
+           # :user_id => 1,
+            :asap_data_id => APP_CONFIG[:asap_data_id]
           }
           gene_set_item = GeneSetItem.where({:identifier => id, :gene_set_id => gene_set.id}).first
           if !gene_set_item

@@ -15,7 +15,8 @@
 <%# @h_stats.to_json %>
  
  <p id="notice"><%= notice %></p>
-<%= @error %>
+<!--<div class='alert alert-danger'>In maintenance</div>-->
+<%= @error if admin? %>
 <%# @step.name %>
 <%# @step.show_view_json %>
 <%# @h_el.to_json %>
@@ -26,26 +27,32 @@
   <% if (!vertical_el['admin'] or admin?) %>
    <div class="vert_element row">
     <% vertical_el["horiz_elements"].each do |horiz_element| %>
-     <% id = horiz_element['id'] %>
+     <% id = horiz_element['id'].to_s %>
+     <%# @h_el.to_json if admin? %>
      <div class="horiz_element <%= horiz_element['container_class'] %>">
-       <% if horiz_element['type'] == 'card' and (@h_el[id] or @h_outputs[horiz_element['output_name']]) %>
-        <div class="card <%= horiz_element['class'] %>">
-         <% if @h_el[id] %>
-          <% if @h_el[id][:card_header] %>
-           <div class="card-header"><%= raw @h_el[id][:card_header] %></div>
-          <% end %>
-          <div class="card-body"> 
-   	    <%= raw @h_el[id][:card_body] %>
-          </div>
-         <% elsif horiz_element['partial'] and @h_outputs[horiz_element['output_name']] and (!horiz_element['admin'] or admin?)  %>
-           <%= render :partial => horiz_element['partial'], :locals => {:horiz_element => horiz_element} %>
-         <% else %>
-  	    Not found element for <%= id %>
-         <% end %>
-        </div>
+       <%# horiz_element['class'] %>
+       <% if horiz_element['type'] == 'card' and (@h_el[id] or (horiz_element['partial'] and @h_outputs[horiz_element['output_name']] and (!horiz_element['admin'] or admin?))) %>
+       <%# id %>
+       <%# horiz_element['type'] + "-" + @h_el[id.to_s].to_json %>
+       <div class="card <%= horiz_element['class'] %>">
+	 <% if @h_el[id] %>
+	 <% if @h_el[id][:card_header] %>
+	 <div class="card-header"><%= raw @h_el[id][:card_header] %></div>
+	 <% end %>
+	 <div class="card-body"> 
+   	   <%= raw @h_el[id][:card_body] %>
+	 </div>
+	 <% elsif horiz_element['partial'] and @h_outputs[horiz_element['output_name']] and (!horiz_element['admin'] or admin?)  %>
+	 <%= render :partial => horiz_element['partial'], :locals => {:horiz_element => horiz_element} %>
+	 <% else %>
+  	<!-- Not found element for <%= id %> -->  
+	 <% end %>
+       </div>
+       <% else %>
+       <%# @h_el.to_json %>
        <% end %>
      </div>
-    <% end %>
+     <% end %>
    </div>
   <% end %>
  <% end %>
@@ -74,18 +81,7 @@ Log
 <%= javascript_tag do %>
 
  $(".input_lineage").click(function(e){
-  var run_id = this.id.split("_")[2]
-  e.stopPropagation();
-  e.preventDefault();
-  $("#popup_window").removeClass("hidden")
-//  $("#popup_container").html("bla!")
-  refresh("popup_container", "<%= get_lineage_project_path(:key => @project.key) %>?run_id=" + run_id, {loading: 'fa-2x'})
-  var w = $(window).width();
-  $("#popup_window").css({
-        left: 200,
-        width:w - 250,
-        top: e.pageY + 10
-  }).stop().show(100);
+<%= render :partial => 'input_lineage_js' %>
  })
 
 $(".annot_btn").click(function(){
@@ -108,7 +104,7 @@ $(".annot_btn").click(function(){
     }).stop().show(100);
  })
 
-<% if @step.id == 6 %>
+<% if @step.name == 'de' %>
  $(".badge-nber_genes").click(function(){
   var t = this.id.split("_")
   var run_id = t[1]
@@ -118,7 +114,7 @@ $(".annot_btn").click(function(){
  $("#btn-to_de_table").click(function(){
   refresh("step_container", "<%= get_step_project_path(@project.key, :nolayout => 1, :step_id => @step.id, :dashboard => 'de_table') %>", {loading:'fa-2x'})  
  })
-<% elsif @step.id == 7 %>
+<% elsif @step.name == 'ge' %>
  $(".badge-nber_genesets").click(function(){
   var t = this.id.split("_")
   var run_id = t[1]

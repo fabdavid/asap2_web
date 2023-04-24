@@ -1,12 +1,14 @@
 <%# @h_hca.to_json %>
 <%# @h_filters.to_json %>
-<%# @h_urls.to_json %>
+<%# raw @h_urls[:projects] %>
 <%# @log %>
 <%# @h_hca[:summary].keys %>
-<%# @h_hca[:projects].keys %>
-<%# @h_hca[:projects]['hits'][0].keys %>
+<%# @h_hca.to_json %>
+<%# @h_urls.to_json %>
+<%# @h_hca[:projects]['hits'][0]['projects'].to_json %>
+<%= @sum_matrices[0].to_json %>
 <% if @h_hca[:projects]['termFacets'] %>
-
+<%# @errors.to_json %> 
 <!--<div class='alert alert-danger'><i class='fas fa-exclamation-triangle warning-ico fa-3x'/> The HCA data are currently not available. There is a data re-ingestion process ongoing.</div>-->
 
 <div class="row">
@@ -20,7 +22,7 @@
   </div>
 </div>
 <div id='list_filters'>
-<%=  @h_filters['fileFormat'].to_json %>
+<%#  @h_filters['fileFormat'].to_json %>
 </div>
 
 <div id='container_choices' class='hidden'>
@@ -38,38 +40,76 @@
 <div id='container_list_projects'>
 <table id='list_projects'>
 <thead><tr>
-    <th><!--<input type="checkbox" name="select_all" value="1" id="example-select-all"><%# check_box_tag "hca_select_all", "1", false %>--></th>
+<!--    <th>--><!--<input type="checkbox" name="select_all" value="1" id="example-select-all"><%# check_box_tag "hca_select_all", "1", false %>--><!--</th>-->
     <th>Project</th>
     <th>Species</th>
 <!--    <th>Organ</th>
     <th>Organ part</th>-->
     <th>Disease</th>
     <!--    <th>Donor count</th> -->
-    <th>Cell origin</th>
+<!--    <th>Cell origin</th>-->
+    <th>Loom files</th>
     <th>Total number cells</th>
     <!--    <th>Library construction approach</th>
     <th>Machine</th> -->
+    <th></th>
 </tr></thead>
 <tbody>
-<%  @h_hca[:projects]['hits'].each_index do |i| %>
+<% h_titles = {} %>
+<% if @h_hca and @h_hca[:projects] %>
+<% @h_hca[:projects]['hits'].each_index do |i| %>
 <% e = @h_hca[:projects]['hits'][i] %>
+<% pp = ProviderProject.where(:provider_id => 1, :key => e["entryId"]).first %>
 <% total_cells = 0 %>
-<% cell_details = e['cellSuspensions'].map{|e2| total_cells += e2['totalCells']; "<span class='badge badge-secondary'>" + ["organ", "organPart", "selectedCellType"].map{|k| (e2[k].is_a? Array) ? e2[k].join(" / ") : e2[k]}.compact.reject{|e3| e3.strip.empty?}.join(" > ") + " : " + number_with_delimiter(e2['totalCells'], :delimiter => "'") + " cells</span>"}.join(" ") %>
-<% if total_cells > 0 %>
+<% cell_details = e['cellSuspensions'].map{|e2| 
+   total_cells += e2['totalCells'].to_i || 0; 
+   "<span class='badge badge-secondary'>" + ["organ", "organPart", "selectedCellType"].map{|k| (e2[k].is_a? Array) ? e2[k].join(" / ") : e2[k]}.compact.reject{|e3| e3.strip.empty?}.join(" > ") + 
+   " : " + 
+   number_with_delimiter((e2['totalCells'] || 0), :delimiter => "'") + 
+   " cells</span>"
+}.join(" ") %>
+<%# if total_cells > 0 %>
 <tr>
-  <td><%= check_box_tag "hca-hit_#{i}", e['entryId'], false, {:class=> 'hca-hit'} %></td>
-<td><%= e['projects'].map{|e2| e2['projectTitle']}.join(", ") %></td>
+<!--  <td><%= check_box_tag "hca-hit_#{i}", e['entryId'], false, {:class=> 'hca-hit'} %><%# e['projects'].size %></td> -->
+<td><%= title = e['projects'].map{|e2| e2['projectTitle']}.join(", "); h_titles[e["entryId"]]= title; link_to title, "https://data.humancellatlas.org/explore/projects/" + e["entryId"] %></td>
 <td><%= e['donorOrganisms'].map{|e2| e2['genusSpecies']}.flatten.join(", ") %><%# (e['projectSummary']['genusSpecies']) ? e['projectSummary']['genusSpecies'].join(", ") : 'NA' %></td>
 <!--<td><%= e['specimens'].map{|e2| e2['organ']}.flatten.join(", ") %></td>
 <td><%= e['specimens'].map{|e2| e2['organPart']}.flatten.join(", ") %></td> -->
 <td><%= e['specimens'].map{|e2| e2['disease']}.flatten.join(", ") %></td>
-<td><%= raw cell_details %>
+<!--<td><%= raw cell_details %>-->
+  <%# e.keys.to_json %>
   <%# e['fileTypeSummaries'].select{|e| e['fileType'] == 'matrix'}.first['count'].to_json %>
 </td>
-<td><span class='total_nber_cells'><%= number_with_delimiter(total_cells, :delimiter => "'") %></span></td>
+<td>
+  <% @sum_matrices[i].each_key do |uuid| %>
+  <% if m = @sum_matrices[i][uuid][:url].match(/\/([\d\w+\-_]*)\?/) %>
+    <% file_key = e["entryId"] + ";" + m[1] + ";" + @sum_matrices[i][uuid][:name] + ";" + @sum_matrices[i][uuid][:url] %>  
+  <% end %>
+  <p>
+    <%= radio_button_tag 'hca_loom_file', file_key, {}, {:disabled => pp.not_add_in_asap} %> 
+    <b><%= link_to @sum_matrices[i][uuid][:name], @sum_matrices[i][uuid][:url] %></b>
+    <% if pp.comment %>
+  <p class='text-<%= (pp.not_add_in_asap) ? 'danger' : 'success' %>'><%= pp.comment %></p>
+  <% end %>  
+    [<%= raw @sum_matrices[i][uuid][:species].join(", ") %>] [<%= raw @sum_matrices[i][uuid][:organs].join(", ") %>] [<%= raw @sum_matrices[i][uuid][:development_stages].join(", ") %>] [<%= raw @sum_matrices[i][uuid][:approaches].join(", ") %>]
+  </p>
+  <% end %>
+  <!-- <pre><%= e.to_json %></pre> -->
+  
+  <%# if ma = e.to_json.to_s.match(/(ca4613fa-6dd5-5757-bdc3-71b84b9cb9e9)/) %>
+  <%# ma[1].to_json %>
+  <%# end %>
+</td>
+<td><span class='total_nber_cells'>
+      <%= number_with_delimiter(total_cells, :delimiter => "'") %>
+  </span></td>
+
+<td><%= (pp) ? link_to("Edit", edit_provider_project_path(pp.id), {"target" => "_blank"}) : '' %></td>
 </tr>
+<%# end %>
 <% end %>
 <% end %>
+
 </tbody>
 </table>
 
@@ -77,6 +117,7 @@
 
  var h_q = JSON.parse($("#hca_query").val());
  var h_hca = <%= raw @h_hca.to_json %>;
+ var h_titles = <%= raw h_titles.to_json %>;
 
  var table = $("#list_projects").DataTable({
         'columnDefs': [{
@@ -92,10 +133,11 @@
   "dom": '<"top"i>rt<"bottom"lp><"clear">'
 });
 
-$(".hca-hit").click(function(){
+$("#list_projects").on("click", ".hca-hit", function(){
  $(".hca-hit").prop('checked', false)
  $(this).prop("checked", true) 
  $("#provider_project_id").val($(this).val())
+ $("#provider_project_title").val(h_titles[$(this).val()])
  $("#provider_id").val("1")
 // console.log($(this).parent())
 // if ($("#project_name").val() == ''){
@@ -103,6 +145,21 @@ $(".hca-hit").click(function(){
 //  $("#project_name").val(project_name)
 // }
 })
+
+$("#list_projects").on("click", 'input[name="hca_loom_file"]', function(){
+var url = $('input[name="hca_loom_file"]:checked').val()
+// $(".hca-hit").prop('checked', false)
+// $(this).prop("checked", true)
+ var t = $(this).val().split(";")
+ $("#provider_project_id").val(t[0])
+ $("#provider_project_filekey").val(t[1])
+ $("#provider_project_filename").val(t[2])     
+ $("#provider_project_fileurl").val(t[3])     
+ $("#provider_project_title").val(h_titles[t[0]])
+ $("#provider_id").val("1")
+ validate_form()
+})
+
 
 function get_sel_hca_projects(){
  let flag = true

@@ -1,4 +1,101 @@
-<ul id='list_formats'>
+<div class='card m-4'>
+  <div class='card-header'>  
+    <div class='float-left'>
+	<%= raw display_file_format  @h_formats["LOOM"] %>
+    </div>
+    <div class='float-left ml-3 mt-2'><h3>LOOM format</h3></div>
+  </div>
+  <div class='card-body'>
+    ASAP accepts as input <a href='https://portal.hdfgroup.org/display/HDF5/Introduction+to+HDF5'>HDF5</a> files following the <a href='http://loompy.org/'>LOOM format</a>, developped by <a href='http://linnarssonlab.org/'>Linnarson lab</a>. Note that ASAP complies with <a href='http://linnarssonlab.org/loompy/format/index.html'>3.0.0 specifications</a>. 
+  </div>
+</div>
+
+<div class='card m-4'>
+  <div class='card-header'>
+    <div class='float-left'>
+	<%= raw display_file_format  @h_formats["H5_10x"] %>
+    </div>
+    <div class='float-left ml-3 mt-2'><h3>10x H5 format</h3></div>
+  </div>
+  <div class='card-body'>
+    ASAP accepts as input <a href='https://portal.hdfgroup.org/display/HDF5/Introduction+to+HDF5'>HDF5</a> files (.h5) from <a href='https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/what-is-cell-ranger'>CellRanger</a> developped by <a href='https://www.10xgenomics.com/'>10x Genomics</a> [<a href='https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/advanced/h5_matrices'>specifications</a>].
+  </div>
+</div>
+
+<div class='card m-4'>
+  <div class='card-header'>
+    <div class='float-left'>
+        <%= raw display_file_format  @h_formats["RAW_TEXT"] %>
+    </div>
+    <div class='float-left ml-3 mt-2'><h3>Plain-text format (compressed or not)</h3></div>
+  </div>
+  <div class='card-body'>
+    ASAP accepts as input simple Plain-text matrices, with as column delimiter tabulation, comma, semi-colon or space.
+    First or last column as gene names is optional. Gene names are then mapped to the Ensembl database.
+    First line as cell/sample names is optional too.
+    The file can be compressed.
+    <%= image_tag 'format_asap_small.png', { :class=>'mt-3'} %> 
+  </div>
+</div>
+
+<div class='card m-4'>
+  <div class='card-header'>
+    <div class='float-left'>
+	<%= raw display_file_format  @h_formats["ARCHIVE"] %>
+    </div>
+    <div class='float-left ml-3 mt-2'><h3>Archive</h3></div>
+  </div>
+  <div class='card-body'>
+    ASAP supports archive files that contain several datasets in a plain-text format. You can select which dataset to take as input in the interface.
+  </div>
+</div>
+
+<div class='card m-4'>
+  <div class='card-header'>
+    <div class='float-left'>
+        <%= raw display_file_format  @h_formats["ARCHIVE_COMPRESSED"] %>
+    </div>
+    <div class='float-left ml-3 mt-2'><h3>Archive compressed</h3></div>
+  </div>
+  <div class='card-body'>
+    ASAP supports compressed archive files that contain several datasets in a plain-text format. You can select which dataset to take as input in the interface.
+  </div>
+</div>
+
+
+<div class='card m-4'>
+  <div class='card-header'>
+    <div class='float-left'>
+        <%= raw display_file_format  @h_formats["COMPRESSED"] %>
+    </div>
+    <div class='float-left ml-3 mt-2'><h3>Compressed</h3></div>
+  </div>
+  <div class='card-body'>
+    ASAP supports compressed files (zip or gzip).
+  </div>
+</div>
+
+
+<div class='card m-4'>
+  <div class='card-header'>
+    <div class='float-left'>
+	<%= raw display_file_format(@h_formats["MEX"]) %>
+    </div>
+    <div class='float-left ml-3 mt-2'><h3>MEX/MTX</h3></div>
+  </div>
+  <div class='card-body'>
+<!--ASAP requires all three files to be located in a tar archive that can be compressed (format .gz or .bz2), or in a zipped directory (.zip format), or directly zipped together. -->
+ASAP requires all three files to be archived/compressed in a single file (.tar, .tar.gz, .gz, .zip, .bz2, .tar.bz2). The files need to be named:
+    <ul>
+    <li> barcodes.tsv</li>
+    <li>genes.tsv or features.tsv</li>
+    <li>the main data matrix in a file with extension .mtx. If several mtx files are present, a file named matrix.mtx is required and only this one will be used</li>
+    </ul>
+  </div>
+</div>
+
+
+<!--<ul id='list_formats'>
 <li>
 <div class='panel panel-default panel-formats'>
 <div class='panel-heading'>Input file format</div>
@@ -48,3 +145,4 @@ Example file:
 </li>
 
 </ul>
+-->

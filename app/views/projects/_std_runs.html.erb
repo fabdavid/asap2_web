@@ -1,15 +1,30 @@
 <%# @h_dashboard_card[16] %>
-<%# @runs.size %>
+<%# @current_filtered_run_ids %>
 
 <%= render :partial => 'filter_runs' %>
 
-<% if @runs and @runs.size > 0 %>
+<% if @all_run_ids.size > 0 %>
 
 <div class='alert alert-info'>
-  <%= @runs.size %> run<%= (@runs.size > 1) ? 's' : '' %> found.
+  <%= @runs.size %> run<%= (@runs.size > 1) ? 's' : '' %> found out of <%= @all_run_ids.size %>.
 </div>
 
-<%= render :partial => 'display_card_deck', :locals => {:cards => @list_cards} %>
+<% end %>
+
+<% if @runs and @runs.size > 0 %>
+<%# if admin? %>
+<%# render :partial => 'display_reqs', :locals => {:h_reqs => @h_reqs, :h_run_ids_by_req_id => @h_run_ids_by_req_id} %>
+<%# end %>
+<% if session[:sel_req_id][@project.id][@step.id] %>
+<div class='mb-3'>
+  <button id='back_std_runs' type='button' class='btn btn-primary'><< Back to global view</button>
+</div>
+<h5>Selected batch:</h5>
+<% end %>
+
+<%= render :partial => 'display_card_deck', :locals => {:cards => @h_cards[:req_cards], :card_type => 'req'} %>
+<%= render :partial => 'display_card_deck', :locals => {:cards => @h_cards[:run_cards], :card_type => 'run'} %>
+
 
 <%= javascript_tag do %>
 
@@ -25,6 +40,16 @@ var running_run_ids = <%= raw @runs.select{|r| r.status_id == 2}.map{|r| r.id}.t
 
 run_timer = upd_time2(waiting_run_ids, running_run_ids, time_zone_offset)
 
+$("#back_std_runs").click(function(){
+ refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>&step_id=<%= @step.id %>&sel_req_id=", {loading: 'fa-2x loading-step'});
+})
+
+$(".download_text").click(function(e){
+ var annot_id = this.id.split("_")[2]
+ e.stopPropagation();
+ e.preventDefault();
+ window.location = '<%= extract_metadata_project_path(:key => @project.key, :format => 'text') %>' + "?annot_id=" + annot_id
+})
 
 /*
 for (var i = 0; i< waiting_run_ids.length; i++){
@@ -53,7 +78,6 @@ $(".show_link2").mouseout(function(){
 })
 */
 <% end %>
-
 <% else %>
 
  <% if session[:activated_filter][@project.id] == true and !@disable_filter %>
@@ -62,6 +86,8 @@ $(".show_link2").mouseout(function(){
 
 
  <!--<div class='badge badge-warning'>No run created yet</div> -->
+
+ <% if analyzable? @project %>
  <div class="container-fluid">
    <div id='card_new_analysis' class='card text-md-center col-md-4 centered-card'>
      <div class='card-body'>
@@ -69,6 +95,7 @@ $(".show_link2").mouseout(function(){
      </div>
    </div>
  </div>
+ <% end %>
  <% end %>
 <% end %>
 

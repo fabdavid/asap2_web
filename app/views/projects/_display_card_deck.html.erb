@@ -1,3 +1,4 @@
+<%# @bla %>
 <%# @list_steps.to_json %>
 <%# @h_project_steps.to_json %>
 <%# cards.to_json %>
@@ -35,6 +36,15 @@
 
 <%= javascript_tag do %>
 
+ $(".link_to_loom_tuto").click(function(e){
+  var url = '<%= tutorial_home_index_path(:t => 'loom') %>'
+  var win = window.open(url, '_blank');
+  win.focus();
+  e.stopPropagation();
+  e.preventDefault();
+  return false;
+ })
+
  $(".download_file_btn").click(function(e){
   e.stopPropagation();
   e.preventDefault();
@@ -42,33 +52,43 @@
   window.location = "<%= get_file_project_path(@project.key) %>?run_id=" + t[1] + "&onum=" + t[2];
  });
 
- $(".input_lineage").click(function(e){
-  var run_id = this.id.split("_")[2]
+ $(".download_tsv_from_json_btn").click(function(e){
   e.stopPropagation();
   e.preventDefault();
-  $("#popup_window").removeClass("hidden")
-  //  $("#popup_container").html("bla!")
-  refresh("popup_container", "<%= get_lineage_project_path(:key => @project.key) %>?run_id=" + run_id, {loading: 'fa-2x'})
-  var w = $(window).width();
-  $("#popup_window").css({
-        left: 200,
-        width:w - 250,
-        top: e.pageY + 10
-    }).stop().show(100);
+   var t = this.id.split("_")
+   var url = "<%= tsv_from_json_project_path(@project.key) %>?run_id=" + t[1] + "&onum=" + t[2];
+   window.location = url
  })
 
+ $(".input_lineage").click(function(e){
+<%= render :partial => 'input_lineage_js' %>
+})
+
+<% if card_type == 'run' %>
 
 $(".run_card").click(function(){
  var t = this.id.split("_")
 // alert("bla!")
  $("#popup_window").css({display:'none'})
  refresh("step_container", "<%= get_run_project_path(:key => @project.key, :nolayout => 1) %>&run_id=" + t[2], {loading: 'fa-2x loading-step'})
+ $("#ontop_window").addClass("hidden")
+ $("#ontop_popup_window").css({'display' : 'none'})
 })
 $(".run_card").mouseover(function(){
+// var id = this.id.split("_")[2]
+// var b = $("#show_details_" + id)
+// b.addClass("btn-primary")
+// b.removeClass("btn-secondary")
  $(this).css("border-color", 'rgba(0,0,0,0.425)')
+ $(this).css("background-color", 'rgba(255,255,230,0.425)')
 })
 $(".run_card").mouseout(function(){
+// var id = this.id.split("_")[2]
+// var b = $("#show_details_" + id)
+// b.addClass("btn-secondary")
+// b.removeClass("btn-primary")
  $(this).css("border-color", 'rgba(0,0,0,0.125)')
+ $(this).css("background-color", '')
 })
 
 $(".btn_destroy-run").click(function(){
@@ -78,16 +98,60 @@ $(".btn_destroy-run").click(function(){
   type: "delete",
   data: [{name : 'format', value: 'json'}],
   beforeSend: function(){
-   $("#step_container").html("<div class='loading'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i></div>")
+   $("#step_container").html("<div class='loading d-flex justify-content-center'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i> <i>Please wait while deleting this run and associated runs and metadata</i></div>")
   },
   success: function(returnData){
   $("#popup_window").css({display:'none'})
+  <% if @step %>
   refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>&step_id=<%= @step.id %>", {loading: 'fa-2x loading-step'});
+  <% end %>
   },
   error: function(e){
   }
  });
 });
+
+<% elsif card_type == 'req' %>
+
+$(".req_card").click(function(){
+ var t = this.id.split("_")
+// alert("bla!")
+ $("#popup_window").css({display:'none'})
+ refresh("step_container", "<%= get_step_project_path(:key => @project.key, :step_id => @step.id, :nolayout => 1) %>&sel_req_id=" + t[2], {loading: 'fa-2x loading-step'})
+ $("#ontop_window").addClass("hidden")
+ $("#ontop_popup_window").css({'display' : 'none'})
+})
+
+$(".req_card").mouseover(function(){
+ $(this).css("border-color", 'rgba(0,0,0,0.425)')
+ $(this).css("background-color", 'rgba(230,255,230,0.425)')
+})
+$(".req_card").mouseout(function(){
+ $(this).css("border-color", 'rgba(0,0,0,0.125)')
+ $(this).css("background-color", '')
+})
+
+$(".btn_destroy-req").click(function(){
+ let t = this.id.split("_")
+ $.ajax({
+  url: "<%= reqs_path() %>/" + t[1],
+  type: "delete",
+  data: [{name : 'format', value: 'json'}],
+  beforeSend: function(){
+   $("#step_container").html("<div class='loading d-flex justify-content-center'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i> <i>Please wait while deleting these runs and associated runs and metadata</i></div>")
+  },
+  success: function(returnData){
+  $("#popup_window").css({display:'none'})
+  <% if @step %>
+  refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>&step_id=<%= @step.id %><%= "&sel_req_id=#{params[:sel_req_id]}" if params[:sel_req_id] %>", {loading: 'fa-2x loading-step'});
+  <% end %>
+  },
+  error: function(e){
+  }
+ });
+});
+
+<% end %>
 
 /*
 $(function () {

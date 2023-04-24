@@ -1,0 +1,150 @@
+<!-- <div class="container"> -->
+<div class="row">
+  <div class="col-md-3">
+    <div class='jumbotron' style='padding:1em;height:45vh;min-height:250px'>
+      <!--	<div class='card-header'>Welcome to ASAP</div> -->
+      <div class='card-body'>
+	<h1 class="display-4"><b>ASAP</b></h1>
+	<p class="lead">A collaborative portal to analyze single-cell transcriptomics data.</p>
+<!--	<button type='button' class='btn btn-secondary'>List of <%= @nber_public_projects %> public projects</button>-->
+	<% if current_user %>
+	<button type='button' class='btn btn-success'>New project</button>
+	<% else %>
+	<br/><br/>
+	<!--	<div class='row'>
+		<span class='col-md-6'>
+		  Already a login? </span> 
+		<span class='col-md-6'>
+		  <button type='button' class='btn btn-outline-primary'>Login</button>
+		</span>
+	</div>
+	<div class='row'>
+	  <span class='col-md-6'>
+	    Not yet a login? 
+	  </span>
+	  <span class='col-md-6'>
+	    <button type='button' class='btn btn-outline-primary'>Sign in</button>
+	  </span>
+	</div>
+	-->
+<!--	<%= link_to "Login", new_user_session_path,  :class=>'btn btn-primary' %> 
+	OR
+	<%= link_to "Try now!", new_project_path,  :class=>'btn btn-success' %>-->
+<!--	<div class='row'>
+	  <span class='col-md-6'>
+	    Try ASAP directly with your data
+	  </span>
+	  <span class='col-md-6'>
+	    <button type='button' class='btn btn-success'>New sandbox project</button><i class='fa fa-info'></i>
+	  </span>
+	</div> -->
+	<% end %>
+      </div>
+    </div>
+    <!--   <div class='card'>
+      <div class='card-body'>
+        <h3>Sandbox</h3>
+	
+      </div>
+    </div>
+ -->
+<!--    <div class='card'>
+      <h1 class="display-4"><b>Partner apps</b></h1>
+      <div class='list_partner_apps'>
+        <div class='scope'>SCope</div>
+      </div>
+    </div>
+-->
+  </div>
+  <div class="col-md-3">
+    <div class='card' style='height:calc(100% - 2.2em)'>
+      <div class='card-body'> 
+	<h3>Sandbox</h3>
+        <%= link_to "Try now!", new_project_path,  :class=>'btn btn-success btn-lg' %>
+	<%= link_to("Sandbox project", project_path(:key => @sandbox_project.key), {:class => 'btn btn-primary btn-lg'}) if @sandbox_project %>
+	<br/><br/>
+	Want to save projects? <%= link_to "Login", new_user_session_path,  :class=>'btn btn-primary' %>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+   <!-- <div class='alert alert-danger mr-0 ml-0'>
+      To access to the previous website, please follow this <%= link_to "link", APP_CONFIG[:v1_server_url] %>
+    </div>-->
+    <div class='card' style='height:calc(100% - 2.2em)'>
+      <div class='card-body'>
+	<h3>News</h3>
+	<div class='alert alert-info'><i class='fa fa-bullhorn'></i> <%= link_to "Release 6", version_path(6) %> is out!</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    
+<!--    <div class='card mb-3'>
+      <div class='card-body'>
+	<%# link_to "More videos", tutorial_home_index_path,  {:class => 'btn btn-primary float-right'} %>   
+	<h3>Quick tour</h3>
+        <div class='list_data_partners'>
+	</div>
+      </div>
+    </div>-->
+    <!--  <div class='card mb-3'>
+      <div class='card-body'>
+        <%# link_to "More videos", tutorial_home_index_path,  {:class => 'btn btn-primary float-right'} %>
+        <h3>Public projects</h3>
+        <div class='list_public_projects'>
+          <%# render :partial => 'projects/public_project_list' %>
+        </div>
+      </div>
+    </div>
+    -->
+    <div class='card' style='height:calc(100% - 2.2em)'>
+      <div class='card-body'>
+        <h3>Data partners</h3>
+        <div class='list_data_partners'>
+          <div class='hca'><%= link_to image_tag('hca_logo.png', :title => 'Human Cell Atlas', :width => '75%'), hca_path() %>
+	    <%#'https://humancellatlas.org' %></div>
+          <div class='fca'><%= link_to image_tag('fca_logo.png', :title => 'Fly Cell Atlas', :width => '50%'), fca_path() %> 
+	    <%#'https://flycellatlas.org' %></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%= render :partial => 'shared/important_comm' %>
+
+<div class='row'>
+  <!--  <div class='card mb-3 ml-3 mr-3'>
+	<div class='card-body'>
+	  -->
+  <div id='public_projects_container' class='col-md-12'>
+    <%# link_to "More videos", tutorial_home_index_path,  {:class => 'btn btn-primary float-right'} %>
+    <!--  <h3>Public projects</h3>
+	  <div class='list_public_projects'>
+	    <%# render :partial => 'projects/public_project_list' %>
+	    -->
+  </div>
+  <!--    </div>
+	  </div>
+-->
+</div>
+<!--</div>-->
+
+<%= javascript_tag do %>
+
+$(document).ready(function(){
+
+ refresh("public_projects_container", "<%= search_projects_path(:nolayout => 1) %>", {loading:'fa-2x'})
+
+ $('.list_data_partners').slick({
+ dots: true,
+ slidesToShow: 1,
+ slidesToScroll: 1,
+ autoplay: true,
+ autoplaySpeed: 5000
+ });
+ $(".slick-arrow").css({color : '', 'background-color' : '', opacity:0})
+});
+
+<% end %>

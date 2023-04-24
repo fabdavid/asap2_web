@@ -6,6 +6,7 @@
   <thead>
     <tr>
       <th>ID</th>
+      <th>Version</th>
       <th>Rank</th>
       <th>Objet name</th>
       <th>Name</th>
@@ -22,15 +23,16 @@
     <% @steps.each do |step| %>
       <tr>
         <td><%= step.id %></td>
+	<td><%= step.version_id %></td>
 	<td><%= step.rank %></td>
         <td><%= step.obj_name %></td>
         <td><%= step.name %></td>
         <td><%= step.label %></td>
 	<td><%= step.attrs_json %></td>
 	<td><%= step.method_attrs_json %></td>
-        <td><%= link_to 'Show', step %></td>
+        <td><%# link_to 'Show', step %></td>
         <td><%= link_to 'Edit', edit_step_path(step) %></td>
-        <td><%= link_to 'Destroy', step, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+        <td><%# link_to 'Destroy', step, method: :delete, data: { confirm: 'Are you sure?' } %></td>
       </tr>
     <% end %>
   </tbody>

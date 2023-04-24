@@ -1,0 +1,13 @@
+   <% if admin? %>
+   <% used_space = `df -h /data/asap2`.split(/\s+/)[11].gsub(/[^\d]/, '').to_i %>
+   <% if used_space > 90 %>
+   <div class='alert alert-danger'>
+     DANGER! <%= used_space %>% of disk space is used.
+   </div>
+   <% else used_space > 60 %>
+   <div class='alert alert-warning'>
+     WARNING <%= used_space %>% of disk space is used.
+   </div>
+   <% end %>
+
+   <% end %>

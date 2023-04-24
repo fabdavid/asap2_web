@@ -1,0 +1,5 @@
+<%= javascript_tag do %>
+var url = "<%= get_step_project_path(@project.key, :step_id => @import_metadata_step.id, :nolayout => 1) %>"
+refresh("step_container", url, {loading:'fa-2x'})
+
+<% end %>

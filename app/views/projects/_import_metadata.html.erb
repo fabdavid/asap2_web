@@ -1,0 +1,62 @@
+<% editable_project = editable?(@project) %>
+<table id='list_of_imports'>
+<thead>
+<tr>
+<% if admin? %>
+<th>Run ID</th>
+<% end %>
+<th>Run #</th>
+<th>Status</th>
+<th>Imported metadata</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<% @runs.each do |run| %>
+<tr>
+<% if admin? %>
+<td><%= run.id %></td>
+<% end %>
+<td><%= run.num %></td>
+<td><%= raw display_status(@h_statuses[run.status_id]) %></td>
+<td><%= raw @h_annots[run.id].map{|annot| display_annot(annot)}.join(" ") %></td>
+<td>
+<%= raw ((editable_project and (@project.public == false or @project.frozen_at < run_time) and (current_user and (admin? or [run.user_id, @project.user_id].include? current_user.id))) ? "<div id='destroy-run_#{run.id}' class='btn btn-danger btn_destroy-run'><i class='fa fa-times-circle'></i> Delete</div>" : "") +
+    ((@project.public == true) ? ((@project.frozen_at > run_time) ? " <span class='' title='Secured analysis - cannot be modified by anyone' style='color:green' ><i class='fa fa-lock'></i></span>" : " <span class='' title='Unsecured analysis - can be modified by the owner' style='color:orange' ><i class='fa fa-unlock'></i></span>") : '') %>
+
+</td>
+</tr>
+<% end %>
+</tbody>
+</table>
+
+
+<%= javascript_tag do %>
+$("#list_of_imports").dataTable({})
+
+$(".annot_btn").click(function(){
+ refresh("step_container", "<%= annots_path() %>/" + this.id.split("_")[1], {loading:'fa-2x'})
+})
+
+$(".btn_destroy-run").click(function(){
+ let t = this.id.split("_")
+ $.ajax({
+  url: "<%= runs_path() %>/" + t[1],
+  type: "delete",
+  data: [{name : 'format', value: 'json'}],
+  beforeSend: function(){
+   $("#step_container").html("<div class='loading'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i></div>")
+  },
+  success: function(returnData){
+  $("#popup_window").css({display:'none'})
+  <% if @step %>
+  refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nolayout => 1) %>&step_id=<%= @step.id %>", {loading: 'fa-2x loading-step'});
+  <% end %>
+  },
+  error: function(e){
+  }
+ });
+});
+
+
+<% end %>

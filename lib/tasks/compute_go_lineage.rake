@@ -7,6 +7,9 @@ task compute_go_lineage: :environment do
   Rails.logger = dev_null
   ActiveRecord::Base.logger = dev_null
 
+  data_dir = Pathname.new(APP_CONFIG[:data_dir])
+  go_dir = data_dir + 'go'
+
   h_go_db_names = {'biological_process' => 'GO Biological Processes', 'cellular_component' => 'GO Cellular Components', 'molecular_function' => 'GO Molecular Functions'}
 
   def add_lineage tmp, cur_id, h_go
@@ -25,14 +28,17 @@ task compute_go_lineage: :environment do
 #  h_adj = {}                                                                                                                                                                          
   
   url = "http://purl.obolibrary.org/obo/go.obo"
-  `wget -O ./tmp/go.obo #{url}`
+  `wget -O #{go_dir + 'go.obo'} #{url}`
+  version = ''
   cur = {:is_a => [], :lineage => []}
-  File.open("./tmp/go.obo", "r") do |f|
+  File.open(go_dir + 'go.obo', "r") do |f|
     while (l = f.gets) do
-      if m = l.match(/^id\: (GO\:\d+)/)
+      if m = l.match(/^data-version: releases\/([\-\d]+)/)
+        version = m[1]
+      elsif m = l.match(/^id\: (GO\:\d+)/)
         cur[:id] = m[1]
       elsif m = l.match(/^namespace\: (.+)/)
-#        cur[:namespace] = m[1]
+        #        cur[:namespace] = m[1]
 	cur[:db_name] = h_go_db_names[m[1]]
       elsif  m = l.match(/^name\: (.+)/)
         cur[:name] = m[1]
@@ -57,8 +63,19 @@ task compute_go_lineage: :environment do
   
   ## write lineage
   puts "write GO..."
-  File.open("#{APP_CONFIG[:data_dir]}/go.json", 'w') do |f|
+  File.open(go_dir + "go.json", 'w') do |f|
     f.write(h_go.to_json)
   end
+
+  output_json = Pathname.new(APP_CONFIG[:data_dir]) + 'tmp' + 'tool_versions.json'
+  
+  h_tool_versions = Basic.safe_parse_json(output_json, {})
+  
+  h_tool_versions['go'] = version
+  puts h_tool_versions.to_json
+  File.open(output_json, 'w') do |f|
+    f.write(h_tool_versions.to_json)
+  end
+  
 
 end

@@ -1,3 +1,4 @@
+
 <%# @log3.to_json %>
 <%# @default_run_id %>
 <%# session[:dr_params][@project.id].to_json %>
@@ -71,7 +72,7 @@
   <% dims = (1 .. @h_attrs_by_run_id[@default_run_id]['nber_dims'].to_i).map{|e| ["Y: #{e}", e]} %>
   <%= select_tag 'plot[dim2]', options_for_select(dims, session[:dr_params][@project.id][:dim2] || 2),  {:class => 'dim-select custom-select ml-2'} %>
   <% if  session[:dr_params][@project.id][:displayed_nber_dims] == 3 %>
-  <% dims = (1 .. @h_attrs_by_run_id[@default_run_id]['nber_dims'].to_i).map{|e| ["Z: #{e}", e]} %>
+  <% dims = (1 .. @h_attrs_by_run_id[@default_run_id]['nber_dims'].to_i).map{|e| ["Z: #{e}", e]} %> 
   <%= select_tag 'plot[dim3]', options_for_select(dims, session[:dr_params][@project.id][:dim3] || 3), {:class => 'dim-select custom-select ml-2'} %>
   <% end %>
   <% else %> 
@@ -81,7 +82,7 @@
   <% else %> 
  
   <% end %>
-  <div class='float-right ml-2'><button id='refresh_plot-btn' class='btn btn-primary'><i id='refresh_plot_icon' class='fa fa-sync'/> Refresh</button></div>
+  <div class='float-right ml-2'><button id='refresh_plot-btn' class='btn btn-primary'><i id='refresh_plot_icon' class='fa fa-sync'></i> Refresh</button></div>
   <div id='refresh_plot_status' class='float-right ml-2 hidden'> Updating plot...</div>
   <%= hidden_field_tag "plot[displayed_nber_dims]", session[:dr_params][@project.id][:displayed_nber_dims] || 2 %>
 
@@ -99,7 +100,7 @@
   var p = [
             {'name' : 'plot[run_id]', 'value' : $("#plot_run_id").val()},
             {'name' : 'displayed_nber_dims', 'value' : $("#plot_displayed_nber_dims").val()},
-            {'name' : 'browser_name', 'value' : window.navigator.userAgent}
+            {'name' : 'browser_name', 'value' : browserName}
           ]
   <% if !['tsne', 'umap'].include? @h_std_methods[@default_run.std_method_id].name and @h_attrs_by_run_id[@default_run_id]['nber_dims'].to_i > session[:dr_params][@project.id][:displayed_nber_dims] %>
    p.push({'name' : 'plot[dim1]', 'value' : $("#plot_dim1").val()})
@@ -108,9 +109,12 @@
     p.push({'name' : 'plot[dim3]', 'value' : $("#plot_dim3").val()})  
    <% end %>
   <% end %>
-  var h_opt = ($("#plot_options_window").hasClass("hidden")) ? {loading : 'fa-2x'} : {loading_full:"<div style='padding:30px'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'/> <span class='italic'>Loading data...</span></div>"}
-  refresh_post("plot_container", "<%= raw dr_plot_project_path(@project.key) %>", p, 'post', h_opt);
-
+  var h_opt = ($("#plot_options_window").hasClass("hidden")) ? {loading : 'fa-2x'} : {loading_full:"<div style='padding:30px'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i> <span class='italic'>Loading data...</span></div>"}
+  h_opt['cache'] = true
+  abort_xhrs(xhrs)
+  query_str = p.map(e => e.name + "=" + e.value).join("&")  
+  var xhr = refresh("plot_container", "<%= raw dr_plot_project_path(@project.key) %>?" + query_str, h_opt);
+  xhrs = [xhr]
 <% end %>
 
 

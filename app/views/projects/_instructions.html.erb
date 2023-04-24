@@ -1,0 +1,41 @@
+====== Instructions to reproduce analyses of project #{@project.key} locally ======
+
+1. Install Docker
+
+ 1a. Download and install on your system
+-> For windows:
+https://docs.docker.com/docker-for-windows/install/
+-> For Mac:
+https://docs.docker.com/docker-for-mac/install/
+-> For CentOS:
+https://docs.docker.com/install/linux/docker-ce/centos/
+
+ 1b. Check that docker works
+
+2. Install Postgresql 10 or higher
+
+ 2a. Download and install on your system
+ -> For Mac and Windows:
+ https://www.postgresql.org/download/
+ -> For CentOS and other distributions:
+ https://www.postgresql.org/download/linux
+
+ 2b. Check that postgresql works and allows your user to create a database
+ createdb toto123
+ dropdb toto123
+
+3. Create a directory ASAP_PROJECTS_DIR with read/write access for 1006:1006
+-> For MacOS / Linux:
+mkdir /asap_projects
+sudo chown -R 1006:1006 /asap_projects
+
+4. Download the list of commands from the project main page 
+wget -O 'execution_#{@project.key}.sh' 'https://asap.epfl.ch/projects/#{@project.key}/get_commands'
+
+5. Edit execution_#{@project.key}.sh file
+
+ 5a. If ASAP_PROJECTS_DIR is different than /asap_projects
+
+ 5b. Change PSQL_DIR according to the local installation location of postgresql
+
+ 5c. Change ASAP_DATA_DB_HOST and ASAP_DATA_DB_PORT according to the local installation of postgresql

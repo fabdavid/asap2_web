@@ -13,6 +13,7 @@ class Project < ApplicationRecord
   belongs_to :norm, :optional => true
   belongs_to :filter_method, :optional => true
   belongs_to :organism
+  belongs_to :project_cell_set, :optional => true
   has_many :normalizations
   has_many :imputations
   has_many :gene_filterings
@@ -30,15 +31,82 @@ class Project < ApplicationRecord
   has_many :runs
   has_many :annots
   has_many :fos
+  has_many :clas
+  has_many :annot_cell_sets
   has_and_belongs_to_many :provider_projects
   has_and_belongs_to_many :exp_entries
   has_and_belongs_to_many :articles
+  has_and_belongs_to_many :project_tags
+
+  searchable do
+    integer :id
+    text :key
+    text :public_key
+    boolean :public
+    text :name
+    text :name_parts, :stored => true do
+      name.split(/[\s\(\)\[\]\-\:;,]/).compact
+    end
+    text :description
+    text :description_parts, :stored => true do
+      (description) ? description.split(/[\s\(\)\[\]\-\:;,]/).compact : ''
+    end
+
+    integer :user_id
+    integer :public_id
+    integer :shared_user_ids, :multiple => true do
+      shares.map{|e| e.user_id} + [user_id]
+    end
+    time :modified_at
+    text :exp_entries, :stored => true do
+      exp_entries.map{|e| e.identifier}
+    end
+    text :project_tags, :stored => true do
+      project_tags.map{|pt| pt.name}
+    end
+    text :other_identifiers, :stored => true do
+      exp_entries.map{|e| e.exp_entry_identifiers.map{|e2| e2.identifier}}.flatten
+    end
+    text :sample_identifiers, :stored => true do
+      exp_entries.map{|e| e.sample_identifiers.map{|e2| e2.identifier}}.flatten
+    end
+    text :provider_projects, :stored => true do
+      provider_projects.map{|e| [e.key, "#{e.provider.tag}:#{e.key}"]}.flatten
+    end
+
+    string :order_name, :stored => true do
+      name
+    end
+    text :user_email do
+      (user) ? user.email : '' 
+    end
+    integer :nber_cols
+    float :disk_size
+    
+  end
+
+  def public_key
+    return (self.public == true) ? ("ASAP" + self.public_id.to_s) : nil
+  end
 
   def broadcast step_id    
     ProjectBroadcastJob.perform_later self.id, step_id
   end
 
-  NewParsing = Struct.new(:project) do
+  Unarchive = Struct.new(:project) do
+    def perform
+      project.unarchive
+    end
+
+    def error(job, exception)
+      if job.last_error
+        lines = job.last_error.split("\n")
+        lines = lines.join("\\n")
+      end
+    end
+  end
+
+  NewParsing = Struct.new(:project, :h_data) do
     def perform
       project.parse
     end
@@ -47,7 +115,10 @@ class Project < ApplicationRecord
       if job.last_error
         lines = job.last_error.split("\n")
         lines = lines.join("\\n")
-        project_step = ProjectStep.where(:project_id => project.id, :step_id => 1).first
+        asap_docker_image = Basic.get_docker_image(project.version)
+       # parsing_step = Step.where(:version_id => project.version_id, :name => 'parsing').first
+        parsing_step = Step.where(:docker_image_id => asap_docker_image.id, :name => 'parsing').first
+        project_step = ProjectStep.where(:project_id => project.id, :step_id => parsing_step.id).first
         project_step.update_attributes(:error_message => lines, :status_id => 4)
         project.update_attributes(:error => lines, :status_id => 4)
       end
@@ -86,13 +157,30 @@ class Project < ApplicationRecord
     end
   end
 
+  def unarchive
+    asap_docker_image = Basic.get_asap_docker(self.version)
+   # summary_step = Step.where(:version_id => self.version_id, :name => 'summary').first
+    summary_step = Step.where(:docker_image_id => asap_docker_image.id, :name => 'summary').first
+    tmp_p = self
+    while [2, 4].include? tmp_p.archive_status_id
+      sleep 5
+      tmp_p = Project.where(:id => tmp_p.id).first
+    end
+    if self.archive_status_id == 3
+      @unarchive_cmd = "rails unarchive[#{self.key}]"
+      `#{@unarchive_cmd}`
+      logger.debug(@unarchive_cmd)
+    end
+    self.broadcast(summary_step.id) if summary_step
+  end
 
-  def parse_files 
+
+  def parse_files h_data
     job = Basic.create_job(self, 1, self, :parsing_job_id, 1)
     #    p[:filename]='input'
 #    logger.debug("CMD: parse")
 #    parse
-    delayed_job = Delayed::Job.enqueue NewParsing.new(self), :queue => 'fast'
+    delayed_job = Delayed::Job.enqueue NewParsing.new(self, h_data), :queue => 'fast'
     job.update_attributes(:delayed_job_id => delayed_job.id) #job.id)
   end
 
@@ -354,8 +442,15 @@ class Project < ApplicationRecord
     f_log = File.open("./log/delayed_job_parsing.log", "w")
     version = self.version
     h_env = JSON.parse(version.env_json)
-    project_step = ProjectStep.where(:project_id => self.id, :step_id => 1).first
-
+    asap_docker_image = Basic.get_asap_docker(version)
+    
+   # parsing_step = Step.where(:version_id => self.version_id, :name => 'parsing').first
+    parsing_step = Step.where(:docker_image_id => asap_docker_image.id, :name => 'parsing').first
+    # parsing_std_method = StdMethod.where(:version_id => self.version_id, :name => 'parsing').first
+    parsing_std_method = StdMethod.where(:docker_image_id => asap_docker_image.id, :name => 'parsing').first
+    
+    project_step = ProjectStep.where(:project_id => self.id, :step_id => parsing_step.id).first
+    
     start_time = Time.now
 
     project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + self.user_id.to_s + self.key
@@ -365,11 +460,11 @@ class Project < ApplicationRecord
     
     h_cmd = {
       :host_name => "localhost",
-      :time_call => h_env["time_call"].gsub(/\#output_dir/, tmp_dir.to_s),
+   #   :time_call => h_env["time_call"].gsub(/\#output_dir/, tmp_dir.to_s),
     #  :exec_stdout => h_env["exec_stdout"].gsub(/\#output_dir/, tmp_dir.to_s),
     #  :exec_stderr => h_env["exec_stderr"].gsub(/\#output_dir/, tmp_dir.to_s),
       # :container_name => 'to_define',
-      # :docker_call => h_env_docker_image['call'].gsub(/\#image_name/, image_name),
+     #  :docker_call => h_env_docker_image['call'].gsub(/\#image_name/, image_name),
       :program => "rails parse[#{self.key}]",  #(mem > 10) ? "java -Xms#{mem}g -Xmx#{mem}g -jar /srv/ASAP.jar" : 'java -jar /srv/ASAP.jar',   
       :opts => [],
       :args => []
@@ -386,19 +481,24 @@ class Project < ApplicationRecord
       :output_matrix => { "parsing/output.loom" => {:types => ["num_matrix"], :dataset => "matrix", :row_filter => nil, :col_filter => nil}},
       :output_json => { "parsing/output.json" => {:types => ["json_file"]}}
     }
-        
+
     h_run = {
       :project_id => self.id,
-      :step_id => 1,
+      :step_id => parsing_step.id,
+      :std_method_id => parsing_std_method.id,
       :status_id => 1, #status_id,                                                                  
       :num => 1,
       :user_id => self.user_id, 
       :command_json => h_cmd.to_json,
       :attrs_json => self.parsing_attrs_json,
-      :output_json => h_outputs.to_json
+      :output_json => h_outputs.to_json,
+      :submitted_at => start_time
+      #,
+#      :pred_max_ram => h_preparsing['pred_max_ram'],
+#      :pred_process_duration => h_preparsing['pred_process_duration']
     }
     
-    run = Run.where({:project_id => self.id, :step_id => 1}).first
+    run = Run.where({:project_id => self.id, :step_id => parsing_step.id}).first
     if !run
       run = Run.new(h_run)
       run.save
@@ -409,7 +509,7 @@ class Project < ApplicationRecord
       f_log.write("Updated run!")
     end
     
-    h_project_step =  Basic.get_project_step_details(self, 1)
+    h_project_step =  Basic.get_project_step_details(self, parsing_step.id)
     f_log.write(h_project_step.to_json)
     project_step.update_attributes(h_project_step)
     self.broadcast run.step_id

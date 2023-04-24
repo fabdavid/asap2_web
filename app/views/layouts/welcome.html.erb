@@ -11,7 +11,7 @@
     <%= csrf_meta_tags %>
     <%= action_cable_meta_tag %>
     <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track': 'reload' %>
-    <%= javascript_include_tag 'application', 'data-turbolinks-track': 'reload' %>
+    <%= javascript_include_tag 'welcome', 'data-turbolinks-track': 'reload' %>
   </head>
 
   <body id='body_container'>
@@ -74,22 +74,25 @@
     <div id="main" class="main">
       <%= yield %>
     </div>
-
+    
     <% if controller_name == 'projects' and action_name == 'index' %>
     <div id="main_footer">      
       <table>
 	<tbody>
-	  <tr><td width='20%'>
+	  <tr><td width='170px'>
 	      <%= link_to image_tag('epfl-logo.svg', :height => '35px' ), "http://epfl.ch", {:style => 'padding-left:20px'} %>
-	    </td><td style="text-align:center">
+	    </td><td style="text-align:left">
 	      &copy;2016-<%= Time.now.year %> EPFL, 1015 Lausanne<br>
 	      <a href="mailto:bioinfo.epfl@gmail.com?subject=ASAP feedback">Contact</a>
 	      |
-	       <a href="https://mediacom.epfl.ch/disclaimer">Disclaimer</a>
-	    </td><td width='200px'>
+	       <a href="https://www.epfl.ch/about/overview/regulations-and-guidelines/disclaimer">Disclaimer</a>
+	    </td><td  class='pr-2' width='350px'>
 	<!--      <%= link_to image_tag('lsbg_crop_logo.jpg', :height => '70px'), "http://deplanckelab.epfl.ch" %>
 	      <%= link_to image_tag('bbcf_logo.png', :height => '70px'), "http://bbcf.epfl.ch" %>	  -->    
-	      <span style='margin-right:10px;white-space:nowrap;font-style:italic;color:grey'>Supported by <%= link_to image_tag('CZ_LOGO.svg', :height => '70px'), "https://chanzuckerberg.com" %></span>
+	      <span style='margin-right:10px;font-style:italic;color:grey;font-size:10px'>The ASAP platform is developed by EPFL and SIB and made openly available to the scientific community with the support of the Swiss State Secretariat for Education, Research and Innovation SERI.
+	      </span>
+	    </td><td class='pt-2 pb-2 pr-2' width='80px'>
+	      <%=  link_to image_tag('sib_logo.svg', :height => '70px'), "https://sib.swiss" %>
 	    </td>
       </tr></tbody></table>
     </div>
@@ -98,7 +101,7 @@
        &copy;2016-<%= Time.now.year %> EPFL, 1015 Lausanne<br>
        <a href="mailto:webmaster.bbcf@epfl.ch?subject=ASAP feedback">Contact</a>
         |
-       <a href="https://mediacom.epfl.ch/disclaimer">Disclaimer</a>
+       <a href="https://www.epfl.ch/about/overview/regulations-and-guidelines/disclaimer">Disclaimer</a>
    </div>
    <% end %>
     
@@ -126,7 +129,7 @@ alert("titi");
   m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
   })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
 
-  ga('create', 'UA-24167610-29', 'auto');
+  ga('create', 'UA-131156225-4)', 'auto');
   ga('set', 'anonymizeIp', true); 
   ga('send', 'pageview');
 

@@ -1,0 +1,57 @@
+<%# @run.attrs_json %>
+
+<div id='<%= @step.name %>_step_container'>
+  <div class='container'>
+    <small>
+    <table id='ge-geneset_list_popup'>
+      <thead>
+        <% (0 .. @fields.size-1).each do |i| %>
+        <th><%= @fields[i] %></th>
+        <% end %>
+      </thead>
+      <tbody>
+	<% @data.each do |e| %>
+	<tr>
+	  <% (0 ..@fields.size-1).each do |i| %>
+	  <td>
+	    <% if i==0 %>
+            <span class='pointer badge badge-light gene_set_item'><%= e[i] %></span>
+            <% else %>
+	    <%= (['fdr', 'effect size', 'p-value'].include? @fields[i]) ? e[i].to_f.round(2) : e[i] %>
+	    <% end %>
+	  </td>
+	  <% end %>
+	</tr>
+	<% end %>
+      </tbody>
+    </table>
+    </small>
+  </div>
+</div>
+
+<%= javascript_tag do %>
+
+
+
+$(document).ready(function(){
+
+$("#ge-geneset_list_popup").on("click", ".gene_set_item", function(e){
+ var identifier = $(this).html()
+ var w = $(window).width()
+ var ww = 600
+  $("#ontop_popup_window").css({
+        left: (w-e.pageX > ww) ? (e.pageX + 10) : w-ww+10,
+        width:ww,
+        'z-index':1000000,
+        top: e.pageY + 10
+  }).stop().show(100);
+ refresh("ontop_popup_container", "<%= search_gene_set_items_path() %>?gene_set_id=<%= @h_run_attrs['gene_set_id'] %>&identifier=" + identifier + "&version_id=<%= @project.version_id %>", {loading:true})
+})
+
+
+$("#ge-geneset_list_popup").dataTable({
+"order": [[4, "desc"]]
+})
+
+});
+<% end %>

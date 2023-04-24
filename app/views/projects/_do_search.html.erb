@@ -1,0 +1,161 @@
+<%# @query.to_json %>
+<div class='card'>
+<div class='card-header card-primary'>
+<ul class="nav nav-tabs card-header-tabs" id="search_menu-nav" role="tablist">
+  <li class="nav-item">
+    <a class="nav-link <%= (session[:settings][:search_type] == 'public') ? 'active' : '' %>" id="public_projects-tab" data-toggle="tab" href="#pane-public_projects" role="tab" aria-controls="public_projects" aria-selected="true">
+<b>
+Public projects (<%= @public_projects.total_entries %> of <%= @h_counts[:all_public] %>)
+</b></a>
+  </li>
+  <% if current_user %>
+  <li class="nav-item">
+    <a class="nav-link <%= (session[:settings][:search_type] == 'my') ? 'active' : '' %>" id="my_projects-tab" data-toggle="tab" href="#pane-my_projects" role="tab" aria-controls="my_projects" aria-selected="false">
+      <b>
+	My projects (<%= @projects.total_entries %> of <%= @h_counts[:all_my] %>)
+    </b></a>
+  </li>
+  <% end %>
+</ul>
+</div>
+<div class='card-body'> 
+<div class="tab-content">
+
+  <div class="tab-pane <%= (session[:settings][:search_type] == 'public') ? 'active' : '' %>" id="pane-public_projects" role="tabpanel" aria-labelledby="public_projects-tab">
+    <div class='float-right'>
+      <div class='float-left mr-1 pt-2'><span class=''>Page</span></div>
+      <div class='float-left'>
+	<%= text_field_tag 'public_page', session[:settings][:public_page], {:class => 'form-control mr-2 page', :style => 'width:60px'} %>
+      </div>
+      <div class='float-left mr-3 mt-2'>
+        of <%= nb_page = (@public_projects.total_entries.to_f / session[:settings][:public_per_page]); nb_page_i = nb_page.to_i; (nb_page == nb_page_i) ? nb_page_i : nb_page_i+1  %>
+      </div>
+
+      <div class='float-left'>
+	<div class="input-group btn-group" role="group" aria-label="nav_search_btns">
+	  <button id='public_prev_btn' type="button" class="page_nav-btn btn btn-outline-primary" <%= "disabled='disabled'" if session[:settings][:public_page] ==1 %>><i class="fas fa-chevron-left"></i> Prev page</button>
+	  <button id='public_next_btn' type="button" class="page_nav-btn btn btn-outline-primary" <%= "disabled='disabled'" if session[:settings][:public_page] == (@public_projects.total_entries.to_i / session[:settings][:public_per_page].to_i ).round + 1 %>>Next page <i class="fas fa-chevron-right"></i></button>
+	</div>
+      </div>
+    </div>
+    <div class='float-left'>
+    <% l = [5, 25, 50, 100, 500].map{|e| ["#{e} results per page", e]} %>
+    <%= select_tag 'public_per_page', options_for_select(l, session[:settings][:public_per_page] || 5), {:class => 'form-control per_page'} %>
+    
+    <%= hidden_field_tag 'public_total', @public_projects.total_entries %>
+    <%= hidden_field_tag 'public_project_ids', @public_projects.map{|p| p.id}.join(",") %>
+
+     </div>
+    <div class='float-left'>
+    <% l = [['Most recent changes', 0], ['Most relevant',1], ['Ordered by name', 2], ['Highest number of cells', '3'], ['Largest projects', '4']
+         # ['Order by decreasing size', 2], ['Most recent', 3]
+         ] %>
+      <%= select_tag 'public_order_by', options_for_select(l, session[:settings][:public_order_by]), {:class => 'form-control mr-2 order_by'} %>
+    </div>
+      <div class='clear-both'></div>
+
+    
+    <%= render :partial => ("search_" + session[:settings][:search_view_type] + "_view"), :locals => {:projects => @public_projects, :type => 'public'} %>
+
+    
+  </div>
+
+  <div class="tab-pane <%= (session[:settings][:search_type] == 'my') ? 'active' : '' %>" id="pane-my_projects" role="tabpanel" aria-labelledby="my_projects-tab">
+     <div class='float-right'>
+       <div class='float-left mr-1 pt-2'><span class=''>Page</span></div>
+       <div class='float-left'><%= text_field_tag 'my_page', session[:settings][:my_page], {:class => 'form-control mr-2 page', :style => 'width:60px'} %></div>
+        <div class='float-left mr-3 mt-2'>
+        of <%= nb_page = (@projects.total_entries.to_f / session[:settings][:my_per_page]); nb_page_i = nb_page.to_i; (nb_page == nb_page_i) ? nb_page_i : nb_page_i+1  %>
+      </div>
+
+       <div class='float-left'>
+         <div class="input-group btn-group" role="group" aria-label="nav_search_btns">
+           <button id='my_prev_btn' type="button" class="page_nav-btn btn btn-outline-primary" <%= "disabled='disabled'" if session[:settings][:my_page] ==1 %>><i class="fas fa-chevron-left"></i> Prev page</button>
+<%# @projects.total_entries.to_i / session[:settings][:my_per_page].to_i %>
+           <button id='my_next_btn' type="button" class="page_nav-btn btn btn-outline-primary" <%= "disabled='disabled'" if session[:settings][:my_page] == (@projects.total_entries.to_i / session[:settings][:my_per_page].to_i ).round + 1 %>>Next page <i class="fas fa-chevron-right"></i></button>
+         </div>
+       </div>
+     </div>
+     <div class='float-left'>
+       <% l = [5, 25, 50, 100, 500].map{|e| ["#{e} results per page", e]} %>
+       <%= select_tag 'my_per_page', options_for_select(l, session[:settings][:my_per_page] || 5), {:class => 'form-control per_page'} %>
+       
+       <%= hidden_field_tag 'my_total', @projects.total_entries %>
+       <%= hidden_field_tag 'my_project_ids', @projects.map{|p| p.id}.join(",") %>
+     </div>
+     <div class='float-left'>
+       <% l = [['Most recent changes', 0], ['Most relevant',1], ['Ordered by name', 2], ['Highest number of cells', '3'], ['Largest projects', '4']
+          # ['Order by decreasing size', 2], ['Most recent', 3]
+          ] %>
+       <%= select_tag 'my_order_by', options_for_select(l, session[:settings][:my_order_by]), {:class => 'form-control mr-2 order_by'} %>
+     </div>
+     <div class='clear-both'></div>
+     
+     <%= render :partial => ("search_" + session[:settings][:search_view_type] + "_view"), :locals => {:projects => @projects, :type => 'my'} %>
+
+  </div>
+  
+</div>
+</div>
+
+<%= javascript_tag do %>
+
+$(".sel_project").click(function(){
+var count = 0
+$(".sel_project").each(function(){
+if (this.checked){count++}
+})
+console.log("count:" + count)
+$("#upd_tag_btn").prop("disabled", (count == 0))
+})
+
+$(".per_page").change(function(){
+ var t = this.id.split("_")
+ var type = t[0]
+ var h = {loading:'fa-2x'}
+ search([], h)
+})
+
+$("#search_menu-nav li .nav-link").click(function(){
+ console.log("bla")
+ var p = [{name : 'search_type', value :  this.id.split("_")[0]}];
+ refresh_post(null, "<%= set_search_session_projects_path %>", p, 'post', {})
+})
+
+$(".page_nav-btn").click(function(){
+ var t = this.id.split("_")
+ var search_type = t[0] 
+ var direction = t[1]
+ var cur_val = parseInt($("#" + search_type + "_page").val())
+ if (direction == 'prev'){
+  $("#" + search_type + "_page").val(cur_val - 1)
+ }else{
+  $("#" + search_type + "_page").val(cur_val + 1)
+ }
+ console.log("#" + search_type + "_page: " + $("#" + search_type + "_page").val())
+ var h = {loading:'fa-2x'}
+ search([], h)
+})
+
+$(".page").keyup(function(e){
+ var t = this.id.split("_")
+ var type = t[0]
+ // console.log("KEY:" + e.key)
+ if (e.key == 'Enter'){
+  // validate page #
+  if (parseInt($("#" + type + "_total").val()) < (parseInt($("#" + type + "_page").val())-1) * parseInt($("#" + type + "_per_page").val())){
+   console.log("Too high page number!")
+   $("#" + type + "_page").val(Math.round(parseInt($("#" + type + "_total").val())/parseInt($("#" + type + "_per_page").val()))+1)
+  } 
+  var h = {loading:'fa-2x'}
+  search([], h)
+ }
+})
+
+$(".order_by").change(function(){
+  var h = {loading:'fa-2x'}
+  search([], h)
+})
+
+
+<% end %>

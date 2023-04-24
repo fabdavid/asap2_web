@@ -1,25 +1,7 @@
 <p id="notice"><%= notice %></p>
 
-<h1>Provider Projects</h1>
+<h1><%= session[:settings][:provider_id].to_json %> projects</h1>
 
-<table>
-  <thead>
-    <tr>
-      <th colspan="3"></th>
-    </tr>
-  </thead>
+<%= render :partial => 'index' %>
 
-  <tbody>
-    <% @provider_projects.each do |provider_project| %>
-      <tr>
-        <td><%= link_to 'Show', provider_project %></td>
-        <td><%= link_to 'Edit', edit_provider_project_path(provider_project) %></td>
-        <td><%= link_to 'Destroy', provider_project, method: :delete, data: { confirm: 'Are you sure?' } %></td>
-      </tr>
-    <% end %>
-  </tbody>
-</table>
-
-<br>
-
-<%= link_to 'New Provider Project', new_provider_project_path %>
+<%# link_to 'New Provider Project', new_provider_project_path %>

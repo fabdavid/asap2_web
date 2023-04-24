@@ -12,10 +12,11 @@
   <% end %>
 
 <table>
-<tr><td>Release date</td><td><%= f.date_select :release_date %></td></tr>
+<tr><td>Release date (change to release date when activated)</td><td><%= f.date_select :release_date %></td></tr>
+<tr><td>Activated</td><td><%= f.check_box :activated %></td></tr>
 <tr><td>Description</td><td><%= f.text_area :description %></td></tr>
-<tr><td>Tools</td><td><%= f.text_area :tools_json, {:cols => 70, :rows => 10} %></td></tr>
-<tr><td>Dockers</td><td><%= f.text_area :docker_json, {:cols => 70, :rows => 10} %></td></tr>
+<!--<tr><td>Tools</td><td><%= f.text_area :tools_json, {:cols => 70, :rows => 10} %></td></tr>
+<tr><td>Dockers</td><td><%= f.text_area :docker_json, {:cols => 70, :rows => 10} %></td></tr>-->
 <tr><td>Environment</td><td><%= f.text_area :env_json, {:cols => 70, :rows => 10} %></td>
 </table>
 

@@ -1,26 +1,35 @@
 <%# session[:input_data_attrs] %>
-<%# @log %>
+<%# "bla" + @log5.to_json if admin? %>
 <%# @h_res[:h_attr_outputs].to_json %>
 <%# @h_constraints['in_lineage'].to_json %>
 <%# @h_constraints['in_lineage'].map{|attr_name| session[:input_data_attrs][@project.id]["6"][attr_name]}.to_json %>
-<%#  @h_res.to_json %>
+<%# @h_constraints.to_json %>
+<%#  @h_res.to_json if admin? %>
 <%# @h_constraints %>
 <%# params[:attr_name] %>
 <%# @valid_types %>
 <%# @attrs[params[:attr_name]] %>
-<%# @h_res[:valid_types] %>
+<%# @h_res[:h_store_run_ids] %>
 <%# @attrs.to_json %>
 <%# @h_runs_by_step.to_json %>
 <%# @h_res[:h_attr_files].to_json %>
 <% h_selected_runs = {} %>
+<% h_selected = {:annot => {}} %>
 <%# session[:input_data_attrs].to_json %>
 <%#  session[:input_data_attrs][params[:step_id]][params[:attr_name]].to_json %>
 <% if s = session[:input_data_attrs][@project.id][params[:step_id]] and s[params[:attr_name]] %>
   <%# session[:input_data_attrs][params[:step_id]][params[:attr_name]].map{|e| e[:run_id]}.to_json %>
- <% session[:input_data_attrs][@project.id][params[:step_id]][params[:attr_name]].map{|e| e and h_selected_runs[e[:run_id].to_i]=[]; h_selected_runs[e[:run_id].to_i].push(e['attr_name'])} %>
+ <% session[:input_data_attrs][@project.id][params[:step_id]][params[:attr_name]].map{|e| 
+    if e and e[:annot_id]
+       h_selected[:annot][e[:annot_id].to_i]=1
+    elsif e[:run_id]
+      h_selected_runs[e[:run_id].to_i]=[] 
+      h_selected_runs[e[:run_id].to_i].push(e['attr_name'])
+    end 
+  } %>
 <% end %>
 <%# h_selected_runs.to_json %>
-
+<%# session[:input_data_attrs][@project.id][params[:step_id]][params[:attr_name]].to_json %>
 <%# if @attrs[params[:attr_name]] %>
 <%# list_attr_files_by_run = {} %>
 <%# valid_step_names = @attrs[params[:attr_name]]['source_steps'].select{|ssn| @h_runs_by_step[@h_steps[ssn].id]}.sort{|a,b| @h_steps[a].rank <=> @h_steps[b].rank}.select{|sid|
@@ -33,12 +42,15 @@
 #} %>
 
 <%# @h_attr_files.to_json %>
-
 <% if @h_res[:valid_step_ids].size > 0 %>
 
-<div style='position:fixed;width:95%;z-index:100000'>
-<div class='float-right'> <button type='button' class='select_runs btn btn-primary'>Apply selection</button></div>
-</div>
+<!--<div style='position:fixed;width:95%;z-index:0'>-->
+<div class='float-right'> <button type='button' class='select_runs btn btn-primary' style='z-index:100000'>Apply selection</button></div>
+<!--</div>-->
+
+<% if @attrs[params[:attr_name]]['form_select_mode'] %>
+<%= render :partial => 'form_select_input_data_' +  @attrs[params[:attr_name]]['form_select_mode'], :locals => {:h_selected_runs => h_selected_runs} %>
+<% else %>
 
 <%# @h_res[:h_attr_outputs].keys.sort{|a, b| @h_steps[a] <=> @h_steps[b]}.each do |source_step_id| %>
 <% @h_res[:valid_step_ids].each do |source_step_id| %>
@@ -46,10 +58,79 @@
 
 <div id='step_title_<%= source_step_id %>'> 
 
-<div style='width:200px' class='float-left'><b><%= @h_steps[source_step_id].label %></b></div>
+<div><div style='width:200px' class='float-left'><b><%= @h_steps[source_step_id].label %></b></div>
+<% if !@attrs[params[:attr_name]]['max_nber_items'] %>
 <button type='button' id='select_all_<%= source_step_id %>' class='btn btn-secondary btn-sm input_data_select_all sel_all'>Select all</button>                                                      
 <button type='button' id='deselect_all_<%= source_step_id %>' class='btn btn-secondary btn-sm input_data_deselect_all sel_all'>Deselect all</button>
+<% end %>
 </div>
+</div>
+<div class='clear'></div>
+
+<div class='card-deck' id='run_list'>
+
+<!--<div class='mt-10'>
+<%= h_selected.to_json %>
+</div>-->
+ <%# @h_res[:h_annots][source_step_id].to_json %>
+ <% if @h_res[:h_annots][source_step_id] %>
+
+  <% @h_res[:h_annots][source_step_id].keys.sort.each do |run_id| %>
+   <%# run_id %>
+   <% run = @h_res[:h_runs][run_id] %>
+   <% if run and run.status_id == 3 %>
+    <% h_attrs = Basic.safe_parse_json(run.attrs_json, {}) %>
+    <% @h_res[:h_annots][source_step_id][run_id].keys.sort.each do |store_run_id| %>
+    <% @h_res[:h_annots][source_step_id][run_id][store_run_id].keys.sort.each do |annot_name| %>
+    <% annot = @h_res[:h_annots][source_step_id][run_id][store_run_id][annot_name] %>
+    <div id='card-run-annot:<%= annot.id %>:<%= annot.run_id %>' class='pointer card card_std run_card_<%= run_id %> dataset_card<%#w (h_selected_runs[run_id]) ? ' selected_run' : '' %>'>
+
+      <div class='card-body'>
+	<span class='check-icon' style="color:green">
+          <% if h_selected[:annot][annot.id] %>
+          <i class="fa fa-circle"></i>
+          <% else %>
+          <i class="far fa-circle"></i>
+          <% end %>
+	</span>
+	<span>
+	  <b><%= annot.name.gsub(/\/.+?\//, '') %></b>
+	</span>
+	<%# output_key %>
+	<%# if t_output_key.size > 1 and dataset_name = t_output_key[1] %>
+	<p><small><span class='font-italic'>in LOOM file</span> <span id='loomfile-lineage_<%= annot.id %>_<%= store_run_id %>' class='badge badge-secondary input_lineage2'><b><%= display_run_short_txt(@h_res[:h_runs][store_run_id]) %></b></span></small></p>
+
+	<%# ori_run_attrs = @h_run_res[annot.ori_run_id] %>
+	<% annot_attrs = annot.attributes %>
+	<% ori_run =  @h_res[:h_runs][annot.ori_run_id] %>
+	<%# @h_dashboard_card[annot.ori_step_id]["output_values"] %>
+	<% if annot.imported == false %>
+	<%= raw ((run.status_id == 3 and @h_dashboard_card[annot.ori_step_id]["output_values"] and @h_dashboard_card[annot.ori_step_id]["output_values"].size > 0) ? ("<p class='card-text'>" + @h_dashboard_card[annot.ori_step_id]["output_values"].map{|e| "<span class='badge badge-info'>#{e["label"]}:#{(k = e["annot_key"] || e["key"]) ? annot_attrs[k] : 'NA'}</span>"}.join(" ") + "</p>") : '') %>
+	<% else %>
+	<%= raw [['nber_cols', 'cells'], ['nber_rows', 'genes'], ['nber_cats', 'categories']].select{|e| annot_attrs[e[0]]}.map{|e| "<span class='badge badge-info'>#{e[1]}:#{annot_attrs[e[0]]}</span>"}.join(" ") %>
+	<% end %>   
+	<%# end %>
+	        <p>
+          <% if step.multiple_runs == true %>
+          <i>created by</i> <span id='annot-lineage_<%= annot.id %>_<%= ori_run.id %>' class='badge badge-warning input_lineage2'><%# ori_run.id if admin? %>#<%= ori_run.num %> <%= @h_std_methods[ori_run.std_method_id].label %></span><br/>
+          <small><i>main params</i> <%= raw display_run_attrs2(ori_run, h_attrs, @h_std_method_attrs, {:reject_if_default => true, :input_lineage_class => 'input_lineage2'}) %></small>	  
+          <% else %>
+          <%# step.label %>
+          <% end %>
+        </p>
+      </div>
+     </div>   
+    <% end %>
+    <% end %>
+    <% else %>
+    <%# run_id %>
+    <%# @h_res[:h_runs].keys.to_json %>
+    <% end %>
+    <% end %>
+    <% end %>
+</div>
+
+<% if 1 == 0 %>
 <div class='card-deck' id='run_list'>
 
   <% @h_res[:h_attr_outputs][source_step_id].keys.sort.reverse.each do |run_id| %>
@@ -57,7 +138,8 @@
    <% h_attrs = (run.attrs_json) ? JSON.parse(run.attrs_json) : {} %>
    <% @h_res[:h_attr_outputs][source_step_id][run_id].each do |output_attr_name, output_key|%>
     <% t_output_key = output_key.split(":") %> 
-   <div id='card-run-<%= run_id %>:<%= output_attr_name %>:<%= output_key %>' class='pointer card card_std run_card_<%= run_id %> run_card<%#w (h_selected_runs[run_id]) ? ' selected_run' : '' %>'>
+   <div id='card-run-<%= run_id %>:<%= output_attr_name %>:<%= output_key %>' class='pointer card card_std run_card_<%= run_id %> dataset_card<%#w (h_selected_runs[run_id]) ? ' selected_run' : '' %>'>
+     
     <div class='card-body'> 
       <span class='check-icon' style="color:green">
 	<% if h_selected_runs[run_id] %>   
@@ -74,7 +156,7 @@
 	
 	<% if step.multiple_runs == true %>
 	#<%= run.num %> <%= @h_std_methods[run.std_method_id].label %>
-        <%= raw display_run_attrs(run, h_attrs, @h_std_method_attrs) %>
+        <%= raw display_run_attrs(run, h_attrs, @h_std_method_attrs, {}) %>
 	<% else %>
         <%= step.label %>
 	<% end %>
@@ -82,6 +164,9 @@
        <%# output_key %>
       <% if t_output_key.size > 1 and dataset_name = t_output_key[1] %>
       <p><%= "Dataset: #{dataset_name}" %></p>
+      <!--      <p><span class='badge badge-info'>cells:<%# @h_res[:h_annots][run_id][t_output_key[1]].nber_cols %></span> <span class='badge badge-info'>genes:<%# @h_res[:h_annots][run_id][t_output_key[1]].nber_rows %></span></p> -->
+      
+<%= raw ((run.status_id == 3 and @h_dashboard_card[run.step_id]["output_values"] and @h_dashboard_card[run.step_id]["output_values"].size > 0) ? ("<p class='sub-run_card'>Output summary</p><p class='card-text'>" + @h_dashboard_card[run.step_id]["output_values"].map{|e| "<span class='badge badge-info'>#{e["label"]}:#{(@h_run_res[run.id][e["key"]]) ? @h_run_res[run.id][e["key"]] : 'NA'}</span>"}.join(" ") + "</p>") : '') %>
       <% end %>
       <!--      <div class='sel_buttons white-background-btn'>
 		<button class='btn btn-xs btn-primary sel_parents'>Previous</button>
@@ -95,7 +180,8 @@
 <% end %>
 </div>
 <% end %>
-
+<% end %>
+<% end %>
 <!--<div class='float-right'>-->
  <button type='button' class='select_runs btn btn-primary'>Apply selection</button>
 <!--</div>-->
@@ -110,27 +196,32 @@
 
 <!-- for the selected pipeline path, one select field for each step (except if there is only one set of parameters => in this case just display the parameters) -->
 
+
 <%= javascript_tag do %>
 
 var h_run_ids_by_step_id = <%= raw @h_run_ids_by_step_id.to_json %>
+var h_annots_by_step_id = <%= raw @h_res[:h_annots_by_step_id].to_json %>
 var h_children_run_ids = <%= raw @h_children_run_ids.to_json %>
 var h_lineage_run_ids = <%= raw @h_lineage_run_ids.to_json %>
 
 var max_selected = <%= raw (@attrs[params[:attr_name]]['max_nber_items']) ? @attrs[params[:attr_name]]['max_nber_items'] : "null" %>
-console.log("blaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+
+ $(".input_lineage2").click(function(e){
+<%= render :partial => 'input_lineage_js' %>
+})
+
 $(".sel_all").click(function(){
-console.log("bla")
   var sid = this.id.split("_")[2]
-  var run_ids = h_run_ids_by_step_id[sid]
+  var list_ids = h_annots_by_step_id[sid]
  if ($(this).hasClass("input_data_select_all")){ 
-  for (i=0; i<run_ids.length; i++){
-   var check_icon = $(".run_card_" + run_ids[i]).find(".check-icon i")
+  for (i=0; i<list_ids.length; i++){
+   var check_icon = $(".run_card_" + list_ids[i][1]).find(".check-icon i")
    check_icon.addClass("fa")
    check_icon.removeClass("far")   
   }
  }else{
-  for (i=0; i<run_ids.length; i++){
-   var check_icon = $(".run_card_" + run_ids[i]).find(".check-icon i")
+  for (i=0; i<list_ids.length; i++){
+   var check_icon = $(".run_card_" + list_ids[i][1]).find(".check-icon i")
    check_icon.removeClass("fa")
    check_icon.addClass("far")
   }
@@ -162,14 +253,14 @@ console.log("bla")
 //})
 
 function deselect_all_runs(){
-   $(".run_card").each(function(i, obj){
+   $(".dataset_card").each(function(i, obj){
     c = $(obj).find(".check-icon i")
     c.removeClass("fa")
     c.addClass("far")
    });
 }
 
-$(".run_card").click(function(){
+$(".dataset_card").click(function(){
  var id = this.id.split("-")[2];
  var list_run_ids = get_list_selected_cards()
 
@@ -203,14 +294,15 @@ refresh("form_container", "<%= form_select_input_data_projects_path(:key => @pro
 
 function get_list_selected_cards(){
 
- var list_run_ids = []
- $(".run_card").each(function(i, obj){
+ var list_ids = []
+ $(".dataset_card").each(function(i, obj){
    if ($(obj).find(".check-icon i").hasClass("fa")){
-     list_run_ids.push($(obj).attr("id").split("-")[2])
+     var t = $(obj).attr("id").split("-")	 		       
+     list_ids.push(t[2])
      //console.log("add")
    }
  })
- return list_run_ids
+ return list_ids
 }
 
 $(".select_runs").click(function(){
@@ -218,7 +310,7 @@ $(".select_runs").click(function(){
  // get the list of selected cards
  var list_run_ids = get_list_selected_cards()
 
- console.log(list_run_ids);
+// console.log(list_run_ids);
  // refresh("attrs_container", '<%= set_input_data_project_path(:key => @project.key) %>?attr_name=<%= params[:attr_name] %>&step_id=<%= @step.id %>&obj_id=<%= params[:obj_id] %>&list_attrs=' +  list_run_ids.join(","), {loading:'fa-2x'})
  refresh("form-container_<%= params[:attr_name] %>", '<%= set_input_data_project_path(:key => @project.key) %>?attr_name=<%= params[:attr_name] %>&step_id=<%= @step.id %>&obj_id=<%= params[:obj_id] %>&list_attrs=' +  list_run_ids.join(","), {loading:'fa-2x'})
  $("#ontop_window").addClass("hidden");
@@ -226,10 +318,12 @@ $(".select_runs").click(function(){
 
 
 <% if @h_res[:valid_step_ids].size == 0 %>
-var list_valid_types = <%= raw @h_res[:valid_types].to_json %>
-console.log(list_valid_types);
+var list_valid_types = <%= raw @valid_types.to_json %>
+//console.log(list_valid_types);
 for (i= 0; i< list_valid_types.length; i++){
-$("#list_valid_types").append("<li>" + ((h_types[list_valid_types[i]]) ? h_types[list_valid_types[i]].description : '-') + "</li>")
+$("#list_valid_types").append("<li>" + 
+list_valid_types[i].map(x => (h_types[x]) ? h_types[x].description : 'NA').join(" OR ") + "</li>")
+//((h_types[list_valid_types[i]]) ? h_types[list_valid_types[i]].description : '-') + "</li>")
 }
 <% end %>
 

@@ -1,0 +1,17 @@
+<% if type == 'public' %>
+ <%= render :partial => 'list_public_projects', :locals => {:projects => projects} %>
+<% else %>
+ <%= render :partial => 'list_projects', :locals => {:projects => projects} %>
+<% end %>
+
+<%= javascript_tag do %>
+
+$("#search_results").on("click", ".clone-btn", function(){
+ console.log("cloning")
+ $("#form_container").html("<div style='vertical-align:center'><i class='fas fa-spinner fa-pulse fa-2x'></i> Please wait while project is being cloned...</div>")
+ $("#ontop_window_close").addClass("hidden")
+ $("#ontop_window").removeClass("hidden")
+})
+console.log("hide message")
+ $("#ontop_window").addClass("hidden")
+<% end %>
