@@ -55,8 +55,9 @@
 
 var depth_by_cell = <%= raw @depth['values'].to_json %> 
 
+<% if @marker_genes_run %>
 $("#evidences_icon").html("<i class='<%= raw @h_statuses[@marker_genes_run.status_id].icon_class %>'></i>")
-
+<% end %>
 $("#annotation_title").html("<span style='background-color:<%= @palette[@cat_i % @palette.size] %>' class='dot'></span> Group <span class='badge badge-light'><%= @annot.name.gsub(/\/col_attrs\//, '') %></span> > <span class='badge badge-light'><%= params[:cat_name] %></span> <br/> in <span class='badge badge-info'><%= display_run_short_txt(Run.where(:id => @annot.store_run_id).first) %></span>")
 
 $("#new_annot-tab").removeClass("show active")

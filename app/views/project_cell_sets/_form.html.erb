@@ -1,0 +1,17 @@
+<%= form_with(model: project_cell_set, local: true) do |form| %>
+  <% if project_cell_set.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(project_cell_set.errors.count, "error") %> prohibited this project_cell_set from being saved:</h2>
+
+      <ul>
+      <% project_cell_set.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

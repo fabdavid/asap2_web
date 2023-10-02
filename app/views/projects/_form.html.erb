@@ -29,7 +29,6 @@
 <% end %>
 
 <div class='row'>
-
   <div class='form-group col-12 col-sm-4'>
     <%= label_tag 'project_name', 'Project Name', {'data-toggle' => "tooltip"} %>
     <%= f.text_field :name, {:class => "form-control is-invalid", :placeholder => "Name of the project"} %>
@@ -58,8 +57,8 @@
     end
   #  end
     %>
-
-    <%= f.select :organism_id, grouped_options_for_select(h_list_organisms), {}, {class: 'form-control', divider: '---------'} %>
+<% sel_organism = (params[:organism_id]) ? Organism.where(:tax_id => params[:organism_id]).first : nil %>
+    <%= f.select :organism_id, grouped_options_for_select(h_list_organisms, ((sel_organism) ? [sel_organism.id] : nil)), {}, {class: 'form-control', divider: '---------'} %>
   </div>
 </div>
 
@@ -248,10 +247,11 @@ $("#create_project_button").click(function(){
 $("#project_organism_id").change(function(){validate_form()});
 
 // reload the page if there is something in the project name
+<% if !params[:project_name] %>
 if ($("#project_name").val() != ''){
  $(".main_container").html("<div class='loading'><i class='fa fa-spinner fa-pulse fa-fw fa-lg fa-2x'></i><br/><span class='loading_text'>Reloading...</span></div>")
  window.location.href = "<%= new_project_path() %>"
 }
-
+<% end %>
 <% end %>
 

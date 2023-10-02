@@ -1,0 +1,52 @@
+<p id="notice"><%= notice %></p>
+
+<div class='float-right'>
+  <%= link_to 'New Tool', new_tool_path, {:class => 'btn btn-primary'}  %>
+</div>
+
+<h1>Tools</h1>
+
+<table id='tools'>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Label</th>
+      <th>Package</th>
+      <th>Tool type</th>
+      <th>Steps</th>
+      <th>Description</th>
+      <th></th>
+      <% if admin? %>
+      <th></th>
+      <th></th>
+      <% end %>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @tools.each do |tool| %>
+    <tr>
+        <td><%= tool.name %> <%= link_to("link", tool.url) if tool.url %> </td>
+        <td><%= tool.label %></td>
+	<td><%= tool.package %></td>
+        <td><%= (tool.tool_type) ? tool.tool_type.name : 'NA' %></td>
+        <td><%= Step.where(:id => (tool.step_ids) ? tool.step_ids.split(",") : []).all.sort.map{|e| e.label}.join(", ") %></td>
+        <td><b><%= tool.title %></b><br/><%= tool.description %></td>
+        <td><%= link_to 'Show', tool %></td>
+<% if admin? %> 
+        <td><%= link_to 'Edit', edit_tool_path(tool) %></td>
+        <td><%= link_to 'Destroy', tool, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+<% end %>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= javascript_tag do %>
+
+$("#tools").DataTable()
+
+<% end %> 
+

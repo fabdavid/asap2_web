@@ -1,0 +1,43 @@
+<!--<div class='container'>
+<h4>
+<i class='fa fa-exclamation-triangle'></i>
+<i class='fa fa-wrench'></i>
+TO COME
+<i class='fa fa-wrench'></i>
+<i class='fa fa-exclamation-triangle'></i>
+</h4>
+</div>
+-->
+
+<ul id='tutorial_slide' class='nobullets'>
+
+<% @h_tutos.each_key do |tuto| %>
+  <li id='tuto-<%= tuto %>' class='alert alert-info'>
+  <!--  <% if icon = @h_icons[tuto] %>
+    <div class='float-right'><%= link_to image_tag(icon[0], :height => '50px'), icon[1] %></div>
+    <% end %>-->
+    <%= link_to @h_tutos[tuto], tutorial_home_index_path(:t => tuto) %>
+ <% if icon = @h_icons[tuto] %>
+  <%= link_to image_tag(icon[0], :height => '50px'), icon[1] %>
+ <% end %>
+  </li>
+<% end %>
+</div>
+
+<%= javascript_tag do %>
+
+/*$(document).ready(function(){
+
+ $('#tutorial_slide').slick({
+ dots: true,
+ slidesToShow: 1,
+ slidesToScroll: 1,
+ autoplaySpeed: 5000
+ });
+ $(".slick-arrow").css({color : '', 'background-color' : '', opacity:0})
+
+});
+*/
+
+<% end %>
+

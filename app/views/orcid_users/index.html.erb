@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Orcid Users</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @orcid_users.each do |orcid_user| %>
+      <tr>
+        <td><%= link_to 'Show', orcid_user %></td>
+        <td><%= link_to 'Edit', edit_orcid_user_path(orcid_user) %></td>
+        <td><%= link_to 'Destroy', orcid_user, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Orcid User', new_orcid_user_path %>

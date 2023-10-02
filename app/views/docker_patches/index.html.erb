@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Docker Patches</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @docker_patches.each do |docker_patch| %>
+      <tr>
+        <td><%= link_to 'Show', docker_patch %></td>
+        <td><%= link_to 'Edit', edit_docker_patch_path(docker_patch) %></td>
+        <td><%= link_to 'Destroy', docker_patch, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Docker Patch', new_docker_patch_path %>

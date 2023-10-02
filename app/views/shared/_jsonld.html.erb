@@ -1,0 +1,60 @@
+<script type="application/ld+json"> 
+{ 
+  "@context": "https://schema.org/", 
+  "@id": "https://asap.epfl.ch/",
+  "@type": "DataCatalog",
+  "name": "ASAP", 
+  "alternateName": "Automated Single-cell Analysis Pipeline",
+  "description": "A collaborative portal to analyze single-cell transcriptomics data.", 
+  "url": "https://asap.epfl.ch/",
+  "isAccessibleForFree" : true, 
+  "license": {       
+    "@type": "CreativeWork",                   
+    "name": "Attribution 4.0 International (CC BY 4.0)",                      
+    "url": "https://creativecommons.org/licenses/by/4.0/"   
+  },  
+  "citation": { 
+    "@type": "ScholarlyArticle", 
+     "name": "ASAP: a web-based platform for the analysis and interactive visualization of single-cell RNA-seq data.", 
+     "author": [
+       {"@type": "Person", "givenName": "Vincent", "familyName": "Gardeux", "identifier": "https://orcid.org/0000-0001-8954-2161"}, 
+       {"@type": "Person", "givenName": "Fabrice", "familyName": "David", "identifier": "https://orcid.org/0000-0001-8539-865X"},
+       {"@type": "Person", "givenName": "Adrian", "familyName": "Shajkofci", "identifier": "https://orcid.org/0000-0001-8139-7174"},
+       {"@type": "Person", "givenName": "Petra", "familyName": "Schwalie", "identifier": "https://orcid.org/0000-0002-6004-8095"},
+       {"@type": "Person", "givenName": "Bart", "familyName": "Deplancke", "identifier": "https://orcid.org/0000-0001-9935-843X"}
+     ],   
+     "identifier": "http://dx.doi.org/10.1093/bioinformatics/btx337",
+     "url": "http://identifiers.org/pubmed:28541377"  
+  }, 
+  "provider": [
+   {"@type": "Organization", "sameAs": "https://ror.org/02s376052", "name": "Ecole Polytechnique F&eacute;d&eacute;rale de Lausanne", "url": "https://epfl.ch"},
+   {"@type": "Organization", "sameAs": "https://ror.org/002n09z45", "name": "SIB Swiss Institute of Bioinformatics", "url": "https://sib.swiss"}
+  ],
+  "hasPart" : [
+        {
+          "@type": "Dataset",
+          "name": "Fly Cell Atlas",
+          "description": "Single-cell transcriptomes of the entire adult Drosophila.",
+          "url": "https://asap.epfl.ch/fca",
+          "isAccessibleForFree" : true,  
+          "license": {       
+            "@type": "CreativeWork",                   
+            "name": "Attribution 4.0 International (CC BY 4.0)",                      
+            "url": "https://creativecommons.org/licenses/by/4.0/"   
+          },
+            "citation": { 
+              "@type": "ScholarlyArticle", 
+              "name": "Fly Cell Atlas: A single-nucleus transcriptomic atlas of the adult fruit fly.",    
+              "identifier": "http://dx.doi.org/10.1126/science.abk2432"
+            } 
+        },
+        {
+          "@type": "Dataset",
+          "name": "Human Cell Atlas",
+          "description": "Mapping the human body at the cellular level.",
+          "url": "https://asap.epfl.ch/hca",
+          "isAccessibleForFree" : true
+        }
+      ]
+} 
+</script> 

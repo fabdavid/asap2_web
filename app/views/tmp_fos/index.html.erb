@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Tmp Fos</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @tmp_fos.each do |tmp_fo| %>
+      <tr>
+        <td><%= link_to 'Show', tmp_fo %></td>
+        <td><%= link_to 'Edit', edit_tmp_fo_path(tmp_fo) %></td>
+        <td><%= link_to 'Destroy', tmp_fo, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Tmp Fo', new_tmp_fo_path %>

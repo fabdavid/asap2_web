@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Exp Entry Identifiers</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @exp_entry_identifiers.each do |exp_entry_identifier| %>
+      <tr>
+        <td><%= link_to 'Show', exp_entry_identifier %></td>
+        <td><%= link_to 'Edit', edit_exp_entry_identifier_path(exp_entry_identifier) %></td>
+        <td><%= link_to 'Destroy', exp_entry_identifier, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Exp Entry Identifier', new_exp_entry_identifier_path %>

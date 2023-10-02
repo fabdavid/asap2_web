@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Cla Votes</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @cla_votes.each do |cla_vote| %>
+      <tr>
+        <td><%= link_to 'Show', cla_vote %></td>
+        <td><%= link_to 'Edit', edit_cla_vote_path(cla_vote) %></td>
+        <td><%= link_to 'Destroy', cla_vote, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Cla Vote', new_cla_vote_path %>

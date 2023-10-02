@@ -1,0 +1,6 @@
+// refresh("cat_legend_table", "<%= get_cat_legend_annot_path(@annot.id) %>", {loading:'fa-2x'})
+//$("#plot_annotation_close").click()
+refresh("pane-existing_annot", "<%= raw clas_path %>?annot_id=<%= @annot.id %>&cat_i=<%= @cat_idx %>", {loading:'fa-2x'})
+$("#existing_annot-tab").click()
+
+

@@ -1,0 +1,17 @@
+<%= form_with(model: data_class, local: true) do |form| %>
+  <% if data_class.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(data_class.errors.count, "error") %> prohibited this data_class from being saved:</h2>
+
+      <ul>
+      <% data_class.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

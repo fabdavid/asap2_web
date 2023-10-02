@@ -1,0 +1,50 @@
+<p>
+In this tutorial we will see why some methods can cause out-of-RAM error messages and how to prevent it.
+</p>
+
+<hr/>
+
+<h4 class="sm" id="sm-0">What is out-of-RAM ?</h4>
+
+<p>
+ASAP's server has plenty of RAM available for jobs (~400Gb). However, it can happen that some jobs quit/end with an out-of-RAM error message.<br/>
+There are two possible source of errors/cause for this message to appear:
+<ol>
+<li>A unique job is running a method that is not scalable, i.e. it needs to load the full matrix into the RAM (sometimes multiple times), and the matrix is very big (>100k cells)</li>
+<li>Too many jobs were launched at the same time, and even if indiviually they don't need too much RAM, all running together saturates the RAM, which cause all jobs to be killed by the operating system</li>
+</ol>
+</p>
+
+<hr/>
+
+<h4 class="sm" id="sm-0">How do I know that an out-of-RAM error occured ?</h4>
+
+<p>
+In ASAP, we try to catch this error as best as we can, but this can be very tricky to isolate, and very method dependent, so sometimes you may see "Probably out-of-RAM" error message, and sometimes a generic error message such as "Something went wrong" (see Figure 1).<br/>
+If the cause of the error is 2) (see above), then you can even have some jobs that completed, while others failed (see Figure 1), which makes it even trickier to understand.<br/>
+</p>
+
+<%= image_tag 'tuto_5_001.png', {class:"tuto-image", style:'width:90%'} %>
+
+<hr/>
+
+<h4 class="sm" id="sm-0">How to prevent out-of-RAM errors ?</h4>
+
+<p>
+In general, we monitor the computing time and RAM of all the jobs (for benchmarking and for the time/RAM prediction tool)<br/>
+When a job is completed, you should see at the bottom (in the grey area) how long it ran, and how much RAM it needed to complete.<br/>
+This helps you to understand a potential out-of-RAM issue, and if the method that you try to use is scalable for your dataset. Indeed, some methods are scalable to big datasets while others are not. If we take the example of Differential Expression methods, DESeq2, limma and Wilcoxon [Seurat] are not especially scalable and may fail on large dataset. But Wilcoxon [ASAP] (that we developed in Java) is scalable to virtually any dataset.<br/>
+So choosing the method that is appropriate for your dataset is important, especially if you work with a large dataset.
+</p>
+
+<hr/>
+
+<h4 class="sm" id="sm-0">How to use the prediction tool ?</h4>
+
+<p>
+Because of the monitoring we are performing on all jobs that run in ASAP, we are able to predict how much RAM/computing time will be required for a method to complete.<br/>
+Of course it is not perfect, and depends on the training set that we could monitor, but it can help you to select the method that best fit your dataset.<br/>
+For example, if you see that a method will take 5 days to complete, you may consider using another one. This will avoid ASAP's server to be saturated (there are currently 180 threads/jobs that can be run in parallel).<br/>
+Also, if you see that a job will take >100Gb of RAM, you may consider using another method, because the one you chose is not scalable.
+</p>
+

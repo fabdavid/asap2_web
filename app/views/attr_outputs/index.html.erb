@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Attr Outputs</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @attr_outputs.each do |attr_output| %>
+      <tr>
+        <td><%= link_to 'Show', attr_output %></td>
+        <td><%= link_to 'Edit', edit_attr_output_path(attr_output) %></td>
+        <td><%= link_to 'Destroy', attr_output, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Attr Output', new_attr_output_path %>

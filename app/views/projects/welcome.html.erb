@@ -4,9 +4,10 @@
     <div class='jumbotron' style='padding:1em;height:45vh;min-height:250px'>
       <!--	<div class='card-header'>Welcome to ASAP</div> -->
       <div class='card-body'>
-	<h1 class="display-4"><b>ASAP</b></h1>
-	<p class="lead">A collaborative portal to analyze single-cell transcriptomics data.</p>
-<!--	<button type='button' class='btn btn-secondary'>List of <%= @nber_public_projects %> public projects</button>-->
+	<!--	<h1 class="display-4"><b>ASAP</b></h1>-->
+	<%= image_tag "ASAP_avecTagline_Colors.svg", {} %>
+	<p class="lead mt-5">A collaborative portal to analyze single-cell transcriptomics data.</p>
+	<!--	<button type='button' class='btn btn-secondary'>List of <%= @nber_public_projects %> public projects</button>-->
 	<% if current_user %>
 	<button type='button' class='btn btn-success'>New project</button>
 	<% else %>

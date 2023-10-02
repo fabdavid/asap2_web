@@ -142,6 +142,8 @@ task :parse, [:project_key] => [:environment] do |t, args|
       opts.push({'opt' => "-col", 'value' => p["gene_name_col"]}) if p["gene_name_col"]
       opts.push({'opt' => "-d", 'value' => p["delimiter"]}) if p["delimiter"] and p['delimiter'] != ''
       opts.push({'opt' => "-header", 'value' => ((p['has_header'] and p['has_header'].to_i == 1) ? 'true' : 'false')}) if  p['has_header']
+      opts.push({'opt' => '--row-names', 'value' => p['rowname_metadata']}) if p['rowname_metadata']
+      opts.push({'opt' => '--col-names', 'value' => p['colname_metadata']}) if p['colname_metadata']
       #      end
       opts += [
                {'opt' => "-ncells", 'value' => p["nber_cols"]},
@@ -155,7 +157,6 @@ task :parse, [:project_key] => [:environment] do |t, args|
                {'opt' => "-f", 'value' => filepath},
                {'opt' => '-h', 'value' => db_conn}
               ]
-      
       
       mem = p["nber_cols"].to_i * p["nber_rows"].to_i * 128 / (31053 * 1474560) # project sample = gi6qfz                                                                                        
       h_env_docker_image = h_env['docker_images']['asap_run']
@@ -187,7 +188,9 @@ task :parse, [:project_key] => [:environment] do |t, args|
       end
 
       ## 
+      puts "Define project cell set"
       Basic.upd_project_cell_set(project)
+      puts "=> " + project.project_cell_set.key
 
       h_parsing_metadata = {}
       puts h_parsing.to_json
@@ -199,7 +202,8 @@ task :parse, [:project_key] => [:environment] do |t, args|
       fu = Fu.where(:project_id => project.id, :upload_type => 1).first
       upload_dir = Pathname.new(APP_CONFIG[:data_dir]) +  'fus' + fu.id.to_s
       output_file = upload_dir + "output.json"
-      output_path = project_dir + "parsing" + "output.#{project.extension}"
+     # output_path = project_dir + "parsing" + "output.#{project.extension}"
+      output_path = project_dir + "parsing" + "output.loom"
       ori_fu_path = Pathname.new(APP_CONFIG[:upload_data_dir]) + fu.id.to_s + fu.upload_file_name
       # f_log.write(ori_fu_path)
       puts ori_fu_path
@@ -207,7 +211,19 @@ task :parse, [:project_key] => [:environment] do |t, args|
       # f_log.write(h_preparsing.to_json)
       puts h_preparsing.to_json
       puts "bla"
-      if h_preparsing["detected_format"] == "LOOM" and h_preparsing["list_groups"][0]["existing_metadata"]
+      if h_preparsing["detected_format"] == "H5AD" #and h_preparsing["list_groups"][0]["metadata"]
+        list_metadata = h_parsing["existing_metadata"].select{|e| !h_parsing_metadata[e]}
+        if list_metadata
+#puts "output_path: " + output_path.to_s
+          relative_filepath = Basic.relative_path(project, output_path)
+          list_metadata.each do |meta|
+            meta['imported'] = true
+            puts "add annot #{meta.to_json}"
+            Basic.load_annot(run, meta, relative_filepath, h_data_types, h_data_classes, logger)
+          end
+        end
+        
+      elsif h_preparsing["detected_format"] == "LOOM" and h_preparsing["list_groups"][0]["existing_metadata"]
         puts "bou"
         h_meta = {:meta => h_preparsing["list_groups"][0]["existing_metadata"].select{|e| !h_parsing_metadata[e]}}
         metadata_list_file = tmp_dir + 'list_metadata_to_copy.json'

@@ -1,4 +1,4 @@
-<%= form_with(model: annot, local: true) do |form| %>
+<%= form_with(id: "annot_form", model: annot, local: true) do |form| %>
   <% if annot.errors.any? %>
     <div id="error_explanation">
       <h2><%= pluralize(annot.errors.count, "error") %> prohibited this annot from being saved:</h2>
@@ -10,8 +10,27 @@
       </ul>
     </div>
   <% end %>
+  
+  <%# raw annot.to_json %>
+
+  Data type 
+  <% l = DataType.all.map{|dt| [dt.label, dt.id]} %>
+  <%= form.select :data_type_id, l, {}, {:class => 'form-control'} %>
+
+  
 
   <div class="actions">
-    <%= form.submit %>
+    <%# form.submit 'Update', {:class => 'btn btn-primary'} %>
+    <button id='submit' type='button' class='btn btn-primary'>Update</button
   </div>
+<% end %>
+
+
+<%= javascript_tag do %>
+
+$("#submit").click(function(){
+var data = $('#annot_form').serializeArray();
+refresh_post(null, "<%= raw annot_path(annot) %>", data, "PUT", {loading:"fa-2x"})
+})
+
 <% end %>

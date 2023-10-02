@@ -1,7 +1,7 @@
 class ApplicationController < ActionController::Base
   protect_from_forgery with: :exception, prepend: true
 
-  helper_method :admin?, :is_admin?, :authorized?, :read_only?, :readable?, :analyzable?, :analyzable_item?, :clonable?, :downloadable?, :editable?, :exportable?, :exportable_item?, :owner?, :owner_or_admin?
+  helper_method :admin?, :is_admin?, :uab?, :is_uab?, :authorized?, :read_only?, :readable?, :analyzable?, :analyzable_item?, :clonable?, :downloadable?, :editable?, :exportable?, :exportable_item?, :owner?, :owner_or_admin?
   before_action :init_session, :init_var
   before_action :configure_permitted_parameters, if: :devise_controller?
   
@@ -11,6 +11,13 @@ class ApplicationController < ActionController::Base
 
   def is_admin? u
     u and APP_CONFIG[:admin_emails].include?(u.email) 
+  end
+
+  def uab?
+     (current_user and APP_CONFIG[:uab_emails].include?(current_user.email)) ? true : false
+  end
+  def is_uab?
+    u and APP_CONFIG[:uab_emails].include?(u.email)
   end
 
   def ip_restricted_access p, request

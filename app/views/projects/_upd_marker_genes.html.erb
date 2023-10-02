@@ -4,7 +4,7 @@
 <%# raw @tmp_res.to_json %>
 <%# raw @res.to_json %>
 <%# raw @res.to_json %>
-<%# raw @h_res.to_json %>
+<%# raw @h_res["up_genes"].to_json if admin? %>
 <%# raw session[:marker_genes][@project.id].to_json %>
 <% h_genes = {} %>
 <ul class="nav nav-tabs nav-fill" id='result_marker_genes' role='tablist'>

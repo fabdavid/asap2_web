@@ -1,0 +1,24 @@
+<%# @log %>
+<% if @gsi %>
+<div class='row'>
+  <div class='col-md-6'>Identifier</div>
+  <div class='col-md-6'><span id='gsi_identifier' class='pointer badge badge-dark'><%= @gsi.identifier %></span></div>
+</div>
+<div class='row'>
+  <div class='col-md-6'>Description</div>
+  <div class='col-md-6'><span id='gsi_name' class='badge badge-light'><%= @gsi.name %></span></div>
+</div>
+<div class='row'>
+  <div class='col-md-6'>List of genes</div>
+  <div class='col-md-6'><%= raw @genes.map{|e| "<span class='badge badge-info'>#{e.name}</span>"}.join(" ") %></div>
+</div>
+<% end %>
+
+
+<%= javascript_tag do %>
+
+/*$("#ensembl_id").click(function(){
+ window.open("http://www.ensembl.org/Gene/Summary?g=" + $(this).html(), "_blank")
+})
+*/
+<% end %>

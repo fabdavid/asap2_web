@@ -1,0 +1,25 @@
+<%= form_with(model: ip, local: true) do |form| %>
+  <% if ip.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(ip.errors.count, "error") %> prohibited this ip from being saved:</h2>
+
+      <ul>
+      <% ip.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+   <div class='row'>
+      <div class='col-2'>IP</div>
+      <div class='col-5'>
+	<%= form.text_field :ip, {:class => 'form-control'} %>
+      </div>
+    </div>
+
+
+  <div class="actions">
+    <%= form.submit 'Create new IP-based access', {:class => 'btn btn-primary'} %>
+  </div>
+<% end %>

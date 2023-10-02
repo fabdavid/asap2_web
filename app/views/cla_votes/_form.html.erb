@@ -1,0 +1,17 @@
+<%= form_with(model: cla_vote, local: true) do |form| %>
+  <% if cla_vote.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(cla_vote.errors.count, "error") %> prohibited this cla_vote from being saved:</h2>
+
+      <ul>
+      <% cla_vote.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

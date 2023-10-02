@@ -1,10 +1,45 @@
 Rails.application.routes.draw do
+  resources :project_cell_sets
+  resources :annot_cell_sets
+  resources :cell_sets
+  resources :docker_images
+  resources :docker_versions
+  resources :cla_votes
+  resources :project_tags
+  resources :tmp_fos
+  resources :clas do
+    member do
+      post :vote
+    end
+  end
+  resources :cla_sources
+  resources :cell_ontology_terms do 
+    collection do
+      get :autocomplete
+    end
+  end
+  resources :cell_ontologies
+  resources :orcid_users
+  resources :output_attrs
+  resources :attr_outputs
+  resources :attr_names
+  resources :ips do
+  end
+  #  resources :services
+  resources :docker_patches
+  resources :exp_entry_identifiers
+  resources :tools
+  resources :data_classes
   resources :exp_entries do 
       member do
       get :summary
     end
   end
-  resources :provider_projects
+  resources :provider_projects do
+    collection do
+      get :hca_index
+    end
+  end
   resources :providers
   resources :journals
   resources :articles do
@@ -12,19 +47,23 @@ Rails.application.routes.draw do
       get :summary
     end
   end
-  resources :identifier_types
+  resources :identifier_types 
   resources :sample_identifiers
   resources :geo_entries do
     member do
       get :summary
     end
   end
-  resources :hca_projects
+#  resources :hca_projects
   resources :hcao_namespaces
   resources :hcao_terms
   resources :ensembl_subdomains
   resources :tmp_genes
-  resources :gene_set_items
+  resources :gene_set_items do
+    collection do
+      get :search
+    end
+  end
   resources :archive_statuses
   resources :fos
   resources :todo_types
@@ -39,6 +78,7 @@ Rails.application.routes.draw do
     member do
       get :get_cats
       get :get_cat_details
+      get :get_cat_legend
     end
     collection do
     end
@@ -72,6 +112,7 @@ Rails.application.routes.draw do
   resources :imputation_methods
   resources :genes do
     collection do
+      get :check
       get :search
       get :autocomplete
     end
@@ -89,7 +130,6 @@ Rails.application.routes.draw do
     end
   end
 
-
   resources :dim_reductions
   resources :gene_sets do
     collection do
@@ -105,6 +145,7 @@ Rails.application.routes.draw do
       post :filter_results
     end
   end
+
   resources :project_dim_reductions
   resources :filter_methods
   resources :norms
@@ -125,27 +166,43 @@ Rails.application.routes.draw do
     end
   end
   
-  resources :shares
+  resources :shares do
+    collection do
+      post :batch_add
+    end
+  end
   resources :statuses
   resources :steps
   resources :versions do
     collection do
       get :last_version
     end
+    member do
+      get :run_stats
+    end
   end
   resources :home do
     collection do
+      get :get_file_index
+      get :welcome
+      get :identifiers
       get :test
+      get :get_file
       get :about
       get :file_format
       get :tutorial
       get :faq
       get :citation
       get :support
+      get :associate_orcid
+      get :associate_orcid_reprosci
+      get :orcid_authentication
+      get :admin_page
     end
   end
   resources :organisms
-  devise_for :users
+ # devise_for :users
+  devise_for :users, controllers: { sessions: "users/sessions", registrations: 'users/registrations' }
   resources :projects, param: :key do
     collection do
       post :upload_file
@@ -154,13 +211,28 @@ Rails.application.routes.draw do
       post :hca_preview
       get :hca_projects
       post :hca_download
+      get :search_form
+      get :search
+      post :do_search
+      post :set_search_session
+      post :upd_project_tag
     end
     member do
+      post :upd_marker_genes
+      get :get_marker_gene_stats
+      post :upd_gene_expr_stats
+      get :del_gene
+      post :compute_module_score
+      get :get_annot_info
+      post :upd_pred
+      get :instructions
+      get :get_loom_files_json
       post :set_public
       get :get_commands
       get :form_new_analysis
       get :form_new_metadata
       post :save_metadata_from_selection
+      post :do_import_metadata
       post :upd_cat_alias
       post :upd_sel_cats
       post :broadcast_on_project_channel
@@ -170,12 +242,14 @@ Rails.application.routes.draw do
       post :set_lineage_run_ids
       get :get_cells
       get :upload_form
+      post :prepare_metadata
       get :add_metadata
       get :get_step
       get :get_step_header
       get :get_run
       get :get_lineage
       get :get_file
+      get :tsv_from_json
       get :edit_name
       get :get_pipeline
       get :get_attributes
@@ -183,10 +257,15 @@ Rails.application.routes.draw do
       get :set_input_data
       get :set_geneset
       get :get_visualization
+      get :get_autocomplete_genes
       get :get_dim_reduction_form
-      post :dr_plot
+      get :get_cell_scatter_form
+      get :dr_plot
+      get :cell_scatter_plot
       get :get_dr_options
+      get :get_scp_options
       get :autocomplete_genes
+      get :autocomplete_gene_set_items
       get :extract_row
       get :get_rows
       get :extract_metadata
@@ -194,7 +273,7 @@ Rails.application.routes.draw do
       post :filter_ge_results
       get :clone
       post :delete_all_runs_from_step
-      get :confirm_delete_all
+      get :confirm_delete
       post :replot
  #     get :summary
       get :get_clusters
@@ -207,13 +286,24 @@ Rails.application.routes.draw do
     end
   end
 
-
   resources :project_steps
   resources :jobs
 
-  match '/roadmap' => 'todos#index', :via => [:get]
-  match 'hca_projects' => 'projects#hca_projects', :via => [:get]
+  # error pages      
+#  %w( 404 422 500 503 ).each do |code|
+#    get code, :to => "errors#show", :code => code
+#  end
 
+
+  match '/associate_orcid' => 'home#associate_orcid', :via => [:get]
+  match '/associate_orcid2' => 'home#associate_orcid_reprosci', :via => [:get]
+
+  match '/orcid_authentication' => 'home#orcid_authentication', :via => [:get]
+  match '/roadmap' => 'todos#index', :via => [:get]
+  match 'hca_projects' => 'provider_projects#hca_index', :via => [:get]
+  match 'fca' => 'providers#fca', :via => [:get]
+  match 'hca' => 'providers#hca', :via => [:get]
+  match '/unauthorized' => 'home#unauthorized', :via => [:get]
   root 'projects#index'
 
 

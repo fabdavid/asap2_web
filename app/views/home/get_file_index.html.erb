@@ -1,0 +1,12 @@
+<%= text_field_tag 'dir', @dir, {:class => 'form-control'} %>
+
+ <ul>
+   <% Dir.entries("public/" + @dir)[2..-1].each do |file_name| #[2..-1] as the first two will be ".", ".." %>
+   <% p = "public/" + @dir + "/" +file_name %>
+   <% if File.directory?(p) == false %>
+   <li><%= link_to file_name, "/#{URI.escape(@dir + "/" + file_name)}" %></li>
+   <% else %>
+   <li><%= link_to file_name, get_file_index_home_index_path(:dir => @dir + "/" + file_name) %></li>
+   <% end %>
+   <% end %>
+ </ul>

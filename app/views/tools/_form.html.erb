@@ -1,0 +1,29 @@
+<%= form_with(model: tool, local: true) do |f| %>
+  <% if tool.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(tool.errors.count, "error") %> prohibited this tool from being saved:</h2>
+
+      <ul>
+      <% tool.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <table>
+    <tr><td>Name</td><td><%= f.text_field :name %></td></tr>
+    <tr><td>Label</td><td><%= f.text_field :label %></td></tr>
+    <tr><td>Package</td><td><%= f.text_field :package %></td></tr>
+    <% l = ToolType.all.map{|tt| [tt.name, tt.id]} %>
+    <tr><td>Tool type</td><td><%= f.select :tool_type_id, l %></td></tr>
+    <tr><td>Steps</td><td><%= f.text_field :step_ids %></td></tr>
+    <tr><td>Title</td><td><%= f.text_area :title, :cols => 100, :rows => 2 %></td></tr>
+    <tr><td>Description</td><td><%= f.text_area :description, :cols => 100, :rows => 10 %></td></tr>
+      <tr><td>URL</td><td><%= f.text_area :url, :cols => 100, :rows => 2 %></td></tr>
+  </table>
+  
+  <div class="actions">
+    <%= f.submit %>
+  </div>
+<% end %>

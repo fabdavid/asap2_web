@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Attr Names</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @attr_names.each do |attr_name| %>
+      <tr>
+        <td><%= link_to 'Show', attr_name %></td>
+        <td><%= link_to 'Edit', edit_attr_name_path(attr_name) %></td>
+        <td><%= link_to 'Destroy', attr_name, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Attr Name', new_attr_name_path %>

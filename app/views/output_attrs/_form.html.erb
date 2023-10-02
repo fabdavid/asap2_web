@@ -1,0 +1,17 @@
+<%= form_with(model: output_attr, local: true) do |form| %>
+  <% if output_attr.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(output_attr.errors.count, "error") %> prohibited this output_attr from being saved:</h2>
+
+      <ul>
+      <% output_attr.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

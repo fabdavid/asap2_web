@@ -1,0 +1,44 @@
+<p id="notice"><%= notice %></p>
+
+<% if admin? %>
+<div class='float-right'>
+  <%= link_to 'New Docker Image', new_docker_image_path, {:class => 'btn btn-primary'} %>
+</div>
+<% end %>
+
+<h1>Docker Images</h1>
+
+<table id='docker_images'>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Tag</th>
+      <th>Tools</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @docker_images.each do |docker_image| %>
+      <tr>
+	<td><%= docker_image.id %></td>
+        <td><%= docker_image.name %></td>
+        <td><%= docker_image.tag %></td>
+ <td><%= h_t = Basic.safe_parse_json(docker_image.tools_json, {}); h_t.keys.map{|k| @h_tool_types[@h_tools[k].tool_type_id].name + ":" + @h_tools[k].package + "[" + h_t[k] + "]"}.join(" ") %></td>
+
+        <td><%= link_to 'Show', docker_image_path(docker_image) %></td>
+        <td><%= link_to('Edit', edit_docker_image_path(docker_image)) if admin? %></td>
+        <td><%= link_to('Destroy', docker_image_path(docker_image), method: :delete, data: { confirm: 'Are you sure?'}) if admin? %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<%= javascript_tag do %>
+
+$("#docker_images").DataTable()
+
+<% end %>

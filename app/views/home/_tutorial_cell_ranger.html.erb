@@ -1,0 +1,48 @@
+<p>
+In this tutorial we will show you how to find/retrieve a 10x Genomics dataset from the output of CellRanger and upload it to ASAP.
+</p>
+
+<hr/>
+
+<h4 class="sm" id="sm-0">Find the necessary file (.h5 file)</h4>
+<p>
+After running CellRanger on your 10x library, you should obtain a folder containing many different files.<br/>
+These files are better detailed on <a href="https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/output/overview">10x main website: </a><br />
+For ASAP, the only important files are:
+<ul>
+<li>Filtered feature-barcode matrices HDF5:   /home/jdoe/runs/sample345/outs/filtered_feature_bc_matrix.h5</li>
+<li>Unfiltered feature-barcode matrices HDF5: /home/jdoe/runs/sample345/outs/raw_feature_bc_matrix.h5</li>
+</ul>
+These files contain the raw count matrix in a "sparse matrix format", as well as cell barcodes and gene names.<br/><br/>
+For ASAP, it makes more sense to use the filtered HDF5 file, as all empty droplets were already filtered out. The only exception would be in the case you don't like the filtering that was perfomed by CellRanger, and you prefer to do it in ASAP (see Figure 1). For example if the curve seems to threshold before an interesting subpopulation, or if the number of cells detected is very different from what you estimated.<br/>
+In this case, you should know that the parsing/filtering steps in ASAP will take much more time, because the number of cells will probably be close to 1M. So it's only recommended to do this in case the output of CellRanger looks weird/incorrect to you.
+</p>
+
+<%= image_tag 'tuto_3_001.png', {class:"tuto-image", style:'width:30%'} %>
+
+<p class='alert alert-info'>
+<i class='fas fa-info-circle'></i> <b>Of note</b><br />
+CellRanger also output other stats/plots such as t-SNE and clusterings. However these results cannot be imported in ASAP, because they are not stored within the .h5 file.
+</p>
+
+<hr/>
+
+<h4 class="sm" id="sm-0">Upload the .h5 file to ASAP</h4>
+
+<p>
+ASAP can take .h5 files from 10x directly as input file.<br/>
+Simply create a "New Project" from the main page, and upload your .h5 file.<br/>
+Once uploaded, you will see a preview of the file (see Figure 2) with first 10 cols/ 10 rows, row names, cell barcodes, number of cells, number of genes, ...<br/>
+If it looks correct to you then you can click on [Create Project].
+</p>
+
+<%= image_tag 'tuto_3_002.png', {class:"tuto-image"} %>
+
+<hr/>
+
+<h4 class="sm" id="sm-0">Run a pipeline in ASAP</h4>
+
+<p>
+Once this is done, you can process your dataset the same way than with any other input file.<br/>
+Don't hesitate to visit the <a href="https://asap.epfl.ch/home/tutorial?t=full_pipeline">Tutorial 2</a> for a detailed explanation of how to run a project in ASAP.
+</p>

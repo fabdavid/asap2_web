@@ -1,0 +1,69 @@
+<div class='mb-2'> <span class='badge badge-danger'><i class='fa fa-bolt'></i> New feature</span> Please <a href='mailto:webmaster.bbcf@epfl.ch?subject=ASAP feedback'>send us your feedback</a> if something doesn't work properly.</div>
+
+<%# "CellSet: " + @cell_set.id.to_s if admin? and @cell_set %>
+
+<%# @h_cla_sources.to_json if admin? %>
+<%# raw @all_clas.to_json %>
+<%# raw @all_clas.to_json if admin? %>
+<%# @annot.id if admin? %>
+<% @all_clas.sort{|a, b| [b.nber_agree - b.nber_disagree, b.created_at] <=> [a.nber_agree - a.nber_disagree, a.created_at]}.each do |cla| %>
+<div class='card mb-1'>
+  <div class='card-body'>
+    <div class='float-right'>
+      <% if current_user and cla and (current_user and cla and (cla.nber_agree == 1 and @h_all_cla_votes[cla.id][0] and @h_all_cla_votes[cla.id][0].user_id == current_user.id) or cla.nber_agree == 0) and cla.nber_disagree == 0 and current_user.id == cla.user_id %>
+      <!--      <button id='cla_edit_<%= cla.id %>' type='button' class='btn btn-sm btn-outline-success cla_edit_btn'><i class='fa fa-pen'></i></button>-->
+      <%# cla.to_json %>
+<%# current_id %>
+      <button id='cla_del_<%= cla.id %>' type='button' class='btn btn-sm btn-outline-danger cla_del_btn'><i class='fa fa-times'></i></button>
+      <br/>
+      <% end %>
+      <i class='text-secondary'><%= raw display_date(cla.created_at) %></i><br/>
+      <span id='agree_<%= cla.id %>' class='<%= (!cla.obsolete) ?  'pointer' : '' %> badge badge-vote <%= (v = @h_votes[cla.id] and v.agree == true) ? 'badge-primary' : 'badge-light' %>'><i class='far fa-thumbs-up'></i> <%= cla.nber_agree %></span>
+      <span id='disagree_<%= cla.id %>' class='<%= (!cla.obsolete) ?  'pointer' : '' %> badge badge-vote <%= (v = @h_votes[cla.id] and v.agree == false) ? 'badge-primary' : 'badge-light' %>'><i class='far fa-thumbs-down'></i> <%= cla.nber_disagree %></span>
+      <br/>
+      <% score = cla.nber_agree - cla.nber_disagree %>
+      <h5 class='<%= (score > 0) ? 'text-outline-success' : ((score < 0) ? 'text-outline-danger' : '') %>'><%= cla.nber_agree - cla.nber_disagree %></h5>
+    </div>
+    <h5><b>#<%= cla.num %></b> <small><span class='badge badge-info' title='<%= @h_cla_sources[cla.cla_source_id].name %>'><%= @h_cla_sources[cla.cla_source_id].label %></span></small></h5>
+      <% if admin? %>
+      user_id:<%= cla.user_id %>
+      cla_id:<%= cla.id %>
+      cat_i:<%= @cat_i %>
+      <% end %>
+     <%= raw display_cla_full(cla, @h_cots, @h_genes) %>
+  </div>
+</div>
+<% end %>
+
+<%= javascript_tag do %>
+
+$("#existing_annot-tab").html("Existing annotations [" + <%= @all_clas.size %>  + "]")
+
+$(".badge-vote").click(function(){
+ var t = this.id.split("_")
+ if ($(this).hasClass("pointer")){
+  var p = [
+   {name : 'type', value : (t[0] == 'agree') ? 1 : 0},
+   {name : 'type2', value : ($(this).hasClass('badge-primary')) ? 'del' : 'add'},
+  ]
+  refresh_post(null, "<%= clas_path() %>/" + t[1] + "/vote", p, 'post', {})
+ }
+})
+
+$(".cla_edit_btn").click(function(){
+ var id = this.id.split("_")[2]
+// refresh_post("")
+ 
+})
+
+
+$(".cla_del_btn").click(function(){
+ var id = this.id.split("_")[2]
+ var p = [
+  {name : 'annot_id', value : '<%= @annot.id %>'},
+  {name : 'cat_i', value : '<%= @cat_i %>'}
+ ]
+ refresh_post(null, "<%= clas_path %>/" + id, p, "delete", {loading:'fa-2x'})
+})
+
+<% end %>

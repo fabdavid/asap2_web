@@ -1,0 +1,41 @@
+<p id="notice"><%= notice %></p>
+
+<% if admin? %>
+<div class='float-right'>
+  <%= link_to 'New Docker Version', new_docker_version_path %>
+</div>
+<% end %>
+
+<h1>Docker Versions</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Tag</th>
+      <th>Tools</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @docker_versions.each do |docker_version| %>
+      <tr>
+	<td><%= docker_version.id %></td>
+	<td><%= docker_version.name %></td>
+	<td><%= docker_version.tag %></td>
+	<td><%= h_t = Basic.safe_parse_json(docker_version.tools_json, {}); h_t.keys.map{|k| @h_tool_types[@h_tools[k].tool_type_id].name + ":" + @h_tools[k].package + "[" + h_t[k] + "]"}.join(" ") %></td>
+
+        <td><%= link_to 'Show', docker_version_path(docker_version) %></td>
+        <td><%= link_to('Edit', edit_docker_version_path(docker_version)) if admin? %></td>
+        <td><%= link_to('Destroy', docker_version_path(docker_version), method: :delete, data: { confirm: 'Are you sure?' }) if admin? %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+

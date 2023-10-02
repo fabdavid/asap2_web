@@ -36,33 +36,64 @@ class HomeController < ApplicationController
     @nber_public_projects = Project.where(:public => true).count
   end
 
+  def orcid_authentication
+  end
+
   def associate_orcid
-    if current_user and params[:code]
-      res = `curl -L -k -H 'Accept: application/json' --data 'client_id=APP-UIU8KR3XZNMUZ8ZY&client_secret=0c8e89c1-9962-4cf9-9bdd-c7888f1b141b&grant_type=authorization_code&redirect_uri=https://asap.epfl.ch/associate_orcid&code=#{params[:code]}' https://orcid.org/oauth/token`
+    params[:client] ||= 'asap'
+    if params[:code]
 
-      @h_res = Basic.safe_parse_json(res, {})
-      h_orcid_user = {
-        :key => @h_res['orcid'], 
-        :name => @h_res['name']
-      }
-      orcid_user = OrcidUser.where(:key => h_orcid_user[:key]).first
-      if !orcid_user
-        orcid_user = OrcidUser.new(h_orcid_user)
-        orcid_user.save
+      if current_user and params[:client] == "asap"
+        
+        client_id = "APP-UIU8KR3XZNMUZ8ZY"
+        secret = "0c8e89c1-9962-4cf9-9bdd-c7888f1b141b"
+        res = `curl -L -k -H 'Accept: application/json' --data 'client_id=#{client_id}&client_secret=#{secret}&grant_type=authorization_code&redirect_uri=https://asap.epfl.ch/associate_orcid&code=#{params[:code]}' https://orcid.org/oauth/token`
+        
+        @h_res = Basic.safe_parse_json(res, {})
+        
+        
+        h_orcid_user = {
+          :key => @h_res['orcid'], 
+          :name => @h_res['name']
+        }
+        orcid_user = OrcidUser.where(:key => h_orcid_user[:key]).first
+        if !orcid_user
+          orcid_user = OrcidUser.new(h_orcid_user)
+          orcid_user.save
+        else
+          orcid_user.update_attributes(h_orcid_user)
+        end
+        
+        if orcid_user and @h_res['orcid']
+          current_user.update_attributes(:orcid_user_id => orcid_user.id) 
+          notice = "ORCID successfully associated: #{@h_res['name']} [#{@h_res['orcid']}]"
+        else
+          notice = "ORCID user wasn't associated"
+        end
+
+        redirect_to :projects, :notice => notice
+        
       else
-        orcid_user.update_attributes(h_orcid_user)
+
+        #        render :json => @h_res
+        redirect_to  "https://reprosci.epfl.ch/associate_orcid?code=#{params[:code]}"
+        
       end
 
-      if orcid_user and @h_res['orcid']
-        current_user.update_attributes(:orcid_user_id => orcid_user.id) 
-        notice = "ORCID successfully associated: #{@h_res['name']} [#{@h_res['orcid']}]"
-      else
-        notice = "ORCID user wasn't associated"
-      end
     else
       notice = 'ORCID association failed'
+      if params[:client] == "asap"
+        render :json => {:error => notice}
+      else
+        redirect_to :projects, :notice => notice
+      end
     end
-    redirect_to :projects, :notice => notice
+
+  end
+
+  def associate_orcid_reprosci
+    params[:client] ||= 'reprosci'
+    associate_orcid
   end
 
   def index

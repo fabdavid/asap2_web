@@ -1,6 +1,24 @@
-<h1>Editing Annot</h1>
+<div id='step_header_container'>
+  <%= render :partial => 'projects/step_header_container' %>
+</div>
 
-<%= render 'form', annot: @annot %>
+<%# @h_sums.to_json if admin? %>
 
-<%= link_to 'Show', @annot %> |
-<%= link_to 'Back', annots_path %>
+<div id='step_content'>
+  <p id="notice"><%= notice %></p>
+
+  <h4>Editing 
+    <% if @annot.dim == 3 %>
+    Expression matrix
+    <% else %>
+    Annotation
+    <% end %>
+    <%= @annot.label || @annot.name %>
+  </h4>
+  
+  <%= render 'form', annot: @annot %>
+  
+  <%# link_to 'Show', @annot %>
+  <%# link_to 'Back', annots_path %>
+
+</div>

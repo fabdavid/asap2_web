@@ -1,0 +1,17 @@
+<%= form_with(model: docker_version, local: true) do |form| %>
+  <% if docker_version.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(docker_version.errors.count, "error") %> prohibited this docker_version from being saved:</h2>
+
+      <ul>
+      <% docker_version.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

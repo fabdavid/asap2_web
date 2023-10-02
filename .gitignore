@@ -17,8 +17,11 @@
 *~
 *#
 *.old
+*.old.*
 *.bkp
+*.bkp.*
 *.bak
+*.bak.*
 /app/views/projects/old
 /app/views/projects/old/*
 
@@ -27,6 +30,10 @@
 
 /vendor/bundle
 /public/assets/*
+.pgpass
 .env
 .env_website
 .idea/*
+
+config/shards.yml
+config/.s3.json

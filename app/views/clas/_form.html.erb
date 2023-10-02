@@ -1,0 +1,281 @@
+<div class='mb-2'> <span class='badge badge-danger'><i class='fa fa-bolt'></i> New feature</span> Please <a href='mailto:webmaster.bbcf@epfl.ch?subject=ASAP feedback'>send us your feedback</a> if something doesn't work properly.</div>
+
+<%= form_with(model: cla, local: true) do |form| %>
+  <% if cla.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(cla.errors.count, "error") %> prohibited this cla from being saved:</h2>
+
+      <ul>
+      <% cla.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class='form-group col-12'>
+    <%= label_tag 'cal_cell_ontology_term', 'Cell ontology terms', {'data-toggle' => "tooltip"} %>
+    <% default_tax_id = nil %>
+    <% l = CellOntology.all.select{|co| tax_ids = (co.tax_ids) ? co.tax_ids.split(",") : nil; flag = (tax_ids) ? tax_ids.include?(@organism.tax_id.to_s) : false; default_tax_id = @organism.tax_id if flag; (flag or co.tax_ids.to_i == 0)}.map{|co| [co.tag  + ": " + co.name, co.id]} %>
+    <% l.unshift ['All compatible ontologies', '0'] %>
+    <% default_tax_id ||= l[0][1] %>
+    <%# default_tax_id %>
+    
+    <%= select_tag "cell_ontology_id", options_for_select(l, default_tax_id), {:class => "form-control", :placeholder => ""} %>
+    <%= text_field_tag "cla_cell_ontology_term", "", {:class => "form-control", :placeholder => "Ontology name"} %>
+  </div>
+  <div id='list_cell_ontology_terms_container_cla' class='list_genes_container'></div>
+  <div id='cla_list_cell_ontology_terms'></div>
+  <%= hidden_field_tag 'cla[cell_ontology_term_ids]', "" %>
+  
+  <div class='form-group col-12'>
+    <%= label_tag 'cla_up_gene', 'Marker genes (Up-regulated genes)', {'data-toggle' => "tooltip"} %>
+    <%= text_field_tag "cla_up_gene", "", {:class => "form-control", :placeholder => "Gene name"} %>
+  </div>  
+  <div id='list_up_genes_container_cla' class='list_genes_container'></div>
+  <div id='cla_list_up_genes' class='cla_list_genes'></div>
+  <%= hidden_field_tag 'cla[up_gene_ids]', "" %>
+  
+  <div class='form-group col-12'>
+    <%= label_tag 'cla_down_gene', 'Down-regulated genes', {'data-toggle' => "tooltip"} %>
+    <%= text_field_tag "cla_down_gene", "", {:class => "form-control", :placeholder => "Gene name"} %>
+  </div>
+  <div id='list_down_genes_container_cla' class='list_genes_container'></div>
+  <div id='cla_list_down_genes' class='cla_list_genes'></div>
+  <%= hidden_field_tag 'cla[down_gene_ids]', "" %>
+  
+  <div class='form-group col-12'>
+    <%= label_tag 'cla_name', 'Free text annotation (optional)', {'data-toggle' => "tooltip"} %>
+    <%= form.text_field :name, {:class => "form-control", :placeholder => "Name of the annotation"} %>
+  </div>
+
+  <div class='form-group col-12'>
+    <%= label_tag 'cla_comment', 'Comment (optional)', {'data-toggle' => "tooltip"} %>
+    <%= form.text_area :comment, {:class => "form-control", :placeholder => "Comment"} %>
+  </div>
+
+  <%= form.hidden_field :clone_id %>
+  <%= form.hidden_field :annot_id %>
+  <%= form.hidden_field :cat %>
+  <%= form.hidden_field :cat_idx %>
+
+  <div id='errors' class='alert alert-danger hidden'>
+  </div>
+  
+  <div id='warnings' class='alert alert-warning hidden'>
+  </div>
+
+  <div class="actions">
+    <%# form.submit "Create annotation", {:class => 'btn btn-primary'} %>
+    <button id='save-btn' type='button' class='btn btn-primary'>Save</button>
+    <button id='confirm-btn' type='button' class='btn btn-success hidden'>Confirm</button>
+  </div>
+<% end %>
+
+<%= javascript_tag do %>
+
+function save_cla(opts){
+ var p = []
+ var list_fields = ['cla_name', 'cla_cat', 'cla_cat_idx', 'cla_clone_id', 'cla_annot_id', 'cla_up_gene_ids', 'cla_down_gene_ids', 'cla_cell_ontology_term_ids']
+ for (var i =0; i<list_fields.length; i++){
+   p.push({name : $("#" + list_fields[i]).attr("name"), value : $("#" + list_fields[i]).val()})
+ }
+ for (var i=0; i< opts.length; i++){
+  p.push(opts[i])
+ }				      
+ refresh_post(null, "<%= raw clas_path %>", p, 'post', {loading:'fa-2x'})
+}
+
+$("#save-btn").click(function(){
+ save_cla([])
+})
+
+$("#confirm-btn").click(function(){
+ save_cla([{name : 'confirm', value : '1'}])
+})
+
+$("#ontop_popup_container").off().on("click", ".add_cot-btn", function(e){
+   var el_id = $(this).parent().attr("id")
+   var cot_id = el_id.split("_")[2]
+   var cot_name = $(this).parent().children(0).html()
+   var list_cots = $("#cla_cell_ontology_term_ids").val().split(",")
+   if (!list_cots.includes(cot_id)){
+     list_cots.push(cot_id)
+     $("#cla_list_cell_ontology_terms").append("<span id='cla_cot_" + cot_id + "'><span class='badge badge-info cot_badge pointer'>" + cot_name + "</span><span id='cla_del_cot-btn_" + cot_id + "' class='cla_del_cot text-danger pointer'><i class='fa fa-times-circle'></i></span></span> ")
+     $("#cla_cell_ontology_term_ids").val(list_cots.join(","))
+   }
+})
+
+function view_cot(e, el_id){
+  console.log("EL_id:" + el_id)
+  var cot_id = el_id.split("_")[2]
+  var w = $(window).width()
+  var ww = 600
+   $("#ontop_popup_window").css({
+         left: (w-e.pageX > ww) ? (e.pageX + 10) : w-ww+10,
+         width:ww,
+         top: e.pageY + 10
+   }).stop().show(100);
+  refresh("ontop_popup_container", "<%= cell_ontology_terms_path() %>/" + cot_id + "?nolayout=1&context=annotation", {loading:true})
+}
+
+ $("#cla_list_cell_ontology_terms").on("click", ".cot_badge", function(e){
+  var el_id = $(this).parent().attr("id")
+ console.log("e1:" + el_id)
+  view_cot(e, el_id)
+ })
+ $("#ontop_popup_container").on("click", ".cot_badge", function(e){
+  var el_id = $(this).parent().attr("id")
+   var cot_id = el_id.split("_")[2]
+  refresh("ontop_popup_container", "<%= cell_ontology_terms_path() %>/" + cot_id + "?nolayout=1&context=annotation", {loading:true})
+ })
+
+
+
+
+
+ $("#cla_list_cell_ontology_terms").on("click", ".cla_del_cot", function(){
+  var cot = this.id.split("_")[3]
+  var l = $("#cla_cell_ontology_term_ids").val().split(",")
+  l = l.filter(x => x != cot)
+  $("#cla_cell_ontology_term_ids").val(l.join(","))
+  $("#cla_cot_" + cot).remove()
+ })
+
+ $("#cla_list_genes").on("click", ".cla_del_gene", function(){
+  var gene_id = this.id.split("_")[3] 
+  var l = $("#cla_gene_ids").val().split(",")
+  l = l.filter(x => x != gene_id)
+  $("#cla_gene_ids").val(l.join(","))
+  $("#cla_gene_" + gene_id).remove()
+ })
+
+ $("#cla_cell_ontology_term").autocomplete({
+   minLength: 0,
+  appendTo: '#list_cell_ontology_terms_container_cla',
+  classes: {
+   "ui-autocomplete": "test_ui",
+  },
+  position: {
+   offset: '0 0' // Shift 0px left, 4px down.
+  },
+  source:  function(request, response) {
+  $.ajax({
+          url: "<%= autocomplete_cell_ontology_terms_path() %>",
+          dataType: "json",
+          beforeSend: function(){
+         },
+          data: {
+            term:  $("#cla_cell_ontology_term").val(),
+            cell_ontology_id: $("#cell_ontology_id").val(),
+            organism_id: <%= @organism.id %>
+          //  tax_id: <%= @organism.tax_id %>
+          //,
+          //  dataset_id: $("#dataset_id").val()//,
+          },
+          success: function( data ) {
+            response( data );
+          }
+        });
+     }, 
+     select: function( event, ui ) {
+         if (ui.item){
+           var list_cots = ($("#cla_cell_ontology_term_ids").val() != '') ? $("#cla_cell_ontology_term_ids").val().split(",") : []
+           if (!list_cots.includes(ui.item.id)){
+            var cot =  ui.item.label
+            list_cots.push(ui.item.id)
+            //  var ontology_term_name = t_gene[0] + " [" + t_gene[1] + "]"
+            $("#cla_list_cell_ontology_terms").append("<span id='cla_cot_" + ui.item.id + "'><span class='badge badge-info cot_badge pointer'>" + cot + "</span><span id='cla_del_cot-btn_" + ui.item.id + "' class='cla_del_cot text-danger pointer'><i class='fa fa-times-circle'></i></span></span> ")
+            $("#cla_cell_ontology_term_ids").val(list_cots.join(","))
+           }
+         } 
+     
+        $(this).val(''); 
+
+        return false;
+       }
+ })
+
+ $("#cla_up_gene").autocomplete({
+  minLength: 0,
+  appendTo: '#list_up_genes_container_cla',
+  classes: {
+   "ui-autocomplete": "test_ui",
+  },
+  position: {
+   offset: '0 0' // Shift 0px left, 4px down.
+  },
+  source: function(request, response) {
+            var t0 = performance.now();
+            //console.log("test")
+            // filter array to only entries you want to display limited to 10
+            var outputArray = new Array();
+            for (var i = 0; i < h_autocomplete['search'].length; i++ ) {
+                var re = new RegExp(request.term, 'i');
+                if ( h_autocomplete['search'][i].match(re) ) {
+                   outputArray.push(h_autocomplete['search'][i]);
+                }
+            }
+
+            var t1 = performance.now();
+            //console.log("Time to process autocomplete: " + (t1-t0) + "ms")
+            response(outputArray.slice(0,10));
+      },
+      select: function( event, ui ) {
+         if (ui.item){
+           var list_genes = ($("#cla_up_gene_ids").val() != '') ? $("#cla_up_gene_ids").val().split(",") : []
+           var t_gene =  ui.item.label.split(" ")
+          console.log(ui.item)
+          var gene_name = t_gene[0] + " [" + t_gene[1] + "]"
+          list_genes.push(t_gene[1])
+          $("#cla_up_gene_ids").val(list_genes.join(","))
+          $("#cla_list_up_genes").append("<span id='cla_up_gene_" + t_gene[1] + "'><span class='badge badge-info ensembl_gene pointer'>" + gene_name + "</span><span id='cla_del_up_gene-btn_" + t_gene[1] + "' class='cla_del_gene text-danger pointer'><i class='fa fa-times-circle'></i></span></span> ")
+         }
+        $(this).val(''); return false;
+       }
+
+ });
+
+ $("#cla_down_gene").autocomplete({
+  minLength: 0,
+  appendTo: '#list_down_genes_container_cla',
+  classes: {
+   "ui-autocomplete": "test_ui",
+  },
+  position: {
+   offset: '0 0' // Shift 0px left, 4px down.
+  },
+  source: function(request, response) {
+            var t0 = performance.now();
+            //console.log("test")
+            // filter array to only entries you want to display limited to 10
+            var outputArray = new Array();
+            for (var i = 0; i < h_autocomplete['search'].length; i++ ) {
+                var re = new RegExp(request.term, 'i');
+                if ( h_autocomplete['search'][i].match(re) ) {
+                   outputArray.push(h_autocomplete['search'][i]);
+                }
+            }
+
+            var t1 = performance.now();
+            //console.log("Time to process autocomplete: " + (t1-t0) + "ms")
+            response(outputArray.slice(0,10));
+      },
+      select: function( event, ui ) {
+         if (ui.item){
+           var list_genes = ($("#cla_down_gene_ids").val() != '') ? $("#cla_down_gene_ids").val().split(",") : []
+           var t_gene =  ui.item.label.split(" ")
+          console.log(ui.item)
+          var gene_name = t_gene[0] + " [" + t_gene[1] + "]"
+          list_genes.push(t_gene[1])
+          $("#cla_down_gene_ids").val(list_genes.join(","))
+          $("#cla_list_down_genes").append("<span id='cla_down_gene_" + t_gene[1] + "'><span class='badge badge-info ensembl_gene pointer'>" + gene_name + "</span><span id='cla_del_down_gene-btn_" + t_gene[1] + "' class='cla_del_gene text-danger pointer'><i class='fa fa-times-circle'></i></span></span> ")
+         }
+        $(this).val(''); return false;
+       }
+ })
+
+
+
+
+<% end %>

@@ -1,0 +1,23 @@
+<%= form_with(model: cla_source, local: true) do |form| %>
+  <% if cla_source.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(cla_source.errors.count, "error") %> prohibited this cla_source from being saved:</h2>
+
+      <ul>
+      <% cla_source.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class='form-group col-12 col-sm-4'>
+    <%= label_tag 'name', 'Name', {'data-toggle' => "tooltip"} %>
+    <%= form.text_field :name, {:class => "form-control", :placeholder => "Name of source"} %>
+  </div>  
+
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

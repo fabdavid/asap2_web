@@ -1,0 +1,46 @@
+<%= form_with(model: cell_ontology, local: true) do |form| %>
+  <% if cell_ontology.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(cell_ontology.errors.count, "error") %> prohibited this cell_ontology from being saved:</h2>
+
+      <ul>
+      <% cell_ontology.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class='form-group col-12 col-sm-4'>
+    <%= label_tag 'cell_ontology_name', 'Ontology Name', {'data-toggle' => "tooltip"} %>
+    <%= form.text_field :name, {:class => "form-control", :placeholder => "Name of the ontology"} %>
+  </div>
+  <div class='form-group col-12 col-sm-4'>
+    <%= label_tag 'cell_ontology_tag', 'Ontology Tag', {'data-toggle' => "tooltip"} %>
+    <%= form.text_field :tag, {:class => "form-control", :placeholder => "Tag of the ontology"} %>
+  </div>
+  <div class='form-group col-12 col-sm-4'>
+    <%= label_tag 'cell_ontology_format', 'File Format', {'data-toggle' => "tooltip"} %>
+    <%= form.text_field :format, {:class => "form-control", :placeholder => "Format of the ontology file"} %>
+  </div>
+  <div class='form-group col-12 col-sm-4'>
+    <%= label_tag 'cell_ontology_url', 'URL (website)', {'data-toggle' => "tooltip"} %>
+    <%= form.text_field :url, {:class => "form-control", :placeholder => "URL of the ontology"} %>
+  </div>
+  <div class='form-group col-12 col-sm-4'>
+    <%= label_tag 'cell_ontology_file_url', 'URL (file)', {'data-toggle' => "tooltip"} %>
+    <%= form.text_field :file_url, {:class => "form-control", :placeholder => "URL of the OBO file"} %>
+  </div>
+  <div class='form-group col-12 col-sm-4'>
+    <%= label_tag 'tax_ids', 'taxIDs (comma-separated) if applicable', {'data-toggle' => "tooltip"} %>
+    <%= form.text_field :tax_ids, {:class => "form-control", :placeholder => "Latest version"} %>
+  </div>
+  <div class='form-group col-12 col-sm-4'>
+    <%= label_tag 'cell_ontology_latest_version', 'Latest version', {'data-toggle' => "tooltip"} %>
+    <%= form.text_field :latest_version, {:class => "form-control", :placeholder => "Latest version"} %>
+  </div>
+  
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

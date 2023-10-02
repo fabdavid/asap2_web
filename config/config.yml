@@ -24,6 +24,8 @@ development:
   /srv/CMake-hdf5-1.10.2/HDF5-1.10.2-Linux/HDF_Group/HDF5/1.10.2/lib
  admin_emails:
   ['bbcf.epfl@gmail.com']
+ uab_emails:
+  ['rita.figueiredo@neuro.fchampalimaud.org', 'matthias.kirsch@zfn.uni-freiburg.de', 'jinhong.kim@dal.ca', 'per.q@biomed.au.dk', 'admin@lucamassimino.com', 'fabrice.david@epfl.ch', 'vincent.gardeux@epfl.ch']
  asap_docker_name:
   fabdavid/asap_run
  authorized_services:
@@ -47,6 +49,8 @@ production:
   /data/asap2/fus
  admin_emails:
   ['bbcf.epfl@gmail.com']
+ uab_emails:
+  ['rita.figueiredo@neuro.fchampalimaud.org', 'matthias.kirsch@zfn.uni-freiburg.de', 'jinhong.kim@dal.ca', 'per.q@biomed.au.dk', 'admin@lucamassimino.com', 'fabrice.david@epfl.ch', 'vincent.gardeux@epfl.ch']
  asap_docker_name:
   fabdavid/asap_run
 

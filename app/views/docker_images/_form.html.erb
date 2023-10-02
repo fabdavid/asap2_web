@@ -1,0 +1,17 @@
+<%= form_with(model: docker_image, local: true) do |form| %>
+  <% if docker_image.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(docker_image.errors.count, "error") %> prohibited this docker_image from being saved:</h2>
+
+      <ul>
+      <% docker_image.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

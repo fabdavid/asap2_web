@@ -257,6 +257,9 @@ module Basic
       if matrix and meta #and last_run
         h_attrs = {
   #        #        {"input_de":{"annot_id":168794,"run_id":32390},"fdr_cutoff":"0.05","fc_cutoff":"2","gene_set_id":"672","adj_method":"fdr","min":"15","max":"500"}
+#          :input_matrix_filename => project_dir + meta.filepath,
+#          :input_matrix_dataset => '/matrix',
+          :input_matrix => {"annot_id" => matrix.id,"run_id" => matrix.run_id},
           :groups_filename => project_dir + meta.filepath, #[{:annot_id => matrix.id, :run_id => matrix.run_id, :output_filename => matrix.filepath}],
           :groups_dataset => meta.name,
           :groups_id => meta.id
@@ -272,24 +275,25 @@ module Basic
           # :command_json => "{}", #h_cmd.to_json,        
           :command_json => "{}", #h_cmd.to_json,
           :attrs_json => h_attrs.to_json, #self.parsing_attrs_json,
-        #  :h_annots => {meta.id => meta},
+          :run_parents_json => "[]", #{"run_id" => matrix.run_id,"type" => "dataset","output_attr_name" => "output_matrix","input_attr_name" => "input_matrix"}].to_json,
+#          :h_annots => {meta.id => meta, matrix.id => matrix},
           :output_json => "{}", #h_outputs.to_json,
           :lineage_run_ids => '{}', #lineage_run_ids.join(","),
           :submitted_at => Time.now
         }
-
-#        h_cmd = {
-#          :program => "java -jar lib/ASAP.jar", # "rails parse[#{self.key}]",  #(mem > 10) ? "java -Xms#{mem}g -Xmx#{mem}g -jar /srv/ASAP.jar#" : 'java -jar /srv/ASAP.jar',        
-#          :opts => [
-#                    {"opt" => "-T", "value" => "CreateCellSelection"},
-#                    {"opt" => "-loom", "param_key" => "loom_filename", "value" => project_dir + loom_file},
-#                    #                  {"opt" => "-o", "value" => run_dir},                 
-#                    {"opt" => "-meta", "param_key" => 'annot_name', "value" => annot_name},
-#                    {"opt" => '-f', "value" => cell_indexes_filename}
- #                  ],
-  #        :args => []
-   #     }
-                
+        logger.debug("H_RUN => #{h_run.to_json}")
+        #        h_cmd = {
+        #          :program => "java -jar lib/ASAP.jar", # "rails parse[#{self.key}]",  #(mem > 10) ? "java -Xms#{mem}g -Xmx#{mem}g -jar /srv/ASAP.jar#" : 'java -jar /srv/ASAP.jar',        
+        #          :opts => [
+        #                    {"opt" => "-T", "value" => "CreateCellSelection"},
+        #                    {"opt" => "-loom", "param_key" => "loom_filename", "value" => project_dir + loom_file},
+        #                    #                  {"opt" => "-o", "value" => run_dir},                 
+        #                    {"opt" => "-meta", "param_key" => 'annot_name', "value" => annot_name},
+        #                    {"opt" => '-f', "value" => cell_indexes_filename}
+        #                  ],
+        #        :args => []
+        #     }
+        
         if find_marker_step and std_method
 
           run = Run.where({:project_id => project.id,
@@ -301,10 +305,12 @@ module Basic
             run.update_attributes(h_run)
           else
             run = Run.new(h_run)
+            logger.debug("H_RUN2 => #{h_run.to_json}")
             run.save
+            logger.debug("created RUN:" + run.to_json)
           end
           output_dir = project_dir + find_marker_step.name 
-           Dir.mkdir output_dir if !File.exist? output_dir
+          Dir.mkdir output_dir if !File.exist? output_dir
           output_dir = project_dir + find_marker_step.name + run.id.to_s
           if File.exist? output_dir
             FileUtils.rm_r output_dir
@@ -365,6 +371,7 @@ module Basic
             :h_data_classes => h_data_classes,
             :std_method => std_method,
             :h_env => h_env,
+            :h_annots => {meta.id => meta, matrix.id => matrix},
             :el_time => t,
             :user_id => user_id #(current_user) ? current_user.id : 1
           }
@@ -666,7 +673,11 @@ module Basic
         #{"input_matrix":{"run_id":14078,"output_attr_name":"output_matrix","output_filename":"cell_filtering/14078/output.loom","output_dataset":"/matrix"},"fdr":"0.1","min_disp":"0.5"}                                                                  
         input_matrix_run = nil
         ['input_matrix', 'input_de'].each do |e|
-          input_matrix_run = h_runs[h_run_attrs[e]["run_id"].to_i] if h_run_attrs[e]
+          puts "H_RUN_ATTRS:" + h_run_attrs.to_json
+          if h_run_attrs[e] and h_run_attrs[e]["run_id"]
+            puts h_run_attrs[e].to_json
+            input_matrix_run = h_runs[h_run_attrs[e]["run_id"].to_i]
+          end
         end
 
         puts "H_STEPS: " + h_steps.to_json
@@ -677,7 +688,7 @@ module Basic
           
           input_matrix_run = nil
           ['input_matrix', 'input_de'].each do |e|
-          input_matrix_run = h_runs[h_run_attrs[e]["run_id"].to_i] if h_run_attrs[e]
+          input_matrix_run = h_runs[h_run_attrs[e]["run_id"].to_i] if h_run_attrs[e] and h_run_attrs[e]["run_id"]
           end
                     
           if input_matrix_run
@@ -908,7 +919,13 @@ module Basic
       pc = p.project_cell_set
       cell_ids_file = project_dir + 'parsing' + 'cell_ids'
       stable_ids_file = project_dir + (a.filepath + ".stable_ids")
-      if File.exist?(stable_ids_file) and File.exist?(cell_ids_file)
+      if !pc
+        puts "ERROR! Project #{p.id} has no project_cell_set associated to it"
+        project_cell_set = ProjectCellSet.where(:id => p.project_cell_set_id).first
+        puts "PROJECT: " + p.to_json
+        puts "PROJECT2: " + Project.where(:key => p.key).first.to_json
+        puts "PROJECT_CELL_SET: " + project_cell_set.to_json
+      elsif File.exist?(stable_ids_file) and File.exist?(cell_ids_file)
 
         output = File.read(cell_ids_file)
         res =  Basic.safe_parse_json(output,  {})
@@ -995,6 +1012,8 @@ module Basic
           else
             puts "Stable IDs and metadata have not same sizes (#{stable_ids.size} vs. #{vals.size})"
           end
+        else
+          puts "Vals (#{vals.to_json}) or cells not there"
         end
       end
       
@@ -1082,7 +1101,10 @@ module Basic
     def load_annot run, meta, relative_filepath, h_data_types, h_data_classes, logger
       
       #list_metadata.each do |meta|
-      project = run.project
+      project = Project.where(:id => run.project_id).first #run.project
+      puts run.project.to_json
+      puts "project => #{project.to_json}"
+
       project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + project.user_id.to_s + project.key
     
       puts "BLAAAA: " + meta.to_json
@@ -1102,45 +1124,54 @@ module Basic
       # create or update fo
       fo = create_upd_fo(run.project_id, relative_filepath)
       annot = Annot.where(:name => meta['name'], :filepath => relative_filepath, :store_run_id => (fo) ? fo.run_id : nil, :project_id => run.project_id).first
-
+      
       # complete annotation details if data type is not defined      
-#      if !meta['type'] or !meta['dataset_size']
-        ## get same annotation from parsing
-        ori_annot = Annot.where(:project_id => project.id, :name => meta['name']).order("id asc").first
-        type_txt = ''
-        puts "ANNOT : " + annot.to_json
-        puts "ORI_ANNOT : " + ori_annot.to_json
-        if ori_annot and annot != ori_annot ## second part of expression: in case of re-importing a metadata or creating again the same metadata, do not get the metadata attributes from the previous metadata version (it might be outdated, for example in the case of imported metadata => the type can me changed by the user)
-          meta["type"] = (dt = ori_annot.data_type) ? dt.name : nil
-          meta["data_class_names"] = ori_annot.data_class_ids.split(",").map{|e| h_data_classes[e.to_i].name} 
-          meta["imported"] = ori_annot.imported
-          type_txt = (dt = ori_annot.data_type) ? "-type #{dt.name}" : ""
-        end
-        
+      #      if !meta['type'] or !meta['dataset_size']
+      ## get same annotation from parsing
+      ori_annot = Annot.where(:project_id => project.id, :name => meta['name']).order("id asc").first
+      type_txt = ''
+      puts "ANNOT : " + annot.to_json
+      puts "ORI_ANNOT : " + ori_annot.to_json
+      if ori_annot and annot != ori_annot ## second part of expression: in case of re-importing a metadata or creating again the same metadata, do not get the metadata attributes from the previous metadata version (it might be outdated, for example in the case of imported metadata => the type can me changed by the user)
+        meta["type"] = (dt = ori_annot.data_type) ? dt.name : nil
+        meta["data_class_names"] = ori_annot.data_class_ids.split(",").map{|e| h_data_classes[e.to_i].name} 
+        meta["imported"] = ori_annot.imported
+        type_txt = (dt = ori_annot.data_type) ? "-type #{dt.name}" : ""
+      end
+      type_txt = "-type #{h_data_types[meta['forced_type_id']].name}"  if meta['forced_type_id']
+      
       loom_path = project_dir + relative_filepath
+      puts "META: " + meta.to_json
       values_opt = (meta["type"] == 'DISCRETE') ? '' : '-no-values' 
       cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar #{values_opt} -T ExtractMetadata -loom #{loom_path} #{type_txt} -meta \"#{meta['name']}\""
       puts cmd
       res_json =`#{cmd}`
       #   puts res_json
       meta_compl = Basic.safe_parse_json(res_json, {})
+      puts meta_compl
       #        begin
       #          meta_compl = JSON.parse(res_json)
       #        rescue
       #        end
-      puts meta_compl
+
+      ## complement for h5ad existing_metadata or if we want to change type (call from annot update)
+      ['type', 'on', 'nber_rows', 'nber_cols', 'dataset_size'].each do |k|
+        meta[k] ||= meta_compl[k] 
+      end
+
+      ## override certain parameters
       list_p = ['nber_cols', 'nber_rows', 'dataset_size']
       list_p.push("categories") if meta["type"] == 'DISCRETE'
       list_p.each do |k|
         meta[k] = meta_compl[k] if meta_compl[k]
       end
-      #     end
+
       data_class_names = meta['data_class_names'] || []
       puts "DATA_CLASS_NAMES: " + data_class_names.to_json
       
       ### if imported data, try to guess types
       #if data_class_names.size == 0 #meta['imported'] == true
-      if meta['imported'] == true #or data_class_names.size == 0
+      if meta['imported'] == true or meta['forced_type_id'] #or data_class_names.size == 0
         #data_class_names |= ['dataset'] #, h_on[meta['on']]]
         if meta['name'].match(/^\/layers\//)
           data_class_names |= ['dataset', 'matrix', 'num_matrix']
@@ -1152,7 +1183,7 @@ module Basic
         elsif meta['name'].match(/^\/attrs\//)
           data_class_names |= ['global_mdata']
         end
-        data_class_names |= ["#{meta["type"].downcase}_mdata"]
+        data_class_names |= ["#{meta["type"].downcase}_mdata"] if meta["type"]
         if meta['on'] == 'EXPRESSION_MATRIX' # meta['nber_cols'] > 1 and meta['nber_rows'] > 1 and meta["type"] == 'NUMERIC'
           data_class_names |= ['matrix', 'num_matrix']
         end
@@ -1257,18 +1288,20 @@ module Basic
         end
 
         ## save list of stable_ids in file
-        if annot.store_run_id == annot.run_id and annot.dim == 3
+        stable_ids_file = project_dir + (annot.filepath + ".stable_ids")
+        if !File.exist? stable_ids_file #annot.store_run_id == annot.run_id and annot.dim == 3
           puts "get stable_ids for #{annot.filepath}..."
           cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -loom #{project_dir + annot.filepath} -meta /col_attrs/_StableID"
        #   res = Basic.safe_parse_json(`#{cmd}`, {})
        #   stable_ids = res['values']
-          File.open(project_dir + (annot.filepath + ".stable_ids"), "w") do |fout|
+          File.open(stable_ids_file, "w") do |fout|
             fout.write(`#{cmd}`)
           end
         end
         
         ## add clas
         if annot.data_type_id == 3 and annot.dim == 1 
+          puts "Test cell sets"
           h_cell_sets = add_cell_sets(project, project_dir, annot, meta_compl, list_cats)
           add_clas(project, annot, h_cell_sets)
         end
@@ -1395,7 +1428,7 @@ module Basic
       run = h_p[:run] #list_of_runs[run_i][0]
       p = h_p[:p] #list_of_runs[run_i][1]
  #     h_step_attrs = JSON.parse(run.step.attrs_json)
-
+      logger.debug("SET_RUN")
       docker_image = h_p[:h_cmd_params]['docker_image']
      # step = run.step
       step_dir = project_dir + h_p[:step].name
@@ -1435,10 +1468,10 @@ module Basic
 #      end
       
   #    puts "Elapsed time 9c:" + (Time.now-h_p[:el_time]).to_s
-
+      logger.debug("P_DEBUG:" + p.to_json)
       puts p.to_json
       p.each_key do |k|
-        
+        logger.debug("ATTR:" + k)
 #        ### write in files some parameters that take too much space and replace in db by a SHA2                                                                                                    
 #        if filename = @h_attrs[k]['write_in_file']
 #          filepath = output_dir + filename
@@ -1459,22 +1492,25 @@ module Basic
         #       end
         #     end
         
-        #logger.debug("bly: #{k.to_s} #{@h_attrs.to_json} #{@h_attrs[k.to_s].to_json}")                                                                                                            
+        #logger.debug("bly: #{k.to_s} #{@h_attrs.to_json} #{@h_attrs[k.to_s].to_json}")                                                                                                           
+        logger.debug("ATTRS:" + h_p[:h_attrs].to_json)
         if h_p[:h_attrs][k.to_s] and h_p[:h_attrs][k.to_s]['valid_types']
-          
+          logger.debug("ATTR2:" + k)
           ### handle annotations (that are not considered as datasets - but can still be used as input)
 
           ### handle datasets
           
           if h_p[:h_attrs][k.to_s]['valid_types'].flatten.include?('dataset')
-          
+            logger.debug("ATTR3:" + k)
             list_datasets = []            
             if h_p[:h_attrs][k.to_s]['req_data_structure'] == 'array' and !h_p[:h_attrs][k.to_s]['combinatorial_runs'] and p[k] and !p[k].empty?
               ### cases where there are several items
-              logger.debug(p[k].to_json)
+              logger.debug("ATTR4:" + p[k].to_json)
               list_datasets = p[k]
               #              h_var[k]=[]
             else
+             # logger.debug(h_p[:h_attrs][k.to_s]['req_data_structure'])
+             # logger.debug()
               list_datasets = [p[k]]
             end
             
@@ -1486,7 +1522,7 @@ module Basic
 #            Annot.where(:id => list_datasets.map{|dt| dt['annot_id']}.uniq.compact).all.map{|a| h_annots[a.id] = a}
 
             list_datasets.each do |dt|
-
+              logger.debug("DATASET_ITEM: #{dt.to_json}")
               linked_annot = nil
               if dt['annot_id']
                 linked_annot = h_annots[dt['annot_id']]
@@ -1579,12 +1615,13 @@ module Basic
 
 #      puts "!H_VAR:" + h_var.to_json
 #      logger.debug("!H_VAR:" + h_var.to_json)
-      File.open("/tmp/toto.txt", "w") do |f|
-        f.write( h_var.to_json)
+      File.open("/data/asap2/tmp/toto.txt", "w") do |f|
+        f.write(h_var.to_json + "\n")
+        f.write(h_p.to_json + "\n")
       end
 #       puts "Elapsed time 9d:" + (Time.now-h_p[:el_time]).to_s
 
- #     logger.debug("H_VAR: " + h_var.to_json)
+      logger.debug("H_VAR: " + h_var.to_json)
 
       ### update parents's children
       run_parents.each do |run_parent|
@@ -1706,6 +1743,8 @@ module Basic
         :lineage_run_ids => (run_parents and run_parents.size > 0) ? (run_parents.map{|e| e[:lineage_run_ids].split(",").map{|e| e.to_i}}.flatten + run_parents.map{|e| e[:run_id]}).uniq.sort.join(",") : ""
       }
 
+      logger.debug("H_UPD:" + h_upd.to_json)
+
       Basic.upd_run h_p[:project], run, h_upd, true
       #  run.update_attributes({
       #                          #                              :host_name => host_name,
@@ -1759,7 +1798,7 @@ module Basic
       end
       if p.match(/['"<>\s]/) 
         p = "\"#{p}\""
-        p.gsub!(/(["'])/){|var| "\\#{var}"}
+        p.gsub!(/(["])/){|var| "\\#{var}"}
       end
       if p == ';'
         p = "\\;"

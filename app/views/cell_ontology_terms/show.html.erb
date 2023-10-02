@@ -1,0 +1,54 @@
+<p id="notice"><%= notice %></p>
+
+<h5><%= @cell_ontology_term.identifier %>: <%= @cell_ontology_term.name %></h5>
+
+<% if @cell_ontology_term.description %>
+<p><b>Description:</b></p>
+<p><%= @cell_ontology_term.description %></p>
+<% end %>
+
+<!--<p><b>Lineage:</b></p>
+<p>
+<%# content = Basic.safe_parse_json(@cell_ontology_term.content_json, {}) %>
+<%# @cell_ontology_term.to_json %>
+<% if  @cell_ontology_term.lineage and @cell_ontology_term.lineage != '' %> 
+<% lineage_terms = CellOntologyTerm.where(:id => @cell_ontology_term.lineage.split(",")).all %>
+<%= raw lineage_terms.map{|e| "<span id='view_cot_#{e.id}'><span class='badge badge-info cot_badge pointer'>" + e.id.to_s + ": " +e.identifier + " " + e.name + "</span>" + 
+    ((params[:context] and params[:context] == 'annotation') ? "<span class='add_cot-btn text-success pointer'><i class='fa fa-plus-circle'></i></span>" : '') +
+     "</span>"}.join(" ") %>
+<% else %>
+<i>None (root node)</i>
+<% end %>
+</p>
+-->
+<p><b>Parents:</b></p>                                                                                                                        
+<p>
+<% if  @cell_ontology_term.parent_term_ids and @cell_ontology_term.parent_term_ids != '' %> 
+<% parent_terms = CellOntologyTerm.where(:id => @cell_ontology_term.parent_term_ids.split(",")).all %>   
+<%= raw parent_terms.map{|e| "<span id='view_cot_#{e.id}'><span class='badge badge-info cot_badge pointer'>" + #e.id.to_s + ": " + 
+e.identifier + " " + e.name + "</span>" + 
+    ((params[:context] and params[:context] == 'annotation') ? "<span class='add_cot-btn text-success pointer'><i class='fa fa-plus-circle'></i></span>" : '') + 
+    "</span>"}.join(" ") %>                                         
+<% else %>    
+<i>None (root node)</i>    
+<% end %>
+</p> 
+
+<p><b>
+Children:
+</b></p>
+<p>
+<% if @cell_ontology_term.children_term_ids and @cell_ontology_term.children_term_ids != '' %>
+ <% children_terms = CellOntologyTerm.where(:id => @cell_ontology_term.children_term_ids.split(",")).all %>
+ <%= raw children_terms.map{|e| "<span id='view_cot_#{e.id}'><span class='badge badge-info cot_badge pointer'>" +  e.id.to_s + ": " + e.identifier + " " + e.name + "</span>" + 
+   ((params[:context] and params[:context] == 'annotation') ? "<span class='add_cot-btn text-success pointer'><i class='fa fa-plus-circle'></i></span>" : '') + 
+    "</span>"}.join(" ") %>
+<% else %>
+<i>None (leaf node)</i>
+<% end %>
+</p>
+
+<!--
+<%# link_to 'Edit', edit_cell_ontology_term_path(@cell_ontology_term) %> |
+<%# link_to 'Back', cell_ontology_terms_path %>
+-->

@@ -1,0 +1,118 @@
+<p class='alert alert-info'>
+<i class='fas fa-info-circle'></i> <b>Of note</b><br />
+You can reproduce this tutorial entirely by cloning the public dataset ASAP53 (https://asap.epfl.ch/projects/ASAP53) which is the Malpighian tubule dataset from the Fly Cell Atlas.
+</p>
+
+<p>
+In this tutorial we will show you how to visualize Fly Cell Atlas (FCA) datasets, and how to navigate across all the different steps.<br/>
+Of course, ASAP is very modular, so don't hesitate to try out other methods, that we would not have described in this tutorial.<br />
+Moreover, here we show traditional pipeline steps, but you can also run the steps in a different order, or even skip some steps if you don't think they are needed.
+</p>
+
+<hr/>
+
+<h4 class="sm" id="sm-0">Step 1: Select a dataset from the Fly Cell Atlas</h4>
+<p>There are two ways to select a dataset from the Fly Cell Atlas:</p>
+<h5>From the main FCA website</h5>
+<p>at https://flycellatlas.org/, in the "Tissues" or "Data" section. Here you have a list of all datasets available in ASAP, and a direct link that opens the project in ASAP.</p>
+<h5>From the ASAP website</h5>
+<p>In the top bar of ASAP, you can click on "Data > Fly Cell Atlas" to see a list of all available datasets, and some additional info (nb cells, nb genes, etc.)</p>
+
+<p>In our case, you can select Malpighian tubule (stringent), which will open the project in ASAP, and directly jump to the "Visualization" step where we plot the UMAP, colored by cell-type annotation. You should see this page:</p>
+<%= image_tag '_tutorial_fly_cell_atlas_1_001.png', {class:"tuto-image"} %>
+
+<p class='alert alert-info'>
+<i class='fas fa-info-circle'></i> <b>Of note</b><br />
+UMAP/t-SNE/Clustering were made using the <a href="https://github.com/vib-singlecell-nf/vsn-pipelines/">VSN</a> pipelne described in the Fly Cell Atlas paper. The visualization should perfectly match what you see in the paper, or what you see in <a href="https://scope.aertslab.org/">SCope</a>'s web portal.
+</p>
+
+<hr/>
+
+<h4 class="sm" id="sm-0">Step 2: Visualization and interaction with the dataset</h4>
+<p>From this view, you can hover your mouse on the cells, and you will see more informations (cell name, if activated in the "General" tab), cluster or cell type (depending on the current coloring), etc. </p>
+
+<h5>Let's look at the top-left options:</h5>
+<%= image_tag '_tutorial_fly_cell_atlas_1_002.png', {class:"tuto-image"} %>
+<p>Here you can see multiple options controlling the plot you see:</p>
+<ul>
+<li><b>A.</b> Here is the list of visualization/dimension reductions available to plot in 2D/3D. In the Fly Cell Atlas datasets you will always see 5 of them.
+<ul>
+<li><b>HVG_PC1_PC2:</b> These are the two first components of the PCA, ran on the normalized/covariate-removed matrix, restricted to its 2000 top Highly Variable Genes (HVG)</li>
+<li><b>HVG_UMAP:</b> These are the two first components of the UMAP, ran on this PCA</li>
+<li><b>HVG_T_SNE:</b> These are the two first components of the t-SNE, ran on this PCA</li>
+<li><b>SCENIC_AUC_UMAP:</b> These are the two first components of the UMAP ran on the AUC of the <a href="https://scenic.aertslab.org/">Scenic</a> pipeline</li>
+<li><b>SCENIC_AUC_UMAP:</b> These are the two first components of the t-SNE ran on the AUC of the <a href="https://scenic.aertslab.org/">Scenic</a> pipeline</li>
+</ul>
+</li>
+<li><b>B.</b> Here you can change the view from 2D to 3D, in case more than 2 dimensions are computed. In this example, the imported data from the FCA only have 2 dimensions available per dataset. So we cannot plot 3D representation of the data. But if we run our own UMAP/t-SNE on the data, we will be able to plot it in 3D.</li>
+<li><b>C</b> This controls what is plotted in xyz coordinates. By default dimension 1 is on x and dimension 2 is on y, but you can change this.</li>
+<li><b>D</b> This [Refresh] button force the refreshing of the plot. It could be useful in case the visualization is frozen, or if you want to resize the plot</li>
+</ul>
+
+<p class='alert alert-info'>
+<i class='fas fa-info-circle'></i> <b>Of note</b><br />
+In general, we focus on the t-SNE or the UMAP ran on the PCA, so the other visualization are less important<br/>
+For more information on the generation of these dimension reductions, please check the <a href="https://github.com/vib-singlecell-nf/vsn-pipelines/">VSN</a> pipelne described in the Fly Cell Atlas paper.
+</p>
+
+<h5>Let's look at the plot icons:</h5>
+<%= image_tag '_tutorial_fly_cell_atlas_1_003.png', {class:"tuto-image"} %>
+<p>These are the standard icons from plotly, maybe you saw them before. Here is what they do:</p>
+<ul>
+<li><b>A</b> This is the <b>Zoom</b> tool, you can select a portion of your plot and zoom in (mouse wheel is deactivated, and will not work for Zooming). Double-click on the plot to get back to the default zoom.</li>
+<li><b>B</b> This is the <b>Pan</b> tool, you can move the data around (by translation). Double-click on the plot to get back to the default view.</li>
+<li><b>C / D</b> These are the <b>Box<b> and <b>Lasso</b> selection tools, you can select cells using these tools directly on the plot. You can deactivate the selection by double clicking on the plot. Once cells are selected, your selection will appear in the "Inspector" tab on the right "Controls" panel.
+<%= image_tag '_tutorial_fly_cell_atlas_1_004.png', {class:"tuto-image"} %>
+</li>
+<li><b>E / F</b> These are other <b>Zooming</b> tools. Contrary to the magnifier tool (<b>A</b>), you cannot control the region you zoom in/out.</li>
+<li><b>G / H</b> These tools have similar effects than the double click. They reset the view to default.</li>
+<li><b>I / J</b> These tools are for saving the plot in PNG or SVG (vectorial), respectively.</li>
+</ul>
+
+<h5>Now, let's look at the Controls panel</h5>
+<p>If the "Controls" panel is not currently visible/open, you should see a "Controls" button on the bottom right:</p>
+<%= image_tag '_tutorial_fly_cell_atlas_1_005.png', {class:"tuto-image"} %>
+<p>Once clicked, the Controls panel opens, and you can see three main tabs (A, B and C):</p>
+<%= image_tag '_tutorial_fly_cell_atlas_1_006.png', {class:"tuto-image"} %>
+<ul>
+<li><b>A</b> This is the <b>General</b> tab, controlling the points/cells options. Here you can control the point opacity / size, and you can activate the "cell name" which will appear once you hover your mouse on a particular cell.</li>
+<li><b>B</b> This is the <b>Coloring</b> tab, it controls the coloring of the plot. We will explain this tab in more details in the next section.</li>
+<li><b>C</b> This is the <b>Inspector</b> tab which controls the selections. We explained this tab in the last section, once you use one of the "Selection" tool.</li>
+<li><b>D</b> This arrow allows to close the "Controls" panel, switching back to a full screen of the plot.</li>
+</ul>
+
+<p class='alert alert-info'>
+<i class='fas fa-info-circle'></i> <b>Of note</b><br />
+In general, the "Controls" tab is closed by default. Here it's opened on the Coloring > Categorical > Annotation because this is the default view/coloring that we set for any Fly Cell Atlas dataset.
+</p>
+
+<h5>Now, let's look at the Coloring tab in the Controls panel</h5>
+<%= image_tag '_tutorial_fly_cell_atlas_1_007.png', {class:"tuto-image"} %>
+<p>First, you can see that there are 4 options to color your plot.</p>
+<ul>
+<li><b>A</b> This will remove all coloring of the points (all points become blue)</li>
+<li><b>B</b> This is where you can color your points according to <b>continuous</b> features. Please note that depending on the nature of the metadata, you should select the "Continuous" or "Discrete" tab, accordingly.
+
+<ul>
+In the <b>B</b> "Continuous" tab, you have the possibility to color according to different data types:
+<%= image_tag '_tutorial_fly_cell_atlas_1_008.png', {class:"tuto-image"} %>
+<li><b>Gene expression</b> You can color the cells according to certain gene expression. Just enter the name of the gene (symbol or Ensembl ID) in the corresponding text box (there is an autocomplete feature to help you)</li>
+<li><b>B</b> This is where you can color your points according to <b>continuous</b> features. Please note that depending on the nature of the metadata, you should select the "Continuous" or "Discrete" tab, accordingly.
+</ul>
+
+</li>
+<li><b>C</b> This is the <b>Inspector</b> tab which controls the selections. We explained this tab in the last section, once you use one of the "Selection" tool.</li>
+<li><b>D</b> This arrow allows to close the "Controls" panel, switching back to a full screen of the plot.</li>
+</ul>
+
+<p class='alert alert-info'>
+<i class='fas fa-info-circle'></i> <b>Of note</b><br />
+For coloring, it's very important to differentiate <b>continuous</b> vs <b>discrete</b> coloring. If the metadata you want to use for coloring is continuous (gene expression, continuous metadata / scoring), then you should go to the "Continuous" or "3-Channels" tab, if it's discrete (categories, clustering, ...), please go to the "Discrete" tab.
+</p>
+
+
+<p class='alert alert-info'>
+<i class='fas fa-info-circle'></i> <b>Of note</b><br />
+Visualization options explained in Step 2 of this tutorial are common to all projects on ASAP, and are thus not specific to the Fly Cell Atlas projects.
+</p>
+

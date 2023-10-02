@@ -1,0 +1,32 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Annotation sources</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @cla_sources.each do |cla_source| %>
+      <tr>
+	<td><%= cla_source.id %></td>
+	<td><%= cla_source.name %></td>
+	
+        <td><%= link_to 'Show', cla_source_path(cla_source) %></td>
+        <td><%= link_to 'Edit', edit_cla_source_path(cla_source) %></td>
+        <td><%= link_to 'Destroy', cla_source_path(cla_source), method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Cla Source', new_cla_source_path %>

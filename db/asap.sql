@@ -1,3 +1,26 @@
+create table project_cell_sets(
+id serial,
+key text,
+nber_cells text,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create index key_project_cell_sets on  project_cell_sets (key);
+
+create table docker_images(
+id serial,
+name text,
+tag text,
+full_name text,
+version int,
+tools_json text,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
 create table hcoa_terms(
 id serial,
 hcoa_id int,
@@ -6,7 +29,18 @@ description text,
 primary key (id)
 );
 
+create table orcid_users(
+id serial,
+name text,
+key text,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
 create table users(
+orcid_user_id int references orcid_users
+displayed_name text,
 );
 
 create table delayed_jobs(
@@ -44,6 +78,8 @@ primary key (id)
 create table versions(
 id serial,
 release_date timestamp,
+activated bool default false,
+beta bool default true,
 description text,
 tools_json text,
 docker_json text,
@@ -71,9 +107,12 @@ has_std_view bool default true,
 attrs_json text default '{}', -- optional attributes for each step
 method_attrs_json text default '{}', -- global properties of standard method attributes
 method_output_json text default '{}', -- global properties of standard method outputs
-command_json default '{}',
+command_json text default '{}',
+dashboard_card_json text default '{}',
+show_view_json text default '{}',
 -- action_button_name text,
 version_id int references versions (id),
+docker_image_id int references docker_images, -- link to the main docker asap_run
 primary key (id)
 );
 
@@ -81,9 +120,12 @@ create table tools(
 id serial,
 name text,
 label text,
+package text,
 tool_type_id int references tool_types,
 step_ids text,
+title text,
 description text,
+url text,
 created_at timestamp,
 updated_at timestamp,
 primary key (id)
@@ -119,6 +161,46 @@ updated_at timestamp,
 primary key (id)
 );
 
+create table cell_ontologies(
+id serial,
+name text, --HCAO or FlyBase Fly Anatomy
+tag text,
+file_url text,
+url text,
+format text,
+latest_version text, -- only keep last version
+tax_ids text,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create table cell_ontologies_organisms(
+cell_ontology_id int references cell_ontologies,
+organism_id int references organisms
+);
+
+create table cell_ontology_terms(
+id serial,
+cell_ontology_id int references cell_ontologies,
+identifier text,
+alt_identifiers text,
+name text,
+description text,
+content_json text,
+obsolete bool default false,
+latest_version text,
+related_gene_ids text,
+node_gene_ids text,
+node_term_ids text,
+parent_term_ids text,
+children_term_ids text,
+lineage text,
+original bool,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
 
 create table speeds(
 id serial,
@@ -211,6 +293,7 @@ name text,
 label text,
 img_extension text,
 icon_class text, 
+rank int,
 primary key (id)
 );
 
@@ -282,6 +365,7 @@ extension varchar(6) default 'txt',
 public bool default false,
 user_id int references users (id),
 cloned_project_id int,
+root_project_id int,
 sandbox bool default false,
 session_id int,
 pmid int,
@@ -293,13 +377,59 @@ ge_filter_json text,
 nber_clones int default 0,
 public_id int,
 version_id int references versions,
+replaced_by_project_key text,
+replaced_by_comment text,
+nber_cloned int default 0,
+nber_views int default 0,
+archive_status_id int references archive_statuses,
+being_deleted bool default false,
+last_day_session_ids text default '',
+disk_size_archived bigint,
+disk_size bigint,
+fu_id int,
+technology text,
+tissue text,
+extra_info text,
+description text,
+landing_page_json text default '{}',
 created_at timestamp,
 updated_at timestamp,
 public_at timestamp,
-updated_public_at timestamp,
+frozen_at timestamp,
+project_cell_set_id int references project_cell_sets,
 primary key (id)
 );
 
+create table info_types(
+id serial,
+name text,
+label text,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create table project_infos(
+id serial,
+info_type_id int references info_types,
+value text,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create table project_tags(
+id serial,
+name text,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create table projects_tags_projects(
+ project_tag_id int references project_tags,
+ project_id int references projects
+);
 
 --create table articles_projects(
 --article_id int references articles,
@@ -317,6 +447,7 @@ primary key (id)
 create table exp_entries(
 id serial,
 identifier text,
+identifier_type_id int references identifier_types,
 title text,
 description text,
 pmid int,
@@ -335,12 +466,22 @@ updated_at timestamp,
 primary key (id)
 );
 
-
 create table identifier_types(
 id serial,
 name text
+pluralizable bool default false,
 prefix text,
 url_mask text,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create table exp_entry_identifiers(
+id serial,
+identifier text,
+identifier_type_id int references identifier_types,
+exp_entry_id int references exp_entries,
 created_at timestamp,
 updated_at timestamp,
 primary key (id)
@@ -362,14 +503,18 @@ sample_identifier_id int references sample_identifiers
 );
 
 create table exp_entries_projects(
-exp_entry_id int references geo_entries,
+exp_entry_id int references exp_entries,
 project_id int references projects
 );
 
 create table providers(
 id serial,
 name text,
+description text,
+url text,
 url_mask text,
+tag text,
+attrs_json text default '{}',
 primary key (id)
 );
 
@@ -388,7 +533,14 @@ primary key (id)
 create table provider_projects(
 id serial,
 provider_id int references providers,
-provider_project_key text,
+key text,
+title text,
+filename text,
+--filename text, -- file
+--filekey text, -- file key for the loom file
+attrs_json text default '{}',
+comment text,
+not_add_in_asap bool default false,
 primary key (id)
 );
 
@@ -482,6 +634,7 @@ id serial,
 name text,
 label text,
 step_id int references steps (id),
+docker_image_id int references docker_images,
 description  text,
 short_label text,
 program text,
@@ -511,6 +664,7 @@ attrs_json text default '{}',
 num int,
 pid int,
 error text,
+delayed_job_id int,
 created_at timestamp,
 user_id int references users,
 primary key (id)
@@ -544,13 +698,17 @@ run_children_json text, -- list the children with the link properties (which dat
 created_at timestamp,
 submitted_at timestamp, -- time the run execution starts 
 user_id int references users,
+pred_max_ram int,
+pred_process_duration int,
 return_stdout bool default false,
+pipeline_parent_run_ids text default '',
 primary key (id)
 );
 
 create table data_types(
 id serial,
 name text, -- int, float, text
+label text,
 created_at timestamp,
 updated_at timestamp,
 primary key (id)
@@ -564,16 +722,34 @@ updated_at timestamp,
 primary key (id)
 );
 
+create table attr_names(
+id serial,
+name text, -- dataset, col_annot, row_annot                                                                                                          
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create table output_attrs(
+id serial,
+name text,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+)
+
 create table annots(
 id serial,
 project_id int references projects,
 step_id int references steps,
 run_id int references runs,
-filename text,
+filepath text,
 col bool, -- true col, false row
 data_type_id int references data_types,
 data_class_ids text,
+imported bool default false,
 name text,
+output_attr_id int references output_attrs,
 nb_cat int, -- nber of categories (uniq values)
 nb_na int,
 nb_zero int,
@@ -589,11 +765,19 @@ nber_rows int,
 nber_cols int, 
 dim smallint, 
 categories_json text,       
+list_cat_json text,
 cat_aliases_json text, -- category names in the site
 mem_size bigint, 
 user_id int, 
-store_run_id integer, 
-headers_json text, 
+store_run_id integer,
+ori_run_id int, 
+ori_step_id int,
+headers_json text,
+--nber_clas text, -- json list
+--selected_cla_ids text, -- json list
+cat_info_json text, -- {"nber_cla" : [], "selected_cla_ids" : []}
+--attr_name text, 
+--attr_name_id int references attr_names,
 primary key (id)
 );
 
@@ -621,8 +805,11 @@ status_id int references statuses,
 run_parents_json text, -- list the parents with the link properties (which data from each parent is used) = data origin 
 run_children_json text, -- list the children with the link properties (which data are used by children)  
 created_at timestamp,
+pred_max_ram int,
+pred_process_duration int,
 user_id int references users,
 return_stdout bool default false,
+pipeline_parent_run_ids text default '',
 primary key (id)
 );
 
@@ -651,12 +838,28 @@ status_id int references statuses,
 run_parents_json text, -- list the parents with the link properties (which data from each parent is used) = data origin 
 run_children_json text, -- list the children with the link properties (which data are used by children)
 created_at timestamp,
+pred_max_ram int,
+pred_process_duration int,
 user_id int references users,
 return_stdout bool default false,
+pipeline_parent_run_ids text default '',
 primary key (id)
 );
 
 create index project_id_del_runs on del_runs (project_id);
+
+create table fos(
+id serial,
+ project_id int,
+ run_id     int,
+ filepath text, 
+ filesize  bigint,
+ user_id  int,
+ updated_at timestamp,
+ created_at timestamp,
+ ext  text, 
+primary key (id)
+);
 
 create table heatmaps(
 id serial,
@@ -838,6 +1041,7 @@ selection2_id int, -- references selections,
 --step_id int references steps,
 attrs_json text,
 nber_up_genes int,
+	      
 nber_down_genes int,
 status_id int references statuses (id),
 duration int,
@@ -924,6 +1128,9 @@ organism_id int references organisms,
 value text,
 primary key (id)
 );
+
+create index gene_names_value_idx on gene_names (value);
+
 
 create table selections(
 id serial,
@@ -1018,8 +1225,134 @@ primary key (id)
 --primary key (id)
 --);
 
+create table docker_patches(
+id serial,
+version_id int references versions,
+container_name text,
+tag int,
+description text,
+std_method_ids text,
+step_ids text,
+activated_at timestamp,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
 create table figures(
 );
 
 create table comments(
 );
+
+-- create table services(
+-- id serial,
+-- user_id int references users,
+-- created_at timestamp,
+-- updated_at timestamp,
+-- primary key (id)
+-- );
+
+create table ips(
+id serial,
+ip text,
+key text,
+primary key (id)
+);
+
+create table ips_users(
+ip_id int references ips,
+user_id int references users
+);
+
+create table cla_sources(
+id serial,
+name text, -- ASAP manual, SCope manual, 
+label text,
+url text, 
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+--create table cla_methods(
+--id serial,
+--name 
+--);
+
+create table cell_sets(
+id serial,
+key text,
+--dataset_key text,
+project_cell_set_id int references project_cell_sets,
+nber_cells int,
+nber_clas int,
+cla_id int, -- references clas, -- remove the foreign keep to be able to delete
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create index project_cell_set_id_key_cell_sets on  cell_sets (project_cell_set_id, key);
+
+
+create table annot_cell_sets(
+id serial,
+project_id int references projects,
+cell_set_id int references cell_sets,
+annot_id int references annots,
+cat_idx int,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create index cell_set_id_annot_cell_sets on  annot_cell_sets (cell_set_id);
+
+create table clas( -- cluster annotations
+id serial,
+num int,
+name text,
+comment text,
+cell_set_id int references cell_sets, -- optional => only for public projects
+project_id int --references projects,
+clone_id int references clas,
+annot_id int --references annots, -- ASAP clustering or imported discrete annotation
+cat text,
+cat_idx int, -- group idx in list_cats of the metadata
+cell_ontology_term_ids text,
+sorted_cell_ontology_term_ids text,
+-- cell_ontology_term_json text, -- several ontologies [{"identifier" : "CL:0000343"}, ...]
+--cell_ontology_term_json text,
+up_gene_ids text, --comma-separated list of gene_id (genes stored in asap_data)
+sorted_up_gene_ids text,
+down_gene_ids text,
+sorted_down_gene_ids text,
+orcid_user_id int references orcid_users,
+user_id int references users,
+cla_source_id int references cla_sources,
+--cla_method_id int references cla_methods,
+-- votes_json text, -- {"agree" : [{"user_id" : 4}], "disagree" : [{"user_id" : 3, "comment" : "Not happy with this annotation"}]}
+nber_agree int default 0,
+nber_disagree int default 0,
+obsolete bool default false,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create table cla_votes(
+id serial,
+cla_source_id int references cla_sources, --vote source
+cla_id int references clas,
+orcid_user_id int references orcid_users,
+user_name text, --optional
+user_id int references users,
+comment text,
+voter_key text, --optional
+agree bool,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+

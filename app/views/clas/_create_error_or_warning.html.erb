@@ -1,0 +1,35 @@
+<% if @errors.size > 0 %>
+$("#errors").html("<p><b>This annotation cannot be saved for these reasons:</b></p><%= raw @errors.join("<br/>") %>")
+$("#errors").removeClass('hidden')
+//$("#save-btn").prop("disabled", true)
+<% else %>
+$("#errors").addClass('hidden')
+$("#save-btn").prop("disabled", false)
+$("#confirm-btn").prop("disabled", false)
+<% end %>
+
+<% if @approaching_clas[:cot_ids].size > 0 or @approaching_clas[:up_gene_ids].size > 0 or @approaching_clas[:down_gene_ids].size > 0 %>
+<% if @errors.size == 0  %>
+$("#confirm-btn").removeClass('hidden')
+$("#save-btn").addClass('hidden')
+<% end %>
+<% warnings = "<p><b>Warnings:</b></p>" %>
+
+<% if @max_common[:cot_ids] > 0 %>
+<% warnings += "<p>Annotations exist for this group with " + @max_common[:cot_ids].to_s + " cell ontology term" + ((@max_common[:cot_ids] > 1) ? 's' : '') + " in common:<br/>" + raw((@approaching_clas[:cot_ids]) ? @approaching_clas[:cot_ids].map{|cla_id| @h_all_clas[cla_id].cat + " #" + @h_all_clas[cla_id].num.to_s}.join("<br/>") : "") + "</p>" %>
+<% end %>
+<% if @max_common[:up_gene_ids] > 0 %>
+<% warnings += "<p>Annotations exist for this group with" + @max_common[:up_gene_ids].to_s + "gene" + ((@max_common[:up_gene_ids] > 1) ? 's' : '') + " in common:<br/>" + raw((@approaching_clas[:up_gene_ids]) ? @approaching_clas[:up_gene_ids].map{|cla_id| @h_all_clas[cla_id].cat + " #" + @h_all_clas[cla_id].num.to_s}.join("<br/>") : "") + "</p>" %>
+<% end %>
+<% if @max_common[:down_gene_ids] > 0 %>
+<% warnings += "<p>Annotations exist for this group with" + @max_common[:down_gene_ids].to_s + "gene" + ((@max_common[:down_gene_ids] > 1) ? 's' : '') + " in common:<br/>" + raw((@approaching_clas[:down_gene_ids]) ? @approaching_clas[:down_gene_ids].map{|cla_id| @h_all_clas[cla_id].cat + " #" + @h_all_clas[cla_id].num.to_s}.join("<br/>") : "") + "</p>" %>
+<% end %>
+
+
+$("#warnings").html("<%= raw warnings %>")
+$("#warnings").removeClass("hidden")
+<% else %>
+$("#confirm-btn").addClass('hidden')
+$("#warnings").addClass('hidden')
+<% end %>
+

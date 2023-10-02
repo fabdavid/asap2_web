@@ -1,0 +1,17 @@
+<%= form_with(model: exp_entry_identifier, local: true) do |form| %>
+  <% if exp_entry_identifier.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(exp_entry_identifier.errors.count, "error") %> prohibited this exp_entry_identifier from being saved:</h2>
+
+      <ul>
+      <% exp_entry_identifier.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

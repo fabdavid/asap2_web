@@ -1,0 +1,49 @@
+<p id="notice"><%= notice %></p>
+
+<div class='float-right'>
+<%= link_to('New Cell Ontology', new_cell_ontology_path, {:class => 'btn btn-primary'}) if admin? %>
+</div>
+
+<h1>Cell Ontologies</h1>
+
+<table id='cell_ontologies'>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Tag</th>
+      <th>Website URL</th>
+      <th>File URL</th>
+      <th>Format</th>      
+      <th>Number of annotations</th>
+      <th>Organisms</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @cell_ontologies.each do |cell_ontology| %>
+      <tr>
+	<td><%= cell_ontology.name %></td>
+	<td><%= cell_ontology.tag %></td>
+	<td><%= link_to cell_ontology.url, cell_ontology.url %></td>
+	<td><%= cell_ontology.file_url %></td>
+	<td><%= cell_ontology.format %></td>
+	<td><%= cell_ontology.cell_ontology_terms.size %></td>
+	<td><%= (tids = cell_ontology.tax_ids and tids!='') ? tids.split(",").map{|tid| @h_organisms[tid.to_i].name}.join(", ") : 'All' %></td>
+        <td><%= link_to 'Show', cell_ontology_path(cell_ontology) %></td>
+        <td><%= link_to('Edit', edit_cell_ontology_path(cell_ontology)) if admin? %></td>
+        <td><%= link_to('Destroy', cell_ontology_path(cell_ontology), method: :delete, data: { confirm: 'Are you sure?' }) if admin? %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= javascript_tag do %>
+
+$("#cell_ontologies").DataTable()
+
+<% end %>

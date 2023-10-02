@@ -1,0 +1,181 @@
+<%# raw @h_datasets.to_json %>
+<%# raw @list_datasets.to_json %>
+<%# raw @cmd %>
+<%# raw @h_json.to_json %>
+
+<% if @h_json['metadata'] %>
+
+<% md_type = @h_metadata_types[params[:metadata_type]].pluralize %>
+
+<div class='row m-0 mb-3'>
+  <div class='col-md-8'>
+    <div id='annotation_card' class='card'>
+      
+      <div class='card-body'>
+	<h4>Annotation types</h4>
+	
+	<table id='metadata_summary' class='' width='100%'>
+	  <thead>
+	    <tr>
+	      <th>Annotation</th>
+	      <th width='200px'>Type</th>
+	      <th>Distinct values</th>
+	      <th>Missing values</th>
+	      <th>Most represented values</th>
+	  </thead>
+	  <tbody>
+	    <% (0 .. @h_json['metadata'].size-1).each do |j| %>
+	    <tr>
+	      <td><%= @h_json['metadata'][j]['name'] %></td>
+	      <td>
+		<% l = DataType.all.reject{|dt| dt.label == 'Undefined'}.map{|dt| [dt.label, dt.name]} %>
+		<%= select_tag "metadata_types[#{j}]", options_for_select(l, @h_json['metadata'][j]['type']), {:class => 'form-control'} %>
+	      </td>
+	      <td>
+		<%= @h_json['metadata'][j]['distinct_values'] %> <%# (@h_json['metadata'][j]['categories']) ? @h_json['metadata'][j]['categories'].keys.size : '' %>
+	      </td>
+	      <td>
+                <%= @h_json['metadata'][j]['missing_values'] || '0' %> <%# (@h_json['metadata'][j]['categories']) ? @h_json['metadata'][j]['categories'].keys.size : '' %>
+              </td>
+	      <td>
+		<% if @h_json['metadata'][j]['categories'] %>
+		<% h_cats = @h_json['metadata'][j]['categories'] %>
+		<% cats = h_cats.keys %>
+		<%= raw cats.sort{|a, b| h_cats[b] <=> h_cats[a]}.map{|k| "<span class='badge badge-secondary'>#{(k == '') ? 'Not annotated' : k} (#{h_cats[k]})</span>"}.join(" ") %>
+		<% end %>
+	      </td>
+	    </tr>
+	    <% end %>
+	  </tbody>
+	</table>
+      </div>
+    </div>
+  </div>
+  
+  <div class='col-md-4'>
+    <div id='warnings_card' class='card'>
+      
+      <div class='card-body' style='overflow-y:scroll'>
+        <h4>Warnings</h4>
+
+	<% if  @h_json['not_found'] %>
+	<% many = (@h_json['not_found'].size > 1) ? 1 : nil %> 
+	<p class='text text-warning'><span id='nber_not_found' class='badge badge-warning pointer'><%= @h_json['not_found'].size %></span> <%= (many) ? "#{md_type} are not" : "#{@h_metadata_types[params[:metadata_type]]} is not" %> found</p>	
+	<% end %>
+
+	<% if  @h_json['ambiguous'] %>
+	<% many = (@h_json['ambiguous'].size > 1) ? 1 : nil %>
+	<p class='text text-warning'><span id='nber_ambiguous' class='badge badge-warning pointer'><%= @h_json['ambiguous'].size %></span> <%= (many) ? "#{md_type} are" : "#{@h_metadata_types[params[:metadata_type]]} is" %> ambiguous</p>
+	<%# @h_json['ambiguous'].to_json %>
+	<div id='assign_metadata_group' class='form-group'>
+	  <%= label_tag 'assign_metadata', 'For ambiguous genes, assign metadata', {'data-toggle' => "tooltip"} %>
+	  <!--    <%# f.select :annot_type, options_for_select(l) {:class => "form-control is-invalid", :placeholder => "Metadata type"} %>-->
+	  <div id='assign_metadata_div'>
+	    <% l = [["To All", 1], ["To None", 0]] %>
+	    <%= select_tag 'opt[assign_metadata]', options_for_select(l, 1), {class: 'form-control'}  %>
+	  </div>
+	</div>
+	<% end %>
+	<% if !@h_json['not_found'] and !@h_json['ambiguous'] %>
+	 <span class='text text-success'>No ambiguous or unknown <%= @h_metadata_types[params[:metadata_type]] %></span>
+	<% end %>
+	
+	<% if @h_json['empty_metadata'] and @h_json['empty_metadata'].size > 0 %>
+	<% many = (@h_json['empty_metadata'].size > 1) ? 1 : nil %>
+	<p class='text text-warning'><span id='nber_empty_metadata' class='badge badge-warning pointer'><%= @h_json['empty_metadata'].size %></span> <%= (many) ? "metadata are " : "metadata is " %> empty and will not be added in the Loom file</p>
+	<% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class='row m-0'>
+  <div class='col-md-12'>
+    
+    <div class='card'>
+      <div class='card-body preview_table_container'>
+	<h4>Preview <small>(10 first <%= md_type %>)</small></h4>
+
+	<table id='preview_table' class='datatable hover'>
+	  <thead>
+	    <tr>
+	      <th class='<%= @h_metadata_types[params[:metadata_type]] %>_label'><%= md_type.capitalize %></th>
+	      <% (0 .. @h_json['metadata'].size-1).each do |j| %>
+	      <th><%= @h_json['metadata'][j]['name'] %></th>
+	    <% end %>
+	  </thead>
+	  <tbody>
+	    <% (0 .. @h_json[md_type].size-1).each do |i| %>
+	    <tr>
+	      <td class='<%= @h_metadata_types[params[:metadata_type]] %>_name'><%= @h_json[md_type][i] %></td>
+	      <% (0 .. @h_json['metadata'].size-1).each do |j| %>
+	      <td><%=  @h_json['metadata'][j]['values'][i] %></td>
+	      <% end %>
+	    </tr>
+	    <% end %>
+	  </tbody>
+	</table>
+      </div>
+    </div>
+  </div>
+</div>
+
+ <%= hidden_field_tag 'file_type', @h_json['detected_format'] %>
+
+<button id='submit_parsing' type='button' class='btn btn-primary'>Add metadata</button>
+
+<%= javascript_tag do %>
+
+$("#preview_btn").prop("disabled", false)
+
+if ($("#annotation_card").height() + 2 > $("#warnings_card").height()){
+$("#warnings_card").css({'height' : $("#annotation_card").height() + 2})
+}else{
+$("#annotation_card").css({'height' : $("#warnings_card").height() + 2})
+}
+
+$("#preview_table").dataTable({
+"sDom": 'Wsrt',
+"ordering": false,
+/*"columnDefs": [
+    { "width": "20%", "sortable": false, "targets": 0 },
+    { "width": "8%", "className": 'dt-body-right', "sortable": false, "targets": [<%= raw (1 .. @h_json['metadata'].size).to_a.join(",") %>] }
+  ]
+*/
+});
+
+<% ['ambiguous', 'not_found', 'empty_metadata'].select{|k| @h_json[k]}.each do |warning_type| %>
+$("#nber_<%= warning_type %>").click(function(e){
+ var w = $(window).width()
+ var ww = 600
+  $("#popup_container").html("<%= raw @h_json[warning_type].map{|e| e.gsub!(/["\\]/, "\\\""); "<span class='badge badge-info'>" + ((e!='') ? e : '[EMPTY]') + "</span>"}.join(" ") %>")
+  $("#popup_window").css({
+        left: (w-e.pageX > ww) ? (e.pageX + 10) : w-ww+10,
+        width:ww,
+        top: e.pageY + 10
+  }).stop().show(100);
+})
+<% end %>
+
+$("#submit_parsing").click(function(){
+var h_opt = {loading:'fa-2x'}
+var url = "<%= do_import_metadata_project_path(:key => @project.key) %>"
+var metadata_types = []
+<% (0 .. @h_json['metadata'].size-1).each do |j| %>
+metadata_types.push($("#metadata_types_<%= j %>").val())
+<% end %>
+var p = [
+{name : 'metadata_type_id', value : $("#opt_metadata_type_id").val()},
+{name : 'file_type', value : $("#file_type").val()},
+{name : 'metadata_types[]', value : metadata_types},
+{name : 'assign_metadata', value : $("#opt_assign_metadata").val()}
+]
+if ($("#fu_id").length == 1){
+p.push({name : 'fu_id', value : $("#fu_id").val()})
+}
+refresh_post("step_container", url, p, 'post', h_opt)
+})
+
+<% end %>
+
+<% end %>

@@ -305,14 +305,18 @@ class ProjectsController < ApplicationController
     list_cats = Basic.safe_parse_json(@annot.list_cat_json, [])
     cat_name = list_cats[@cat_i]
     loom_file = project_dir + @annot.filepath
-    
+    matrix = Annot.where(:project_id => @project.id, :dim => 3, :name => "/matrix", :filepath => @annot.filepath).first
+
     h_marker_genes_attrs = {
+#      :input_matrix_filename =>  project_dir + @annot.filepath, 
+#      :input_matrix_dataset => '/matrix',
+      :input_matrix => {"annot_id" => matrix.id,"run_id" => matrix.run_id},
       :groups_filename => project_dir + @annot.filepath, #[{:annot_id => matrix.id, :run_id => matrix.run_id, :output_filename => matrix.filepath  }],                             
       :groups_dataset => @annot.name,
       :groups_id => @annot.id
     }
     @marker_genes_run = Run.where(:project_id => @project.id, :attrs_json => h_marker_genes_attrs.to_json).first
-    marker_genes_filepath = project_dir + 'markers' +  @marker_genes_run.id.to_s + ("cat_" + (@cat_i + 1).to_s + ".tsv")
+    marker_genes_filepath = project_dir + 'markers' + @marker_genes_run.id.to_s + ("cat_" + (@cat_i + 1).to_s + ".tsv")
 #    @marker_genes_data = File.readlines(marker_genes_filepath)
 
     params[:displayed_nber_genes] ||= "10"
@@ -592,8 +596,12 @@ class ProjectsController < ApplicationController
     list_cats = Basic.safe_parse_json(@annot.list_cat_json, [])
     cat_name = list_cats[@cat_i]
     loom_file = project_dir + @annot.filepath
-    
+    matrix = Annot.where(:project_id => @project.id, :dim => 3, :name => "/matrix", :filepath => @annot.filepath).first
+
     h_marker_genes_attrs = {
+      :input_matrix => {"annot_id" => matrix.id,"run_id" => matrix.run_id},
+#      :input_matrix_filename =>  project_dir + @annot.filepath,
+#      :input_matrix_dataset => '/matrix',
       :groups_filename => project_dir + @annot.filepath, #[{:annot_id => matrix.id, :run_id => matrix.run_id, :output_filename => matrix.filepath  }],       
       :groups_dataset => @annot.name,
       :groups_id => @annot.id
@@ -668,8 +676,12 @@ class ProjectsController < ApplicationController
     loom_file = project_dir + @annot.filepath
 
     @annot_cell_set = AnnotCellSet.where(:annot_id => @annot.id, :cat_idx => @cat_i).first
+    matrix = Annot.where(:project_id => @project.id, :dim => 3, :name => "/matrix", :filepath => @annot.filepath).first
 
     h_marker_genes_attrs = {
+       :input_matrix => {"annot_id" => matrix.id,"run_id" => matrix.run_id},
+#      :input_matrix_filename =>  project_dir + @annot.filepath,
+#      :input_matrix_dataset => '/matrix',
       :groups_filename => project_dir + @annot.filepath, #[{:annot_id => matrix.id, :run_id => matrix.run_id, :output_filename => matrix.filepath  }],
       :groups_dataset => @annot.name,
       :groups_id => @annot.id
@@ -686,7 +698,7 @@ class ProjectsController < ApplicationController
    # marker_genes_filepath = project_dir + 'markers' +  @marker_genes_run.id.to_s + ("cat_" + (@cat_i + 1).to_s + ".tsv")
    # @marker_genes_data = File.readlines(marker_genes_filepath)
 #    @cla = Cla.new(:project_id => @project.id, :annot_id => params[:annot_id], :cat => params[:cat_name], :cat_idx => params[:cat_idx].to_i)
-     @cla = Cla.new(:project_id => @project.id, :annot_id => params[:annot_id], :cat => params[:cat_name], :cat_idx => params[:cat_idx].to_i, :cell_set_id => @annot_cell_set.cell_set_id)
+     @cla = Cla.new(:project_id => @project.id, :annot_id => params[:annot_id], :cat => params[:cat_name], :cat_idx => params[:cat_idx].to_i, :cell_set_id => (@annot_cell_set) ? @annot_cell_set.cell_set_id : nil)
     #    @all_clas = Cla.where(:project_id => @project.id).all
   #  @all_clas = Cla.where(:project_id => @project.id, :annot_id => params[:annot_id], :cat_idx => params[:cat_idx].to_i).all
     @all_clas = Cla.where(:cell_set_id => @annot_cell_set.cell_set_id).all
@@ -7275,6 +7287,10 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
  # else
   
  #   end
+    if params[:project_name] 
+      @project.name ||= params[:project_name]
+    end
+
     render :layout => 'welcome'
 
   end
@@ -7421,7 +7437,7 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     tmp_attrs = params[:attrs] || {}
     tmp_attrs[:has_header] = 1 if tmp_attrs[:has_header]
   
-    [:file_type, :sel_name, :nber_cols, :nber_rows, :sel_provider_projects, :provider_project_id, :provider_project_filename, :provider_project_title, :provider_project_filekey, :provider_project_fileurl].each do |k|
+    [:file_type, :sel_name, :nber_cols, :nber_rows, :sel_provider_projects, :provider_project_id, :provider_project_filename, :provider_project_title, :provider_project_filekey, :provider_project_fileurl, :colname_metadata, :rowname_metadata].each do |k|
       tmp_attrs[k] = params[k] if params[k] and !params[k].strip.empty?
     end
     tmp_attrs[:file_type] = 'LOOM' if params[:tab_choice] == 'hca' #!tmp_attrs[:file_type] ### HCA import case  
@@ -7504,7 +7520,7 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
        
           ### get extension                                                                                                                                                   
           ext = input_filename.split(".").last
-          if !['zip', 'bz', 'bz2', 'gz', 'h5', 'loom'].include? ext
+          if !['zip', 'bz', 'bz2', 'gz', 'h5', 'loom', 'h5ad'].include? ext
             ext = 'txt'
           end
           #ext = 'txt'

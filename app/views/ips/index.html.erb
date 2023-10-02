@@ -1,0 +1,45 @@
+<div class='container m-4'>
+
+<p id="notice"><%= notice %></p>
+
+<h1>IP-accesses</h1>
+
+<table id ='ip_table'>
+  <thead>
+    <tr>
+      <th>IP adress</th>
+      <th>Access key</th>
+      <% if admin? %>
+      <th>Users</th>
+      <% end %>
+      <th></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @ips.each do |ip| %>
+      <tr>
+	<td><%= ip.ip %></td>
+	<td><%= ip.key %></td>
+	<% if admin? %>
+	<td><%= ip.users.map{|u| u.email}.join(", ") %></td>
+	<% end %>
+        <td><%= link_to 'Destroy', ip, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New IP-access', new_ip_path %>
+
+</div>
+
+<%= javascript_tag do %>
+ $('#ip_table').dataTable( {
+        "dom" : "ft",
+        "pageLength":<%= @ips.size %>,
+        "order": [[ 1, "asc" ], [0, "asc"]]
+ });
+<% end %>

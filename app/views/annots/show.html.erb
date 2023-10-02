@@ -6,6 +6,7 @@
 
 <div id='step_content'>
   <p id="notice"><%= notice %></p>
+
   <%# @cmd = "docker run -it --network=asap2_asap_network -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --rm -v /data/asap2:/data/asap2 -v /srv/asap_run/srv:/srv fabdavid/asap_run:v5 ./h5dump" %>
   <%# @cmd if admin? %>
   <%# `#{@cmd}`.to_json if admin? %>
@@ -13,6 +14,13 @@
   
   <% if @annot.dim %>
   <h4>
+    <div class='float-right'>
+      <% if @project.public == false %> <%# and (uab? or admin?) %>
+      <button id='edit_link' type='button' class='btn btn-sm btn-primary'><i class='fa fa-edit'></i> Edit</button>
+      <!--<span id='edit' class='link-sm'><i class='fa fa-edit'></i></span> -->
+      <% end %>
+    </div>
+     
     <% if @annot.dim == 3 %> 
     Expression matrix 
     <% else %>
@@ -23,7 +31,8 @@
   <div class='row mb-4'>
     <div class='col-md-6 col-lg-5'>
       <div class='card'>
-	<div class='card-header'>General info</div>
+	<div class='card-header'>
+	  General info</div>
 	<div class='card-body'>
 	  <table>
 	    <% if @annot.dim !=3 %>
@@ -32,7 +41,8 @@
 	    </tr>
 	    <% end %>
 	    <tr>
-	      <td>Data type</td><td><%= (dt = @annot.data_type) ? dt.label : 'NA' %></td>
+	      <td>Data type</td><td><%= (dt = @annot.data_type) ? dt.label : 'NA' %>
+	      </td>
 	    </tr><tr>
 	      <td>Number of cells</td><td><%= @annot.nber_cols %></td>
 	    </tr><tr>
@@ -252,6 +262,12 @@
 
 
 <%= javascript_tag do %>
+
+<% if @project.public == false %>
+$("#edit_link").click(function(){
+ refresh("step_container", "<%= edit_annot_path(@annot) %>", {loading: 'fa-2x loading-step'})
+})
+<% end %>
 
 $("#download_json").click(function(){
  window.location = '<%= raw extract_metadata_project_path(:key => @project.key, :annot_id => @annot.id, :format => 'json') %>'

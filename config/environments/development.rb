@@ -11,7 +11,7 @@ Rails.application.configure do
   config.eager_load = false
 
   # Show full error reports.
-  config.consider_all_requests_local = true
+  config.consider_all_requests_local = false # true
 
   # Enable/disable caching. By default caching is disabled.
   # Run rails dev:cache to toggle caching.
@@ -27,6 +27,9 @@ Rails.application.configure do
 
     config.cache_store = :null_store
   end
+  config.serve_static_assets = true
+  config.public_file_server.enabled = true
+  config.action_dispatch.x_sendfile_header = 'X-Accel-Redirect'
 
   # Store uploaded files on the local file system
   # (see config/storage.yml for options)
@@ -34,7 +37,7 @@ Rails.application.configure do
 
   # Don't care if the mailer can't send.
   config.action_mailer.raise_delivery_errors = false
-  config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }
+  config.action_mailer.default_url_options = { host: 'asap.epfl.ch'} # 'localhost', port: 3000 }
   config.action_mailer.perform_caching = false
 
   # Print deprecation notices to the Rails logger.
@@ -54,6 +57,10 @@ Rails.application.configure do
 
   # Suppress logger output for asset requests.
   config.assets.quiet = true
+
+#  uglifier = Uglifier.new output: { comments: :none }
+#  config.assets.js_compressor = uglifier
+#  config.assets.css_compressor = :sass
 
   # Raises error for missing translations
   # config.action_view.raise_on_missing_translations = true

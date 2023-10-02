@@ -13,13 +13,16 @@ gem 'rails', '~> 5.2.0'
 gem 'puma', '~> 3.11'
 
 # Use Rack Timeout. Read more: https://github.com/heroku/rack-timeout
-gem 'rack-timeout', '~> 0.4'
+#gem 'rack-timeout', '~> 0.4'
 
 # Build JSON APIs with ease. Read more: https://github.com/rails/jbuilder
 gem 'jbuilder', '~> 2.5'
 
 # Use PostgreSQL as the database for Active Record
 gem 'pg', '~> 1.0'
+#gem 'db-switch'
+#gem 'ar-octopus', '0.0.12', :require => "octopus"
+#gem 'rails-sharding'
 
 # Use Redis Rails to set up a Redis backed Cache and / or Session
 gem 'redis-rails', '~> 5.0'
@@ -58,6 +61,7 @@ gem 'fontawesome5-rails'
 # gem 'bootsnap', '>= 1.1.0', require: false
 
 gem 'devise'
+gem 'aws-sdk'
 #gem 'therubyracer'
 gem 'jquery-ui-rails'
 gem 'daemons'
@@ -67,7 +71,8 @@ gem 'descriptive_statistics'
 gem 'sys-proctable'
 gem 'rails4-autocomplete'
 gem 'jquery-fileupload-rails'
-gem 'paperclip'
+gem 'mimemagic'
+gem 'paperclip'#, "6.0.0"
 gem 'multipart-parser'
 #gem 'haml'
 gem "haml", ">= 5.0.0"
@@ -79,6 +84,16 @@ gem 'biomart'
 gem 'parallel'
 gem 'mechanize'
 gem 'hpricot'
+#gem 'caxlsx_rails'
+#gem 'axlsx', '~> 2.1.0.pre'
+#gem 'axlsx' #, git: 'https://github.com/randym/axlsx.git', ref: 'c8ac844'
+#gem 'caxlsx_rails'
+#gem 'rubyzip', '= 1.1.0'
+#gem 'axlsx', '= 2.1.0'
+#gem 'axlsx_rails'
+#gem 'shellwords'
+gem 'sunspot_rails'
+gem 'sunspot_solr' 
 
 group :development, :test do
   # Call 'byebug' anywhere in your code to drop into a debugger console

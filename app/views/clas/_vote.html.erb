@@ -1,0 +1,7 @@
+/*<% type = (@cla_vote.agree == true) ? 'agree' : 'disagree' %>
+$("#<%= type %>_<%= @cla.id %>").addClass('badge-primary')
+$("#<%= type %>_<%= @cla.id %>").removeClass('badge-light')
+*/
+var h_opt = {loading : 'fa-2x'}
+// refresh("plot_annotation_content", "<%= raw get_annot_info_project_path(:key => @project.key) %>?annot_id=<%= @annot.id %>&cla_id=<%= @cla.id %>&cat_idx=<%= @cla.cat_idx %>&cat_name=<%= @cla.cat %>&tab=existing", h_opt)
+refresh("pane-existing_annot", "<%= raw clas_path %>?annot_id=<%= @cla.annot_id %>&cat_i=<%= @cla.cat_idx %>", {loading:'fa-2x'})

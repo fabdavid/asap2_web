@@ -1,0 +1,7 @@
+<p>Our apology.  Your request caused an error.</p>
+<%= if admin? %>
+<pre>
+<%= raw $!.message %>
+<%= raw $!.backtrace.join("<br/>") %>
+</pre>
+<%= end %>

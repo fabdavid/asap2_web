@@ -256,6 +256,21 @@ class AnnotsController < ApplicationController
 
   # GET /annots/1/edit
   def edit
+    @h_steps = {}
+    @h_steps_by_name = {}
+    @h_statuses = {}
+    @project = @annot.project
+    Step.where(:docker_image_id => @asap_docker_image.id).all.map{|s| @h_steps[s.id]=s; @h_steps_by_name[s.name]=s}
+    Status.all.map{|s| @h_statuses[s.id]=s}
+
+    @step = @h_steps_by_name['metadata_expr']
+    @annot_step = @run.step
+    @h_attrs = Basic.safe_parse_json(@annot_step.attrs_json, {})
+    @h_dashboard_card = {}
+    @h_dashboard_card[@run.step_id] = JSON.parse(@h_steps[@run.step_id].dashboard_card_json)
+
+    render :layout => false
+    
   end
 
   # POST /annots
@@ -278,8 +293,45 @@ class AnnotsController < ApplicationController
   # PATCH/PUT /annots/1.json
   def update
     respond_to do |format|
-      if editable?(@project) and @annot.update(annot_params)
-        format.html { redirect_to @annot, notice: 'Annot was successfully updated.' }
+      if editable?(@project) #and @annot.update(annot_params)
+
+        h_data_types = {}
+        DataType.all.map{|dt| h_data_types[dt.name] = dt; h_data_types[dt.id] = dt}
+        h_data_classes = {}
+        DataClass.all.map{|dc| h_data_classes[dc.name] = dc; h_data_classes[dc.id] = dc}
+
+        if annot_params[:data_type_id] != @annot.data_type_id
+          #need to reset this parameter
+          annot_params[:data_class_ids] = ''
+        end
+
+        h_annot = {
+          :data_type_id => annot_params[:data_type_id].to_i,
+          :data_class_ids => annot_params[:data_class_ids]
+        }
+        
+        # change ori_annot (equivalent annot attached to the main dataset)
+        ori_annot = Annot.where(:project_id => @project.id, :name => @annot.name).order("id asc").first
+        #puts annot_params.to_json
+        ori_annot.update(h_annot)
+        
+        # change all annots, starting with ori_annot, and then propagating to others
+        # run = ori_annot.run
+        #        relative_filepath = ori_annot.filepath #relative_path(@project, ori_annot.filepath)
+        
+        all_annots =  Annot.where(:project_id => @project.id, :name => @annot.name).order("id asc").all
+        all_annots.each do |annot|
+          meta = {
+            "name" => annot.name,
+            "forced_type_id" => h_annot[:data_type_id]
+          }
+          Basic.load_annot( annot.run, meta, annot.filepath, h_data_types, h_data_classes, logger)
+        end
+
+        format.html { 
+          render :partial => 'update', notice: 'Annot was successfully updated.'
+          #redirect_to @annot, layout: false, notice: 'Annot was successfully updated.' 
+        }
         format.json { render :show, status: :ok, location: @annot }
       else
         format.html { render :edit }

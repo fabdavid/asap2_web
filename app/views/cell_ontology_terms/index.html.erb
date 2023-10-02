@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Cell Ontology Terms</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @cell_ontology_terms.each do |cell_ontology_term| %>
+      <tr>
+        <td><%= link_to 'Show', cell_ontology_term %></td>
+        <td><%= link_to 'Edit', edit_cell_ontology_term_path(cell_ontology_term) %></td>
+        <td><%= link_to 'Destroy', cell_ontology_term, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Cell Ontology Term', new_cell_ontology_term_path %>

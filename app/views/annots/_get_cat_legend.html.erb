@@ -1,0 +1,97 @@
+<%# raw @sel_clas.map{|e| e.id}.join("<br/>") if admin? %>
+<% checked = 1 %>
+<% nber_cats = @list_cats.size %>
+<% sel_cats = session[:dr_params][@project.id][:sel_cats] %>
+<%#  sel_cats.to_json %>
+<%# session[:dr_params][@project.id].to_json %>
+<% checked_global = (sel_cats.size > 0) ? "checked=checked" : '' %>
+<% indeterminate_global = (sel_cats.length > 0 && sel_cats.length < nber_cats) ? "indeterminate=true" : '' %>
+
+<% cat_alias = 0 %>
+<%# @h_genes.to_json %>
+<%# @tmp_genes.map{|g| g.name} %>
+<table id='cat_legend_table' class="row-border" width='100%'>
+  <thead>
+    <tr>
+      <th><input id='view_cluster_all' type='checkbox' <%= checked_global %> <%= indeterminate_global %> /> <i class='fa fa-eye'></i></th>
+<!--      <th>Color</th> -->
+      <th>Name</th>
+      <th>Best annotation</th>
+      <th></th>
+  </tr>
+  </thead>
+  <tbody>
+    <% @list_cats.each_index do |i| %>
+    <% cat = @list_cats[i] %>
+    <% checked = (sel_cats.include?(cat)) ? "checked=checked" : "" %>
+    <tr>
+      <td>
+	<input type='checkbox' id='view_cluster_<%= i %>' class='view_cluster' <%= checked %> />
+	<span class=''><%= i+1 %></span>
+	<br/>
+	<span style='background-color:<%= @palette[i % @palette.size] %>' class="dot"></span>
+      </td>
+      <!--      <td style='background-color:<%= @palette[i % @palette.size] %>'></td>-->
+      <td>
+	<!--	#<%= i + 1 %> -->
+	<div id='cat-name_<%= i %>' class='wrap'><%= cat %></div>
+	<span class='badge badge-info'><%= @h_cats[cat] %> cell<%= (@h_cats[cat] > 1) ? 's' : '' %></span>
+      </td>
+      <td>
+	<div id='cat-best_annot'>
+	  <%# @h_cat_info.to_json %>
+	  <%# @h_cots[13168].name.to_json %>
+          <% if @sel_clas[i] %>
+	  <%# if @h_cat_info['selected_cla_ids'] %>	 
+          <%# sel_cla = @h_sel_clas[@h_cat_info['selected_cla_ids'][i]] %>
+	  <% sel_cla = @sel_clas[i] %>
+          <%# sel_cla.to_json %>
+	  <%= raw display_cla(sel_cla, @h_cots, @h_genes) if sel_cla %>
+	  <% end %>
+        </div>
+      </td>
+      <!--      <td>
+		<div class='wrap'>
+		  <% if editable? @project == true %>
+		  <button id='cat-alias_edit-btn_<%= i %>' class='float-right cat-alias_edit-btn btn btn-sm btn-outline-secondary'><i class='fa fa-edit'/></button>
+		  <% end %>
+		  <input type='text' id='cat-alias_edit_<%= i %>' class='hidden form-control cat-alias_edit' value='<%= cat_alias %>'/>
+		  <span id='cat-alias_<%= i %>'><%= cat_alias %></span>
+		</div>
+      </td>
+      -->
+      <td><button type='button' id='annotate-btn_<%= i %>' class='btn btn-sm btn-outline-secondary annotate-btn'><i class='fa fa-edit'></i> <%= @nber_clas[i] || 0 %> annotation<%= 's' if @nber_clas[i] and @nber_clas[i] >1 %></button></td>
+    </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<%= javascript_tag do %>
+
+//    $("#cat_legend").html(t_cat_legend.join(""))
+
+if ( $.fn.dataTable.isDataTable( '#cat_legend_table' ) ) {
+    table = $('#cat_legend_table').DataTable();
+}
+else {
+    table = $("#cat_legend_table").dataTable({
+        "sDom": 'Wsrt',
+/*,
+//             "ordering": false,                                                                                                                                               
+        "iDisplayLength" : <%= @list_cats.size %>,
+*/        
+"autoWidth": false,
+        "columnDefs": [
+            { "width": "20%", "targets": 0 },
+            { "width": "50%", "targets": 1 },
+            { "width": "15%", "targets": 2 },
+            { "width": "15%", "targets": 3 },
+            //             { "width": "100", "className": 'dt-body-right', "sortable": false, "targets": [<%= raw (1 .. 5).to_a.join(",") %>] }                                 
+        ]
+//      "order" : [[2, 'asc']]
+    })
+}
+
+
+
+<% end %>
