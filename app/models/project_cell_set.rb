@@ -1,0 +1,2 @@
+class ProjectCellSet < ApplicationRecord
+end

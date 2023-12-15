@@ -12,22 +12,30 @@
 <% @h_attrs = @h_method_details[:attrs] %>
 
 <%# @h_data[:depth] %>
-<div id='forced_margin' class='mt-5'></div>
+<div id='forced_margin' class='mt-3'></div>
 <div id='step-info_<%= @step.id %>' class='alert alert-info hidden'><%= @step.description %></div>
 <div id="cell_filtering_form_container">
+<!--
 <div id="cell_filtering_header">
-<!--  <div class="float-left"></div>-->
-  <div class="float-left badge badge-success mr-4"><span id="result">Selected : <i class='fa fa-spinner fa-pulse'></i></span></div> 
-  <div class="float-left badge badge-secondary mr-4"><span id="filtered" class="">Discarded : 0</span> <span id='cancel_discarded' class='pointer' title='Reset to original parameters'><i class='fa fa-times-circle'></i></span></div>
+  <div class="float-left badge badge-success mr-4"><span id="result2">Selected : <i class='fa fa-spinner fa-pulse'></i></span></div> 
+  <div class="float-left badge badge-secondary mr-4"><span id="filtered2" class="">Discarded : 0</span> <span id='cancel_discarded' class='pointer' title='Reset to original parameters'><i class='fa fa-times-circle'></i></span></div>
   <div class="float-left badge badge-secondary mr-4"><span id="manually_filtered" class="">Manually discarded : 0</span> <span id='cancel_manually_discarded' class='pointer' title='Reset manually discarded cells'><i class='fa fa-times-circle'></i></span></div>
-<!--  <div class='float-left'><button class='btn btn-primary btn-sm' type='button' onclick="sendValues()">Save Filters</button></div> -->
-<!--  <div class='float-right'><button class='btn btn-primary btn-sm' type='button' onClick="return resetFilters()">Reset manual selection</button></div> -->
 
   <div class='float-left hidden'>Cells In:<input style="height:13px;" type="color" id="color_in" name="color_in" value="#009933" onChange="updateColors()"/></div>
   <div class='float-left hidden'>Cells Out:<input style="height:13px" type="color" id="color_out" name="color_out" value="#cccccc" onChange="updateColors()"/></div>
 
   <div class='clear'></div>
 </div>
+-->
+<div class="card-deck mb-4">
+  <div class='card border-success p-3 mb-3'>
+    <h4 class='card-title text-success'><span id="result">Kept: <i class='fa fa-spinner fa-pulse'></i></span></h4>
+  </div>
+  <div class='card border-secondary p-3 mb-3'>
+     <h4 class='card-title text-secondary'><span id="filtered">Discarded: <i class='fa fa-spinner fa-pulse'></i></span></h4>
+  </div>
+
+</div> 
 
 <!--<div class="container">
     <div id='cell_filtering_card-deck' class='card-deck'>-->
@@ -35,11 +43,9 @@
 <%# @h_data.to_json %>
 
 <!-- add filter by annotation -->
+<!--
 <div class='mb-3'>
-<!--  <div class='form-group'>
-    <label for='attrs_label'>Label</label> -->
-    <%= hidden_field_tag 'attrs[manual_selection]', '', {:placeholder => '', :class => 'form-control'} %>
-<!--  </div> -->
+   <%= hidden_field_tag 'attrs[manual_selection]', '', {:placeholder => '', :class => 'form-control'} %>
   <%= hidden_field_tag 'attrs[discarded_metadata_json]', '{}' %>
  <%# render :partial => 'attribute', :locals => {:attr_name => 'group_annot', :horiz_element => {}} %>
   <%# annotations = Annot.where(:project_id => @project.id, :data_type_id => 3, :dim => 1).all %>
@@ -51,9 +57,6 @@
    <%# l = annotations.map{|a| [a.name + " " + display_run(@h_runs[a.run_id]), a.id]} %>
    <% l = ([@parsing_run] + @cell_filtering_runs + @gene_filtering_runs).map{|r| [display_run(r), r.id]} %>
    <%= select_tag 'store_run_id', options_for_select(l, session[:cell_filtering_store_run_id]), {:class => 'form-control mr-4 mb-2'} %>
-  <!-- 1<%= @parsing_run if admin? %>
-   2<%= @cell_filtering_runs if admin? %>
-   3<%= @gene_filtering_runs if admin? %>--> 
    <% l = @annots.map{|a| [a.name + " ", a.id]}.sort %>
    <% l.unshift ["Select an annotation to be used to discard cells", nil] %>
    <%= select_tag 'annot_id', options_for_select(l, nil),  {:class => 'form-control mr-4 mb-2'} %>
@@ -65,7 +68,7 @@
   <div class='clear'></div>
 
 </div>
-
+-->
 
 
 <% if true %><%#@project.nber_cols > 20000 %>

@@ -671,6 +671,7 @@ function upd_gene_expr_stats(){
  refresh_post("gene_expr_stats", "<%= upd_gene_expr_stats_project_path(:key => @project.key) %>", p, 'post', {loading:'fa-2x'})
 }
 
+
 function upd_plot(i){
 // console.log("i2: " + i)
     var gene_str = $("#gene_selected_" + i).html()
@@ -679,8 +680,11 @@ function upd_plot(i){
     var rx = /\{(\d+)\}$/gm
     var gene_i = null
     if (gene_str){
-     gene_i = rx.exec(gene_str)[1]
+      var m = rx.exec(gene_str)
+      if (m){
+     gene_i = m[1]
      $("#opt_row_i_" + i).val(gene_i) //h_autocomplete["h_indexes"][gene_i])
+    }
     }
     var header_i = $("#opt_header_i_" + i).val()
     var num_annot_id = $("#opt_num_annot_id_" + i).val()					 

@@ -15,7 +15,9 @@
 
   <table>
     <% l = Version.order("id desc").all.map{|v| [v.id, v.id] } %>
-    <tr><td>Version</td><td><%= f.select :version_id, l %></td></tr>
+    <!--    <tr><td>Version</td><td><%= f.select :version_id, l %></td></tr> -->
+    <% l = DockerImage.order("id desc").all.map{|v| [v.id, v.id] } %>
+    <tr><td>Docker image ID</td><td><%= f.select :docker_image_id, l %></td></tr>
     <tr><td>Group name</td><td><%= f.text_field :group_name %></td></tr>
     <tr><td>Object name</td><td><%= f.text_field :obj_name %></td></tr>
     <tr><td>Tag</td><td><%= f.text_field :tag %></td></tr>

@@ -7,7 +7,11 @@ class StepsController < ApplicationController
   # GET /steps
   # GET /steps.json
   def index
-    @steps = Step.all
+    if params[:docker_image_id]
+      @steps = Step.where(:docker_image_id => params[:docker_image_id]).all
+    else
+      @steps = Step.all
+    end
   end
 
   # GET /steps/1

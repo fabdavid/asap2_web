@@ -77,7 +77,7 @@ class RunsController < ApplicationController
     @project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
     list_filtered_rows = []
     if params[:from]== 'ge_form'
-      filename = @project_dir + "tmp" + "#{current_user.id}_#{@run.id}_filtered.json"
+      filename = @project_dir + "tmp" + "#{(current_user) ? current_user.id : 1}_#{@run.id}_filtered.json"
       tmp_h = Basic.safe_parse_json(File.read(filename), {})
       list_filtered_rows = tmp_h[params[:type]] if tmp_h[params[:type]]
     else

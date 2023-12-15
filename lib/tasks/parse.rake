@@ -13,7 +13,10 @@ task :parse, [:project_key] => [:environment] do |t, args|
 
   asap_docker_image = Basic.get_asap_docker(version)
 
-  db_conn = "postgres:5434/asap2_data_v" + project.version_id.to_s 
+# puts h_env.to_json
+#exit
+
+  db_conn = "postgres:5434/asap2_data_v" + h_env['asap_data_db_version'].to_s #project.version_id.to_s 
   
   project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + project.user_id.to_s + project.key	
   tmp_dir = project_dir + 'parsing'

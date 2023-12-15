@@ -25,6 +25,19 @@
 
 .nobullets {list-style-type:none}
 
+
+ .legend-item {
+        margin-bottom: 10px;
+      }
+
+      .legend-dot {
+        display: inline-block;
+        width: 10px; /* Adjust the size of the dots as needed */
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 5px; /* Adjust the space between the dot and the text */
+      }
+
 .dot {
   height: 25px;
   width: 25px;
@@ -32,6 +45,7 @@
   border-radius: 50%;
   display: inline-block;
 }
+
 .hidden {display:none}
 .pointer {cursor:pointer} 
 .cursor-help {cursor:help}

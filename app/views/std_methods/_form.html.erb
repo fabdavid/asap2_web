@@ -15,7 +15,7 @@
     <!--    <% l = Version.order("id desc").all.map{|v| [v.id, v.id] } %> 
     <tr><td>Version</td><td><%= f.select :version_id, l %></td></tr>-->
     <%# f.hidden_field :version_id %>
-    <%= f.hidden_field :docker_image_id %>
+    <%# f.hidden_field :docker_image_id %>
     <%# l = Step.where(:version_id => std_method.version_id || params[:version_id]).all.map{|s| [s.label, s.id]}.sort %>
     <% l = Step.where(:docker_image_id => std_method.docker_image_id || params[:docker_image_id]).all.map{|s| [s.label, s.id]}.sort %>
     <tr><td>Step</td><td><%= f.select :step_id, l %></td></tr>

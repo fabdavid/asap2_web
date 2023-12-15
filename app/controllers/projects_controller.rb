@@ -137,7 +137,7 @@ class ProjectsController < ApplicationController
     @projects = []
     @h_counts = {
       :all_public => Project.where(:public => true).count, # .where.not("name ~ '^\\[FCA\\]' and public_id > 1").count,
-      :all_my => (admin?) ? Project.count : ((current_user) ? Project.where(:user_id => current_user.id).count : nil)
+      :all_my => (admin?) ? Project.count : ((current_user) ? (Project.where(:user_id => current_user.id).count + Share.select("distinct project_id").where(:user_id => current_user.id).count) : nil)
     }
     
 #    if params[:free_text] != '' 
@@ -445,8 +445,8 @@ class ProjectsController < ApplicationController
     end
 #    ## get expression data for genes
 #    expr_data = {}
-    up_genes.map{|e| e[0].to_i}.sort.first(10).map{|e| s[:up][e]=1}
-    down_genes.map{|e| e[0].to_i}.sort.first(10).map{|e| s[:down][e]=1}
+    up_genes.map{|e| e[6].to_f.abs}.sort.last(10).map{|e| s[:up][e]=1}
+    down_genes.map{|e| e[6].to_f.abs}.sort.last(10).map{|e| s[:down][e]=1}
 #    list_stable_ids = {}
     
 #    list_stable_ids[:up] = up_genes.map{|e| e[0].to_i}.sort.first(10)
@@ -670,6 +670,9 @@ class ProjectsController < ApplicationController
     Step.where(:id => std_methods.map{|e| e.step_id}.uniq).all.map{|s| @h_steps[s.id] = s}
     @h_statuses = {}
     Status.all.map{|s| @h_statuses[s.id] = s}
+
+    ## reinitialize selected marker genes
+    session[:marker_genes][@project.id]={:up => {}, :down => {}}
 
     @annot = Annot.where(:id => params[:annot_id]).first
     @cat_i = params[:cat_idx].to_i
@@ -1040,7 +1043,7 @@ class ProjectsController < ApplicationController
       @h_users[u.id] = u
     end
 
-    filtered_stats_file =  @project_dir + 'tmp' + "#{(current_user) ? current_user.id : 0}_ge_filtered_stats.json" #+ 'ge' + 'filtered_stats.json'
+    filtered_stats_file =  @project_dir + 'tmp' + "#{(current_user) ? current_user.id : 1}_ge_filtered_stats.json" #+ 'ge' + 'filtered_stats.json'
     @h_filtered_stats = {}
     if File.exist? filtered_stats_file
       @h_filtered_stats = Basic.safe_parse_json(File.read(filtered_stats_file), {})
@@ -1388,7 +1391,7 @@ class ProjectsController < ApplicationController
     #    logger.debug("BLAAAAA: "+ annots.size.to_s)
     @log7+= annots.size.to_s
 
-    filtered_stats_txt_file = (type=='de_results') ? (@project_dir + 'tmp' + "#{(current_user) ? current_user.id : 0}_de_filtered_stats.txt") : (@project_dir + 'tmp' + "#{(current_user) ? current_user.id : "0"}_ge_form_filtered_stats.txt")
+    filtered_stats_txt_file = (type=='de_results') ? (@project_dir + 'tmp' + "#{(current_user) ? current_user.id : 1}_de_filtered_stats.txt") : (@project_dir + 'tmp' + "#{(current_user) ? current_user.id : "1"}_ge_form_filtered_stats.txt")
     File.delete(filtered_stats_txt_file) if File.exist? filtered_stats_txt_file
     # !!! store in a text file the result of the parallelized code => cannot keep the values outside of the Parallel block
     
@@ -1397,7 +1400,7 @@ class ProjectsController < ApplicationController
    # @log7=''
     #   start_time = Time.now
 
-    @cmd = "echo '#{list_of_run_ids.join("\n")}' | xargs -P 24 -I '{}' lib/filter_de '#{@project_dir}' #{@h_de_filters['fdr_cutoff']} #{Math.log2(@h_de_filters['fc_cutoff'].to_f)} #{type} #{(current_user) ? current_user.id : 0} '{}' > #{@project_dir + 'toto.txt'}"
+    @cmd = "echo '#{list_of_run_ids.join("\n")}' | xargs -P 24 -I '{}' lib/filter_de '#{@project_dir}' #{@h_de_filters['fdr_cutoff']} #{Math.log2(@h_de_filters['fc_cutoff'].to_f)} #{type} #{(current_user) ? current_user.id : 1} '{}' > #{@project_dir + 'toto.txt'}"
     
     File.open("#{@project_dir + "tmp" + "de_script.sh"}", "w") do |f2|
       # f2.write(annots.size.to_s)
@@ -1536,9 +1539,9 @@ class ProjectsController < ApplicationController
         end                                                                                                                                          
       end               
       
-      filtered_stats_file = @project_dir + 'tmp' + "#{(current_user) ? current_user.id : 0}_de_filtered_stats.json"
+      filtered_stats_file = @project_dir + 'tmp' + "#{(current_user) ? current_user.id : 1}_de_filtered_stats.json"
       if type == 'ge_form'
-        filtered_stats_file = @project_dir + 'tmp' + "#{(current_user) ? current_user.id : 0}_ge_form_filtered_stats.json"
+        filtered_stats_file = @project_dir + 'tmp' + "#{(current_user) ? current_user.id : 1}_ge_form_filtered_stats.json"
       end
       File.open(filtered_stats_file, "w") do |f|
         f.write(@h_stats.to_json)
@@ -1661,8 +1664,8 @@ class ProjectsController < ApplicationController
           end
         end
         
-        filtered_stats_file = project_dir + 'tmp' + "#{(current_user) ? current_user.id : 0}_ge_filtered_stats.json" #+ 'ge' + 'filtered_stats.json'
-        filtered_stats_txt_file = project_dir + 'tmp' + "#{(current_user) ? current_user.id : 0}_ge_filtered_stats.txt" #'ge' + 'filtered_stats.txt'
+        filtered_stats_file = project_dir + 'tmp' + "#{(current_user) ? current_user.id : 1}_ge_filtered_stats.json" #+ 'ge' + 'filtered_stats.json'
+        filtered_stats_txt_file = project_dir + 'tmp' + "#{(current_user) ? current_user.id : 1}_ge_filtered_stats.txt" #'ge' + 'filtered_stats.txt'
         # @log = '' #filtered_stats_file
         if File.exist? filtered_stats_file
           if to_compute == 0
@@ -2033,7 +2036,16 @@ class ProjectsController < ApplicationController
     @h_data_json = nil
     #  @h_cmd = {"bla" => compressed_zip_annot_json_file}
 
-    if !File.exist?(compressed_zip_annot_json_file) or File.size(compressed_zip_annot_json_file) <= 2 #(browser != 'chrome') ? compressed_annot_json_file : compressed_zip_annot_json_file)
+    if File.exist? compressed_zip_annot_json_file
+
+      if  @project.nber_cols > 20000
+        @h_data_json = File.read(compressed_zip_annot_json_file)
+      else
+        @h_data = Basic.safe_parse_json(File.read(compressed_zip_annot_json_file), {})
+      end
+    end
+    
+    if @h_data.keys.size != 5 or !File.exist?(compressed_zip_annot_json_file) or File.size(compressed_zip_annot_json_file) <= 2 #(browser != 'chrome') ? compressed_annot_json_file : compressed_zip_annot_json_file)
       @h_cmd = {
         "depth" => "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -loom #{loom_file} -meta /col_attrs/_Depth", 
         "ribo" => "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -prec 1 -loom #{loom_file} -meta /col_attrs/_Ribosomal_Content",
@@ -2094,15 +2106,15 @@ class ProjectsController < ApplicationController
         #    fw.write("console.log(JSONC.pack(h_data, true))")
         #  fw.write("console.log(h_data)")
 #      end
-    else
-# commented to test
-#      @h_data = (browser != 'chrome') ? JSON.parse(File.read(compressed_annot_json_file)) : JSON.parse(File.read(compressed_zip_annot_json_file))
-     # @h_data = JSON.parse(File.read(annot_json_file))
-      if  @project.nber_cols > 20000
-        @h_data_json = File.read(compressed_zip_annot_json_file)
-      else
-        @h_data = Basic.safe_parse_json(File.read(compressed_zip_annot_json_file), {})
-      end
+#    else
+#      # commented to test
+#      #      @h_data = (browser != 'chrome') ? JSON.parse(File.read(compressed_annot_json_file)) : JSON.parse(File.read(compressed_zip_annot_json_file))
+#      # @h_data = JSON.parse(File.read(annot_json_file))
+#      if  @project.nber_cols > 20000
+#        @h_data_json = File.read(compressed_zip_annot_json_file)
+#      else
+#        @h_data = Basic.safe_parse_json(File.read(compressed_zip_annot_json_file), {})
+#      end
       #      @h_data_json = File.read(compressed_annot_json)
     end
 
@@ -2112,13 +2124,13 @@ class ProjectsController < ApplicationController
     @std_method = StdMethod.where(:docker_image_id => @asap_docker_image.id, :step_id => @step.id, :obsolete => false).first
     @h_method_details = get_attr(@step, @std_method)
    # parsing_step = Step.where(:version_id => @project.version_id, :name => "parsing").first
-    parsing_step = Step.where(:docker_image_id => @asap_docker_image.id, :name => "parsing").first
+    @parsing_step = Step.where(:docker_image_id => @asap_docker_image.id, :name => "parsing").first
    # cell_filtering_step = Step.where(:version_id => @project.version_id, :name => "cell_filtering").first
     cell_filtering_step = Step.where(:docker_image_id => @asap_docker_image.id, :name => "cell_filtering").first
    # gene_filtering_step = Step.where(:version_id => @project.version_id, :name => "gene_filtering").first
     gene_filtering_step = Step.where(:docker_image_id => @asap_docker_image.id, :name => "gene_filtering").first
     session[:cell_filtering_store_run_id] = params[:store_run_id]
-    @parsing_run = Run.where(:project_id => @project.id, :step_id => parsing_step.id).first
+    @parsing_run = Run.where(:project_id => @project.id, :step_id => @parsing_step.id).first
     session[:cell_filtering_store_run_id]||=@parsing_run.id
     
     @cell_filtering_runs = Run.where(:project_id => @project.id, :step_id => cell_filtering_step.id).all.to_a
@@ -2193,6 +2205,9 @@ class ProjectsController < ApplicationController
     all_std_methods.map{|s| @h_std_methods[s.id]=s}
     
     @std_methods = all_std_methods.select{|e| e.step_id == @step.id}.sort{|a, b| a.name <=> b.name}
+
+    @h_obj_attrs_by_std_method = {}
+    @std_methods.map{|s| @h_obj_attrs_by_std_method[s.id] = Basic.safe_parse_json(s.obj_attrs_json, {})}
     
     @h_std_methods_by_name = {}
     @std_methods.map{|s| @h_std_methods_by_name[s.name]=s}
@@ -2211,13 +2226,13 @@ class ProjectsController < ApplicationController
           tmp_runs = runs.select{|run| source_step_ids.include? run.step_id}
           tmp_annots = Annot.where(:ori_run_id => runs.map{|r| r.id}, :ori_step_id => source_step_ids).all
           h_res2 = check_valid_types(@step, tmp_runs, h_res[:attrs][attr_name], tmp_annots) # valid_types, source_steps, h_constraints)
-          #@log += "attr_name: #{attr_name} => " + h_res2[:h_runs].to_json
-      #    @log5+="method:#{std_method.name} #{h_res[:attrs][attr_name]['source_steps']}"
+          #  @log += "attr_name: #{attr_name} => " + h_res2[:h_runs].to_json
+          #  @log5+="method:#{std_method.name} #{h_res[:attrs][attr_name]['source_steps']}"
 
           if h_res2[:h_runs].keys.size == 0
             #            @h_unavailable_methods[std_method.id] ||= {}
             @h_unavailable_methods[std_method.id] = h_res2 #[attr_name] = h_res2
-         #   @log5+= attr_name + " => " + std_method.id.to_s
+            #   @log5+= attr_name + " => " + std_method.id.to_s
           end
         end
       end
@@ -2260,7 +2275,7 @@ class ProjectsController < ApplicationController
     # source_step_ids.each do |sid|                                                                                                                                                            
     nber_criteria = input_attr['valid_types'].size #all_valid_types.size 
 
-#        @log5=annots.map{|e| e.name}
+        @log5="ANNOTS:#{annots.map{|e| e.name}}<br/>"
 
     ### filter runs with constraints
     if h_constraints
@@ -2304,7 +2319,7 @@ class ProjectsController < ApplicationController
       end
     end
     
-    @log5=annots.map{|e| e.name}
+    @log5+="ANNOTS2: #{annots.map{|e| e.name}}</br>"
 
     ## get annots
     #    h_annots = {}
@@ -2410,7 +2425,7 @@ class ProjectsController < ApplicationController
     #runs = (@current_filtered_run_ids & available_run_ids).map{|run_id| @h_all_runs[run_id]}
     #runs = available_run_ids.map{|run_id| @h_all_runs[run_id]}
     runs = Run.where(:project_id => @project.id, :step_id => source_step_ids, :status_id => @h_statuses_by_name['success']).all
-    annots = Annot.where(:project_id => @project.id, :ori_step_id => source_step_ids)
+    annots = Annot.where(:project_id => @project.id, :ori_step_id => source_step_ids).all 
 #    ## filter runs based on constraints
 #
 #    if @h_constraints and @h_constraints['in_lineage']
@@ -2425,7 +2440,7 @@ class ProjectsController < ApplicationController
 #        intersect.size == lineage_constraint_run_ids.size
 #      }
 #    end
-
+    @log4 = annots
     @h_data_classes={}
     DataClass.all.map{|dc| @h_data_classes[dc.id] = dc}
 
@@ -4629,7 +4644,7 @@ class ProjectsController < ApplicationController
       loom_file = @project_dir + annot.filepath
       
       @h_stats = {}
-      filter_stats_file = @project_dir + 'tmp' + "#{(current_user) ? current_user.id : 0}_de_filtered_stats.json" #+ 'de' + 'filtered_stats.json'
+      filter_stats_file = @project_dir + 'tmp' + "#{(current_user) ? current_user.id : 1}_de_filtered_stats.json" #+ 'de' + 'filtered_stats.json'
       if File.exist? filter_stats_file
         @h_stats = Basic.safe_parse_json(File.read(filter_stats_file), {})
       end
@@ -4676,7 +4691,7 @@ class ProjectsController < ApplicationController
 #    loom_file = @project_dir + annot.filepath
 
     @h_stats = {}
-    filter_stats_file = @project_dir + 'tmp' + "#{(current_user) ? current_user.id : 0}_ge_filtered_stats.json" #+ 'ge' + 'filtered_stats.json'
+    filter_stats_file = @project_dir + 'tmp' + "#{(current_user) ? current_user.id : 1}_ge_filtered_stats.json" #+ 'ge' + 'filtered_stats.json'
     if File.exist? filter_stats_file
       @h_stats = Basic.safe_parse_json(File.read(filter_stats_file), {})
     end
@@ -4691,8 +4706,14 @@ class ProjectsController < ApplicationController
     @h_el["card-ge_table"] = {
       :card_header => #"<div class='float-right'><button id='download_de_table_btn' class='btn btn-sm btn-primary' type='button'>Download</button></div>" +                                   
       "Filtered GE tables",
-      :card_body => "<span id='up_#{@run.id}' class='badge-nber_genesets pointer badge badge-" + ((@h_stats[@run.id.to_s]["up"] > 0) ? "success" : "secondary") + "'>" + @h_stats[@run.id.to_s]["up"].to_s + " up-regulated gene set" + ((@h_stats[@run.id.to_s]["up"] > 1) ? "s" : "") + "</span> " +
-      "<span id='down_#{@run.id}' class='badge-nber_genesets pointer badge badge-" + ((@h_stats[@run.id.to_s]["down"] > 0) ? "danger" : "secondary") + "'>" + @h_stats[@run.id.to_s]["down"].to_s + " down-regulated gene set" + ((@h_stats[@run.id.to_s]["down"] > 1) ? "s" : "") + "</span> " +
+      :card_body => "<span id='up_#{@run.id}' class='badge-nber_genesets pointer badge badge-" + 
+      ((@h_stats and @h_stats[@run.id.to_s] and @h_stats[@run.id.to_s]["up"] > 0) ? "success" : "secondary") + "'>" + 
+      ((@h_stats[@run.id.to_s]) ? @h_stats[@run.id.to_s]["up"].to_s : '') + 
+      " up-regulated gene set" + ((@h_stats[@run.id.to_s] and @h_stats[@run.id.to_s]["up"] > 1) ? "s" : "") + "</span> " +
+      "<span id='down_#{@run.id}' class='badge-nber_genesets pointer badge badge-" + 
+      ((@h_stats and @h_stats[@run.id.to_s] and @h_stats[@run.id.to_s]["down"] > 0) ? "danger" : "secondary") + "'>" + 
+      ((@h_stats[@run.id.to_s]) ? @h_stats[@run.id.to_s]["down"].to_s : '') + 
+      " down-regulated gene set" + ((@h_stats[@run.id.to_s] and @h_stats[@run.id.to_s]["down"] > 1) ? "s" : "") + "</span> " +
       "<button id='btn-to_ge_table' type='button' class='btn btn-primary btn-sm'>Change threshold</button>"
     }
 
@@ -4743,6 +4764,8 @@ class ProjectsController < ApplicationController
     @h_outputs = Basic.safe_parse_json(@run.output_json, {})
     
     h_files = {}
+    
+    nber_plots = 0
     if @h_dashboard_card[@run.step_id]["output_files"]
       @h_dashboard_card[@run.step_id]["output_files"].select{|e| @h_outputs[e["key"]] and ((admin? or e["admin"] == true ) or !e["admin"])}.each do |e|
         k = e["key"]
@@ -4782,6 +4805,7 @@ class ProjectsController < ApplicationController
           row_name = row_name.pluralize if annot.nber_rows and annot.nber_rows > 1
           "<button id='annot_#{annot.id}_btn' class='btn btn-outline-secondary btn-sm annot_btn'>#{annot.name} <span class='badge badge-light'>#{annot.nber_cols} #{col_name}</span> <span class='badge badge-light'>#{annot.nber_rows} #{row_name}</span></button>"}.join(" ") + "</p>"
       end
+
       
       ## set values for standard cards
       @h_el = {
@@ -4806,6 +4830,7 @@ class ProjectsController < ApplicationController
                              "<p class='text-warning text-truncate' title='#{e}'>#{e}</p>"
                            end
                          }.join(" ") : '') +
+          
           dataset_results.join("<br/>\n")
         }
         
@@ -5312,7 +5337,7 @@ class ProjectsController < ApplicationController
       h_files.each_key do |k|
         #        t.push h_files[k][:h_output]['types']
         if h_files[k][:h_output]['types'] 
-          if h_files[k][:h_output]['types'].include? "plotly_plot_json"
+          if (h_files[k][:h_output]['types'] & ["plotly_plot_json", "plotly_json"]).size > 0
             graphical_outputs.push k
  #         elsif h_files[k][:h_output]['types'].include? "annot"
  #           annots.push k #.download_text
@@ -5336,6 +5361,9 @@ class ProjectsController < ApplicationController
                   "<p class='sub-run_card'>Parameters</p>",
                   display_run_attrs(run, h_attrs, h_std_method_attrs, {}),
                   ((run.status_id == 3 and @h_dashboard_card[run.step_id]["output_values"] and @h_dashboard_card[run.step_id]["output_values"].size > 0) ? ("<p class='sub-run_card'>Output summary</p><p class='card-text'>" + @h_dashboard_card[run.step_id]["output_values"].select{|e| h_res[e["key"]]}.map{|e| "<span class='badge badge-info'>#{e["label"]}:#{(h_res[e["key"]]) ? h_res[e["key"]] : 'NA'}</span>"}.join(" ") + "</p>") : ''),
+                  (graphical_outputs.size > 0) ? "<i class='af-scatter_plot'></i> " +  
+                  " graphical outputs available<br/><br/>" : '',
+                  
                   # (h_files.keys.size > 0) ? ("<p class='card-text'>" +  + "</p>") : ""),
                   #   run.duration.to_json +                                                                                                                                                                 
                   #   run.output_json +                                                                                                                                                                      
@@ -5346,8 +5374,6 @@ class ProjectsController < ApplicationController
    #                class='btn btn-sm btn-outline-secondary white-bg download_file_btn' #{title}><div class='float-right'><sub>#{display_mem(h_output["size"])}</sub></div><div class='download_btn_text'>
                   ((h_annots.keys.size > 0) ? h_annots.keys.map{|k| "<button id='download_text_#{h_annots[k][:annot_id]}' type='button' class='btn btn-sm btn-outline-secondary white-bg download_text' title='Download Tab-separated result file'>#{h_annots[k][:name].split("/")[2][1..-1]}.tsv</button>"}.join(" ") : ''),
                   #                 t.to_json,
-                  (graphical_outputs.size > 0) ? "<i class='af-scatter_plot'></i> " + #graphical_outputs.size.to_s + 
-                  " graphical outputs available" : '',
                   #((run.status_id == 3 and h_res['warnings']) ? h_res['warnings'].map{|w| ("<p class='text-warning text-truncate' title='#{w['name'] || 'NA'} #{w['description'] || 'NA'}'>" + w['name'] + "</p>")}.join(" ") : ''),
                   #                  h_res['warnings'].to_json, run.status_id, 
                   ((run.status_id == 3 and h_res['warnings']) ? h_res['warnings'].map{|e| 
@@ -5613,6 +5639,9 @@ class ProjectsController < ApplicationController
     
   end
 
+#  def get_step_cell_filtering
+#  end
+
   def get_step_cell_scatter
     
 #    @log3= 'b ' + session[:csp_params][@project.id][:displayed_nber_dims].to_json  + "-" + session[:csp_params][@project.id][:std_method_id].to_json
@@ -5860,7 +5889,7 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
  #   end
     
     @h_stats = {}
-    filter_stats_file = @project_dir + 'tmp' + "#{(current_user) ? current_user.id : 0}_de_filtered_stats.json" #+ 'de' + 'filtered_stats.json'
+    filter_stats_file = @project_dir + 'tmp' + "#{(current_user) ? current_user.id : 1}_de_filtered_stats.json" #+ 'de' + 'filtered_stats.json'
     if File.exist? filter_stats_file
      # begin
       @h_stats = Basic.safe_parse_json(File.read(filter_stats_file), {})
@@ -5921,7 +5950,7 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     @h_ge_filter = Basic.safe_parse_json(@project.ge_filter_json, {})
 
     @h_stats = {}
-    filter_stats_file = @project_dir + 'tmp' + "#{(current_user) ? current_user.id : 0}_ge_filtered_stats.json" #+ 'gene_enrichment' + 'filtered_stats.json'
+    filter_stats_file = @project_dir + 'tmp' + "#{(current_user) ? current_user.id : 1}_ge_filtered_stats.json" #+ 'gene_enrichment' + 'filtered_stats.json'
     if File.exist? filter_stats_file
       @h_stats = Basic.safe_parse_json(File.read(filter_stats_file), {})
     end
@@ -5994,6 +6023,8 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     #   @h_nber_runs = {}
     #   begin
     @h_nber_runs = Basic.safe_parse_json(@ps.nber_runs_json, {}) if @ps
+    @total_nber_runs = 0
+    @h_nber_runs.keys.map{|k| @total_nber_runs += @h_nber_runs[k]}
     #   rescue
     #   end
     
@@ -6011,15 +6042,36 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     #  rescue
     #  end
     session[:current_dashboard][@project.id]||={}
+
     if params[:dashboard]
       session[:current_dashboard][@project.id][@step.id] = params[:dashboard]
+       logger.debug("TEST_DASHBOARD: session[:current_dashboard][@project.id][@step.id]")
     elsif @h_attrs["dashboards"] and default_dashboard = @h_attrs["dashboards"].first
       session[:current_dashboard][@project.id][@step.id] ||= default_dashboard['name']
+      logger.debug("TEST_DASHBOARD2: #{session[:current_dashboard][@project.id][@step.id]}")
     elsif @step.has_std_dashboard
-      session[:current_dashboard][@project.id][@step.id] ||= 'std_runs'
+    #  if @total_nber_runs > 1
+    #    session[:current_dashboard][@project.id][@step.id] = 'std_runs'
+    #  else
+        session[:current_dashboard][@project.id][@step.id] ||= 'std_runs'
+   #   end
+    #end
+
     elsif @step
       session[:current_dashboard][@project.id][@step.id] ||= @step.name
+      logger.debug("TEST_DASHBOARD3: session[:current_dashboard][@project.id][@step.id]")
     end
+    logger.debug("TEST_DASHBOARD4: #{session[:current_dashboard][@project.id][@step.id]} #{@total_nber_runs}")
+  #  if @step.has_std_dashboard
+  #    if @total_nber_runs > 1
+  #      session[:current_dashboard][@project.id][@step.id] = 'std_runs'
+  #    else
+  #      session[:current_dashboard][@project.id][@step.id] ||= 'std_runs'
+  #    end
+  #  end
+
+     logger.debug("TEST_DASHBOARD5: #{session[:current_dashboard][@project.id][@step.id]} #{@total_nber_runs}")
+
 
     @last_update = get_last_update_status()
     session[:active_dr_id] ||= 1
@@ -6030,8 +6082,9 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     if readable? @project
 
       @list_cards = []
+      
 
-      if @step.multiple_runs == true
+      if @step.multiple_runs == true or @total_nber_runs > 1
         @runs = @current_filtered_run_ids.map{|run_id| @h_all_runs[run_id]}
         @h_run_ids_by_req_id = {}
         @runs.map{|r| @h_run_ids_by_req_id[r.req_id]||=[]; @h_run_ids_by_req_id[r.req_id].push r.id}
@@ -6058,7 +6111,12 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
           #    @error = e.message
           #  end
         end
+      else
+
       end
+
+       logger.debug("TEST_DASHBOARD6: #{session[:current_dashboard][@project.id][@step.id]} #{@total_nber_runs}")
+
 
     end
   end
@@ -7077,14 +7135,16 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
         @h_statuses={}
         Status.all.map{|s| @h_statuses[s.id]=s}
         @h_steps={}
+        @h_attrs_by_step={}
 #        all_steps = Step.where(:version_id => @project.version_id).all
         all_steps = []
         if @asap_docker_image
           all_steps = Step.where(:docker_image_id => @asap_docker_image.id).all
-          all_steps.map{|s| @h_steps[s.id]=s}
+          all_steps.map{|s| @h_steps[s.id]=s; @h_attrs_by_step[s.id]= Basic.safe_parse_json(s.attrs_json, {})}
           @h_steps_by_name = {}
           all_steps.map{|s| @h_steps_by_name[s.name] = s}
         end
+        
         ## update views
         if !admin?
           last_day_session_ids = @project.last_day_session_ids.split(",")
@@ -8000,6 +8060,7 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     public_id = (public_id.match(/^\d+$/)) ? public_id.to_i : 0
     @project = Project.where(["key = ? or public_id = ?", params[:key],public_id]).first
     if @project
+      @project_type = @project.project_type
       @organism = @project.organism
       @version =@project.version
       @h_env = Basic.safe_parse_json(@version.env_json, {})
@@ -8015,7 +8076,7 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
   def project_params
     #      params.fetch(:project, {})
   
-    params.fetch(:project).permit(:name, :key, :organism_id, :group_filename, :input_filename, :status_id, :duration, :step_id, :filter_method_id, :norm_id, :parsing_attrs_json, :filter_method_attrs_json, :norm_attrs_json, :public, :pmid, :diff_expr_filter_json, :gene_enrichment_filter_json, :read_access, :write_access, :replaced_by_project_key, :replaced_by_comment, :version_id, :technology, :tissue, :extra_info, :description)
+    params.fetch(:project).permit(:name, :key, :organism_id, :group_filename, :input_filename, :status_id, :duration, :step_id, :filter_method_id, :norm_id, :parsing_attrs_json, :filter_method_attrs_json, :norm_attrs_json, :public, :pmid, :diff_expr_filter_json, :gene_enrichment_filter_json, :read_access, :write_access, :replaced_by_project_key, :replaced_by_comment, :version_id, :technology, :tissue, :extra_info, :description, :project_type_id)
   end
 end
   

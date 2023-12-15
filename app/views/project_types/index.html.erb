@@ -1,0 +1,42 @@
+<p id="notice"><%= notice %></p>
+
+<div class='float-right'>
+  <%= link_to 'New Project Type', new_project_type_path %>
+</div>
+
+<h1>Project Types</h1>
+
+<table id='project_types'>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Tag</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @project_types.each do |project_type| %>
+      <tr>
+	<td><%= project_type.id %></td>
+	<td><%= project_type.name %></td>
+	<td><%= project_type.tag %></td>
+
+        <td><%= link_to 'Show', project_type %></td>
+        <td><%= link_to 'Edit', edit_project_type_path(project_type) %></td>
+        <td><%= link_to 'Destroy', project_type, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<%= javascript_tag  do %>
+
+$("#project_types").DataTable();
+
+<% end %>
+
+

@@ -1,0 +1,2 @@
+class DockerVersion < ApplicationRecord
+end

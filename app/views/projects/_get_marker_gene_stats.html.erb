@@ -1,7 +1,7 @@
 console.log("titi")
 
 var type = <%= raw params[:type].to_json %>
-var res = <%= raw @h_res[:res] %> 
+var res = <%= raw @h_res[:res].to_json %> 
 var sum_expr_data = <%= raw @h_res[:sum_expr_data].to_json %>
 console.log("cmd " + type + ":" + '<%= raw  @h_res[:cmd] %>')
 
@@ -13,8 +13,8 @@ console.log("toto" + type)
 
 var g =  sum_expr_data.stable_ids.map((e, i) => h_genes[e]);
 
-console.log(sum_expr_data)
-console.log(<%= raw @h_res[:cmd].to_json %>)
+//console.log(sum_expr_data)
+//console.log(<%= raw @h_res[:cmd].to_json %>)
 for (var k=0; k < sum_expr_data.stable_ids.values.length; k++){ //each gene
 
 /*
@@ -78,12 +78,12 @@ var comp = {
 
 var data = [ref, comp];
 
-console.log(data)
+//console.log(data)
 
 var layout = {
   yaxis: {
 //    type: 'log',
-    title: 'log<sub>2</sub>(1 + (Count * 10000 / Depth))',
+    title: '(1 + (Count * 10000 / Depth))',
     zeroline: false
   },
   boxmode: 'group'

@@ -46,6 +46,9 @@
   </div>
 </div>
 
+<div id='left_plot_btns'>
+<button id="btn_back_categorical_coloring" type="button" class='btn btn-secondary hidden'><i class='fa fa-arrow-left'></i> Back to categorical coloring</button>
+</div>
 <div id='plot_btns'>
 <!--<div id='plot_clusters_btn' class='btn btn-primary hidden'>Clusters</div>-->
 <button type='button' id='plot_options_btn' class='btn btn-primary' disabled><i class='fa fa-spinner fa-pulse fa-fw fa-lg'></i> Loading controls...</button>
@@ -94,6 +97,13 @@ function place_plot_options_window(){
 //  }
 }
 
+$("#btn_back_categorical_coloring").click(function(){
+ $("#opt_data_type_1").val(1)
+ $("#opt_coloring_type").val(3)
+ var url_base = "<%= raw get_rows_project_path(:key => @project.key, :format => 'json') %>?annot_id=" + $("#plot_annot_id").val()
+ upd_plot2(1, url_base, {});
+ $(this).addClass("hidden")
+})
 
 $("#plot_options_close").click(function(){
  var w = $(window).width()
@@ -127,6 +137,7 @@ if ($("#opt_coloring_type").val() == 3){
    'bottom' : 10
    }, 200, function() {
    });
+ $("#btn_back_categorical_coloring").click()
 })
 
 

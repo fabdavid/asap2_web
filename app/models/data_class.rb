@@ -1,0 +1,2 @@
+class DataClass < ApplicationRecord
+end

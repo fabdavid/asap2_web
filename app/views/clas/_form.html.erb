@@ -1,6 +1,6 @@
 <div class='mb-2'> <span class='badge badge-danger'><i class='fa fa-bolt'></i> New feature</span> Please <a href='mailto:webmaster.bbcf@epfl.ch?subject=ASAP feedback'>send us your feedback</a> if something doesn't work properly.</div>
 
-<%= form_with(model: cla, local: true) do |form| %>
+<%= form_with(model: cla, local: true, id: "cla_form") do |form| %>
   <% if cla.errors.any? %>
     <div id="error_explanation">
       <h2><%= pluralize(cla.errors.count, "error") %> prohibited this cla from being saved:</h2>
@@ -130,10 +130,6 @@ function view_cot(e, el_id){
   refresh("ontop_popup_container", "<%= cell_ontology_terms_path() %>/" + cot_id + "?nolayout=1&context=annotation", {loading:true})
  })
 
-
-
-
-
  $("#cla_list_cell_ontology_terms").on("click", ".cla_del_cot", function(){
   var cot = this.id.split("_")[3]
   var l = $("#cla_cell_ontology_term_ids").val().split(",")
@@ -142,12 +138,14 @@ function view_cot(e, el_id){
   $("#cla_cot_" + cot).remove()
  })
 
- $("#cla_list_genes").on("click", ".cla_del_gene", function(){
-  var gene_id = this.id.split("_")[3] 
-  var l = $("#cla_gene_ids").val().split(",")
+ $("#cla_form").on("click", ".cla_del_gene", function(){
+  var type = this.id.split("_")[2]
+  var gene_id = this.id.split("_")[4] 
+  console.log(type + "-" + gene_id)
+  var l = $("#cla_" + type + "_gene_ids").val().split(",")
   l = l.filter(x => x != gene_id)
-  $("#cla_gene_ids").val(l.join(","))
-  $("#cla_gene_" + gene_id).remove()
+  $("#cla_" + type + "_gene_ids").val(l.join(","))
+  $("#cla_" + type + "_gene_" + gene_id).remove()
  })
 
  $("#cla_cell_ontology_term").autocomplete({

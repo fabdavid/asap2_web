@@ -70,7 +70,8 @@
       </td><td>
 	<% if project.version_id > 3 %>
 	<% clone_text = (current_user) ? 'Clone' : 'Clone to sandbox' %>
-	<%= button_to clone_text, clone_project_path(project.key), {:class => 'btn btn-primary clone-btn', :method => 'get'} %>
+	<%# button_to clone_text, nil, {:type => "button", :class => 'btn btn-primary public-clone-btn', :id => "public-clone-btn_#{project.key}", :method => 'get'} %>
+	<button type='button' id='public-clone-btn_<%= project.key %>' class='btn btn-primary public-clone-btn'><%= clone_text %></button>
 	<% end %>
       </td>
       <%# button_to('Destroy', project_path(project.key), method: :delete, data: { confirm: 'Are you sure?' }, :class => 'btn btn-danger') if current_user and current_user.id == project.user_id %>

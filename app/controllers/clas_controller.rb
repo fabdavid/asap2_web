@@ -142,9 +142,9 @@ class ClasController < ApplicationController
   def create
     @cla = Cla.new(cla_params)
     
-    if current_user and params[:cla][:annot_id]
+    if params[:cla][:annot_id]
 
-      orcid_user = current_user.orcid_user
+      orcid_user = (current_user) ? current_user.orcid_user : nil
             
       #complement attributes
       @annot = Annot.where(:id => params[:cla][:annot_id]).first
@@ -198,8 +198,8 @@ class ClasController < ApplicationController
       @cla.sorted_cell_ontology_term_ids = (sorted_cot_ids.size > 0) ? sorted_cot_ids.join(",") : ""
       @cla.up_gene_ids = (up_gene_ids.size > 0) ? up_gene_ids.join(",") : ""
       @cla.down_gene_ids = (down_gene_ids.size > 0) ? down_gene_ids.join(",") : ""
-      @cla.up_gene_ids = (sorted_up_gene_ids.size > 0) ? sorted_up_gene_ids.join(",") : ""
-      @cla.down_gene_ids = (sorted_down_gene_ids.size > 0) ? sorted_down_gene_ids.join(",") : ""
+      @cla.sorted_up_gene_ids = (sorted_up_gene_ids.size > 0) ? sorted_up_gene_ids.join(",") : ""
+      @cla.sorted_down_gene_ids = (sorted_down_gene_ids.size > 0) ? sorted_down_gene_ids.join(",") : ""
 
       @cla.cell_set_id = @annot_cell_set.cell_set_id
 
@@ -317,7 +317,7 @@ class ClasController < ApplicationController
       end
       
       #      @cla.user_name = current_user.displayed_name
-      @cla.user_id = current_user.id
+      @cla.user_id = (current_user) ? current_user.id : nil
       @cla.orcid_user_id = (orcid_user) ? orcid_user.id : nil
       
       respond_to do |format|
@@ -330,7 +330,7 @@ class ClasController < ApplicationController
             :cla_id => @cla.id,
             :cla_source_id => 1,
             :agree => true,
-            :user_id => current_user.id,
+            :user_id => (current_user) ? current_user.id : nil,
             :user_name => current_user.displayed_name,
             :orcid_user_id => (orcid_user) ? orcid_user.id : nil
           }

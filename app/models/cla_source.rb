@@ -1,0 +1,2 @@
+class ClaSource < ApplicationRecord
+end

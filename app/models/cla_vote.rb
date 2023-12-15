@@ -1,0 +1,2 @@
+class ClaVote < ApplicationRecord
+end

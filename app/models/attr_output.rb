@@ -1,0 +1,2 @@
+class AttrOutput < ApplicationRecord
+end

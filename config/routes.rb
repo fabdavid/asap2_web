@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  resources :project_types
   resources :project_cell_sets
   resources :annot_cell_sets
   resources :cell_sets

@@ -6,7 +6,11 @@ class StdMethodsController < ApplicationController
  # GET /std_methods
   # GET /std_methods.json
   def index
-    @std_methods = StdMethod.all
+    if params[:docker_image_id]
+       @std_methods = StdMethod.where(:docker_image_id => params[:docker_image_id]).all
+    else
+      @std_methods = StdMethod.all
+    end
   end
 
   # GET /std_methods/1
@@ -28,7 +32,8 @@ class StdMethodsController < ApplicationController
   # POST /std_methods.json
   def create
     @std_method = StdMethod.new(std_method_params)
-  #  @std_method.version_id ||= APP_CONFIG[:version_id]
+    #  @std_method.version_id ||= APP_CONFIG[:version_id]
+    @std_method.docker_image_id = @std_method.step.docker_image_id
 
     respond_to do |format|
       if admin? and @std_method.save
@@ -76,6 +81,6 @@ class StdMethodsController < ApplicationController
     # Never trust parameters from the scary internet, only allow the white list through.
     def std_method_params
       params.fetch(:std_method).permit(:name, :label, :step_id, :description, :short_label, :program, :command_json, :nber_cores,
-                                       :link, :speed_id, :attrs_json, :attr_layout_json, :obj_attrs_json, :obsolete, :version_id)
+                                       :link, :speed_id, :attrs_json, :attr_layout_json, :obj_attrs_json, :obsolete, :version_id, :docker_image_id)
     end
 end

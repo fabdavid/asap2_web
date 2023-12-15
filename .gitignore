@@ -37,3 +37,6 @@
 
 config/shards.yml
 config/.s3.json
+
+nginx.dev.conf
+nginx.prod.conf

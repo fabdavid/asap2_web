@@ -24,14 +24,14 @@
 <div id='show_run_<%= @run.id %>' class='run_container'>
  <% @layout.each do |vertical_el| %>
   <%# vertical_el.to_json %>
-  <% if (!vertical_el['admin'] or admin?) %>
+  <% if (!vertical_el['admin'] or (admin? or admin_view?)) %>
    <div class="vert_element row">
     <% vertical_el["horiz_elements"].each do |horiz_element| %>
      <% id = horiz_element['id'].to_s %>
      <%# @h_el.to_json if admin? %>
      <div class="horiz_element <%= horiz_element['container_class'] %>">
        <%# horiz_element['class'] %>
-       <% if horiz_element['type'] == 'card' and (@h_el[id] or (horiz_element['partial'] and @h_outputs[horiz_element['output_name']] and (!horiz_element['admin'] or admin?))) %>
+       <% if horiz_element['type'] == 'card' and (@h_el[id] or (horiz_element['partial'] and @h_outputs[horiz_element['output_name']] and (!horiz_element['admin'] or (admin? or admin_view?)))) %>
        <%# id %>
        <%# horiz_element['type'] + "-" + @h_el[id.to_s].to_json %>
        <div class="card <%= horiz_element['class'] %>">
@@ -42,7 +42,7 @@
 	 <div class="card-body"> 
    	   <%= raw @h_el[id][:card_body] %>
 	 </div>
-	 <% elsif horiz_element['partial'] and @h_outputs[horiz_element['output_name']] and (!horiz_element['admin'] or admin?)  %>
+	 <% elsif horiz_element['partial'] and @h_outputs[horiz_element['output_name']] and (!horiz_element['admin'] or (admin? or admin_view?))  %>
 	 <%= render :partial => horiz_element['partial'], :locals => {:horiz_element => horiz_element} %>
 	 <% else %>
   	<!-- Not found element for <%= id %> -->  

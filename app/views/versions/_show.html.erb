@@ -57,16 +57,20 @@
 	<td><%= (@h_all_tools[k]) ? @h_tool_types[@h_all_tools[k].tool_type_id].name : 'NA' %></td>
       </tr>
       <% end %>
+
       <% if @h_env[version.id]["docker_images"] %>
       <%  @h_env[version.id]["docker_images"].each_key do |k| %>
-        <% di = @h_env[version.id]["docker_images"][k] %>     
-        <% docker_version = DockerVersion.where(:name => di["name"], :tag => di["tag"]).first %>
+        <% di = @h_env[version.id]["docker_images"][k] %> 
+	<%# di.to_json if admin? %>
+	<%# DockerImage.all.map{|e| e.tag}.to_json  if admin? %>
+        <% docker_version = DockerImage.where(:name => di["name"], :tag => di["tag"]).first %>
       <tr>
         <td><%= di['name'] %>
           <%= link_to raw("<sup><i class='fa fa-link'></i></sup>"), "https://hub.docker.com/r/fabdavid/asap_run/tags" %>
         </td>
         <td><%= di['tag'] %></td>
         <td>
+	  <%# docker_version.to_json %>
         <% if docker_version %>
         <% docker_version_tools = Basic.safe_parse_json(docker_version.tools_json, {}) %>
 	<%# docker_version_tools.keys.to_json %>
@@ -83,9 +87,11 @@
       </tr>
     -->
     <% ["Python", "R", "Java"].each do |tool_type_name| %>
+
     <div class='mb-3'>
      <div class='float-left mr-2 mr-3'><b><%= tool_type_name %></b></div>
      <% docker_version_tools.each_key do |k| %>
+     
       <% if @h_all_tools[k] and @h_tool_types[@h_all_tools[k].tool_type_id].name == tool_type_name %>
        <div class='float-left mr-2'>
         <button  type='button' class='btn btn-sm btn-outline-secondary mb-2'>

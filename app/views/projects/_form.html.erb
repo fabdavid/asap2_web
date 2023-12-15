@@ -29,20 +29,27 @@
 <% end %>
 
 <div class='row'>
-  <div class='form-group col-12 col-sm-4'>
+  <div class='form-group col-12 col-md-3'>
     <%= label_tag 'project_name', 'Project Name', {'data-toggle' => "tooltip"} %>
     <%= f.text_field :name, {:class => "form-control is-invalid", :placeholder => "Name of the project"} %>
     <div class="invalid-feedback">
       Mandatory
     </div>
   </div>
-  <div class='form-group col-12 col-sm-2'>
+
+  <div class='form-group col-12 col-md-3'>
+    <%= label_tag 'project_type_id', 'Project type', {'data-toggle' => "tooltip"} %>
+    <% l = ProjectType.all.map{|e| [e.name, e.id]} %>
+    <%= f.select :project_type_id, l,  {}, {:class => "form-control", :placeholder => "Project type"} %>
+  </div>
+
+  <div class='form-group col-12 col-md-2'>
     <%= label_tag 'version_id', 'ASAP version', {'data-toggle' => "tooltip"} %>
-    <% l = Version.where(:activated => true).order("id desc").all.select{|e| e.id > 3}.map{|e| [e.id.to_s + ((e.beta) ? ' (beta)' : ''), e.id]} %>
+    <% l = Version.where(:activated => (admin?) ? [true, false] : true).order("id desc").all.select{|e| e.id > 3}.map{|e| [e.id.to_s + ((e.beta) ? ' (beta)' : ''), e.id]} %>
     <%= f.select :version_id, l,  {}, {:class => "form-control", :placeholder => "ASAP version"} %>
   </div>
   
-  <div id='list_organims' class='form-group col-12 col-sm-6'>
+  <div id='list_organims' class='form-group col-12 col-md-4'>
     <%= label_tag 'organism_id', "Organism" %>
     <%# @h_env['asap_data_db_version'] %>
 
@@ -57,8 +64,10 @@
     end
   #  end
     %>
-<% sel_organism = (params[:organism_id]) ? Organism.where(:tax_id => params[:organism_id]).first : nil %>
+    <% sel_organism = (params[:organism_id]) ? Organism.where(:tax_id => params[:organism_id]).first : nil %>
     <%= f.select :organism_id, grouped_options_for_select(h_list_organisms, ((sel_organism) ? [sel_organism.id] : nil)), {}, {class: 'form-control', divider: '---------'} %>
+    <%#  organisms = Organism.where(:ensembl_subdomain_id => 6).select{|o| o.name}.sort{|a, b| ((a.short_name && a.short_name.capitalize) || a.name) <=> ((b.short_name && b.short_name.capitalize) || b.name)} %>
+    <%# organisms.to_json if admin? %>
   </div>
 </div>
 

@@ -789,6 +789,89 @@ function upd_cat_legend(cat_aliases, nber_cats, list_cats, palette, h_users, sel
     })
 }
 
+function upd_plot2(i, url_base, h){
+    // console.log("i2: " + i)
+    var gene_str = $("#gene_selected_" + i).html()
+    var data_type = $("#opt_data_type_" + i).val()
+    var coloring_type = $("#opt_coloring_type").val()
+    var rx = /\{(\d+)\}$/gm
+    var gene_i = null
+    if (gene_str){
+	var m = rx.exec(gene_str)
+	if (m){
+	    gene_i = m[1]
+	    $("#opt_row_i_" + i).val(gene_i) //h_autocomplete["h_indexes"][gene_i])
+	}
+    }
+    if (h.row_i){gene_i = h.row_i; gene_str=h.gene_str}
+    var header_i = $("#opt_header_i_" + i).val()
+    var num_annot_id = $("#opt_num_annot_id_" + i).val()
+    //  console.log("i3: " + i)
+    var cat_annot_id = $("#opt_cat_annot_id").val()
+    var cat_annot_id2 = $("#opt_cat_annot_id2").val()
+    if (coloring_type == 3){
+	i= null
+    }
+    var occ_txt = (i == null) ? '' : '&occ=' + i
+    // do not update if module score and no metadata selected ("Select a metadata")
+    console.log("data_type:" + data_type)
+    if (!((data_type == 3 && $("#opt_geneset_annot_id_" + i).val() == '')) || (data_type == 4 && $("#opt_geneset_id_" + i).val() == '')){
+	//     console.log(data_type + " .> " + $("#opt_geneset_annot_id_" + i).val())
+	$.ajax({
+	    url: url_base + '&coloring_type=' + coloring_type + occ_txt + '&row_i=' + gene_i + "&dataset_annot_id="  + $("#opt_dataset_" + i).val() + "&gene_selected=" + gene_str + "&data_type=" + data_type + "&num_annot_id=" + num_annot_id + "&header_i=" + header_i + "&cat_annot_id=" + cat_annot_id + "&cat_annot_id2=" + cat_annot_id2 + "&sel_cat2=" + $("#opt_sel_cat2").val() + "&geneset_annot_id=" +  $("#opt_geneset_annot_id_" + i).val() + "&geneset_annot_cat=" + $("#opt_geneset_annot_cat_" + i).val() + "&geneset_id=" + $("#opt_geneset_id_" + i).val() + "&gen\
+eset_item_id=" + $("#opt_geneset_item_id_" + i).val() + "&autocomplete_geneset_item=" + $("#autocomplete_geneset_item_" + i).val(),
+            dataType: "json",
+            cache: true,
+            beforeSend: function(){
+		$("#refresh_plot-btn").prop("disabled", true)
+		$("#refresh_plot-btn").html("<i class='fa fa-pulse fa-sync'></i> <i>Refreshing...</i>")
+		$("#info-gene_" + i).html("<i class='fa fa-spinner fa-pulse'></i>")
+            },
+            success: function(data){
+		//console.log("DATA:")
+		//console.log(data)
+		//console.log("upd sliders")
+		if (coloring_type >0 && coloring_type < 3){
+		    console.log("upd sliders")
+		    upd_sliders(data.rows)
+		}
+		if (coloring_type == 0){
+		    console.log("test recolor")
+		    addGeneExpression(plotly_graph, 'name', data, user_id, editable, admin)
+		}else{
+		    var warnings = ''
+		    console.log(data.rows[i])
+		    if (data.rows.length > 0){
+			addGeneExpression(plotly_graph, 'name', data, user_id, editable, admin)
+			if (coloring_type == 3){
+			    refresh_sel_cat_view()
+			}
+			if (data.warnings){
+			    warnings = "<br/><span class='badge badge-warning'>" + data.warnings + "</span>"
+			}
+			$("#info-gene_" + i).html("<span class='badge badge-success'>found</span>" + warnings)
+			// $("#displayed-gene_" + i).html("Displayed gene: " + gene_str)
+		    }else{
+			addGeneExpression(plotly_graph, 'name', data, user_id, editable, admin)
+			$("#info-gene_" + i).html("<span class='badge badge-danger'>missing in the specified dataset</span>")
+		    }
+		    
+		    // $("#searched-gene_" + i).delay(2000).fadeOut( 1000, function() {
+		    //  $(this).addClass("hidden")
+		    // })
+		}
+		
+		$("#refresh_plot-btn").prop("disabled", false)
+		$("#refresh_plot-btn").html("<i id='refresh_plot_icon' class='fa fa-sync'></i> Refresh")
+		
+            }
+	})
+    }else{
+	console.log("test")
+    }
+}
+
+
 /*
 function upd_sliders(rows){
     for (var i=0; i<rows.length; i++){

@@ -25,6 +25,7 @@ services:
     volumes:
       - 'postgres:/var/lib/postgresql/data'
       - 'dumps:/dumps'
+      - '/data/asap2/:/data/asap2'
     command: -p 5434
     env_file:
       - '.env'

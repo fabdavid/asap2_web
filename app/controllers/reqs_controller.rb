@@ -301,6 +301,7 @@ class ReqsController < ApplicationController
     @req.project_id = @project.id
     
     @h_env = JSON.parse(@project.version.env_json)
+    logger.debug("H_ENV: " + @h_env.to_json)
     @std_method = @req.std_method
     @step = @req.step
  

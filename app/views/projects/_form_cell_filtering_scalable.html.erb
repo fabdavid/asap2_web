@@ -1,52 +1,68 @@
-<h5>Select groups of cells to be <b>filtered out</b></h5>
-<div class='alert alert-warning'>Interactive cell filtering loads faster with Chrome with a huge number of cells.</div>
+<!--<div class='alert alert-warning'>Interactive cell filtering loads faster with Chrome with a huge number of cells.</div> -->
+
+<%# @h_cmd.to_json if admin? %>
 
 <div class ='card-deck'>
   <div class='card'>
     <div class='card-body'>
+      
+      <h4 class='card-title'>Filter with QC parameters</h4>
+      <div class='alert alert-success'><b>Keep</b> cells that are matching <b>all</b> the following conditions:</div>
       <table>
-	<% @list_p.each do |e| %> <%# select{|e| @h_data[e[:name]]}.each do |e| %>
-	<tr id='param_row_<%= e[:name] %>'><td>Filter out cells that have <%= (e[:type] == :greater) ? 'MORE' : 'LESS' %> than</td><td><input id="<%= e[:attr_name] %>_value" name="attrs[<%= e[:attr_name] %>]" value=<%= e[:threshold] %>  type="text" style="width:60px" class='filter_input'/><%= hidden_field_tag e[:attr_name] + "_saved", e[:threshold] %> <%= e[:label] %></td><td><button id='disable-btn-<%= e[:attr_name] %>' class='btn btn-sm btn-outline-danger disable-btn' type='button'>Disable</button></td></tr>
+	
+	<% @list_p.each_index do |i| %> <%# select{|e| @h_data[e[:name]]}.each do |e| %>
+	<% e = @list_p[i] %>
+	<tr id='param_row_<%= e[:name] %>'><td><%= raw (i> 0) ? "<b>AND</b>" : "" %></td><td style='text-align:right'><%= (e[:type] == :greater) ? 'LESS' : 'MORE' %> than</td><td><input id="<%= e[:name] %>_value" name="attrs[<%= e[:attr_name] %>]" value=<%= e[:threshold] %>  type="text" style="width:60px" class='filter_input'/><%= hidden_field_tag e[:attr_name] + "_saved", e[:threshold] %> <%= e[:label] %></td><td><button id='disable-btn-<%= e[:name] %>' class='btn btn-sm btn-outline-danger disable-btn' type='button'>Disable</button></td></tr>
 	<% end %>
       </table>
     </div>
-  
-    
+
     <input id='attrs_manually_discarded_cols' type="hidden" name="attrs[manually_discarded_cols]"/>
     <input id='attrs_nber_manually_discarded_cols' type="hidden" name="attrs[nber_manually_discarded_cols]"/>
     <input id='attrs_discarded_cols' type="hidden" name="attrs[discarded_cols]"/>
-    <% parsing_step = Step.where(:docker_image_id => @asap_docker_image.id, :name => 'parsing').first %>
-    <% parsing_run = Run.where(:project_id => @project.id, :step_id => parsing_step.id).first %>
-    <% h_run = {:run_id => parsing_run.id, :output_attr_name => "output_matrix",:output_filename => "parsing/output.loom", :output_dataset => "/matrix"} %>
+    <%# parsing_step = Step.where(:docker_image_id => @asap_docker_image.id, :name => 'parsing').first %>
+    <%# parsing_run = Run.where(:project_id => @project.id, :step_id => parsing_step.id).first %>
+    <% h_run = {:run_id => @parsing_run.id, :output_attr_name => "output_matrix",:output_filename => "parsing/output.loom", :output_dataset => "/matrix"} %>
     <%= hidden_field_tag 'attrs[input_matrix]', "[#{h_run.to_json}]" %>
-    <!-- <button id='apply_filter_btn' class='btn btn-primary' type='button'>Apply</button> -->
+    <%= hidden_field_tag 'attrs[manual_selection]', '', {:placeholder => '', :class => 'form-control'} %>
+    <%= hidden_field_tag 'attrs[discarded_metadata_json]', '{}' %>
+    <% if @annots.size > 0 %>
+     <h4 class='card-title'>Filter using metadata</h4>
+     <div class='alert alert-success'><b>Keep</b> cells that belong to selected metadata categories:</div>
+     <% l = ([@parsing_run] + @cell_filtering_runs + @gene_filtering_runs).map{|r| [display_run(r), r.id]} %>
+     <%= select_tag 'store_run_id', options_for_select(l, session[:cell_filtering_store_run_id]), {:class => 'form-control mr-4 mb-2'} %>
+     <% l = @annots.map{|a| [a.name + " ", a.id]}.sort %>
+     <% l.unshift ["Select an annotation", nil] %>
+     <%= select_tag 'annot_id', options_for_select(l, nil),  {:class => 'form-control mr-4 mb-2'} %>     
+     <div id='annot_categories'></div>
+   <!--  <div class='float-right'>
+       <button id='discard_from_cat_btn' type='button' class='btn btn-primary btn-sm hidden'>Keep cells from selected categories</button>
+     </div>
+     <div class='clear'></div>
+     -->
+
+    <% end %>
+
+    <!--  <button id='apply_filter_btn' class='btn btn-primary' type='button'>Apply</button> -->
+
+
   </div>
   <div class='card'>
-    <div id='cell_filtering_plotly_plot'>
+    <div class='card-body'>
+      <h4 class='card-title'>QC plots</h4>
+      
+      <% l = [["Ordered depth by cell", 1], ["Detected genes", 2], ["Depth", 3], ["Percent protein-coding genes", 4], ["Percent mitochondrial genes", 5],["Percent ribosomal genes", 6], ["Depth vs. Percent mitochondrial genes", 7], ["Depth vs Detected genes", 8]] %>
+      <%= select_tag "sel_plot", options_for_select(l), {:class => 'form-control'} %>
+      <div id='cell_filtering_plotly_plot'>
+      </div>
+      <div id="customLegend">
+	<div class="legend-item"><div class="legend-dot" style="background-color: red;"></div>Kept</div>
+	<div class="legend-item"><div class="legend-dot" style="background-color: #CCC;"></div>Discarded</div>
+      </div>
     </div>
   </div>
 </div>
 <%= javascript_tag do %>
-
-$(".disable-btn").click(function(){
- var name = this.id.split("-")[2]
- if ($(this).hasClass("btn-outline-danger")){
-  $(this).addClass("btn-danger")
-  $(this).removeClass("btn-outline-danger")
-  $(this).html("Disabled")
-  $("#" + name + "_saved").val($("#" + name + "_value").val())
-  $("#" + name + "_value").val('')
-  console.log("disable " + name)
-  $("#" + name + "_value").prop('disabled', true)
- }else{
-  $(this).addClass("btn-outline-danger")
-  $(this).removeClass("btn-danger")
-  $(this).html("Disable")
-  $("#" + name + "_value").val($("#" + name + "_saved").val())
-  $("#" + name + "_value").prop('disabled', false)
- }
- changeCutoff(false)
-})
 
 var t0 = performance.now();
 var h_discarded = {}
@@ -76,8 +92,8 @@ for(var i=0; i< all_p.length ; i++){
 
 //var nber_layers = <%= raw @h_data.keys.select{|k| @h_data[k]}.size %>
 
-//var list_p = <%= raw @h_data.keys.select{|k| @h_data[k]}.to_json %> 
-var h_float = <%= raw @h_float.to_json %> 
+//var list_p = <%= raw @h_data.keys.select{|k| @h_data[k]}.to_json %>
+var h_float = <%= raw @h_float.to_json %>
 
 // uncompress
 
@@ -88,7 +104,7 @@ for (var i=0; i < list_p.length; i++){
  k = list_p[i]
  // if (navigator.userAgent.match(/Chrome/)){
  // if (1==0){
- //  if (1==1){  
+ //  if (1==1){
  // ALWAYS APPLY ZLIB COMPRESSION
      h_data[k].values = convert_short_endians_to_array(uncompress(h_data[k].values), h_float[k])
  //  }else{
@@ -96,15 +112,328 @@ for (var i=0; i < list_p.length; i++){
    /*  tmp = actual = new Uint8Array(nber_cells)
    base64Decode(h_data[k], tmp) */
  // THIS IS THE SIMPLE PACKING VERSION (just below)
- //   h_data[k].values = convert_short_endians_to_array(Base64.decode(h_data[k].values), h_float[k]) 
+ //   h_data[k].values = convert_short_endians_to_array(Base64.decode(h_data[k].values), h_float[k])
  //  }
  // }
 }
 
+
+
+function plot(plot_i){
+console.log("i: " + plot_i)
+var traces = []
+var layout = {}
+
+if (plot_i==1){
+//var kept_idx = [...Array(vals.length).keys()].filter((i, e) => {h_discarded[i]})
+var vals = h_data.depth.values //.map(a => parseInt(a))
+//var sorted_vals = vals.sort(function(a,b){return b-a}) 
+var sorted_indices = [...vals.keys()].sort((a, b) => vals[b] - vals[a])
+var color_vector = sorted_indices.map((i, e) => {return (h_discarded[e]) ? '#CCCCCC' : 'red'})
+var trace = {
+  "x" : [...Array(vals.length).keys()],
+  "y" : sorted_indices.map(x => {return vals[x]}),
+ marker : { color : color_vector
+},
+legendgroup: 'group',
+ mode: 'lines+markers',
+  type: 'scattergl'
+}
+
+traces = [trace]
+
+console.log(trace)
+
+layout = {
+ title:'Ordered depth by cell',
+  xaxis: {title : 'Cell barcodes', type : 'log'},
+  yaxis: {title : 'UMI counts', type : 'log'},
+  hovermode: "closest"
+}
+
+}
+
+
+if(plot_i==2){
+traces = [{
+  "y" : h_data.detected_genes.values,
+  "name" : 'All',
+ marker: { color : 'blue'},
+//  mode: 'lines+markers',
+  type: 'violin'
+},{
+  "y" : h_data.detected_genes.values.filter((e, i) => {return !h_discarded[i]}),
+  "name" : 'Kept',
+ marker: { color : 'red'},
+//  mode: 'lines+markers',
+  type: 'violin'
+},{
+  "y" : h_data.detected_genes.values.filter((e, i) => {return h_discarded[i]}),
+  "name" : 'Discarded',
+ marker: { color : '#CCCCCC'},
+//  mode: 'lines+markers',
+  type: 'violin'
+}
+]
+
+layout = {
+ title:'Detected genes',
+ yaxis: {
+    zeroline: false
+  },
+ hovermode: "closest"
+}
+}
+
+if(plot_i==3){
+
+var trace = {
+  "y" : h_data.depth.values,
+  "name" : 'All',
+ marker: { color : 'blue'},
+  mode: 'lines+markers',
+  type: 'violin'
+}
+var trace2 = {
+  "y" : h_data.depth.values.filter((e, i) => {return !h_discarded[i]}),
+  "name" : 'Kept',
+  marker: { color : 'red'},
+  mode: 'lines+markers',
+  type: 'violin'
+}
+var trace3 = {
+  "y" : h_data.depth.values.filter((e, i) => {return h_discarded[i]}),
+  "name" : 'Discarded',
+  marker: { color : '#CCCCCC'},
+  mode: 'lines+markers',
+  type: 'violin'
+}
+
+traces = [trace, trace2, trace3]
+layout = {
+ title:'Depth',
+ yaxis: {
+    zeroline: false
+  },
+ hovermode: "closest"
+}
+
+}
+
+if(plot_i==4){
+var trace = {
+  "y" :  h_data.protein_coding.values,
+  "name" : 'All',
+  marker: { color : 'blue'},
+  mode: 'lines+markers',
+  type: 'violin'
+}
+
+var trace2 = {
+  "y" :  h_data.protein_coding.values.filter((e, i) => {return !h_discarded[i]}),
+  "name" : 'Kept',
+  marker: { color : 'red'},
+  mode: 'lines+markers',
+  type: 'violin'
+}
+var trace3 = {
+  "y" : h_data.protein_coding.values.filter((e, i) => {return h_discarded[i]}),
+  "name" : 'Discarded',
+  marker: { color : '#CCCCCC'},
+  mode: 'lines+markers',
+  type: 'violin'
+}
+
+traces = [trace, trace2, trace3]
+layout = {
+ title:'Percent protein-coding genes',
+ yaxis: {
+    zeroline: false
+  },
+ hovermode: "closest"
+}
+
+}
+
+
+if(plot_i==5){
+var trace = {
+  "y" :  h_data.mito.values,
+  "name" : 'All',
+  marker: { color : 'blue'},
+  mode: 'lines+markers',
+  type: 'violin'
+}
+
+var trace2 = {
+  "y" :  h_data.mito.values.filter((e, i) => {return !h_discarded[i]}),
+  "name" : 'Kept',
+  marker: { color : 'red'},
+  mode: 'lines+markers',
+  type: 'violin'
+}
+var trace3 = {
+  "y" : h_data.mito.values.filter((e, i) => {return h_discarded[i]}),
+  "name" : 'Discarded',
+  marker: { color : '#CCCCCC'},
+  mode: 'lines+markers',
+  type: 'violin'
+}
+
+traces = [trace, trace2, trace3]
+layout = {
+ title:'Percent mitochondrial genes',
+ yaxis: {
+    zeroline: false
+  },
+ hovermode: "closest"
+}
+
+}
+
+if(plot_i==6){
+var trace = {
+  "y" :  h_data.ribo.values,
+  "name" : 'All',
+  marker: { color : 'blue'},
+  mode: 'lines+markers',
+  type: 'violin'
+}
+
+var trace2 = {
+  "y" :  h_data.ribo.values.filter((e, i) => {return !h_discarded[i]}),
+  "name" : 'Kept',
+  marker: { color : 'red'},
+  mode: 'lines+markers',
+  type: 'violin'
+}
+var trace3 = {
+  "y" : h_data.ribo.values.filter((e, i) => {return h_discarded[i]}),
+  "name" : 'Discarded',
+  marker: { color : '#CCCCCC'},
+  mode: 'lines+markers',
+  type: 'violin'
+}
+
+traces = [trace, trace2, trace3]
+layout = {
+ title:'Percent ribosomal genes',
+ yaxis: {
+    zeroline: false
+  },
+ hovermode: "closest"
+}
+
+}
+
+
+if (plot_i==7){
+
+var trace = {
+  "x" : h_data.depth.values.filter((e, i) => {return !h_discarded[i]}),
+  "y" : h_data.mito.values.filter((e, i) => {return !h_discarded[i]}),
+  "name" : 'Kept',
+  marker: { color : 'red'},
+  mode: 'markers',
+  type: 'scattergl'
+}
+var trace2 = {
+  "x" : h_data.depth.values.filter((e, i) => {return h_discarded[i]}),
+  "y" : h_data.mito.values.filter((e, i) => {return h_discarded[i]}),
+  "name" : 'Discarded',
+  marker: { color : '#CCCCCC'},
+  mode: 'markers',
+  type: 'scattergl'
+}
+
+
+traces = [trace, trace2]
+
+console.log(trace)
+
+layout = {
+ title:'Depth vs. Percent mitochondrial genes',
+  xaxis: {title : 'Depth'},
+  yaxis: {title : 'Percent mitochondrial genes'},
+  hovermode: "closest"
+}
+}
+
+if (plot_i==8){
+
+var trace = {
+  "x" : h_data.depth.values.filter((e, i) => {return !h_discarded[i]}),
+  "y" : h_data.detected_genes.values.filter((e, i) => {return !h_discarded[i]}),
+ "name" : 'Kept',
+  marker: { color : 'red'},
+  mode: 'markers',
+  type: 'scattergl'
+}
+var trace2 = {
+  "x" : h_data.depth.values.filter((e, i) => {return h_discarded[i]}),
+  "y" : h_data.detected_genes.values.filter((e, i) => {return h_discarded[i]}),
+  "name" : 'Discarded',
+  marker: { color : '#CCCCCC'},
+  mode: 'markers',
+  type: 'scattergl'
+}
+
+
+traces = [trace, trace2]
+
+console.log(trace)
+
+layout = {
+ title:'Depth vs. Detected genes',
+  xaxis: {title : 'Depth'},
+  yaxis: {title : 'Detected genes'},
+  hovermode: "closest"
+}
+}
+
+
+
+console.log("TRACES")
+console.log(traces)
+Plotly.newPlot("cell_filtering_plotly_plot", traces, layout, {})
+
+}
+
+
+$("#sel_plot").change(function(){
+ var i = $(this).val();
+  plot(i);
+})
+
+
+
+$(".disable-btn").click(function(){
+ var name = this.id.split("-")[2]
+ if ($(this).hasClass("btn-outline-danger")){
+  $(this).addClass("btn-danger")
+  $(this).removeClass("btn-outline-danger")
+  $(this).html("Disabled")
+  $("#" + name + "_saved").val($("#" + name + "_value").val())
+  $("#" + name + "_value").val('')
+  console.log("disable " + name)
+  $("#" + name + "_value").prop('disabled', true)
+ }else{
+  $(this).addClass("btn-outline-danger")
+  $(this).removeClass("btn-danger")
+  $(this).html("Disable")
+  $("#" + name + "_value").val($("#" + name + "_saved").val())
+  $("#" + name + "_value").prop('disabled', false)
+ }
+ changeCutoff(false)
+})
+
+
+
 var h_annots = <%= raw @h_annots.to_json %>
 
 var h_p = <%= raw @h_p.to_json %>
-
+console.log("H_P")
+console.log(h_p)
 var list_types = Object.keys(h_p)
 //console.log(h_p)
 var list_p_greater = <%= raw @h_p[:greater].keys.to_json %> // Object.keys(h_p.greater)
@@ -128,7 +457,7 @@ function changeCutoff(update_manually_discarded){
 */
    $('#list_of_cats input[type="checkbox"]').each(function(){
     // If checkbox is checked
-    if(this.checked){
+    if(this.checked == false){
      var t = this.id.split("_")
      t.shift()
      var cat = t.join("_")
@@ -150,22 +479,29 @@ function changeCutoff(update_manually_discarded){
 
  // do filtering from thresholds
 
+console.log(list_p_lower)
+console.log(list_p_greater)
+
 <% @h_p.each_key do |type| %>
  // check that the parameter is not disabled
   //console.log("<%= type %>")
   for (var i=0; i<list_p_<%= type %>.length; i++){
    if ($("#disable-btn-" + list_p_<%= type %>[i]).hasClass('btn-outline-danger')){
+    console.log(list_p_<%= type %>[i] + " is enabled")
     if (h_data[list_p_<%= type %>[i]]){
      var threshold = $("#" + list_p_<%= type %>[i] + "_value").val()
-     //console.log("l -> " + list_p_<%= type %>[i])
+     console.log("l -> " + list_p_<%= type %>[i])
+     console.log(list_p_<%= type %>[i])
      l = h_data[list_p_<%= type %>[i]].values
-     //console.log(l)
+     console.log(l)
      for (var j=0; j<l.length; j++){
-      if (l[j] <%= raw (type == :lower) ? "<" : ">" %> threshold){ // h_p.<%= type %>[list_p_<%= type %>[i]].threshold){
+      if (l[j] <%= raw (type == :lower) ? "<=" : ">=" %> threshold){ // h_p.<%= type %>[list_p_<%= type %>[i]].threshold){
         h_discarded[j]= 1 //(!h_discarded[j]) ? 1 : h_discarded[j]+1
       }
      }
     }
+   }else{
+//    console.log("type:<%= type %> ->" + i + " is disabled")
    }
  }
 <% end %>
@@ -190,8 +526,11 @@ list_discarded =  Object.keys(h_discarded)
 //}
         $("#attrs_nber_manually_discarded_cols").val(list_manually_discarded.length)
    filtered.innerHTML = "<span class=''>Discarded : " + list_discarded.length + "</span>";
-        manually_filtered.innerHTML = "<span class=''>Manually discarded : " + list_manually_discarded.length + "</span>";
+//        manually_filtered.innerHTML = "<span class=''>Manually discarded : " + list_manually_discarded.length + "</span>";
    result.innerHTML = "<span class=''>Kept : " + (nber_cells - list_discarded.length) + "</span>"; 
+
+// update plot
+plot($("#sel_plot").val())
 
 }
 
@@ -210,11 +549,36 @@ $(".filter_input").keyup(function(){
 
 changeCutoff(false)
 
+$("#annot_id").change(function(){
+ if ($(this).val()){
+  refresh("annot_categories", "<%= annots_path() %>/" + $(this).val() + "/get_cats", {loading:'fa-2x'})
+ }else{
+  // hide button for cell filtering
+  $("#discard_from_cat_btn").addClass("hidden")
+  $("#annot_categories").empty()
+ }
+})
+
+$("#cancel_manually_discarded").click(function(){
+ resetFilters()
+})
+
+$("#cancel_discarded").click(function(){
+ resetParams()
+})
+
+$("#attrs_discarded_cols").change(function(){
+ if ($(this).val()){
+  $("#cell_filtering_button").removeAttr('disabled')
+ }else{
+  $("#cell_filtering_button").attr("disabled", "disabled")
+ }
+})
+
 $("#discard_from_cat_btn").click(function(){
  changeCutoff(true)
  //$("#annot_id").val('')
 })
-
 
 //$("#discard_from_cat_btn").css({"display" : "none"});
 $("#annot_categories").on("click", "#select-all-cats", function(){
@@ -260,29 +624,11 @@ function sendValues(){
       });
    }
 
-var vals = h_data.depth.values.map(a => parseInt(a))
-var trace = {
-  "x" : [...Array(vals.length).keys()],
-  "y" : vals.sort(function(a,b){return b-a}),
- mode: 'lines+markers',
-  type: 'scattergl'
-}
-
-var traces = [trace]
-
-console.log(trace)
-
-var layout = {
- title:'Ordered depth by cell',
-  xaxis: {title : 'Cell barcodes', type : 'log'},
-  yaxis: {title : 'UMI counts', type : 'log'},
-  hovermode: "closest"  
-}
-
-Plotly.newPlot("cell_filtering_plotly_plot", traces, layout, {})
-
 
 var t1 = performance.now();
 console.log(t1-t0 + "ms")
+
+plot(1);
+
 
 <% end %>

@@ -1,9 +1,13 @@
 class ApplicationController < ActionController::Base
   protect_from_forgery with: :exception, prepend: true
 
-  helper_method :admin?, :is_admin?, :uab?, :is_uab?, :authorized?, :read_only?, :readable?, :analyzable?, :analyzable_item?, :clonable?, :downloadable?, :editable?, :exportable?, :exportable_item?, :owner?, :owner_or_admin?
+  helper_method :admin?, :admin_view?, :is_admin?, :uab?, :is_uab?, :authorized?, :read_only?, :readable?, :analyzable?, :analyzable_item?, :clonable?, :downloadable?, :editable?, :exportable?, :exportable_item?, :owner?, :owner_or_admin?
   before_action :init_session, :init_var
   before_action :configure_permitted_parameters, if: :devise_controller?
+
+  def admin_view?
+    (current_user and APP_CONFIG[:admin_view_emails].include?(current_user.email)) ? true : false
+  end
   
   def admin?
     (current_user and APP_CONFIG[:admin_emails].include?(current_user.email)) ? true : false

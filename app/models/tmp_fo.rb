@@ -1,0 +1,2 @@
+class TmpFo < ApplicationRecord
+end

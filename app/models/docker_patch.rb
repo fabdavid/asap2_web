@@ -1,0 +1,2 @@
+class DockerPatch < ApplicationRecord
+end

@@ -339,6 +339,15 @@ primary key (id)
 
 create index pmid_articles on articles (pmid);
 
+create table project_types(
+id serial,
+name text,
+tag text,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
 create table projects(
 id serial,
 name text,
@@ -397,6 +406,7 @@ updated_at timestamp,
 public_at timestamp,
 frozen_at timestamp,
 project_cell_set_id int references project_cell_sets,
+project_type_id int references project_types,
 primary key (id)
 );
 

@@ -3,6 +3,7 @@ class Project < ApplicationRecord
   #  before_save :broadcast_new_status, if: :will_save_change_to_status_id?
   belongs_to :user
   belongs_to :status
+  belongs_to :project_type, :optional => true
   belongs_to :step
   belongs_to :version
   has_many :fus

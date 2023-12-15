@@ -46,7 +46,7 @@
   </div>
   <div id="left_menu" class="nav-side-menu">
     <%# h_steps = {}; Step.where(:version_id => @project.version_id, :hidden => false).order("rank").all.select{|s| (s.admin == false or admin?)}.map{|s| h_steps[s.group_name] ||=[]; h_steps[s.group_name].push s} %>
-    <% h_steps = {}; Step.where(:docker_image_id => @asap_docker_image.id, :hidden => false).order("rank").all.select{|s| (s.admin == false or admin?)}.map{|s| h_steps[s.group_name] ||=[]; h_steps[s.group_name].push s} %>
+    <% h_steps = {}; Step.where(:docker_image_id => @asap_docker_image.id, :hidden => false).order("rank").all.select{|s| (s.admin == false or admin?) and (!@h_attrs_by_step[s.id]['project_types'] or @h_attrs_by_step[s.id]['project_types'].include?((@project_type) ? @project_type.tag : nil))}.map{|s| h_steps[s.group_name] ||=[]; h_steps[s.group_name].push s} %>
     <% h_steps.each_key do |group_name| %>
     <% group_name_tag = group_name.downcase.gsub(" ", '-') %>
     <div id="menu_<%= group_name_tag %>" class='menu_item pointer' data-toggle="collapse<%# (group_name_tag == 'report') ? ' active' : '' %>" data-target="#<%= group_name_tag %>_nav" aria-expanded="true" aria-controls="<%= group_name_tag %>_nav">

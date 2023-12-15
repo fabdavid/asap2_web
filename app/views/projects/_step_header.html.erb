@@ -68,7 +68,10 @@ LOG <%= @log %> -->
        <% end %>
        <% if analyzable?(@project) %>
 <%# session[:sandbox] == @project.key %>    
-    <button class="btn btn-primary btn-sm <%= @h_attrs['new_analysis_btn_class'] || 'new_job_popup' %> mr-1" <%= (@project.runs.select{|r| r.status_id == 3}.size == 0) ? "disabled='disabled'" : "" %>><i class='fa fa-plus'></i> <span>New</span></button>
+    <button class="btn btn-primary btn-sm <%= @h_attrs['new_analysis_btn_class'] || 'new_job_popup' %> mr-1" 
+<%# (@project.runs.select{|r| r.status_id == 3}.size == 0 or (@step.multiple_runs == false and @project.runs.select{|r| r.status_id < 4}.size == 1)) ? "disabled='disabled'" : "" %>
+<%= (@step.multiple_runs == false and @project.runs.select{|r| r.status_id < 4}.size > 0) ? "disabled='disabled'" : "" %>
+><i class='fa fa-plus'></i> <span>New</span></button>
         <% if @runs and @runs.size > 0 %>
          <button class="btn btn-danger btn-sm delete_all_btn mr-1"><i class='fa fa-minus'></i> <span class=''>Delete all</span></button>
         <% end %>

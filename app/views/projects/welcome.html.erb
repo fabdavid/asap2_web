@@ -1,3 +1,4 @@
+
 <!-- <div class="container"> -->
 <div class="row">
   <div class="col-md-3">
@@ -8,6 +9,7 @@
 	<%= image_tag "ASAP_avecTagline_Colors.svg", {} %>
 	<p class="lead mt-5">A collaborative portal to analyze single-cell transcriptomics data.</p>
 	<!--	<button type='button' class='btn btn-secondary'>List of <%= @nber_public_projects %> public projects</button>-->
+
 	<% if current_user %>
 	<button type='button' class='btn btn-success'>New project</button>
 	<% else %>
@@ -75,7 +77,9 @@
     <div class='card' style='height:calc(100% - 2.2em)'>
       <div class='card-body'>
 	<h3>News</h3>
-	<div class='alert alert-info'><i class='fa fa-bullhorn'></i> <%= link_to "Release 6", version_path(6) %> is out!</div>
+<!--	<div class='alert alert-info'><i class='fa fa-bullhorn'></i> <%= link_to "Release 6", version_path(6) %> is out!</div> -->
+ <div class='alert alert-info'><i class='fa fa-bullhorn'></i> <%= link_to "Release 7", version_path(7) %> is out!</div>
+<!-- <p><i class='fa fa-bolt'></i> <b>New ASAP v7!</b> In this version a new Seurat pipeline is setup specifically for single-cell transcriptomics.</p>-->
       </div>
     </div>
   </div>

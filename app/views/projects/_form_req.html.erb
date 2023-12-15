@@ -29,7 +29,9 @@
 <div class='alert alert-secondary'>
 <div class='form-group row'>
   <%= label_tag 'std_method_id', "Method", {:class => 'col-sm-2 col-form-label', 'data-toggle' => 'tooltip', 'title' => ""} %>
-  <% l = @std_methods.map{|e| [e.label, e.id]}.sort %>
+  <%# @h_obj_attrs_by_std_method[60]["project_types"].to_json if admin? %>
+  <%# @std_methods.to_json if admin? %>
+  <% l = @std_methods.select{|s| !@h_obj_attrs_by_std_method[s.id]["project_types"] || @h_obj_attrs_by_std_method[s.id]["project_types"].include?((@project_type) ? @project_type.tag : null)}.map{|e| [e.label, e.id]}.sort %>
   <%# l.unshift(["None", nil]) %>
   <div class='col-sm-10'>
     <%# @h_unavailable_methods.to_json %>

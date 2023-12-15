@@ -139,6 +139,7 @@ class FusController < ApplicationController
       @cmd = ''
       if params['organism']
         begin
+          logger.debug("CONVERT TO MTX")
           new_filepath = Basic.convert_mtx_to_h5 filepath, logger
           if new_filepath != filepath
             file_format = 'MEX'

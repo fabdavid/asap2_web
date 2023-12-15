@@ -10,6 +10,7 @@
 <button id='select_<%= attr_name %>_btn' type='button' class='btn btn-primary select_input_data-btn' <%= 'disabled' if @h_unavailable_inputs and @h_unavailable_inputs[attr_name]  %>>Select</button>
 
 <% if @h_unavailable_inputs and unavailable_attr = @h_unavailable_inputs[attr_name] and @h_unavailable_inputs[attr_name][:h_runs] and unavailable_attr[:valid_step_ids] %>
+<%# ida.to_json %>
  <div class='alert alert-danger mt-4' style='width:100%'>
    <p>  No existing dataset comply with these conditions:</p>
    <ul id='list_valid_types_<%= attr_name %>'></ul>
@@ -40,9 +41,19 @@
      </div>
    <% end %>
      
-  <% else %>
+   <% else %>
    <% if !attr['optional'] %> 
-    <span class='badge badge-danger'>Please select <%= (attr['req_data_structure'] and attr['req_data_structure'] == 'array' and attr['max_nber_items'] == 1) ? 'one' :  ((!attr['max_nber_items']) ? 'one or several' : "1 to #{attr['max_nber_item']}") %></span>
+   <%# min = (attr['min_nber_items'] == 1) ? 'one' : ((attr['min_nber_items']) ? attr['min_nber_items'].to_s : "0") %>
+   <% if attr['req_data_structure'] and attr['req_data_structure'] == 'array' %>
+   
+   <span class='badge badge-<%= (attr['min_nber_items'] and attr['min_nber_items'] > 0) ? 'danger' : 'info' %>'>
+     <%= (attr['min_nber_items'] and attr['min_nber_items'] > 0) ? 'Please' : 'You can' %>
+     select
+     <%= (attr['max_nber_items'] == attr['min_nber_items'] and attr['min_nber_items']) ? 
+	 attr['min_nber_items'].to_s : 
+	 ((!attr['max_nber_items']) ? "#{attr['min_nber_items']} or several" : "#{attr['min_nber_items']} to #{attr['max_nber_item']}") %>
+   </span>
+   <% end %>
    <% end %>
   <% end %>
 </div>

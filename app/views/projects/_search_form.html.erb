@@ -39,6 +39,7 @@
 
 <%= javascript_tag do  %>
 
+
 $("#upd_tag_btn").click(function(){
 var add_project_keys = []
 var del_project_keys = []
@@ -137,5 +138,33 @@ search([{name : 'auto', value : '1'}], {})
 
 window.setInterval(upd_search, 10000)
 //window.setInterval(function(){ $("#ontop_window").addClass("hidden")}, 5000)
+
+$("#search_results").on("click", ".clone-btn", function(){
+ if (confirm("Please confirm") == true){
+  console.log("cloning")
+  $("#form_container").html("<div style='vertical-align:center'><i class='fas fa-spinner fa-pulse fa-2x'></i> Please wait while project is being cloned...</div>")
+  $("#ontop_window_close").addClass("hidden")
+  $("#ontop_window").removeClass("hidden")
+ }
+})
+
+$("#search_results").on("click", ".public-clone-btn", function(){
+<% if !admin? or !admin_view? %>
+ if (window.confirm("Please confirm")){
+<% end %>
+  console.log("cloning")
+  var k = this.id.split("_")[1]
+  $("#form_container").html("<div style='vertical-align:center'><i class='fas fa-spinner fa-pulse fa-2x'></i> Please wait while project is being cloned...</div>")
+  $("#ontop_window_close").addClass("hidden")
+  $("#ontop_window").removeClass("hidden")
+  window.location = "<%= raw projects_path() %>/" + k + "/clone"
+<% if !admin? or !admin_view? %>
+ }
+<% end %>
+})
+
+console.log("hide message")
+$("#ontop_window").addClass("hidden")
+
 
 <% end %>

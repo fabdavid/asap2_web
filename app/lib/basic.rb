@@ -433,7 +433,17 @@ module Basic
         :h_project_sum_matrices => h_project_sum_matrices
       }
     end
+
+    def move_to_parent_dir source_dir
     
+      parent_directory = File.expand_path('..', source_dir)
+      # Use FileUtils.mv to move the contents
+      FileUtils.mv(Dir.glob(File.join(source_dir, '*')), parent_directory)
+      
+      # Now, you can remove the empty source directory if needed
+      FileUtils.rmdir(source_dir)
+      
+    end
 
     def convert_mtx_to_h5 file_path, logger
 
@@ -444,7 +454,8 @@ module Basic
       if File.exist? input_dir
         FileUtils.rm_r input_dir
       end
-      `cp #{file_path} #{tmp_file_path}` 
+      #`cp #{file_path} #{tmp_file_path}` 
+      FileUtils.cp file_path, tmp_file_path
       f_out = File.open("log/toto", 'a')
       logger.debug("CONVERT_TO_MTX")
       f_out.write('CONVERT_TO_MTX')
@@ -483,6 +494,7 @@ module Basic
         end
       end
       
+      ## try to untar
       if !File.exist? input_dir
         Dir.mkdir input_dir
         `cp #{tmp_file_path} #{input_dir + 'input_file.tar'}`
@@ -491,13 +503,30 @@ module Basic
         end
       end
       
+      
+
       dirs = Dir.entries(input_dir).select{|e| f = input_dir + e; File.directory?(f) and !e.match(/^\./)}
       files = Dir.entries(input_dir).select{|e| f = input_dir + e; !File.directory?(f) and !e.match(/^\./)}
       logger.debug("DIR: " + dirs.to_json)
-      logger.debug("FILES:" + files.to_json)
+      logger.debug("FILES2:" + files.to_json)
       mtx_files = files.select{|e| e.match(/\.mtx$/)} 
 
-      if files.size > 2 and mtx_files.size == 1 or files.include?("matrix.mtx")
+      ## deal with the case of 1 sub-folder (https://cf.10xgenomics.com/samples/cell/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz)
+      if files.size == 1 and dirs.size == 1
+        d = dirs.first
+        sub_dirs = Dir.entries(input_dir + d).select{|e| f = input_dir + d + e; File.directory?(f) and !e.match(/^\./)}
+        sub_files =  Dir.entries(input_dir + d).select{|e| f = input_dir + d + e; !File.directory?(f)}
+        logger.debug("DIR2: " + dirs.to_json)
+        if sub_files.size == 0 and sub_dirs.size == 1
+          logger.debug("DIR3: " + sub_dirs.to_json)
+#          FileUtils.mv input_dir + d + sub_dirs.first, input_dir + d 
+          move_to_parent_dir(input_dir + d + sub_dirs.first)
+        end
+      end
+      
+      logger.debug("files:" + files.size.to_s + ", mtx_files: " + mtx_files.to_json)
+
+      if files.size > 2 and (mtx_files.size == 1 or files.include?("matrix.mtx"))
         File.delete tmp_file_path
         File.delete input_dir + "input_file.tar" if File.exist?(input_dir + "input_file.tar")
         #           File.delete input_dir + "input_file.zip" if File.exist?(input_dir + "input_file.zip")                                                                                    
@@ -674,9 +703,9 @@ module Basic
         input_matrix_run = nil
         ['input_matrix', 'input_de'].each do |e|
           puts "H_RUN_ATTRS:" + h_run_attrs.to_json
-          if h_run_attrs[e] and h_run_attrs[e]["run_id"]
-            puts h_run_attrs[e].to_json
-            input_matrix_run = h_runs[h_run_attrs[e]["run_id"].to_i]
+          if h_run_attrs[e] and  input_matrix = ((h_run_attrs[e].is_a? Array) ? h_run_attrs[e][0] : h_run_attrs[e]) and input_matrix['run_id']
+            puts input_matrix.to_json
+            input_matrix_run = h_runs[input_matrix["run_id"].to_i]
           end
         end
 
@@ -686,10 +715,10 @@ module Basic
           #   h_attrs['nber_rows'] = p.nber_rows.to_i
           # else
           
-          input_matrix_run = nil
-          ['input_matrix', 'input_de'].each do |e|
-          input_matrix_run = h_runs[h_run_attrs[e]["run_id"].to_i] if h_run_attrs[e] and h_run_attrs[e]["run_id"]
-          end
+#          input_matrix_run = nil
+#          ['input_matrix', 'input_de'].each do |e|
+#          input_matrix_run = h_runs[h_run_attrs[e]["run_id"].to_i] if h_run_attrs[e] and h_run_attrs[e]["run_id"]
+#          end
                     
           if input_matrix_run
             run_dir = project_dir + h_steps[input_matrix_run.step_id].name
@@ -1142,6 +1171,9 @@ module Basic
       
       loom_path = project_dir + relative_filepath
       puts "META: " + meta.to_json
+      if meta['data_class_names'] and meta['data_class_names'].include?("discrete_mdata")
+        meta["type"]= 'DISCRETE'
+      end
       values_opt = (meta["type"] == 'DISCRETE') ? '' : '-no-values' 
       cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar #{values_opt} -T ExtractMetadata -loom #{loom_path} #{type_txt} -meta \"#{meta['name']}\""
       puts cmd
@@ -1268,7 +1300,7 @@ module Basic
           :nber_cats => (meta['categories']) ? meta['categories'].size : nil,
           :nber_rows => meta['nber_rows'],
           :nber_cols => meta['nber_cols'],
-          :data_class_ids => data_classes.uniq.map{|e| e.id}.sort.join(","),
+          :data_class_ids => data_classes.flatten.uniq.map{|e| e.id}.sort.join(","),
           :mem_size => meta['dataset_size'], # (meta['nber_cols'] and  meta['nber_rows']) ? 4 * meta['nber_cols'] * meta['nber_rows'] : nil,
           :label => nil,
           :imported => (meta['imported'] == true) ? true : false,
@@ -1282,7 +1314,7 @@ module Basic
         if !annot
           annot = Annot.new(h_annot)
           annot.save!
-        else
+        elsif !(h_annot[:data_class_ids] == '' and annot.data_class_ids != '')
           puts "H_ANNOT: " + h_annot.to_json
           annot.update_attributes(h_annot)
         end
@@ -1526,15 +1558,19 @@ module Basic
               linked_annot = nil
               if dt['annot_id']
                 linked_annot = h_annots[dt['annot_id']]
-                linked_run = linked_annot.run
+              #  linked_run = linked_annot.run
                 dt['output_filename'] = linked_annot.filepath
                 dt['output_dataset'] = linked_annot.name
                 dt['output_attr_name'] = (oa = linked_annot.output_attr) ? oa.name : nil
               end
               
               linked_run = Run.where(:id => dt['run_id']).first
-              
               h_parent_runs[linked_run.id] = linked_run
+              
+              lineage_runs = Run.where(:id => linked_run.lineage_run_ids.split(",")).all
+              norm_dataset = Annot.joins(:step).where(:run_id => lineage_runs, :steps => {:name => "normalization"}).first
+              h_var['norm_matrix_dataset'] = norm_dataset.name  if norm_dataset              
+
               h_linked_run_outputs = nil
               if !linked_run
                 h_res[:error] = 'Linked run was not found!'
@@ -1659,7 +1695,7 @@ module Basic
           logger.debug "H_ARG: " + h_arg.to_json
           std_method_attr = h_std_method_attrs[h_arg['param_key']]          
           value = (h_arg['value'] || h_var[h_arg['param_key']] || ((std_method_attr) && std_method_attr['default'])).dup
-          logger.debug "VALUE: " + value.to_json
+          logger.debug "VALUE: " + value.to_json + "[" + h_arg['value'].to_json + "]"
           value.to_s.gsub!(/(\#\{[\w_]+?\})/) { |var| h_var[var[2..-2]] }
           list_args.push({:param_key => h_arg['param_key'], :value => (value != nil and value != '') ? value : h_arg["null_value"]})
         end
@@ -1683,6 +1719,7 @@ module Basic
       #      logger.debug "H_VAR: " + h_var.to_json
       
       h_env_docker_image = h_p[:h_env]['docker_images'][docker_image]
+      logger.debug(h_env_docker_image.to_json)
       image_name = h_env_docker_image['name'] + ":" + h_env_docker_image['tag']
       h_cmd = {
         :host_name => host_name,
@@ -2401,11 +2438,11 @@ module Basic
       end
 
       loaded_annots = []
-      
+      puts h_output_files.to_json
       ## edit type of output_files in function of properties described in output.json
       h_output_files.each_key do |k|
         h_output_files[k].each_key do |k2|           
-      #    puts k + "-->" + k2
+          puts "BLA:" + k + "-->" + k2
           t = k2.split(":")
       #    puts "RELATIVE_PATH: #{t[0]}"
           relative_filepath = t[0]
@@ -2413,7 +2450,7 @@ module Basic
           fo = create_upd_fo project.id, relative_filepath
       #    puts "rel_path: " + relative_filepath.to_json
       #    puts "types: " + h_output_files[k][k2]["types"].to_json
-          if h_output_files[k][k2]["types"].include?("dataset")
+          if h_output_files[k][k2]["types"].flatten.include?("dataset")
             #                h_output_files[k][k2]["types"].push((h_output_json and h_output_json['is_count_table'].to_i == 1) ? "int_matrix" : "num_matrix")               
             #   t = k2.split(":")
             #   relative_filepath = t[0]
@@ -2424,7 +2461,7 @@ module Basic
             dataset_name = h_output_files[k][k2]["dataset"]
           #   puts "DATASET name: #{dataset_name.to_json}"
             if dataset_name
-         #     puts "DATASET name: #{dataset_name}"
+              puts "DATASET name: #{dataset_name}"
               if dataset_name == '/matrix' or dataset_name.match(/^\/layers\//)
                 h_output_files[k][k2]["types"].push((h_results and h_results['is_count_table'].to_i == 1) ? "int_matrix" : "num_matrix")
                 h_output_files[k][k2]["nber_rows"] = h_results['nber_rows']

@@ -3,10 +3,12 @@
 
 <%= render :partial => 'filter_runs' %>
 
-<% if @all_run_ids.size > 0 %>
+<% if @all_run_ids and @all_run_ids.size > 0 %>
 
 <div class='alert alert-info'>
+  <%# if @runs %>
   <%= @runs.size %> run<%= (@runs.size > 1) ? 's' : '' %> found out of <%= @all_run_ids.size %>.
+  <%# end %>
 </div>
 
 <% end %>
@@ -91,7 +93,12 @@ $(".show_link2").mouseout(function(){
  <div class="container-fluid">
    <div id='card_new_analysis' class='card text-md-center col-md-4 centered-card'>
      <div class='card-body'>
-       <button id='new_job_main_btn' type='button' class='btn btn-primary btn-lg centered-card <%= @h_attrs['new_analysis_btn_class'] || 'new_job_popup' %>' <%= (@project.runs.select{|r| r.status_id == 3}.size == 0) ? "disabled='disabled'" : "" %>><i class='fa fa-plus'></i> New <%= @step.label.uncapitalize %></button>
+       <%# if @step.multiple_runs == true or @all_runs.size > 0 %>
+       <button id='new_job_main_btn' type='button' class='btn btn-primary btn-lg centered-card <%= @h_attrs['new_analysis_btn_class'] || 'new_job_popup' %>' 
+<%# (@project.runs.select{|r| r.status_id == 3}.size == 0) ? "disabled='disabled'" : "" %>
+<%= (@project.runs.select{|r| r.status_id == 3}.size == 0 or (@project.runs.select{|r| r.step_id == @step.id}.size > 0 and @step.multiple_runs == false)) ? "disabled='disabled'" : "" %>
+><i class='fa fa-plus'></i> New <%= (@step.label[1].match(/[A-Z]/)) ? @step.label : @step.label.uncapitalize %></button>
+       <%# end %>
      </div>
    </div>
  </div>

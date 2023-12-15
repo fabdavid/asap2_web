@@ -200,5 +200,22 @@ $("#opt_delimiter").change(function(){
 
  upd_input_type()
 
+      var input = document.getElementById('opt_content');
+
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Tab') {
+          e.preventDefault(); // Prevent the default behavior (moving focus)
+          
+          // Insert a tab character at the current caret position
+          var start = this.selectionStart;
+          var end = this.selectionEnd;
+          var value = this.value;
+
+          this.value = value.substring(0, start) + '\t' + value.substring(end);
+          
+          // Move the caret to the right of the inserted tab
+          this.setSelectionRange(start + 1, start + 1);
+        }
+      });
 
 <% end %>
