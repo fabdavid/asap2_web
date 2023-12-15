@@ -25,6 +25,8 @@
 /app/views/projects/old
 /app/views/projects/old/*
 
+/solr
+
 # Ignore Byebug command history file.
 .byebug_history
 
