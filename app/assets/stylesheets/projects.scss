@@ -630,6 +630,9 @@ margin:15px
 .list_genes_container {position:relative}
 
 #cat_legend {width:100%}
+
+#cat_legend_table tr td { vertical-align:top}
+
 #plot_container {height:100%}
 
 #plot_btns {position:fixed; bottom:15px; right:35px; z-index:500}

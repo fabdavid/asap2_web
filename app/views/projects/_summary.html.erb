@@ -114,10 +114,10 @@
 	     <%= raw h_ids.keys.map{|k| h_ids[k].map{|id| identifier_link(id, @h_identifier_types[k.to_i])}}.flatten.join("<br/>") %>
 	   </td>
 	   <td>
-	     <% if exp_entry.pmid %>
-	     <% exp_entry.pmid.split(";").map{|e| e.to_i}.each do |pmid| %>
-	     <span id='article_<%= @h_articles[pmid].id %>' class='badge badge-dark article_entry pointer'>
-	       <%= display_reference(@h_articles[pmid]) %>
+	     <% if exp_entry.doi %>
+	     <% exp_entry.doi.split(";").each do |doi| %>
+	     <span id='article_<%= @h_articles[doi].id %>' class='badge badge-dark article_entry pointer'>
+	       <%= display_reference(@h_articles[doi]) %>
 	     </span>
 	     <% end %>
 	     <% end %>

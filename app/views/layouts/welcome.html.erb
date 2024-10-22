@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>ASAP</title>
+    <title>
+      <%= @title || 'ASAP - Automated Single-cell Analysis Portal' %>
+    </title>
 <!--    <meta http-equiv="no-cache"> 
 <meta http-equiv="expires" content="0" />
 <meta http-equiv="cache-control" content="max-age=0" />
@@ -100,7 +102,7 @@
 	      <%= link_to image_tag('epfl-logo.svg', :height => '35px' ), "http://epfl.ch", {:style => 'padding-left:20px'} %>
 	    </td><td style="text-align:left">
 	      &copy;2016-<%= Time.now.year %> EPFL, 1015 Lausanne<br>
-	      <a href="mailto:bioinfo.epfl@gmail.com?subject=ASAP feedback">Contact</a>
+	      <a href="mailto:bioinfo.epfl@gmail.com,fabrice.david@epfl.ch,vincent.gardeux@epfl.ch?subject=ASAP feedback">Contact</a>
 	      |
 	      <!--	       <a href="https://www.epfl.ch/about/overview/regulations-and-guidelines/disclaimer">Disclaimer</a>-->
 	      <a href="https://www.sib.swiss/privacy-policy">Privacy policy</a>

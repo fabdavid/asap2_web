@@ -53,6 +53,8 @@ class GenesController < ApplicationController
     gene_names = []
     # ConnectionSwitch.with_db(:data_with_version, db_version) do
     # gene_names = GeneName.select("gene_id, value").where("organism_id = ? and lower(value) ~ ?", params[:organism_id], ("^" + params[:term].downcase)).all
+   # gene_names = Basic.sql_query2(:asap_data, db_version, 'gene_names', '', 'gene_id, value', "organism_id = #{params[:organism_id]} and lower(value) = '#{params[:term].downcase}'")
+    
     gene_names = Basic.sql_query2(:asap_data, db_version, 'gene_names', '', 'gene_id, value', "organism_id = #{params[:organism_id]} and lower(value) ~ '^#{params[:term].downcase}'")
     
     h_gene_names = {}

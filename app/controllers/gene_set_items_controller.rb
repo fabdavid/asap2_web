@@ -10,7 +10,36 @@ class GeneSetItemsController < ApplicationController
   def search
  
     get_version()
-
+    # @h_ge_run_attrs = {}
+    h_stable_ids = {}
+    @h_all_genes = {}
+    @h_enriched_genes = {}
+   
+    if params[:ge_run_id] and params[:type]
+      ge_run = Run.where(:id => params[:ge_run_id]).first
+      if ge_run
+        project = ge_run.project
+        
+        project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + project.user_id.to_s + project.key
+        h_ge_run_attrs = Basic.safe_parse_json(ge_run.attrs_json, {})
+        if h_ge_run_attrs['input_de'] and h_ge_run_attrs['input_de']['run_id']
+          de_run = Run.where(:id => h_ge_run_attrs['input_de']['run_id']).first 
+          all_genes = File.readlines(project_dir + 'de' + de_run.id.to_s + "output.txt")
+          all_genes.map{|e| t = e.split("\t"); @h_all_genes[t[1]] = 1; h_stable_ids[t[0]] = t[1]}
+          filename = "#{ge_run.user_id}_#{h_ge_run_attrs['input_de']['run_id']}_#{h_ge_run_attrs['fc_cutoff']}_#{h_ge_run_attrs['fdr_cutoff']}_filtered_ids.json"
+          puts "looking_for: " + filename
+          if File.exist? project_dir + 'tmp' + filename
+            filtered_json = File.read(project_dir + 'tmp' + filename)
+            h_filtered = Basic.safe_parse_json(filtered_json, {})
+            @h_enriched_genes = {}
+            h_filtered[params[:type]].each do |gid|
+              @h_enriched_genes[h_stable_ids[gid.to_s]] = 1
+            end
+          end
+        end
+      end
+    end
+    @project = Project.where(:key => params[:project_key]).first
     @log = "gene_set_id = #{params[:gene_set_id]} and identifier = '#{params[:name]}'"
     @gsi = Basic.sql_query2(:asap_data, @h_env['asap_data_db_version'], 'gene_set_items', '', '*', "gene_set_id = #{params[:gene_set_id]} and identifier = '#{params[:identifier]}'").first
     if @gsi

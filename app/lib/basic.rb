@@ -5,6 +5,174 @@ module Basic
 
   class << self
 
+    def generate_project_json p
+
+          h_references = {}
+  Article.all.map{|a| h_references[a.doi] = a}
+  h_organisms = {}
+  Organism.all.map{|e| h_organisms[e.id] = e}
+  h_identifier_types = {}
+  IdentifierType.all.map{|it| h_identifier_types[it.id] = it}
+  h_cla_sources = {}
+  ClaSource.all.map{|cla_source| h_cla_sources[cla_source.id] = cla_source}
+  h_cell_ontologies = {}
+  CellOntology.all.map{|co| h_cell_ontologies[co.id] = co}
+  h_envs = {}
+  Version.all.map{|v| h_envs[v.id] = Basic.safe_parse_json(v.env_json, {})}
+  h_steps = {}
+  Step.all.map{|s| h_steps[s.id] =s}
+  h_std_methods = {}
+  StdMethod.all.map{|s| h_std_methods[s.id] = s}
+  h_project_types = {}
+  ProjectType.all.map{|e| h_project_types[e.id] = e}
+
+      project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + p.user_id.to_s + p.key
+      
+      h_env = h_envs[p.version_id]
+      asap_data_db = "asap_data_v#{h_env['asap_data_db_version']}"
+
+      clas = Cla.where(:project_id => p.id).all.map{|e|
+
+        up_genes = (e.up_gene_ids and e.up_gene_ids.size > 0) ? Basic.sql_query2(:asap_data, h_env['asap_data_db_version'], 'genes', '', '*', "id in (#{e.up_gene_ids})").map{|g| Basic.format_gene(g)} : nil
+        # logger.debug(e.up_gene_ids.split(","))                                                                                                                                                                                               
+        down_genes = (e.down_gene_ids and e.down_gene_ids.size > 0) ? Basic.sql_query2(:asap_data, h_env['asap_data_db_version'], 'genes', '', '*', "id in (#{e.down_gene_ids})").map{|g| Basic.format_gene(g)} : nil
+
+        cots =  (e.cell_ontology_term_ids) ?
+        CellOntologyTerm.where(:id => e.cell_ontology_term_ids.split(",")).all.map{|cot|
+          {
+            :identifier => cot.identifier,
+            :name => cot.name,
+            :description => cot.description,
+            :ontology => h_cell_ontologies[cot.cell_ontology_id].name
+          }
+        } : nil
+
+        {
+          :id => e.id,
+          :num => e.num,
+          :name => e.name,
+          :cell_set_key => (cs = e.cell_set) ? cs.key : nil,
+          :comment => e.comment,
+          :project_id => e.project_id,
+          :clone_id => e.clone_id,
+          :cat => e.cat,
+          :cat_idx => e.cat_idx,
+          :cell_ontology_terms => cots || [],
+          :annot_id => e.annot_id,
+          :up_genes => up_genes,
+          :down_genes => down_genes,
+          :orcid_user => OrcidUser.where(:id => e.orcid_user_id).first,
+          :user_id => (u = User.where(:id => e.user_id).first) ? u.email : nil,
+          :source => h_cla_sources[e.cla_source_id].name,
+          :nber_agree => e.nber_agree,
+          :nber_disagree => e.nber_disagree,
+          :score => e.nber_agree - e.nber_disagree,
+          :obsolete => e.obsolete,
+          :created_at => e.created_at,
+          :updated_at => e.updated_at
+        }
+      }
+      h_annots = {}
+      h_clas = {}
+      clas.map{|cla|
+        h_annots[cla[:annot_id]] = {};
+        h_clas[cla[:annot_id]] ||= [];
+        h_clas[cla[:annot_id]].push cla
+      }
+
+      if p.public_id == 93
+        #puts clas.to_json
+        #   puts h_clas.to_json
+      end
+
+      Annot.where(:id => h_annots.keys).all.map{|a| h_annots[a.id] = a}
+      annotation_groups = []
+      h_annots.each_key do |annot_id|
+        annot = h_annots[annot_id]
+        run = Run.where(:id => annot.run_id).first
+        lineage_runs = Run.where(:id => run.lineage_run_ids.split(",")).all + [run]
+        h_command = Basic.safe_parse_json(run.command_json, {})
+        #  command = (h_command['docker_call']) ? h_command['docker_call'].gsub(project_dir.to_s, "$PROJECT_DIR") : nil
+        command = Basic.build_cmd(h_command).gsub(project_dir.to_s, "$PROJECT_DIR").gsub(/postgres\:\d+\/asap2_data_v\d+/, ('$ASAP_DATA_DB_HOST:$ASAP_DATA_DB_PORT/' + asap_data_db))
+        docker_container = ""
+        if h_command['docker_call'] and m = h_command['docker_call'].match(/([\w\d\:\/]+) -c$/)
+          docker_container = m[1]
+        end
+        origin = lineage_runs.map{|e|
+          {
+            :run_id => e.id,
+            :step => h_steps[e.step_id].label,
+            :std_method => h_std_methods[e.std_method_id].label,
+            :num => e.num,
+            :attrs => Basic.safe_parse_json(e.attrs_json, {}),
+            :command => ((h_steps[e.step_id].name != 'parsing') ? command : nil),
+            :docker_repo => "dockerhub",
+            :docker_container_url => nil,
+            :docker_container_name => docker_container
+          }
+        }
+        annotation_group = {
+          :origin => origin,
+          :annot_id => annot.id,
+          :annot_run_id => annot.run_id,
+          :metadata => annot.name,
+          :annotations => h_clas[annot_id].sort{|a, b| [b[:score], a[:num]] <=> [a[:score], b[:num]]}
+        }
+        annotation_groups.push annotation_group
+      end
+      h = {
+        :public_key => p.public_key,
+        :key => p.key,
+        :doi => p.doi,
+        :asap_data_db => asap_data_db,
+        :asap_data_db_url => APP_CONFIG[:server_url] + "/dumps/#{asap_data_db}.sql.gz",
+        :version => "v" + p.version_id.to_s,
+        :reproducibility_instructions_url => APP_CONFIG[:server_url] + "/projects/#{p.key}/instructions",
+        :reproducibility_script_url => APP_CONFIG[:server_url] + "/projects/#{p.key}/get_commands",
+        :nber_cols => p.nber_cols,
+        :nber_rows => p.nber_rows,
+        :reference => h_references[p.doi],
+        :tissue => p.tissue,
+        :technology => p.technology,
+        :extra_info => p.extra_info,
+        :tax_id => h_organisms[p.organism_id].tax_id,
+        :organism => h_organisms[p.organism_id].name,
+        :cloned_project_id => p.cloned_project_id,
+        :project_type => (h_project_types[p.project_type_id]) ? h_project_types[p.project_type_id].name : nil,
+        :nber_cloned => p.nber_cloned,
+        :nber_views => p.nber_views,
+        :disk_size_archived => p.disk_size_archived,
+        :project_cell_set_key => (pcs = p.project_cell_set) ? pcs.key : nil,
+        :experiments => p.exp_entries.map{|e|
+          {
+            :identifier_type => h_identifier_types[e.identifier_type_id].name,
+            :identifier =>  e.identifier,
+            :url => h_identifier_types[e.identifier_type_id].url_mask.gsub(/\#\{id\}/, e.identifier)
+          }
+        },
+        :annotation_groups => annotation_groups
+      }
+      return h
+
+    end
+
+      def format_gene g
+
+    return {
+      :name => g['name'],
+      :ensembl_id => g['ensembl_id'],
+      :biotype => g['biotype'],
+      :chr => g['chr'],
+      :ncbi_gene_id => g['ncbi_gene_id'],
+      :latest_ensembl_release => g['latest_ensembl_release'],
+      :description => g['description'],
+      :function_description => g['function_description'],
+      :alt_names => g['alt_names']
+    }
+
+  end
+
+
     def upd_project_cell_set p
 
       project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + p.user_id.to_s + p.key
@@ -214,7 +382,12 @@ module Basic
               :user_id => user_id #(current_user) ? current_user.id : 1                                                                                                                      
             }
             h_res = Basic.set_run(logger, h_p)
-          end
+      
+            children_runs = JSON.parse(find_marker_run.children_run_ids)
+            children_runs.push run.id if !children_runs.include? run.id
+            find_marker_run.update_attribute(:children_run_ids, children_runs.to_json)
+
+          end          
           
         end
         
@@ -248,6 +421,8 @@ module Basic
       #   parsing_matrix = Annot.where(:project_id => project.id, :dim => 3, :name => "/matrix", :filepath => "parsing/output.loom").first
       matrix = Annot.where(:project_id => project.id, :dim => 3, :name => "/matrix", :filepath => meta.filepath).first
       # puts parsing_matrix
+
+      matrix_run = Run.where(:project_id => project.id, :id => matrix.run_id).first      
 
       last_run = Run.where(:project_id => project.id, :step_id => find_marker_step.id).order("id desc").first
 
@@ -383,6 +558,11 @@ module Basic
           #          #                                  })
           #          #          
           #          #          end
+
+          ### need to add the children
+          children_runs = JSON.parse(matrix_run.children_run_ids)
+          children_runs.push run.id if !children_runs.include? run.id
+          matrix_run.update_attribute(:children_run_ids, children_runs.to_json)
           
         end
       end
@@ -608,11 +788,12 @@ module Basic
       where||='1=1'
       #      query = model.select(select).joins(join).where(where).to_sql.gsub("'", "\\\\'")
       query = "select #{select} from #{from} #{join} where #{where}" #.gsub("'", "\\\\'")
-      puts query
+#      puts query
       h_cmd = {
         :asap_development => "psql -h 'asap2_postgres_1.asap2_asap_network' -p 5434 --user postgres -AF $'<\t>' --no-align -c \"#{query}\" asap2_development",
         :asap_data => "psql -h 'asap2_postgres_1.asap2_asap_network' -p 5434 --user postgres -AF $'<\t>' --no-align -c \"#{query}\" asap2_data_v#{version}"
       }
+      
  
       cmd = h_cmd[type]
       output = `#{cmd}`

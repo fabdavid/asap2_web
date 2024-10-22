@@ -68,8 +68,12 @@ class FusController < ApplicationController
         '0' => '&epsilon;',
       '' => '?'
     }
-      
+
+    
+#x    project = @fu.project
+#    project_dir = Pathname.new(APP_CONFIG[:data_dir]) + 'users' + project.user_id.to_s + project.key
     upload_dir = Pathname.new(APP_CONFIG[:data_dir]) +  'fus' + @fu.id.to_s
+   # upload_dir = project_dir + 'fus' + @fu.id.to_s
     filepath = upload_dir + @fu.upload_file_name
     
     output_file = upload_dir + "output.json"
@@ -164,7 +168,7 @@ class FusController < ApplicationController
       logger.debug "CMD #{@cmd}"
       @res = `#{@cmd}`
       @h_json = nil
-   
+      logger.debug("Output file exists: #{File.exist? output_file}")
       ## check if h5AD correct otherwise try to convert it                                                                                              
       if File.exist? output_file
         output_json = File.read output_file
@@ -303,7 +307,8 @@ class FusController < ApplicationController
       else
         if File.exist?(upload_dir + 'output.err')
           err = File.read(upload_dir + 'output.err')
-          @h_json = {"displayed_error" => err}
+#          puts "Rewriting output.json... #{@h_json.to_json}"
+          @h_json = {"displayed_error" => err} #(@h_json and @h_json['displayed_error']) ? @h_json['displayed_error'] : err}
           File.open(output_file, 'w') do |fw|
             fw.write @h_json.to_json
           end

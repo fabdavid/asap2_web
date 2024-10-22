@@ -6,7 +6,7 @@ task clean: :environment do
 
   ## remove old sandbox projets
   
-  Project.where(:sandbox => true).all.each do |p|
+  Project.where("sandbox is true or (public is false and user_id = 1 and cloned_project_id is not null)").all.each do |p|
     if u = (p.session) ?  p.session.updated_at : p.updated_at		 
       d = now - u
       if d > 24 * 60 * 60 * 2

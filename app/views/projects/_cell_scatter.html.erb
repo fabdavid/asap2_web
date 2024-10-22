@@ -181,6 +181,9 @@ $("#plot_options_btn").click()
 <!--<div class='badge badge-warning'>No run created yet</div> -->
  <% if session[:activated_filter][@project.id] == true and !@disable_filter %>
   <div class='alert alert-danger'>No metadata found with selected filter criteria</div>
+
+<% else %>
+   <div class='alert alert-danger'>No imported metadata or dimension reduction result to be visualized as a scatter plot</div>
  <% end %>
 <% end %>
 

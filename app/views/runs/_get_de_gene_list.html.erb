@@ -50,12 +50,13 @@
 	 <tr>
 	 <% @fields.each_index do |i| %>
            <td>
+	     
           <% if @fields[i] == 'EnsemblID' %>
            <span class='ensembl-gene pointer badge badge-light'><%= e[i] %></span>
           <%# elsif ['fdr', 'size_effect', 'p-value'].include? @fields[i] %>
 	    <%# e[i].to_f.round(2) %>
 	  <% else %>
-	   <%= e[i] %>
+	   <span class='nowrap'><%= e[i] %></span>
           <% end %>
           </td>
 	 <% end %>

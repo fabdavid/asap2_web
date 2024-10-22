@@ -1,18 +1,36 @@
 <%# @log %>
+
 <% if @gsi %>
+
+<%# @h_enriched_genes.keys.join(" ") if admin? %>
+
 <div class='row'>
-  <div class='col-md-6'>Identifier</div>
-  <div class='col-md-6'><span id='gsi_identifier' class='pointer badge badge-dark'><%= @gsi.identifier %></span></div>
+  <div class='col-md-6'><b>Identifier</b></div>
+  <div class='col-md-6'><span id='gsi_identifier' class='badge badge-dark'><%= @gsi.identifier %></span></div>
 </div>
 <div class='row'>
-  <div class='col-md-6'>Description</div>
+  <div class='col-md-6'><b>Description</b></div>
   <div class='col-md-6'><span id='gsi_name' class='badge badge-light'><%= @gsi.name %></span></div>
 </div>
 <div class='row'>
-  <div class='col-md-6'>List of genes</div>
-  <div class='col-md-6'><%= raw @genes.map{|e| "<span class='badge badge-info'>#{e.name}</span>"}.join(" ") %></div>
+  <div class='col-md-6'><b>List of genes</b><br><i>Legend:</i><br/>
+    <span class='badge badge-secondary'>Not in dataset</span><br/>
+    <span class='badge badge-info'>In dataset</span><br/>
+    <span class='badge badge-success'>Enriched in related DE</span>
+  </div>
+  <div class='col-md-6'><%= raw @genes.map{|e| cl='secondary'; cl='info' if @h_all_genes[e.ensembl_id]; cl='success' if @h_enriched_genes[e.ensembl_id]; "<span id='gene_#{e.ensembl_id}' class='badge badge-#{cl} ensembl_gene pointer'>#{e.name}</span>"}.join(" ") %></div>
+</div>
+
+
+<div class='card mt-3' style='overflow:scroll;height:300px;max-height:300px'>
+  <div class='card-body'>
+    Gene detail:
+    <div id='gene_details' class='mt-2'><i>Click on genes to get details here</i></div>
+  </div>
 </div>
 <% end %>
+
+
 
 
 <%= javascript_tag do %>
@@ -21,4 +39,21 @@
  window.open("http://www.ensembl.org/Gene/Summary?g=" + $(this).html(), "_blank")
 })
 */
+
+$(".ensembl_gene").click(function(e){
+ var ensembl_id = this.id.split("_")[1]
+ var w = $(window).width()
+ var ww = 600
+console.log("test")
+/*  $("#ontop_popup_window").css({
+        left: (w-e.pageX > ww) ? (e.pageX + 10) : w-ww+10,
+        width:ww,
+        top: e.pageY + 10
+  }).stop().show(100);
+*/
+ refresh("gene_details", "<%= search_genes_path() %>?ensembl_id=" + ensembl_id + "&version_id=<%= @project.version_id %>&project_key=<%= @project.key %>", {loading:true})
+})
+
+
+
 <% end %>

@@ -5,7 +5,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <sstream>
-
+#include <cmath>
 /*
 #define UPFILE TEXT("filtered_up.json")
 #define DOWNFILE TEXT("filtered_down.json")
@@ -69,7 +69,9 @@ string pathAppend(const string& p1, const string& p2) {
 int main(int argc, char** argv) {
   string project_filepath = argv[1];
   string fdr_cutoff = argv[2];
-  string logfc_cutoff = argv[3];
+  string fc_cutoff = argv[3];
+  double logfc_cutoff = log2(sciToDub(fc_cutoff));
+
   string mode = argv[4];
   string user_id = argv[5];
   string run_id = argv[6];
@@ -106,28 +108,64 @@ int main(int argc, char** argv) {
   std::string line;
   std::vector <int> vec_down;
   std::vector <int> vec_up;
-  
+
   int i = 0;
+
+  //  if  (mode == "de_results"){
+
   while (getline(fin, line)) {
     // Split line into tab-separated parts
     vector<string> t;
     split(t, line, boost::is_any_of("\t"));
     
     if (t[7] != "NA" && sciToDub(t[7]) <= sciToDub(fdr_cutoff)){
-      if (sciToDub(t[5]) >= 0 && sciToDub(t[5]) >= sciToDub(logfc_cutoff)){
+      if (sciToDub(t[5]) >= 0 && sciToDub(t[5]) >= logfc_cutoff){
 	vec_up.push_back(i);
       }else{
-	if (sciToDub(t[5]) <= 0 and sciToDub(t[5]) <= -sciToDub(logfc_cutoff)){
+	if (sciToDub(t[5]) <= 0 and sciToDub(t[5]) <= -logfc_cutoff){
 	  vec_down.push_back(i);
 	} 
       }
     }    
     
     /*    if (sciToDub(t[0])<1){
-      cout << "First of " << t.size() << " elements: " << sciToDub(t[0]) << endl;    
-      }*/
+	  cout << "First of " << t.size() << " elements: " << sciToDub(t[0]) << endl;    
+	    }*/
     i++;
   }
+  
+  fin.close();
+
+  std::vector <int> vec_down_ids;
+  std::vector <int> vec_up_ids;
+
+  if (mode != "de_results"){
+
+    std::ifstream fin(input_filepath.c_str());
+    
+    while (getline(fin, line)) {
+      // Split line into tab-separated parts                                                                                                                   
+      vector<string> t;
+      split(t, line, boost::is_any_of("\t"));
+      
+      if (t[7] != "NA" && sciToDub(t[7]) <= sciToDub(fdr_cutoff)){
+	if (sciToDub(t[5]) >= 0 && sciToDub(t[5]) >= logfc_cutoff){
+	  vec_up_ids.push_back(sciToDub(t[0]));
+	}else{
+	  if (sciToDub(t[5]) <= 0 and sciToDub(t[5]) <= -logfc_cutoff){
+	    vec_down_ids.push_back(sciToDub(t[0]));
+	  }
+	}
+      }
+
+      /*    if (sciToDub(t[0])<1){                                                                                                                             
+	    cout << "First of " << t.size() << " elements: " << sciToDub(t[0]) << endl;                                                                            
+	    }*/
+      i++;
+    }
+
+  }
+
   fin.close();
 
   std::string result_down = join_vector(vec_down);
@@ -154,6 +192,19 @@ int main(int argc, char** argv) {
     cout << "write " << filtered_path << "\n";
     fout << "{\"down\" : [" << result_down << "], \"up\" : [" << result_up << "]}";
     fout.close();
+
+    std::string result_down_ids = join_vector(vec_down_ids);
+    std::string result_up_ids = join_vector(vec_up_ids);
+
+
+    path filtered_ids_path = tmp_dir / (user_id + "_" + run_id + "_" + fc_cutoff + "_" + fdr_cutoff + "_filtered_ids.json");
+    //"#{(current_user) ? current_user.id : 1}_#{annot.run_id}_filtered.json                                                                               
+    std::ofstream fout2(filtered_ids_path.c_str());
+    cout << "write " << filtered_ids_path << "\n";
+    fout2 << "{\"down\" : [" << result_down_ids << "], \"up\" : [" << result_up_ids << "]}";
+    fout2.close();
+
+
   }
   //  std::ofstream filtered_stats;
 
@@ -161,7 +212,7 @@ int main(int argc, char** argv) {
   std::ofstream filtered_stats; //{filtered_stats_path, std::ios_base::app};
 
   filtered_stats.open(filtered_stats_path.c_str(), std::ios_base::app);
-  //cout << "down:" << result_down.size()
+  cout << "write:" << filtered_stats_path.c_str() <<  "\n" ; //result_down.size()
   filtered_stats << run_id + "\t" << vec_up.size() << "\t" << vec_down.size() << "\n"; 
   filtered_stats.close();
 

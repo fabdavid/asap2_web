@@ -1,47 +1,81 @@
-desc '####################### Fix gene enrichment results'
+desc '####################### Fix GE results'
 task fix_ge_results: :environment do
-
   puts 'Executing...'
 
-  dev_null = Logger.new("/dev/null")
-  Rails.logger = dev_null
-  ActiveRecord::Base.logger = dev_null
+  now = Time.now
+
+
+  h_steps = {}
+  Step.all.map{|s| h_steps[s.id] = s}
+
+  Project.where(:archive_status_id == 3).all.sort.reverse.each do |p|
   
-  start = Time.now
+    puts p.key
+    project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + p.user_id.to_s + p.key
+    puts project_dir
 
-  genes = Basic.sql_query2(:asap_data, 5, 'genes', '', 'ensembl_id, name, alt_names, description', "organism_id = 35")
-  h_genes = {}
-  genes.each do |g|
-    h_genes[g.ensembl_id] = g.description
-  end	     
+    runs = p.runs.select{|r| h_steps[r.step_id].name == 'ge' and r.status_id == 3}
 
-  Project.where(:version_id => 5, :organism_id => 35).all.each do |p|
+    if runs.size > 0
+      
+      ## unarchive if necessary
+      unarchived = false
+      if p.archive_status_id == 3
+        p.unarchive
+        unarchived = true
+      end
+      
+      runs.each do |r|
+        
+        puts r.id
 
-    if p.archive_status_id == 3
-      p.unarchive
-    end
+        ## filter de
+        h_attrs = JSON.parse(r.attrs_json, {})
+        puts h_attrs.to_json
 
-    project_dir = Pathname.new(APP_CONFIG[:data_dir]) + 'users' + p.user_id.to_s + p.key
-    de_dir = project_dir + 'de'
-    p.runs.select{|r| r.status_id == 3 and r.step.name == 'de'}.each do |r|
-      output_txt = de_dir + r.id.to_s + 'output.txt'
-      puts output_txt
-      if File.exist? output_txt
-        new_data = []
-        data = File.read(output_txt)
-	data.split("\n").each do |e|
-          t = e.split("\t")
-          t[4] = h_genes[t[1]]
-          new_data.push t.join("\t")
-	end		      	
- #       puts new_data.join("\n")
-	File.open(output_txt, 'w') do |f|
-          f.write(new_data.join("\n"))
-	end		      
-        puts output_txt + " found"
+        cmd = "lib/filter_de '#{project_dir}' #{h_attrs['fdr_cutoff']} #{h_attrs['fc_cutoff']} ge_form 1 '#{r.id}' > #{project_dir + 'toto.txt'}"
+        
+      #  File.open("#{project_dir + "tmp" + "tmp_de_script.sh"}", "w") do |f2|
+      #    f2.write(cmd)
+      #  end
+
+        `#{cmd}` # #{project_dir + "tmp" + "tmp_de_script.sh"}`
+
+        #cmd = "docker run  --name asap_dev_416942 --network=asap2_asap_network -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2  -v /srv/asap_run/srv:/srv fabdavid/asap_run:v#{docker_version} -c "sh -c 'java -jar /srv/ASAP.jar -T Enrichment -loom #{h_attrs['input_de']['output_filename']} -m fet -f #{project_dir}/tmp/1_#{h_attrs['input_de']['run_id']}_#{h_attrs['fc_cutoff']}_#{h_attrs['fdr_cutoff']}_filtered_ids.json -o #{project_dir}/ge/#{run.id}/output.json -max 500 -min 15 -adj fdr -geneset 671 -h postgres:5434/asap2_data_v#{database_version}  1> /data/asap2/users/1/bpjlc8/ge/416942/exec.out 2> /data/asap2/users/1/bpjlc8/ge/416942/exec.err'"'
+        filtered_de_filename = "#{project_dir}/tmp/1_#{h_attrs['input_de']['run_id']}_#{h_attrs['fc_cutoff']}_#{h_attrs['fdr_cutoff']}_filtered_ids.json"
+        if m = r.command_json.match(/\/data\/asap2\/users\/(\d+)\/(\w+)\/(.+)/)
+          if m[2] != p.key
+            puts "Wrong project key: #{m[1]} instead of #{p.key}"
+          end
+        end
+        #	if m = r.command_json.match(/\/data\/asap2\/users\/(\d+)\/(\w+)\//)
+        #          if (m[1] != r.user_id.to_s and r.user_id) or m[1] != p.key
+        #             r.command_json.gsub!(/\/data\/asap2\/users\/(\d+)\/(\w+)\//,  
+        #          end
+        
+
+        #	end
+	
+        puts r.command_json.gsub(/\{"opt"\:"\-f","param_key"\:null,"value"\:".+?_filtered.json"\}/, "{\"opt\":\"-f\",\"param_key\":null,\"value\":\"#{filtered_de_filename}\"}")
+	
+
+          
+
+        exit
+
+      end
+      
+      ## rearchive if was unarchived
+      if unarchived == true
+        puts "Archiving..."
+        logfile = "./log/fix_ge_results_archive.log"
+        errfile = "./log/fix_ge_results_archive.err"
+        cmd = "rails archive[#{p.key}] --trace 1> #{logfile.to_s} 2> #{errfile.to_s}"
+        puts cmd
+        `#{cmd}`
       end
     end
-    
-  end
-  
+
+  end		   
+
 end

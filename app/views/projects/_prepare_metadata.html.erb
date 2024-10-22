@@ -4,3 +4,6 @@
           {'name' : 'version_id', 'value' : $("#opt_version_id").val()}];
  refresh_post("preparsing_clipboard", url, p, 'post', {loading : 'fa-2x'});
 
+<% if @duplicates.size > 0 %>
+$("#metadata_warnings").html("<div class='alert alert-warning'>WARNING: <%= @duplicates.size %> duplicates were found (<%= @duplicates.join(",") %>).<br/>Only first line is kept.</div>")
+<% end %>

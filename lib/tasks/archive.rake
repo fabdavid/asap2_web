@@ -5,6 +5,54 @@ task :archive, [:project_key] => [:environment] do |t, args|
 
   require 'aws-sdk'
   
+  def include_fus p
+    
+    project_dir = Pathname.new(APP_CONFIG[:data_dir]) + 'users' + p.user_id.to_s + p.key
+    
+    project_fus_dir = project_dir + 'fus'
+    Dir.mkdir project_fus_dir if !File.exist? project_fus_dir
+    
+    input_file = Dir.entries(project_dir).select{|e| File.symlink?(project_dir + e) == true and e.match(/^input/)}.first
+    destination_file = File.readlink(project_dir + input_file)
+    
+    test = false
+    p.fus.sort{|a, b| b.id <=> a.id}.each do |fu|
+      
+      fu_dir =  Pathname.new(APP_CONFIG[:upload_data_dir]) + fu.id.to_s
+      if fu_dir and File.exist? fu_dir
+        
+        if ! File.exist? project_fus_dir + fu.id.to_s
+          
+          puts "Copy #{fu_dir.to_s} -> #{project_fus_dir.to_s}..."
+          FileUtils.cp_r(fu_dir, project_fus_dir)
+          ## replace symlinks                                                                                                                                                                            
+          Dir.glob(File.join(project_fus_dir + fu.id.to_s, '**', '*')).each do |entry|
+            if File.symlink?(entry)
+              symlink_target = File.realpath(entry)
+              FileUtils.rm(entry)
+              FileUtils.cp_r(symlink_target, entry)
+            end
+          end
+          
+          if File.exist? project_fus_dir + fu.id.to_s
+            FileUtils.rm_r fu_dir
+          end
+          
+        end
+      end
+      
+    end
+    
+    puts "destination_file: #{destination_file}"
+    puts "input_file: #{input_file.to_s}"
+    puts "move destination #{original_fus_dir.to_s} -> #{project_fus_dir.to_s}"
+    if File.exist? destination_file.to_s.gsub(/#{original_fus_dir.to_s}/, "./fus")
+      FileUtils.ln_sf(destination_file.to_s.gsub(/#{original_fus_dir.to_s}/, "./fus"), project_dir + input_file)
+    end
+  end
+
+
+
   h_archive_status = {}
   ArchiveStatus.all.map{|e| h_archive_status[e.name] = e}
   
@@ -57,6 +105,11 @@ task :archive, [:project_key] => [:environment] do |t, args|
 
       p.update_attributes(:archive_status_id => 2)
       #      project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + p.user_id.to_s + p.key
+
+      ## include potential fus
+#      include_fus(p)
+
+
       
       ## tar and pigz
       #      tar -cf -  -C /data/asap2/users/1 jgf9d1

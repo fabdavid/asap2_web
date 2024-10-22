@@ -452,6 +452,7 @@ function abort_and_delete_xhrs(xhrs){
  return []
 }
 
+
 function refresh(container, url, h){
     var div= $("#" + container);
     var width = $(div).width();

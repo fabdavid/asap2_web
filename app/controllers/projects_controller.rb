@@ -215,7 +215,7 @@ class ProjectsController < ApplicationController
     project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
     geneset_annot = Annot.where(:id => geneset_annot_id).first
     loom_file = project_dir + geneset_annot.filepath
-    @cmd = "java -jar lib/ASAP.jar -T ModuleScore -loom #{loom_file} -metadata \"#{geneset_annot.name}\" -sel \"#{geneset_annot_cat}\" -dataset /matrix -m seurat"
+    @cmd = "java -jar lib/ASAP.jar -T ModuleScore -loom #{loom_file} -metadata \"#{geneset_annot.name}\" -sel \"#{geneset_annot_cat}\" -dataset /matrix -m seurat -seed 42 -nBins 24 -nBackgroundGenes 100"
     return Basic.safe_parse_json(`#{@cmd}`, {})
     #    render :partial => "compute_module_score"
   end
@@ -1338,7 +1338,7 @@ class ProjectsController < ApplicationController
       #     @log4+=cmd
 #      @log7+='bla'
       if !File.exist?(output_file) or File.size(output_file) == 0  #or `head -1 #{output_file.to_s}`.split("\t").size != 10
-        @cmd3 = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata -loom #{loom_file} -prec 5 -meta \"#{annot.name}\""
+        @cmd3 = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata --scientific -prec 5 -loom #{loom_file} -meta \"#{annot.name}\""
         @log7+= @cmd3
         #@h_results = {}
         @ensembl_ids = h_ensembl_ids_by_loom_path[loom_path]
@@ -1364,7 +1364,9 @@ class ProjectsController < ApplicationController
                 details_genes = [i, nil, (gene_names) ? gene_names[i] : nil, nil, nil]
               end
               (details_genes + (0 .. 4).map{|vi| 
-                 (@h_results['values'][vi][i]) ? (([1, 2].include?(vi) or !@h_results['values'][vi][i].is_a?(Float)) ? @h_results['values'][vi][i] : @h_results['values'][vi][i].round(2)) : 'NA'}).join("\t")
+                 (@h_results['values'][vi][i]) ? (([1, 2].include?(vi) or !@h_results['values'][vi][i].is_a?(Float)) ? 
+                                                  @h_results['values'][vi][i] : 
+                                                  ((@h_results['values'][vi][i].is_a?(Float) and  @h_results['values'][vi][i].abs > 0.001) ? ("%.3f" % @h_results['values'][vi][i]) : ("%.3e" % @h_results['values'][vi][i]))) : 'NA'}).join("\t")
             }.join("\n") + "\n"
           end
           #   end
@@ -1400,14 +1402,15 @@ class ProjectsController < ApplicationController
    # @log7=''
     #   start_time = Time.now
 
-    @cmd = "echo '#{list_of_run_ids.join("\n")}' | xargs -P 24 -I '{}' lib/filter_de '#{@project_dir}' #{@h_de_filters['fdr_cutoff']} #{Math.log2(@h_de_filters['fc_cutoff'].to_f)} #{type} #{(current_user) ? current_user.id : 1} '{}' > #{@project_dir + 'toto.txt'}"
+    @cmd = "echo '#{list_of_run_ids.join("\n")}' | xargs -P 24 -I '{}' lib/filter_de '#{@project_dir}' #{@h_de_filters['fdr_cutoff']} #{@h_de_filters['fc_cutoff']} #{type} #{(current_user) ? current_user.id : 1} '{}' > #{@project_dir + 'toto.txt'}"
     
-    File.open("#{@project_dir + "tmp" + "de_script.sh"}", "w") do |f2|
+    script_file = @project_dir + "tmp" + "#{(current_user) ? current_user.id : 1}_de_script.sh"
+    File.open(script_file, "w") do |f2|
       # f2.write(annots.size.to_s)
       f2.write(@cmd)
     end
-
-    `sh #{@project_dir + "tmp" + "de_script.sh"}`
+    
+    `sh #{script_file}`
 #    `#{@cmd}` #.join("-")
 
     
@@ -1547,10 +1550,11 @@ class ProjectsController < ApplicationController
         f.write(@h_stats.to_json)
       end
     else
- #      @log7="#{filtered_stats_txt_file} not found"
+      logger.debug("Cannot find " + filtered_stats_txt_file.to_s)
+      #      @log7="#{filtered_stats_txt_file} not found"
     end
-
-
+    
+    
     return @h_stats
     
   end
@@ -1672,40 +1676,53 @@ class ProjectsController < ApplicationController
             h_stats = Basic.safe_parse_json(File.read(filtered_stats_file), {})
             #     @log+= h_stats.to_json
           end
-          File.delete(filtered_stats_txt_file) if File.exist? filtered_stats_txt_file
+          # File.delete(filtered_stats_txt_file) if File.exist? filtered_stats_txt_file
         end
-        #      File.delete(filtered_stats_txt_file) if File.exist? filtered_stats_txt_file
+        File.delete(filtered_stats_txt_file) if File.exist? filtered_stats_txt_file
         
         runs_to_compute = @successful_runs.select{|r| !h_stats[r.id.to_s]}
         #  @log += 'kkk' + to_compute.to_s + "-" + h_stats.to_json + runs_to_compute.map{|e| e.id}.to_s
         if runs_to_compute.size > 0
-          #@log += 'COMPUTE'
-          Parallel.map(runs_to_compute, in_processes: 10) { |run|
-            #@runs.each_index do |run_i|
-            # run = @runs[run_i]
-            # h_stats[run.id.to_s]={}
-            result_filename = ge_dir + run.id.to_s + "output.json"
-            h_output = Basic.safe_parse_json(File.read(result_filename), {})
-            
-            #            h_stats[run.id] = result_filename + "-->" + h_output.to_json.first(100)
-            h_lists = {:up => [], :down => []}
-            h_lists.each_key do |k|
-              if  h_output[k.to_s]
-                h_output[k.to_s].each do |e|
-                  if e[h_headers['fdr']] <= @h_ge_filters['fdr_cutoff'].to_f
-                    h_lists[k].push e 
-                  else
-                    break
-                  end
-                end
-              end
-            end
-            
-            File.open(filtered_stats_txt_file, "a") do |f|
-              f.write [run.id, h_lists[:up].size, h_lists[:down].size].join("\t") + "\n"
-            end
-            
-          }
+          
+          @cmd = "echo '#{runs.map{|r| r.id}.join("\n")}' | xargs -P 24 -I '{}' lib/filter_ge '#{@project_dir}' #{@h_ge_filters['fdr_cutoff']} ge_results #{(current_user) ? current_user.id : 1} '{}' > #{@project_dir + 'toto_ge.txt'}"
+          logger.debug("ge_filter cmd : #{@cmd}")
+#          #        
+          script_file = @project_dir + "tmp" + "#{(current_user.id) ? current_user.id : 1}_ge_script.sh"
+          File.open(script_file, "w") do |f2|
+            f2.write(@cmd)
+          end
+          
+          `sh #{script_file}`
+          
+
+
+#          #@log += 'COMPUTE'
+#          Parallel.map(runs_to_compute, in_processes: 10) { |run|
+#            #@runs.each_index do |run_i|
+#            # run = @runs[run_i]
+#            # h_stats[run.id.to_s]={}
+#            result_filename = ge_dir + run.id.to_s + "output.json"
+#            h_output = Basic.safe_parse_json(File.read(result_filename), {})
+#            
+#            #            h_stats[run.id] = result_filename + "-->" + h_output.to_json.first(100)
+#            h_lists = {:up => [], :down => []}
+#            h_lists.each_key do |k|
+#              if  h_output[k.to_s]
+#                h_output[k.to_s].each do |e|
+#                  if e[h_headers['fdr']] <= @h_ge_filters['fdr_cutoff'].to_f
+#                    h_lists[k].push e 
+#                  else
+#                    break
+#                  end
+#                end
+#              end
+#            end
+#            
+#            File.open(filtered_stats_txt_file, "a") do |f|
+#              f.write [run.id, h_lists[:up].size, h_lists[:down].size].join("\t") + "\n"
+#            end
+#            
+#          }
         end
         
         if File.exist? filtered_stats_txt_file
@@ -2543,16 +2560,30 @@ class ProjectsController < ApplicationController
   end
 
   def clone_replace_attr attr, h_runs, h_annots
-    if attr['run_id']
-      attr['run_id'] = (h_runs[attr['run_id'].to_i]) ? h_runs[attr['run_id'].to_i].id : nil
-    end
-    if attr['annot_id']
-      attr['annot_id'] = (h_annots[attr['annot_id'].to_i]) ? h_annots[attr['annot_id'].to_i].id : nil
-    end
-    if attr['output_filename']
-      t = attr['output_filename'].split("/")
-      t[1] = (h_runs[t[1].to_i]) ? h_runs[t[1].to_i].id : nil if t.size == 3
-      attr['output_filename'] = t.join("/")
+    attr.each_key do |k|
+      if k == 'run_id'
+        attr['run_id'] = (h_runs[attr['run_id'].to_i]) ? h_runs[attr['run_id'].to_i].id : nil
+      elsif k == 'annot_id'
+        attr['annot_id'] = (h_annots[attr['annot_id'].to_i]) ? h_annots[attr['annot_id'].to_i].id : nil
+      else #k == 'output_filename'
+        # t = attr['output_filename'].split("/")
+        # t[1] = (h_runs[t[1].to_i]) ? h_runs[t[1].to_i].id : nil if t.size == 3
+        # attr['output_filename'] = t.join("/")
+        if m = attr[k].to_s.match(/\/(\d+)\/#{@project.key}\/\w+?\/(\d+)\/?/)
+          user_id = m[1]
+          run_id = m[2]
+          if h_runs[run_id.to_i]
+            attr[k].gsub!(/\/#{run_id}$/, "/#{h_runs[run_id.to_i].id}$")
+            attr[k].gsub!(/\/#{run_id}\//, "/#{h_runs[run_id.to_i].id}\/")
+            if attr[k].to_s.match(/\/#{@project.key}\//)
+              attr[k].gsub!(/\/#{@project.key}\//, "/#{new_project.key}/")
+              attr[k].gsub!(/\/#{user_id}\//, "/#{current_user.id}/")
+            end
+            
+          end
+        end
+        
+      end
     end
     return attr
   end
@@ -2669,19 +2700,39 @@ class ProjectsController < ApplicationController
           Step.where(:docker_image_id => @asap_docker_image.id).all.each do |s|
             h_steps[s.id] = s
           end
-        
-        ## change ids and full_path in all runs 
-        @project.runs.each do |run|
-          step = h_steps[run.step_id]
-          if step
-            run_dir = project_dir + step.name
-            new_run_dir = new_project_dir + step.name
-            new_run = h_runs[run.id]
-            logger.debug("NEW_RUN_DIR: " + h_runs[run.id].to_json)
-            if run.step.multiple_runs == true
-              run_dir = project_dir + step.name + run.id.to_s
-              new_run_dir = new_project_dir + step.name + h_runs[run.id].id.to_s
-            end
+          
+          ## change ids and full_path in all runs 
+          @project.runs.each do |run|
+            step = h_steps[run.step_id]
+            if step
+              run_dir = project_dir + step.name
+              new_run_dir = new_project_dir + step.name
+              new_run = h_runs[run.id]
+              logger.debug("NEW_RUN_DIR: " + h_runs[run.id].to_json)
+              output_file = new_project_dir + step.name  + "output.log"
+              if run.step.multiple_runs == true
+                run_dir = project_dir + step.name + run.id.to_s
+                new_run_dir = new_project_dir + step.name + h_runs[run.id].id.to_s
+                output_file = new_project_dir + step.name + run.id.to_s + "output.log"
+              end
+              
+              ## change directories in output.log => finally just delete the file because it contains too many debugs that cannot be modified
+              if File.exist? output_file
+                File.delete output_file
+                #  content = File.read(output_file)
+                #File.open(output_file, 'w') do |f|
+                #    #                  f.write(content.gsub(/#{run_dir}/, "#{new_run_dir}"))
+                #   if m = content.match(/\/#{@project.key}\/\w+?\/(\d+?)\//)
+                #      run_id = m[1]
+                #     if h_runs[run_id.to_i]
+                ##        content.gsub!(/\/#{run_id}\//, "/#{h_runs[run_id.to_i].id}/")
+                #        content.gsub!(/\/#{@project.key}\//, "/#{new_project.key}/")
+                #      end
+                #    end
+                #    f.write(content)
+                #  end
+              end
+              
             
             h_output = Basic.safe_parse_json(run.output_json, {})
             new_h_output = {}
@@ -2723,29 +2774,46 @@ class ProjectsController < ApplicationController
             end
             if new_command['program']
               new_command['program'].gsub!(/\[#{@project.key}\]/, "[#{new_project.key}]/")
+            #  new_command['time_call'].gsub!(/#{run_dir.to_s}/, new_run_dir.to_s)
             end
             
-            if new_command['time_call']
-              logger.debug("TIME_CALL_DEBUG")
-              logger.debug(run_dir.to_s)
-              logger.debug(new_run_dir.to_s)
-              new_command['time_call'].gsub!(/#{run_dir.to_s}/, new_run_dir.to_s)
-            end
-            ['args', 'opts'].each do |k|
-              if new_command[k]
-                new_command[k].each_index do |i|
-                  if m = new_command[k][i]['value'].to_s.match(/\/#{@project.key}\/\w+?\/(\d+?)\//)
-                    run_id = m[1]
+              ['time_call', 'exec_stdout', 'exec_stderr'].each do |k|
+                if new_command[k]
+                  logger.debug("TIME_CALL_DEBUG")
+                  logger.debug(run_dir.to_s)
+                  logger.debug(new_run_dir.to_s)
+                  if m = new_command[k].to_s.match(/\/(\d+)\/#{@project.key}\/\w+?\/(\d+)\/?/)
+                    user_id = m[1]
+                    run_id = m[2]
                     if h_runs[run_id.to_i]
-                      new_command[k][i]['value'].gsub!(/\/#{run_id}\//, "/#{h_runs[run_id.to_i].id}/")
+                      new_command[k].gsub!(/\/#{run_id}$/, "/#{h_runs[run_id.to_i].id}")
+                      new_command[k].gsub!(/\/#{run_id}\//, "/#{h_runs[run_id.to_i].id}\/")
+                      new_command[k].gsub!(/\/#{@project.key}\//, "/#{new_project.key}/")
+                      new_command[k].gsub!(/\/#{user_id}\//, "/#{current_user.id}/")
                     end
-                  end
-                  if  new_command[k][i]['value'].to_s.match(/\/#{@project.key}\//)
-                    new_command[k][i]['value'].gsub!(/\/#{@project.key}\//, "/#{new_project.key}/")
+                  end             
+                  #              new_command['time_call'].gsub!(/\/#{@project.key}\//, "/#{new_project.key}/")
+                  #              new_command['time_call'].gsub!(/\/#{run_dir}\//, "/#{h_runs[run_id.to_i].id}/")
+                end
+              end
+              ['args', 'opts'].each do |k|
+                if new_command[k]
+                  new_command[k].each_index do |i|
+                    if m = new_command[k][i]['value'].to_s.match(/\/(\d+)\/#{@project.key}\/\w+?\/(\d+)\/?/)
+                      user_id = m[1]
+                      run_id = m[2]
+                      if h_runs[run_id.to_i]
+                        new_command[k][i]['value'].gsub!(/\/#{run_id}\//, "/#{h_runs[run_id.to_i].id}/")
+                        new_command[k][i]['value'].gsub!(/\/#{run_id}$/, "/#{h_runs[run_id.to_i].id}")
+                      end
+                    end
+                    if new_command[k][i]['value'].to_s.match(/\/data\/asap2\/users\/(\d+)\/#{@project.key}\//)
+                      new_command[k][i]['value'].gsub!(/\/#{@project.key}\//, "/#{new_project.key}/")
+                      new_command[k][i]['value'].gsub!(/\/#{user_id}\//, "/#{current_user.id}/")
+                    end
                   end
                 end
               end
-            end
             new_attrs = Basic.safe_parse_json(run.attrs_json, {})
             new_attrs.each_key do |k|
               if new_attrs[k].is_a? Hash
@@ -2754,6 +2822,26 @@ class ProjectsController < ApplicationController
                 new_attrs[k].each_index do |i|
                   new_attrs[k][i] = clone_replace_attr(new_attrs[k][i], h_runs, h_annots)
                 end
+              else
+                logger.debug("test_clone: " + new_attrs[k].to_s)
+                #/data/asap2/users/1/87qp4i/cell_filtering/127122/output.loom
+                if m = new_attrs[k].to_s.match(/\/(\d+)\/#{@project.key}\/\w+?\/(\d+)\/?/)
+                  logger.debug("test_clone2") # + new_attrs[k].to_s)
+                  user_id = m[1]                                                                                                   
+                  run_id = m[2]                                                                                      
+                  if h_runs[run_id.to_i]
+                     logger.debug("test_clone3") 
+                    new_attrs[k].gsub!(/\/#{run_id}\//, "/#{h_runs[run_id.to_i].id}/")  
+                     new_attrs[k].gsub!(/\/#{run_id}$/, "/#{h_runs[run_id.to_i].id}")
+                  else
+                    puts "test_clone: run_id: #{run_id.to_i}" 
+                  end
+                end
+                if new_attrs[k].to_s.match(/\/data\/asap2\/users\/(\d+)\/#{@project.key}\//)
+                  new_attrs[k].gsub!(/\/#{@project.key}\//, "/#{new_project.key}/")
+                  new_attrs[k].gsub!(/\/#{user_id}\//, "/#{current_user.id}/")
+                end
+
               end
             end
             new_run.update_attributes({
@@ -2762,7 +2850,8 @@ class ProjectsController < ApplicationController
                                         :output_json => new_h_output.to_json, 
                                         :lineage_run_ids => new_lineage_run_ids.join(","), 
                                         :run_parents_json => new_parent_run.to_json,
-                                        :children_run_ids => new_children_run_ids.join(",")
+                                        :children_run_ids => new_children_run_ids.join(","),
+                                        :cloned_run_id => run.id 
                                       })
           end
         end
@@ -4185,15 +4274,46 @@ class ProjectsController < ApplicationController
       fu_dir = fus_dir + @fu.id.to_s
       Dir.mkdir fu_dir
       filepath = fu_dir + filename
-      File.open(filepath, 'w') do |f|
-        if params[:input_type_id] == '2'
-          f.write(params[:content])
-        elsif params[:input_type_id] == '1'
-          f.write("genes\t#{params[:name]}\n")
-          params[:content].split(/#{delimiters[params[:delimiter].to_i]}+/).each do |e|
-            f.write("#{e}\t1\n")
+
+      ## remove potential duplicate and report them
+      list_identifiers = []
+      h_identifiers = {}
+      @duplicates = []
+      final_content = []
+      if params[:input_type_id] == '2'
+        params[:content].split(/\n/).each do |l| 
+          l.split(/\t/).each do |e|
+            if !h_identifiers[e[0]]
+              h_identifiers[e[0]] = 1
+              final_content.push e.join("\t")
+            else
+              @duplicates.push e[0]
+            end
           end
         end
+      elsif params[:input_type_id] == '1'
+        final_content = ["genes\t#{params[:name]}"]
+        params[:content].split(/#{delimiters[params[:delimiter].to_i]}+/).each do |e|
+          if !h_identifiers[e]
+            h_identifiers[e] = 1
+            final_content.push "#{e}\t1"
+          else
+            @duplicates.push e
+          end
+        end
+      end
+
+
+      File.open(filepath, 'w') do |f|
+        f.write(final_content.join("\n"))
+     #   if params[:input_type_id] == '2'
+     #     f.write(params[:content])
+     #   elsif params[:input_type_id] == '1'
+     #     f.write("genes\t#{params[:name]}\n")
+     #     params[:content].split(/#{delimiters[params[:delimiter].to_i]}+/).each do |e|
+     #       f.write("#{e}\t1\n")
+     #     end
+     #   end
       end
       if File.exist? filepath and File.size(filepath) > 0      
         h_upd = {
@@ -4993,7 +5113,8 @@ class ProjectsController < ApplicationController
       @time_to_destroy = (c + 3.days + 1.hour) - Time.now# + d //one day after the max 2 days 
     end
     @h_articles = {}
-    Article.where(:pmid => @project.exp_entries.map{|ge| ge.pmid}).all.map{|a| @h_articles[a.pmid] = a}
+#    Article.where(:pmid => @project.exp_entries.map{|ge| ge.pmid}).all.map{|a| @h_articles[a.pmid] = a}
+    Article.where(:doi => @project.exp_entries.map{|ge| ge.doi}).all.map{|a| @h_articles[a.doi] = a}
     
     @klay_data = []
     @log = ""
@@ -6932,9 +7053,10 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
 
     h = {:public => true}
     h[:user_id] = 1 if !current_user
+    public_limit = (params[:format] == 'json') ? 10000 : settings[:public_limit] 
     @h_counts={:public => 0, :private => 0}
     @h_counts[:public] =  public_base_search.where(h).count
-    @public_projects = public_base_search.where(h).order("updated_at desc").limit(settings[:public_limit]).all.to_a
+    @public_projects = public_base_search.where(h).order("updated_at desc").limit(public_limit).all.to_a
     
     free_txt = settings[:free_text].downcase.gsub("*", "").gsub(/([\[\]()])/, '\\' + "\1")
     
@@ -6961,6 +7083,22 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
 #    end
   end
 
+  def format_gene g
+
+    return {
+      :name => g['name'],
+      :ensembl_id => g['ensembl_id'],
+      :biotype => g['biotype'],
+      :chr => g['chr'],
+      :ncbi_gene_id => g['ncbi_gene_id'],
+      :latest_ensembl_release => g['latest_ensembl_release'],
+      :description => g['description'],
+      :function_description => g['function_description'],
+      :alt_names => g['alt_names']
+    }
+    
+  end
+
   # GET /projects
   # GET /projects.json
   def index
@@ -6985,7 +7123,25 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
           end
         end
       }
-      format.json { render json: @projects }
+      format.json { 
+         
+#        render :plain => File.read(Pathname.new(APP_CONFIG[:data_dir]) + 'projects.json')
+        file_path = Pathname.new(APP_CONFIG[:data_dir]) + 'projects.json'
+     #   path = filepath.to_s.gsub(/\/data\/asap2/, "/rails_send_file") #"/rails_send_file/FB2020_05.sql.gz.05"                                                                   
+     #   headers['Content-Disposition'] = "attachment; filename=projects.json"
+     #   headers['X-Accel-Redirect'] = path #'/download_public/uploads/stories/' + params[:story_id] +'/' + params[:story_id] + '.zip'                                            
+     #   headers['Content-Type'] = "application/octet-stream"
+     #   headers['Content-Length'] = File.size filepath
+     #   render :nothing => true
+      
+        headers['Content-Type'] = 'application/json'
+        headers['Cache-Control'] = 'no-cache'
+        headers['Content-Disposition'] = "inline; filename=#{File.basename(file_path)}"
+        
+        # Use send_file to stream the content directly to the client
+        send_file(file_path, type: 'application/json', disposition: 'inline', stream: true)
+        
+      }
     end
     
   end
@@ -6994,9 +7150,13 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
   # GET /projects/1.json
   def show
 
+     respond_to do |format|
+      format.html{
+
     @error = ''
     if @project
-
+      public_txt = (@project.public) ? "[#{@project.public_key}] " : ''
+      @title = "Project #{@project.key} #{public_txt}- ASAP Automated Single-cell Analysis Portal"
     #  @version =@project.version
     #  @h_env = {}
     #  begin
@@ -7164,10 +7324,12 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     end
 
     if @project.version_id > 3
-      
       render :layout => 'project'
     else
       redirect_to "https://asap-old.epfl.ch/projects/#{@project.key}"
+    end
+      } 
+      format.json {render :json => Basic.generate_project_json(@project)}
     end
   end
     
@@ -7723,9 +7885,9 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     require "csv"
     if @project
       tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + params[:key]
-     # parsing_step = Step.where(:version_id => @project.version_id, :name => 'parsing').first
+      # parsing_step = Step.where(:version_id => @project.version_id, :name => 'parsing').first
       parsing_step = Step.where(:docker_image_id => @asap_docker_image.id, :name => 'parsing').first
-
+      
       @h_steps={}
       Step.where(:docker_image_id => @asap_docker_image.id).all.map{|s| @h_steps[s.id]=s}
       
@@ -7744,7 +7906,7 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
         params[:project][:status_id]=1
         params[:project][:duration]=0
         step = @h_steps[params[:project][:step_id].to_i] # Step.where(:id => params[:project][:step_id].to_i).first
-      params[:attrs]||={}
+        params[:attrs]||={}
         params[:project][(step.obj_name + "_attrs_json").to_sym]=(params[:attrs].keys.size > 0) ? params[:attrs].to_json : "{}" 
       else ### update of project details 
         
@@ -7752,7 +7914,7 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
         #  cmd = "rails parse_batch_file[#{@project.key}]"
         #  `#{cmd}`
         
-      logger.debug("TEST GSE")
+        logger.debug("TEST GSE")
         
         Fetch.add_upd_exp_codes({
                                   :project => @project,
@@ -7760,9 +7922,10 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
                                   :array_express_codes => params[:array_express_codes]})
         
         
-        if params[:project][:pmid]
-          h_article = Fetch.fetch_pubmed(@project.pmid)
-          article = Article.where(:pmid => @project.pmid).first
+        if params[:project][:doi] ## replace :pmid by :doi
+          logger.debug("DOI: " + params[:project][:doi])
+          h_article = Fetch.doi_info(params[:project][:doi])
+          article = Article.where(:doi => params[:project][:doi]).first
           if !article
             article = Article.new(h_article)
             article.save
@@ -7777,12 +7940,12 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
           #    gene_names_file = parsing_dir + 'gene_names.json'
           #    cmd = "java -jar #{Rails.root}/lib/ASAP.jar -T RegenerateNewOrganism -organism #{params[:project][:organism_id]} -j #{gene_names_file} -o #{parsing_dir}"
           #    logger.debug("CMD: " + cmd)
-        #    `#{cmd}`
+          #    `#{cmd}`
           #    
           #    ### rewrite download files
           #    Step.where(["id <= ?", @project.step_id]).all.select{|e| e.id < 4}.each do |step|
           #      output_dir =  tmp_dir + step.name 
-        #      output_file = output_dir + 'output.tab'
+          #      output_file = output_dir + 'output.tab'
           #      cmd = "java -jar #{Rails.root}/lib/ASAP.jar -T CreateDLFile -f #{output_file} -j #{gene_names_file} -o #{output_dir + 'dl_output.tab'}"
           #      logger.debug("CMD: " + cmd)
           #      `#{cmd}`
@@ -7809,7 +7972,7 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
           @project.gene_enrichments.destroy_all
           @project.diff_exprs.destroy_all
           
-      end
+        end
         
         #      ### read_write access      
         #      manage_access()
@@ -7909,34 +8072,34 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
         #end
        # end
         
-        
-        format.html {
-          if params[:render_nothing] and step
-            #         jobs = Job.where(:project_id => @project.id, :step_id => session[:active_step]).all.to_a
-            #         jobs.sort!{|a, b| (a.updated_at.to_s || '0') <=> (b.updated_at.to_s || '0')} if jobs.size > 0
-            #         last_job = jobs.last
-            #         last_update = @project.status_id.to_s + ","
-            #         last_update += [jobs.size, last_job.status_id, last_job.updated_at].join(",") if last_job
-            #           logger.debug("COUNT_JOBS 2:" + jobs.size.to_s + " -> " + jobs.last.updated_at.to_s)
-            @last_update =  get_last_update_status()
-            #  if session[:last_update_active_step] != last_update 
-            #    @reload_step_container = 1
-            #    session[:last_update_active_step] = last_update
-            #  end
-            
-            render :partial => 'pipeline_upd2' #:nothing => true
-          else
-            ### reset active_step
-            session[:override_active_step]=parsing_step.id
-            redirect_to project_path(@project.key), notice: '' 
-          end
-        }
-        format.json { render :show, status: :ok, location: @project }
-      else
-        format.html { render :edit }
-        format.json { render json: @project.errors, status: :unprocessable_entity }
+          
+          format.html {
+            if params[:render_nothing] and step
+              #         jobs = Job.where(:project_id => @project.id, :step_id => session[:active_step]).all.to_a
+              #         jobs.sort!{|a, b| (a.updated_at.to_s || '0') <=> (b.updated_at.to_s || '0')} if jobs.size > 0
+              #         last_job = jobs.last
+              #         last_update = @project.status_id.to_s + ","
+              #         last_update += [jobs.size, last_job.status_id, last_job.updated_at].join(",") if last_job
+              #           logger.debug("COUNT_JOBS 2:" + jobs.size.to_s + " -> " + jobs.last.updated_at.to_s)
+              @last_update =  get_last_update_status()
+              #  if session[:last_update_active_step] != last_update 
+              #    @reload_step_container = 1
+              #    session[:last_update_active_step] = last_update
+              #  end
+              
+              render :partial => 'pipeline_upd2' #:nothing => true
+            else
+              ### reset active_step
+              session[:override_active_step]=parsing_step.id
+              redirect_to project_path(@project.key), notice: '' 
+            end
+          }
+          format.json { render :show, status: :ok, location: @project }
+        else
+          format.html { render :edit }
+          format.json { render json: @project.errors, status: :unprocessable_entity }
+        end
       end
-    end
     end
   end
 
@@ -8016,9 +8179,10 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
       p.exp_entries.clear
       p.provider_projects.clear
       #    p.runs.destroy_all
-      
-      p.destroy
+
       Sunspot.remove(p)
+      p.destroy
+      #      Sunspot.remove(p)
     rescue Exception => e
       puts e.message
       logger.debug(e.backtrace)
@@ -8076,7 +8240,7 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
   def project_params
     #      params.fetch(:project, {})
   
-    params.fetch(:project).permit(:name, :key, :organism_id, :group_filename, :input_filename, :status_id, :duration, :step_id, :filter_method_id, :norm_id, :parsing_attrs_json, :filter_method_attrs_json, :norm_attrs_json, :public, :pmid, :diff_expr_filter_json, :gene_enrichment_filter_json, :read_access, :write_access, :replaced_by_project_key, :replaced_by_comment, :version_id, :technology, :tissue, :extra_info, :description, :project_type_id)
+    params.fetch(:project).permit(:name, :key, :organism_id, :group_filename, :input_filename, :status_id, :duration, :step_id, :filter_method_id, :norm_id, :parsing_attrs_json, :filter_method_attrs_json, :norm_attrs_json, :public, :pmid, :doi, :diff_expr_filter_json, :gene_enrichment_filter_json, :read_access, :write_access, :replaced_by_project_key, :replaced_by_comment, :version_id, :technology, :tissue, :extra_info, :description, :project_type_id)
   end
 end
   

@@ -27,9 +27,11 @@
 
 <% else %>
 
-Format not detected.
+<%= @h_json.to_json if admin? %>
 <% if @h_json and @h_json['displayed_error'] %>
 <span class='badge badge-danger'><%= raw @h_json['displayed_error'] %></span>
+<% else %>
+Format not detected.
 <% end %>
 <% if admin? %>
 <%= @cmd %>

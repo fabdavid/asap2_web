@@ -61,10 +61,12 @@
 
 <%= javascript_tag do %>
 
- function fill_dropdown(d, h_cats, default_val, add_complementary, type){
+
+ function fill_dropdown(d, h_cats, default_val, ref_group_id, type, total){
   d.empty()
-  if (add_complementary){
-   d.append($("<option />").val("").text("Complementary"))
+  if (ref_group_id){
+   compl_nber_cells = total - h_cats[$("#" + ref_group_id).val()]
+   d.append($("<option />").val("").text("Complementary (" + compl_nber_cells + ")"))
   }
   h_cat_keys = Object.keys(h_cats)
    h_cat_keys = h_cat_keys.sort()
@@ -100,8 +102,15 @@ for (i= 0; i< list_valid_types.length; i++){
 <% end %>
 
 
-<% if attr_name == 'groups' and session[:input_data_attrs][@project.id][@step.id.to_s] and session[:input_data_attrs][@project.id][@step.id.to_s][attr_name] %>
+console.log(<%= raw session[:input_data_attrs][@project.id][@step.id.to_s].to_json %>)
+console.log("<%= attr_name %>")
+var attr_name = "<%= attr_name %>"
+<% if ["groups", "geneset"].include?(attr_name) and session[:input_data_attrs][@project.id][@step.id.to_s] and session[:input_data_attrs][@project.id][@step.id.to_s][attr_name] %>
+console.log("test group_annot2")
+
  <% if h = session[:input_data_attrs][@project.id][@step.id.to_s][attr_name].first %>
+console.log("test group_annot3")
+
 //  alert("<%# raw  h[:output_dataset] %>")
  <% group_annot = nil 
   if h[:annot_id]
@@ -110,16 +119,20 @@ for (i= 0; i< list_valid_types.length; i++){
    group_annot = Annot.where(:project_id => @project.id, :name => h[:output_dataset]).first 
   end
   %>
- <%# group_annot2 = Annot.where(:project_id => @project.id, :name => session[:input_data_attrs][@project.id][@step.id.to_s]['group_annot2'][:output_dataset]).first %>
- <% if group_annot %>
+
+<%# group_annot2 = Annot.where(:project_id => @project.id, :name => session[:input_data_attrs][@project.id][@step.id.to_s]['group_annot2'][:output_dataset]).first %>
   console.log("group_annot =")
   console.log(<%= raw group_annot.to_json %>)
+
+  <% if group_annot %>
+  var group_annot = <%= raw group_annot.to_json %>
   var annot_categories = <%= raw (group_annot and group_annot.categories_json) ? group_annot.categories_json : [] %>
+  console.log(annot_categories)
   if (annot_categories['']){ delete annot_categories['']}  
  //var list_annot = Object.keys(tmp_annot_categories).filter(x => x != '')
   
-  var list_annot = []
-  $.each(annot_categories, function(k, v){list_annot.push(k)});
+  var list_annot = Object.keys(annot_categories)
+//  $.each(annot_categories, function(k, v){list_annot.push(k)});
   <%# if h2 = session[:input_data_attrs][@project.id][@step.id.to_s]['group_annot2'].first and group_annot2 = Annot.where(:project_id => @project.id, :name => h2[:output_dataset]).first %>
 /*      var annot_categories2 = <%# raw group_annot2.categories_json %> 
       var list_annot2 = []
@@ -129,9 +142,20 @@ for (i= 0; i< list_valid_types.length; i++){
    var list_annot2 = list_annot 
   <%# end %>
 //var $dropdown = $("#attrs_group_comp");
-fill_dropdown($("#attrs_group_ref"), annot_categories, list_annot[0], false, 'cell');
-fill_dropdown($("#attrs_group_comp"), annot_categories2, list_annot2[1], true, 'cell');
+console.log("list_annot")
+console.log(list_annot)
+console.log("test_" + group_annot.nber_cols)
+fill_dropdown($("#attrs_" + ((attr_name == 'groups') ? "group_ref" : (attr_name + "_sel"))), annot_categories, list_annot[0], false, 'cell', group_annot.nber_cols);
+console.log("test2")
+if ($("#attrs_group_comp").length > 0){
+fill_dropdown($("#attrs_group_comp"), annot_categories2, list_annot2[1], "attrs_group_ref", 'cell', group_annot.nber_cols);
 
+$("#attrs_group_ref").change(function(){
+fill_dropdown($("#attrs_group_comp"), annot_categories2, list_annot2[1], "attrs_group_ref", 'cell', group_annot.nber_cols);
+})
+}
+
+console.log("bla")
   <% end %>
  <% end %>
 <% elsif ida[@step.id.to_s] and ida[@step.id.to_s][attr_name] and  h = ida[@step.id.to_s][attr_name].first and  @h_attrs[attr_name + "_sel"] %>
@@ -145,7 +169,7 @@ fill_dropdown($("#attrs_group_comp"), annot_categories2, list_annot2[1], true, '
   <% if group_annot %>
   var annot_categories = <%= raw (group_annot and group_annot.categories_json) ? group_annot.categories_json : [] %>
   if (annot_categories['']){ delete annot_categories['']}
-  fill_dropdown($("#attrs_<%= attr_name %>_sel"), annot_categories, null, false, 'gene')
+  fill_dropdown($("#attrs_<%= attr_name %>_sel"), annot_categories, null, false, 'gene', group_annot.nber_rows)
   <% end %>
 <% end %> 
 

@@ -25,7 +25,7 @@
     <%= link_to(raw("<button id='download-ge-table' class='btn btn-primary btn-sm' type='button'>Tab-separated</button>"),
       get_ge_geneset_list_run_path(@run, :format => 'text', :type => params[:type], :download => 1), "target" => "_blank") if exportable?(@project) %>
 </div>
-<h5><%= raw display_run2(@run, @step, @std_method) %> - List of <%= @nber_genesets %> <%= params[:type] %>-regulated genes</h5>
+<h5><%= raw display_run2(@run, @step, @std_method) %> - List of <%= @nber_genesets %> enriched genesets among <%= params[:type] %>-regulated genes</h5>
 <%# raw display_run_attrs(@run, @h_run_attrs, @h_std_method_attrs) %>
 <% if @limit < @nber_genesets %>
 <div class='alert alert-danger'>Only <%= @limit %> genes with highest fold change displayed</div>
@@ -58,10 +58,14 @@
 	 <% end %>
        </tbody>
      </table>
+
+
 <!-- </div></div> -->
 </div>
 <% end %>
 </div>
+
+
 
 <%= javascript_tag do %>
 
@@ -79,7 +83,7 @@ $("#ge-gene_list").on("click", ".gene_set_item", function(e){
         'z-index':1000000,
         top: e.pageY + 10
   }).stop().show(100);
- refresh("ontop_popup_container", "<%= search_gene_set_items_path() %>?gene_set_id=<%= @h_run_attrs['gene_set_id'] %>&identifier=" + identifier + "&version_id=<%= @project.version_id %>", {loading:true})
+ refresh("ontop_popup_container", "<%= search_gene_set_items_path() %>?gene_set_id=<%= @h_run_attrs['gene_set_id'] %>&identifier=" + identifier + "&version_id=<%= @project.version_id %>&project_key=<%= @project.key %>&ge_run_id=<%= @run.id %>&type=<%= params[:type] %>", {loading:true})
 })
 
 

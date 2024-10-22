@@ -364,10 +364,11 @@ task update_xrefs: :environment do
                 # end
                 if gene_set and gene_set.id
                   gene_set_item = h_gene_set_items[gene_set.id][go_id] if h_gene_set_items[gene_set.id]
+                  name = h_xref_names[go_type][go_id] || h_go[go_id]['name']
                   h_gene_set_item = {
                     :gene_set_id => gene_set.id, 
                     :identifier => go_id, 
-                    :name => h_xref_names[go_type][go_id] || h_go[go_id]['name'],
+                    :name => (name != "\\N") ? name : nil,
                     :asap_data_id => APP_CONFIG[:asap_data_id]
                   }
                   #                gene_set_item = GeneSetItem.where(h_gene_set_item).first
@@ -448,7 +449,7 @@ task update_xrefs: :environment do
                   h_gene_set_item = {
                     :gene_set_id => gene_set.id,
                     :identifier => identifier,
-                    :name => h_xref_names[type][gsi_id],
+                    :name => (h_xref_names[type][gsi_id] != "\\N") ? h_xref_names[type][gsi_id] : nil,
                     :asap_data_id => APP_CONFIG[:asap_data_id]
                   }
                   #        gene_set_item = GeneSetItem.where(h_gene_set_item).first

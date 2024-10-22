@@ -74,6 +74,15 @@
 
 <%= javascript_tag do %>
 
+function moveValueToFront(a, v) {
+    const index = a.indexOf(v);
+    if (index !== -1) {
+        a.splice(index, 1); // Remove the element from its current position                                                
+        a.unshift(v); // Add the element to the beginning of the array                                                                                          
+    }
+    return a;
+}
+
 function save_cla(opts){
  var p = []
  var list_fields = ['cla_name', 'cla_cat', 'cla_cat_idx', 'cla_clone_id', 'cla_annot_id', 'cla_up_gene_ids', 'cla_down_gene_ids', 'cla_cell_ontology_term_ids']
@@ -217,7 +226,7 @@ function view_cot(e, el_id){
 
             var t1 = performance.now();
             //console.log("Time to process autocomplete: " + (t1-t0) + "ms")
-            response(outputArray.slice(0,10));
+            response(outputArray.sort().slice(0,20));
       },
       select: function( event, ui ) {
          if (ui.item){
@@ -247,7 +256,7 @@ function view_cot(e, el_id){
             var t0 = performance.now();
             //console.log("test")
             // filter array to only entries you want to display limited to 10
-            var outputArray = new Array();
+            var outputArray = new Array();				
             for (var i = 0; i < h_autocomplete['search'].length; i++ ) {
                 var re = new RegExp(request.term, 'i');
                 if ( h_autocomplete['search'][i].match(re) ) {
@@ -257,7 +266,7 @@ function view_cot(e, el_id){
 
             var t1 = performance.now();
             //console.log("Time to process autocomplete: " + (t1-t0) + "ms")
-            response(outputArray.slice(0,10));
+            response(outputArray.sort().slice(0,20));
       },
       select: function( event, ui ) {
          if (ui.item){

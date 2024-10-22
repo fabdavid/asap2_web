@@ -2,4 +2,4 @@
 
 #Rails.application.config.session_store :cookie_store,
  #                                      key: '_asap2_session'
-Rails.application.config.session_store :active_record_store
+Rails.application.config.session_store :active_record_store, key: '_asap2_session', expire_after: 30.minutes, secure: true
