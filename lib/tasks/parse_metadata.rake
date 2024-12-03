@@ -51,6 +51,7 @@ task :parse_metadata, [:run_id] => [:environment] do |t, args|
   puts "STEP: " +  h_steps.to_json
   parsing_mat = matrices.select{|mat| h_steps[mat.step_id].name == 'parsing'}.first
   parsing_loom_file = project_dir + parsing_mat.filepath
+#  options = ["-header " + ((h_attrs['metadata_type_id'] == "1") ? 'false' : 'true'), "-col first"]
   options = ["-header true", "-col first"]
   options.push("-metadataType #{h_attrs['metadata_types']}") if h_attrs['metadata_types']
   options.push("-removeAmbiguous") if h_attrs['assign_metadata'] == '0'

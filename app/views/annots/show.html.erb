@@ -55,6 +55,15 @@
 		NA
 	      <% end %>
 	      </td>
+	      <% if @annot.imported == true %>
+	    </tr><tr>
+	      <td>Manual mapping to ASAP step</td>
+	      <% l = @h_steps.keys.sort{|a, b| @h_steps[a].rank <=> @h_steps[b].rank}.map{|k| [@h_steps[k].label, k]} %>
+	      <% l.unshift ["Not defined", ""] %>
+	      <td><%= select_tag 'sim_step_id', options_for_select(l, @annot.sim_step_id || ''), {:class => 'form-control'} %>
+		<span id='sim_step_validation'></span>
+	      </td>
+	      <% end %>
 	    </tr><tr>
 	      <td>Created by</td><td><%= (u = @annot.user) ? ((u == current_user) ? 'me' : u.email) : 'admin' %></td>
 	    </tr>
@@ -262,6 +271,11 @@
 
 
 <%= javascript_tag do %>
+
+$("#sim_step_id").change(function(){
+ data = [{ name : "annot[sim_step_id]", value : $(this).val()}]
+ refresh_post(null, "<%= annot_path(@annot) %>", data, "put", {})
+})
 
 <% if @project.public == false %>
 $("#edit_link").click(function(){

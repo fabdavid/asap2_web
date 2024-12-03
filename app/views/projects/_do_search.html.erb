@@ -87,6 +87,7 @@ Public projects (<%= @public_projects.total_entries %> of <%= @h_counts[:all_pub
        <% l = [['Most recent changes', 0], ['Most relevant',1], ['Ordered by name', 2], ['Highest number of cells', '3'], ['Largest projects', '4']
           # ['Order by decreasing size', 2], ['Most recent', 3]
           ] %>
+       <%= session[:settings][:my_order_by] if admin? %>
        <%= select_tag 'my_order_by', options_for_select(l, session[:settings][:my_order_by]), {:class => 'form-control mr-2 order_by'} %>
      </div>
      <div class='clear-both'></div>

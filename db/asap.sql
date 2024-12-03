@@ -789,6 +789,7 @@ store_run_id integer,
 ori_run_id int, 
 ori_step_id int,
 headers_json text,
+sim_step_id int,
 --nber_clas text, -- json list
 --selected_cla_ids text, -- json list
 cat_info_json text, -- {"nber_cla" : [], "selected_cla_ids" : []}

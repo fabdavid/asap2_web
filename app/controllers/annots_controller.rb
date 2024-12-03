@@ -137,7 +137,11 @@ class AnnotsController < ApplicationController
     @h_statuses = {}
     @project = @annot.project
   #  Step.where(:version_id => @project.version_id).all.map{|s| @h_steps[s.id]=s; @h_steps_by_name[s.name]=s}
-    Step.where(:docker_image_id => @asap_docker_image.id).all.map{|s| @h_steps[s.id]=s; @h_steps_by_name[s.name]=s}
+    steps = Step.where(:docker_image_id => @asap_docker_image.id).all
+    @h_attrs_by_step = {}
+
+    steps.map{|s| @h_attrs_by_step[s.id]= Basic.safe_parse_json(s.attrs_json, {})}
+    steps.select{|s| (s.admin == false or admin?) and (!@h_attrs_by_step[s.id]['project_types'] or @h_attrs_by_step[s.id]['project_types'].include?((@project_type) ? @project_type.tag : nil))}.map{|s| @h_steps[s.id]=s; @h_steps_by_name[s.name]=s}
     Status.all.map{|s| @h_statuses[s.id]=s}
 
 #    @step = Step.find_by_name('cell_')
@@ -305,10 +309,15 @@ class AnnotsController < ApplicationController
           annot_params[:data_class_ids] = ''
         end
 
-        h_annot = {
-          :data_type_id => annot_params[:data_type_id].to_i,
-          :data_class_ids => annot_params[:data_class_ids]
-        }
+        h_annot = {}
+        if annot_params[:data_type_id]
+          h_annot = {
+            :data_type_id => annot_params[:data_type_id].to_i,
+            :data_class_ids => annot_params[:data_class_ids]
+          }
+        elsif annot_params[:sim_step_id]
+           h_annot = {:sim_step_id => annot_params[:sim_step_id]}
+        end
         
         # change ori_annot (equivalent annot attached to the main dataset)
         ori_annot = Annot.where(:project_id => @project.id, :name => @annot.name).order("id asc").first
@@ -359,6 +368,7 @@ class AnnotsController < ApplicationController
       @annot = Annot.find(params[:id])      
       @run = @annot.run
       @project = @annot.project
+      @project_type = @project.project_type
       @version =@project.version
       @h_env = Basic.safe_parse_json(@version.env_json, {})
       @list_docker_image_names = @h_env['docker_images'].keys.map{|k| @h_env['docker_images'][k]["name"] + ":" + @h_env['docker_images'][k]["tag"]}

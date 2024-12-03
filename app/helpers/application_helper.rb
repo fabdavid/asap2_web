@@ -87,7 +87,7 @@ module ApplicationHelper
     
     array = 
       h_attrs.keys.reject{|attr| (reject_attrs = @h_dashboard_card[run.step_id]["reject_attrs"] and reject_attrs.include? attr) or
-      (opt[:reject_if_default] and (std_method_attr = (e = h_std_method_attrs[run.std_method_id]) ? e[attr] : nil) and
+      (opt[:reject_if_default] and run and (std_method_attr = (e = h_std_method_attrs[run.std_method_id]) ? e[attr] : nil) and
        attr_default = (std_method_attr['default']) ? std_method_attr['default'].to_s : '' and attr_default == h_attrs[attr].to_s 
        )
      }.map{|attr|

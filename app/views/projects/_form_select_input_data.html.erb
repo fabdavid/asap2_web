@@ -42,6 +42,7 @@
 #} %>
 
 <%# @h_attr_files.to_json %>
+<%# @h_res[:valid_step_ids].size %>
 <% if @h_res[:valid_step_ids].size > 0 %>
 
 <!--<div style='position:fixed;width:95%;z-index:0'>-->
@@ -72,6 +73,7 @@
 <!--<div class='mt-10'>
 <%= h_selected.to_json %>
 </div>-->
+
  <%# @h_res[:h_annots][source_step_id].to_json %>
  <% if @h_res[:h_annots][source_step_id] %>
 
@@ -111,8 +113,8 @@
 	<% end %>   
 	<%# end %>
 	        <p>
-          <% if step.multiple_runs == true %>
-          <i>created by</i> <span id='annot-lineage_<%= annot.id %>_<%= ori_run.id %>' class='badge badge-warning input_lineage2'><%# ori_run.id if admin? %>#<%= ori_run.num %> <%= @h_std_methods[ori_run.std_method_id].label %></span><br/>
+          <% if step.multiple_runs == true and !annot.sim_step_id %>
+          <i>created by</i> <span id='annot-lineage_<%= annot.id %>_<%= ori_run.id %>' class='badge badge-warning input_lineage2'><%# ori_run.id if admin? %>#<%= ori_run.num %> <%= (@h_std_methods[ori_run.std_method_id]) ? @h_std_methods[ori_run.std_method_id].label : '' %></span><br/>
           <small><i>main params</i> <%= raw display_run_attrs2(ori_run, h_attrs, @h_std_method_attrs, {:reject_if_default => true, :input_lineage_class => 'input_lineage2'}) %></small>	  
           <% else %>
           <%# step.label %>

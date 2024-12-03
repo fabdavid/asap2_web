@@ -92,11 +92,13 @@ class ProjectsController < ApplicationController
     session[:settings][:search_type] ||= 'public'
     ['my', 'public'].each do |prefix|      
       session[:settings][(prefix + "_per_page").to_sym]||=50 #if !session[:settings][(prefix + "_per_page").to_sym] or session[:settings][(prefix + "_per_page").to_sym]== 0
+      session[:settings][(prefix + "_per_page").to_sym]=50 if  session[:settings][(prefix + "_per_page").to_sym]==0
       session[:settings][(prefix + "_page").to_sym]||=1
+       session[:settings][(prefix + "_page").to_sym]=1 if session[:settings][(prefix + "_page").to_sym]==0
       session[:settings][(prefix + "_order_by").to_sym]||=0
 
       ['per_page', 'page', 'order_by'].each do |e|
-        session[:settings][(prefix + "_" + e).to_sym]=params[(prefix + "_" + e).to_sym].to_i if params[(prefix + "_" + e).to_sym] and params[(prefix + "_" + e).to_sym].to_i != 0
+        session[:settings][(prefix + "_" + e).to_sym]=params[(prefix + "_" + e).to_sym].to_i if params[(prefix + "_" + e).to_sym] and (params[(prefix + "_" + e).to_sym].to_i != 0 or e == 'order_by')
       end
     end
 
@@ -261,7 +263,7 @@ class ProjectsController < ApplicationController
         asap_docker_version = m[1]
       end
 
-      @cmd = "docker run --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2 -v /srv/asap_run/srv:/srv fabdavid/asap_run:#{asap_docker.tag} -c 'Rscript prediction.tool.2.R predict /data/asap2/pred_models/#{asap_docker_version} #{params[:std_method_id]} " +
+      @cmd = "docker run --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2 -v /srv/asap_run/srv:/srv fabdavid/asap_run:#{asap_docker.tag} -c 'Rscript prediction.tool.2.R predict /data/asap2/pred_models/#{@version.id} #{params[:std_method_id]} " +
      #   ((biggest_annot.dim == 1) ? "#{biggest_annot.nber_cols} #{biggest_annot.nber_rows}" : "#{biggest_annot.nber_rows} #{biggest_annot.nber_cols}") +
          "#{biggest_annot.nber_rows} #{biggest_annot.nber_cols}" + 
         " 2>&1'"
@@ -2356,12 +2358,13 @@ class ProjectsController < ApplicationController
         end
         #        @log5+= "#{nber_criteria} == #{nber_valid_criteria}"
         if nber_criteria == nber_valid_criteria
-          h_res[:h_annots][a.ori_step_id] ||= {}
-          h_res[:h_annots][a.ori_step_id][a.ori_run_id] ||= {}
-          h_res[:h_annots][a.ori_step_id][a.ori_run_id][a.store_run_id] ||= {}
-          h_res[:h_annots][a.ori_step_id][a.ori_run_id][a.store_run_id][a.name] = a        
-          h_res[:h_annots_by_step_id][a.ori_step_id]||=[]
-          h_res[:h_annots_by_step_id][a.ori_step_id].push([a.id, a.ori_run_id])
+          step_id = (a.sim_step_id) ? a.sim_step_id : a.ori_step_id 
+          h_res[:h_annots][step_id] ||= {}
+          h_res[:h_annots][step_id][a.ori_run_id] ||= {}
+          h_res[:h_annots][step_id][a.ori_run_id][a.store_run_id] ||= {}
+          h_res[:h_annots][step_id][a.ori_run_id][a.store_run_id][a.name] = a        
+          h_res[:h_annots_by_step_id][step_id]||=[]
+          h_res[:h_annots_by_step_id][step_id].push([a.id, a.ori_run_id])
           h_res[:h_store_run_ids][a.store_run_id] = 1
           #      h_res[:h_runs][a.run_id] ||= run
         end
@@ -2442,7 +2445,7 @@ class ProjectsController < ApplicationController
     #runs = (@current_filtered_run_ids & available_run_ids).map{|run_id| @h_all_runs[run_id]}
     #runs = available_run_ids.map{|run_id| @h_all_runs[run_id]}
     runs = Run.where(:project_id => @project.id, :step_id => source_step_ids, :status_id => @h_statuses_by_name['success']).all
-    annots = Annot.where(:project_id => @project.id, :ori_step_id => source_step_ids).all 
+    annots = Annot.where(:project_id => @project.id, :ori_step_id => source_step_ids).all | Annot.where(:project_id => @project.id, :sim_step_id => source_step_ids).all
 #    ## filter runs based on constraints
 #
 #    if @h_constraints and @h_constraints['in_lineage']

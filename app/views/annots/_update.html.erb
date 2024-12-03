@@ -1,2 +1,8 @@
+<% if params[:annot][:sim_step_id] %>
+$("#sim_step_validation").html("<i class='fa fa-check text-success'></i>")
+ setTimeout(() => {
+        $("#sim_step_validation").fadeOut(200);
+    }, 2000);
+<% else %> 
 refresh("step_container", "<%= raw annot_path(@annot) %>", {loading:"fa-2x"})
-
+<% end %>

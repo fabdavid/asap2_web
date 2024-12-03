@@ -141,6 +141,9 @@
       <% end %>
 <!--    </div> -->
     <% end %>
+    <% if @project_type %>
+    <h4>Project type: <small><%= @project_type.name %></small></h4>
+    <% end %>
     <h4>All runs 
       <% if session[:activated_filter][@project.id] == true %>
       (not filtered)

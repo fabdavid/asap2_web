@@ -1,4 +1,3 @@
-
 module Basic
 
   #class Basic
@@ -625,8 +624,9 @@ module Basic
       
     end
 
-    def convert_mtx_to_h5 file_path, logger
-
+    def convert_other_formats file_path, logger
+      
+      init_file_path = file_path
       logger.debug("INIT_PATH:" + file_path.to_s)
       base_dir = file_path.parent()
       tmp_file_path = base_dir + 'input_file'
@@ -684,13 +684,13 @@ module Basic
       end
       
       
-
+      
       dirs = Dir.entries(input_dir).select{|e| f = input_dir + e; File.directory?(f) and !e.match(/^\./)}
       files = Dir.entries(input_dir).select{|e| f = input_dir + e; !File.directory?(f) and !e.match(/^\./)}
       logger.debug("DIR: " + dirs.to_json)
       logger.debug("FILES2:" + files.to_json)
       mtx_files = files.select{|e| e.match(/\.mtx$/)} 
-
+      
       ## deal with the case of 1 sub-folder (https://cf.10xgenomics.com/samples/cell/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz)
       if files.size == 1 and dirs.size == 1
         d = dirs.first
@@ -699,13 +699,13 @@ module Basic
         logger.debug("DIR2: " + dirs.to_json)
         if sub_files.size == 0 and sub_dirs.size == 1
           logger.debug("DIR3: " + sub_dirs.to_json)
-#          FileUtils.mv input_dir + d + sub_dirs.first, input_dir + d 
+          #          FileUtils.mv input_dir + d + sub_dirs.first, input_dir + d 
           move_to_parent_dir(input_dir + d + sub_dirs.first)
         end
       end
       
       logger.debug("files:" + files.size.to_s + ", mtx_files: " + mtx_files.to_json)
-
+      
       if files.size > 2 and (mtx_files.size == 1 or files.include?("matrix.mtx"))
         File.delete tmp_file_path
         File.delete input_dir + "input_file.tar" if File.exist?(input_dir + "input_file.tar")
@@ -718,31 +718,31 @@ module Basic
             Dir.entries(input_dir + d).select{|e| f = input_dir + d + e; !File.directory?(f) and !e.match(/^\./)}.each do |f|
               FileUtils.move input_dir + d + f, input_dir
             end
-              Dir.rmdir input_dir + d
+            Dir.rmdir input_dir + d
             #`mv #{(input_dir + d).to_s}/* #{input_dir}`
             logger.debug("cTEST2")
           end
         end
         
-          
-
-     # elsif files.size == 1
-     #   FileUtils.move input_dir + files.first, tmp_file_path
-     #   FileUtils.rm_r input_dir if File.exist? input_dir
-     #   logger.debug("cTEST3")
-     # else
-     #   File.delete input_dir + "input_file.tar" if File.exist?(input_dir + "input_file.tar")
-     #   FileUtils.rm_r input_dir if File.exist? input_dir
-     #   #              Dir.rmdir input_dir if File.exist? input_dir       
-     #   logger.debug("cTEST4")                   
+        
+        
+        # elsif files.size == 1
+        #   FileUtils.move input_dir + files.first, tmp_file_path
+        #   FileUtils.rm_r input_dir if File.exist? input_dir
+        #   logger.debug("cTEST3")
+        # else
+        #   File.delete input_dir + "input_file.tar" if File.exist?(input_dir + "input_file.tar")
+        #   FileUtils.rm_r input_dir if File.exist? input_dir
+        #   #              Dir.rmdir input_dir if File.exist? input_dir       
+        #   logger.debug("cTEST4")                   
       end
       
       ### if input_dir exists then apply the conversion
       h5_file_path = base_dir + 'input.h5'
-
+      
       ## rename mtx file if only one
       mtx_files = Dir.entries(input_dir).select{|e| e.match(/\.mtx$/)}
-
+      
       if mtx_files.size == 1
         if !File.exist? input_dir + 'matrix.mtx'
           FileUtils.mv input_dir + mtx_files.first, input_dir + 'matrix.mtx'
@@ -756,13 +756,32 @@ module Basic
         `#{cmd}`
         if File.exist? h5_file_path and File.size(h5_file_path) > 0
           file_path = h5_file_path
+          type = 'MEX'
         end
       end
       
       f_out.close
       
+      if init_file_path == file_path
+     
+        ## check if it's a rds file
+        if file_path.to_s.match(/\.rds$/)
+          ##try to convert
+          loom_file_path = base_dir + 'input.loom'
+#          cmd = "#{APP_CONFIG[:docker_call]} \"Rscript -e \\\"rmarkdown::render('convert_seurat.Rmd', params = list(input=\'#{file_path.to_s}\', output=\'#{loom_file_path}\'))\\\"\""
+          cmd =  "#{APP_CONFIG[:docker_call]} 'Rscript --vanilla /srv/convert_seurat.R #{file_path.to_s} #{loom_file_path}'"
+          `#{cmd}`
+          logger.debug("CMD RDS: #{cmd}")
+          if File.exist? loom_file_path
+            file_path = loom_file_path
+            type = 'RDS'
+          end
+        end
+        
+      end
+      
       logger.debug("FINAL_PATH:" + file_path.to_s)
-      return file_path
+      return {:file_path => file_path, :type => type}
     end
 
      def sql_query3 version, model, select, where
@@ -943,7 +962,8 @@ module Basic
       #project_ids = Project.select("id").where(:version_id => version.id).all
       
       #      StdMethod.where(:version_id => version.id).all.each do |s|
-      StdMethod.where(:docker_image_id => asap_docker_image.id).all.each do |s| 
+      StdMethod.where(:docker_image_id => asap_docker_image.id
+                      ).all.each do |s| 
         h_run_stats[s.id] = {
           :pred_params => Basic.safe_parse_json(s.command_json, {})['predict_params'],
           :std_method_name => s.name,
@@ -951,8 +971,8 @@ module Basic
         }
       end
       
-      all_runs = Run.where(:std_method_id => h_run_stats.keys).all.reject{|r| r.process_duration == 0} + #and [1, 20].include?(r.step_id)} +
-        DelRun.where(:std_method_id => h_run_stats.keys).all.reject{|r| r.process_duration == 0}# and [1, 20].include?(r.step_id)}
+      all_runs = Run.joins(:project).where(:projects => {:version_id => version}, :std_method_id => h_run_stats.keys).all.reject{|r| r.process_duration == 0} + #and [1, 20].include?(r.step_id)} +
+        DelRun.joins(:project).where(:projects => {:version_id => version}, :std_method_id => h_run_stats.keys).all.reject{|r| r.process_duration == 0}# and [1, 20].include?(r.step_id)}
       
       all_runs.each do |r|
         if h_run_stats[r.std_method_id]

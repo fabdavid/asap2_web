@@ -143,12 +143,13 @@ class FusController < ApplicationController
       @cmd = ''
       if params['organism']
         begin
-          logger.debug("CONVERT TO MTX")
-          new_filepath = Basic.convert_mtx_to_h5 filepath, logger
-          if new_filepath != filepath
-            file_format = 'MEX'
-            filepath = new_filepath
-#            @fu.update_attribute(:upload_file_name, File.basename(filepath))
+          logger.debug("CONVERT MTX or RDS")
+          h_conv_res = Basic.convert_other_formats filepath, logger
+          filepath = h_conv_res[:file_path]
+          if h_conv_res[:file_path] != filepath
+            file_format = h_conv_res[:type]
+            filepath = h_conv_res[:file_path]
+            #            @fu.update_attribute(:upload_file_name, File.basename(filepath))
           end
         rescue Exception => error
           logger.debug("ERROR:" + error.to_json)
