@@ -129,7 +129,22 @@ refresh("step_container", "<%= get_step_project_path(:key => @project.key, :nola
 
 //$(document).ready(function(){
 function upd_landing_page(){
+let h_landing_page = {}
+let i=0
+<% if params[:dl_params_json] %>
+<% h_landing_page = Basic.safe_parse_json(params[:dl_params_json], {}) %>
+i=1
+<% elsif @direct_link %>
+ <% h_landing_page = Basic.safe_parse_json(@direct_link.params_json, {}) %>
+i=2
+ <% else %>
 <% h_landing_page = Basic.safe_parse_json(@project.landing_page_json, {}) %>
+i=3
+<% end %>
+console.log("LANDING_PAGE " + i)
+var landing_page = <%= raw h_landing_page.to_json %>
+
+console.log(landing_page)
 <% if h_landing_page['step'] %>
 <% h_p = {:key => @project.key, :nolayout => 1, :fixed_session => 1, :step_id => @h_steps_by_name[h_landing_page['step']].id} %>
 <% h_landing_page['s'].keys.map{|k| h_p[k] = h_landing_page['s'][k] } %>
@@ -352,10 +367,19 @@ $("#new_analysis_form_close").click(function(){
 
 })
 
-
+<%# if @direct_link %>
+<%# h_link_page = Basic.safe_parse_json(@direct_link.params_json, {}) %>
+<%# if h_link_page['step'] %>
+  <%# h_p = {:key => @project.key, :direct_link_key => @direct_link.link_key, :nolayout => 1, :fixed_session => 1, :step_id => @h_steps_by_name[h_link_page['step']].id} %>
+  <%# h_link_page['s'].keys.map{|k| h_p[k] = h_link_page['s'][k] } %>
+//  refresh("step_container", "<%# raw get_step_project_path(h_p) %>", {loading: 'fa-2x loading-step'});
+<%# end %>			   
+			   <%# else %>
  upd_landing_page();
+ 			   <%# end %>
 
 
+			   
 $(".annot-btn").click(function(){
    $("#step_container").removeClass("col-12");
   $("#step_container").addClass("col-6");

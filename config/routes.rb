@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  resources :direct_links
   resources :project_types
   resources :project_cell_sets
   resources :annot_cell_sets
@@ -217,6 +218,7 @@ Rails.application.routes.draw do
       post :do_search
       post :set_search_session
       post :upd_project_tag
+      post :upd_sel
     end
     member do
       post :upd_marker_genes
@@ -295,6 +297,9 @@ Rails.application.routes.draw do
 #    get code, :to => "errors#show", :code => code
 #  end
 
+
+#  puts "[DEBUG] Routes loaded: #{Rails.application.routes.routes.map { |r| r.path }.join(', ')}"
+  mount ActionCable.server => ENV['ACTION_CABLE_MOUNT_PATH']
 
   match '/associate_orcid' => 'home#associate_orcid', :via => [:get]
   match '/associate_orcid2' => 'home#associate_orcid_reprosci', :via => [:get]

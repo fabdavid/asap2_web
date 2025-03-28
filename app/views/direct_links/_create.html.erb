@@ -1,0 +1,26 @@
+console.log("link")
+var w = $(window).width()
+var ww = 600
+
+/*  <a href='<%= raw project_path(:key => @project.key, :dl_params_json => @direct_link.params_json) %>'>\
+    Link with parameters\
+  </a>\
+*/
+
+
+var content = "<div class='wrap-text'>\
+  <span class='alert alert-primary'><%= APP_CONFIG[:server_url] %><%= raw project_path(:key => @project.key, :direct_link_key => @direct_link.view_key) %></span>\
+  <a class='btn btn-primary' href='<%= raw project_path(:key => @project.key, :direct_link_key => @direct_link.view_key) %>'>\
+    <i class='fa fa-link'></i>\
+  </a>\
+</div>"
+
+$("#ontop_popup_container").html(content)
+
+$("#ontop_popup_window").css({
+ left: (w-ww < 0) ? 0 : (w-ww)/2,
+ width:(ww < w) ? ww : w,
+ 'z-index':1000000,
+ top: 110
+}).stop().show(100);
+

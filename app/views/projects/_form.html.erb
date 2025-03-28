@@ -54,7 +54,7 @@
     <%# @h_env['asap_data_db_version'] %>
 
     <% h_list_organisms = {'Most popular species' => Organism.where(:id => [1, 2, 35]).map{|o|  [o.short_name.capitalize + " - #{o.name} [TaxID:#{o.tax_id}]", o.id]}}
-  #  ConnectionSwitch.with_db(:data_with_version, @h_env["asap_data_db_version"]) do
+
     ensembl_subdomains = Basic.sql_query2(:asap_data, @h_env['asap_data_db_version'], 'ensembl_subdomains', '', '*', nil)
     ensembl_subdomains.each do |e|
     organisms = Organism.where(:ensembl_subdomain_id => e.id).select{|o| o.name}.sort{|a, b| ((a.short_name && a.short_name.capitalize) || a.name) <=> ((b.short_name && b.short_name.capitalize) || b.name)}
@@ -62,7 +62,7 @@
       h_list_organisms.merge!({e.name.capitalize => organisms.map{|o| [((o.short_name) ? "#{o.short_name.capitalize} - " : "")  + "#{o.name} [TaxID:#{o.tax_id}]", o.id]}})
      end
     end
-  #  end
+
     %>
     <% sel_organism = (params[:organism_id]) ? Organism.where(:tax_id => params[:organism_id]).first : nil %>
     <%= f.select :organism_id, grouped_options_for_select(h_list_organisms, ((sel_organism) ? [sel_organism.id] : nil)), {}, {class: 'form-control', divider: '---------'} %>

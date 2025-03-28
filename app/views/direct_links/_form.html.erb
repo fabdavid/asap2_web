@@ -1,0 +1,17 @@
+<%= form_with(model: direct_link, local: true) do |form| %>
+  <% if direct_link.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(direct_link.errors.count, "error") %> prohibited this direct_link from being saved:</h2>
+
+      <ul>
+      <% direct_link.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

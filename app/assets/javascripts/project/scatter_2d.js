@@ -4,7 +4,9 @@ function Graph2D(config, user_id, editable, admin){
     this.config = config;
     this.shown = 0; //0 - default; 1 - custom groups; 2 - gene expression; 3 - clusters
     this.data = [];
+    console.log("test")
     this.json = config.json;
+    console.log("test2")
     this.selectData = [];
     this.groupData = [];
     this.defaultConf = { modeBarButtonsToRemove: ["hoverClosest3d","sendDataToCloud", "toggleSpikelines", "hoverClosestCartesian", "hoverCompareCartesian", "toImage"],

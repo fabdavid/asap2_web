@@ -46,8 +46,8 @@ task load_ontologies: :environment do
   h_tool_versions = Basic.safe_parse_json(output_json, {})
   
   #  filename = Pathname.new(APP_CONFIG[:data_dir]) + "hcao" + "hcao.obo"
-  CellOntology.where(:tag => 'FBdv').all.each do |co|
-    
+#  CellOntology.where(:tag => 'FBdv').all.each do |co|
+  CellOntology.all.each do |co|
     ## download file
     ori_file = ontology_dir + "#{co.id}.#{co.format}"
     cmd = `wget -O #{ori_file} '#{co.file_url}'`

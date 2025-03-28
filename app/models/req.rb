@@ -24,6 +24,7 @@ class Req < ApplicationRecord
   end
 
   def create_run_batch 
+    #self.create_runs
     delayed_job = Delayed::Job.enqueue NewRunBatch.new(self), :queue => 'fast'
     self.update_attributes(:delayed_job_id => delayed_job.id)
   end
@@ -105,7 +106,7 @@ class Req < ApplicationRecord
     if std_method and step
       
       h_cmd_params = JSON.parse(step.command_json)
-      #     logger.debug("blou:" + @h_cmd_params.to_json)                                                                                                                                                                             
+           logger.debug("blou:" + @h_cmd_params.to_json)                                                                                                                                                                             
       tmp_h = JSON.parse(std_method.command_json)
       tmp_h.each_key do |k|
         h_cmd_params[k] = tmp_h[k]

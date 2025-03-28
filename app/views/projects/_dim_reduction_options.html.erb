@@ -964,9 +964,9 @@ $(".coloring_type_btn").click(function(){
 $("#plot_options_btn").html("Controls")
 $("#plot_options_btn").prop("disabled", false)
 
-<%# if params[:open_controls] == '1' %>
+<% if !params[:open_controls] or params[:open_controls] == '1' %>
 $("#plot_options_btn").click()
-<%# end %>
+<% end %>
 
 function upd_cat_alias(cat_i){
  var p = [

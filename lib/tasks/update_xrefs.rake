@@ -87,7 +87,7 @@ task update_xrefs: :environment do
     ## get existing gene_sets
     
     todo_flag = 0
-    if o.gene_sets.select{|gs| gs.latest_ensembl_release < o.latest_ensembl_release }.size > 0
+    if o.gene_sets.select{|gs| gs.latest_ensembl_release and gs.latest_ensembl_release < o.latest_ensembl_release }.size > 0
       todo_flag = 1
     end
 

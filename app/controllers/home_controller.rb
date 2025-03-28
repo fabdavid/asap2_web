@@ -15,7 +15,7 @@ class HomeController < ApplicationController
 
   def get_file
 #    response.headers["X-Accel-Redirect"]=  "/data/asap2/input.tab" #FB2020_05.sql.gz.05"
-#    response.headers["X-Accel-Mapping"]=  "/data/asap2/=/rails_send_file/"
+   # response.headers["X-Accel-Mapping"]=  "/data/asap2/=/rails_send_file/"
 #    send_file "/data/asap2/FB2020_05.sql.gz.05", x_sendfile: true, buffer_size: 512
     path = "/rails_send_file/FB2020_05.sql.gz.05"
 #    response.headers['X-Accel-Redirect'] = path

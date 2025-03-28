@@ -47,13 +47,13 @@ class FusController < ApplicationController
   
 
   def preparsing
-
-#    if params[:organism_id]
-#    logger.debug("QUERY: #{request.env["QUERY_STRING"]}")
-#    logger.debug("PARAMS: #{params.inspect}")
-#    logger.debug("QUERY: #{request.query_string}")
-#    logger.debug("SEL: #{params[:sel]}")
-
+    
+    #    if params[:organism_id]
+    #    logger.debug("QUERY: #{request.env["QUERY_STRING"]}")
+    #    logger.debug("PARAMS: #{params.inspect}")
+    #    logger.debug("QUERY: #{request.query_string}")
+    #    logger.debug("SEL: #{params[:sel]}")
+    
     @h_formats={}
     FileFormat.all.map{|f| @h_formats[f.name] = f}
     #      'RAW_TEXT' => {:color => 'green', :label => 'TXT', :description => 'raw text', :child_format => 'RAW_TEXT'}, 
@@ -63,17 +63,17 @@ class FusController < ApplicationController
     #      'COMPRESSED' => {:description => 'compressed', :child_format => 'RAW_TEXT'},
     #      'ARCHIVE_COMPRESSED' => {:description => 'compressed archive of raw text', :many => true, :child_format => 'RAW_TEXT'}
     #    }
-      
+    
     @h_pred_vals = {
-        '0' => '&epsilon;',
+      '0' => '&epsilon;',
       '' => '?'
     }
-
     
-#x    project = @fu.project
-#    project_dir = Pathname.new(APP_CONFIG[:data_dir]) + 'users' + project.user_id.to_s + project.key
+    
+    #    project = @fu.project
+    #    project_dir = Pathname.new(APP_CONFIG[:data_dir]) + 'users' + project.user_id.to_s + project.key
     upload_dir = Pathname.new(APP_CONFIG[:data_dir]) +  'fus' + @fu.id.to_s
-   # upload_dir = project_dir + 'fus' + @fu.id.to_s
+    # upload_dir = project_dir + 'fus' + @fu.id.to_s
     filepath = upload_dir + @fu.upload_file_name
     
     output_file = upload_dir + "output.json"
@@ -85,10 +85,11 @@ class FusController < ApplicationController
     version = Version.where(:id => params[:version_id]).first
     h_env = Basic.safe_parse_json(version.env_json, {})
     list_docker_image_names = h_env['docker_images'].keys.map{|k| h_env['docker_images'][k]["name"] + ":" + h_env['docker_images'][k]["tag"]}
-    docker_images = DockerImage.where("full_name in (#{list_docker_image_names.map{|e| "'#{e}'"}.join(",")})").all
+    tmp_txt = "full_name in (" + list_docker_image_names.map{|e| "'#{e}'"}.join(",") + ")"
+    docker_images = DockerImage.where(tmp_txt).all
     asap_docker_image = docker_images.select{|e| e.name == APP_CONFIG[:asap_docker_name]}.first
     parsing_step = Step.where(:docker_image_id => asap_docker_image.id, :name => 'parsing').first 
-
+    
     ### get upload file                                                                                     
     @h_upload_details = {}
     if File.exist? upload_details_file
@@ -96,12 +97,12 @@ class FusController < ApplicationController
     end
     
     if !@h_upload_details['detected_format'] or ['ARCHIVE', 'ARCHIVE_COMPRESSED', 'COMPRESSED', 'RAW_TEXT'].include? @h_upload_details['detected_format']
-        params[:gene_name_col]||= 'first'
+      params[:gene_name_col]||= 'first'
       params[:delimiter]||=''
       #  params[:skip_line]||=0
       params[:has_header]||='1'
     end
-
+    
     #    logger.debug("SEL: #{params[:sel]}")
     
     options = []    
@@ -112,16 +113,16 @@ class FusController < ApplicationController
     options.push("--row-names '" + params[:rowname_metadata] + "'") if params[:rowname_metadata] and  params[:rowname_metadata] != ''
     options.push("--col-names '" + params[:colname_metadata] + "'") if params[:colname_metadata] and  params[:colname_metadata] != ''
     options_txt = options.join(" ")
-
-#    logger.debug("OPTIONS: #{options_txt}")
+    
+    #    logger.debug("OPTIONS: #{options_txt}")
     
     ### get datasets
     @h_datasets = {}
     if File.exist? dataset_file
       @h_datasets = JSON.parse(File.read(dataset_file))
     end
-
-#    logger.debug(@h_datasets.to_json)
+    
+    #    logger.debug(@h_datasets.to_json)
     
     # get file list if it already exists                                                                                                                      
     @list_datasets = []
@@ -134,7 +135,7 @@ class FusController < ApplicationController
     @log = ''
     if @h_datasets[options_txt]
       @current_dataset = @h_datasets[options_txt]
- #     logger.debug("CURRENT_DATASET: " + @current_dataset.to_json)
+      #     logger.debug("CURRENT_DATASET: " + @current_dataset.to_json)
       @h_json = @current_dataset
       @error = @current_dataset['displayed_error'] if @current_dataset['displayed_error'] 
     end
@@ -145,10 +146,12 @@ class FusController < ApplicationController
         begin
           logger.debug("CONVERT MTX or RDS")
           h_conv_res = Basic.convert_other_formats filepath, logger
-          filepath = h_conv_res[:file_path]
+          #          filepath = h_conv_res[:file_path]
           if h_conv_res[:file_path] != filepath
+            logger.debug("IF:  #{h_conv_res.to_json}")
             file_format = h_conv_res[:type]
             filepath = h_conv_res[:file_path]
+            #          options = []
             #            @fu.update_attribute(:upload_file_name, File.basename(filepath))
           end
         rescue Exception => error
@@ -164,7 +167,7 @@ class FusController < ApplicationController
         parsing_loom_file = project_dir + 'parsing' + 'output.loom'
         @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T PreparseMetadata #{options.join(" ")} -loom #{parsing_loom_file} -f \"#{filepath}\" -o #{upload_dir + 'output.json'} -which #{@h_metadata_types[params[:metadata_type]].upcase} 2> #{upload_dir + 'output.err'}"
       end
-     # logger.debug("FINAL_FORMAT:" + file_format.to_json)
+      # logger.debug("FINAL_FORMAT:" + file_format.to_json)
       @log += output_file.to_s
       logger.debug "CMD #{@cmd}"
       @res = `#{@cmd}`
@@ -195,16 +198,16 @@ class FusController < ApplicationController
           end
         end
       end
-
+      
       if File.exist? output_file
         output_json = File.read output_file
         output_json.gsub!(/\s+/, ' ')
         @log+= output_json
         
         if !output_json.empty?
-         # logger.debug output_json
+          # logger.debug output_json
           @h_json = JSON.parse(output_json)
-
+          
           @h_json['detected_format'] = file_format || @h_json['detected_format']
           #{"detected_format":null,"list_groups":[{"group":"Pernille","nb_cells":6,"nb_genes":47729","is_count":1,"genes":["ENSMUSG00000000001","ENSMUSG00000000003","ENSMUSG00000000028","ENSMUSG00000000031","ENSMUSG00000000037","ENSMUSG00000000049","ENSMUSG00000000056","ENSMUSG00000000058","ENSMUSG00000000078","ENSMUSG00000000085"],"cells":["E5_S7","A1_S5","D6_S8","A9_S6","pos_control_S9","neg_control_S10"],"matrix":[[97.0,0.0,26.0,0.0,66.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,13.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,2.0,0.0],[0.0,0.0,0.0,8.0,12.0,0.0],[0.0,176.0,0.0,44.0,60.0,0.0],[1.0,33.0,0.0,0.0,4.0,0.0]]}]}
           
@@ -262,7 +265,7 @@ class FusController < ApplicationController
               f.write @h_datasets.to_json
             end
             
-              #File.delete output_file
+          #File.delete output_file
           elsif @h_json['list_groups'] and @h_json['list_groups'].size > 1
             @h_datasets = {}
             opt = []
@@ -276,7 +279,7 @@ class FusController < ApplicationController
               @list_datasets.push({'filename' => group['group']})
             end
             ##write new datasets.json                                                                                                                                                                                              
-              File.open(dataset_file, 'w') do |f|
+            File.open(dataset_file, 'w') do |f|
               f.write @h_datasets.to_json
             end
             
@@ -288,12 +291,12 @@ class FusController < ApplicationController
           elsif @h_json['displayed_error']
             @error = @h_json['displayed_error']
           elsif @h_json['list_files'] and @h_json['list_files'].size > 1 ## it is a list of datasets
-         
+            
             ### re-write                                                                                                                                                                      
             File.open(output_file, 'w') do |fw|
               fw.write @h_json.to_json
             end
-
+            
             ## move file
             @list_datasets = @h_json['list_files']
             FileUtils.cp output_file, filelist_file
@@ -308,7 +311,7 @@ class FusController < ApplicationController
       else
         if File.exist?(upload_dir + 'output.err')
           err = File.read(upload_dir + 'output.err')
-#          puts "Rewriting output.json... #{@h_json.to_json}"
+          #          puts "Rewriting output.json... #{@h_json.to_json}"
           @h_json = {"displayed_error" => err} #(@h_json and @h_json['displayed_error']) ? @h_json['displayed_error'] : err}
           File.open(output_file, 'w') do |fw|
             fw.write @h_json.to_json
@@ -319,48 +322,48 @@ class FusController < ApplicationController
         new_e = (e.gsub("_", "").singularize + "_metadata").to_sym
         params[new_e] = @h_json[e]
       end
-
-#      else
-#        #-col first -o tutu -loom /data/asap2/users/1/06y2o7/parsing/output.loom -f /data/asap2/fus/24350/gene_annotation.txt  -header true -which gene
-#        project = @fu.project 
-#        project_dir = Pathname.new(APP_CONFIG[:data_dir]) + 'users' + @project.user_id.to_s + @project.key
-#        upload_dir = Pathname.new(APP_CONFIG[:data_dir]) +  'fus' + @fu.id.to_s
-#        filepath = upload_dir + @fu.upload_file_name
-
-#        parsing_loom_file = project_dir + 'parsing' + 'output.loom' 
- ##       @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T PreparseMetadata #{options.join(" ")} -loom #{parsing_loom_file} -f \"#{filepath}\" -o #{upload_dir} -h localhost:5434/asap2_development"
-
- #        @res = `#{@cmd}`
- #       @h_json = nil
- #       if File.exist? output_file
- #       output_json = File.read output_file
- #         output_json.gsub!(/\s+/, ' ')
- #         @log+= output_json
-#
-#          if !output_json.empty?
-#            logger.debug output_json
-#            @h_json = JSON.parse(output_json)
-#
-#            ### record upload details if available                                                                                                            #  
+      
+      #      else
+      #        #-col first -o tutu -loom /data/asap2/users/1/06y2o7/parsing/output.loom -f /data/asap2/fus/24350/gene_annotation.txt  -header true -which gene
+      #        project = @fu.project 
+      #        project_dir = Pathname.new(APP_CONFIG[:data_dir]) + 'users' + @project.user_id.to_s + @project.key
+      #        upload_dir = Pathname.new(APP_CONFIG[:data_dir]) +  'fus' + @fu.id.to_s
+      #        filepath = upload_dir + @fu.upload_file_name
+      
+      #        parsing_loom_file = project_dir + 'parsing' + 'output.loom' 
+      ##       @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T PreparseMetadata #{options.join(" ")} -loom #{parsing_loom_file} -f \"#{filepath}\" -o #{upload_dir} -h localhost:5434/asap2_development"
+      
+      #        @res = `#{@cmd}`
+      #       @h_json = nil
+      #       if File.exist? output_file
+      #       output_json = File.read output_file
+      #         output_json.gsub!(/\s+/, ' ')
+      #         @log+= output_json
+      #
+      #          if !output_json.empty?
+      #            logger.debug output_json
+      #            @h_json = JSON.parse(output_json)
+      #
+      #            ### record upload details if available                                                                                                            #  
 #            if @h_json['detected_format'] and !params[:sel]
-#              @h_upload_details = {
-#                'detected_format' => @h_json['detected_format']
-#              }
-#              
-#              File.open(upload_details_file, 'w') do |f|
-#                f.write @h_upload_details.to_json
-#              end
-#            end
+      #              @h_upload_details = {
+      #                'detected_format' => @h_json['detected_format']
+      #              }
+      #              
+      #              File.open(upload_details_file, 'w') do |f|
+      #                f.write @h_upload_details.to_json
+      #              end
+      #            end
 #            
-#          end
-        
-   # end
+      #          end
+      
+      # end
       
     end
     
     render :partial => 'preparsing' 
   end
-
+  
   # GET /fus
   # GET /fus.json
   def index
@@ -370,29 +373,29 @@ class FusController < ApplicationController
       @fus = Fu.where(:user_id => current_user.id).all.order(name: :asc)
     end
   end
-
+  
   # GET /fus/1
   # GET /fus/1.json
   def show
     # If upload is not commenced or finished, redirect to upload page
     return redirect_to upload_fu_path(@fu) if @fu.status.in?(%w(new uploading))
   end
-
+  
   # GET /fus/new
   def new
     @fu = Fu.new
   end
-
+  
   # GET /fus/1/edit
   def edit
   end
-
+  
   # POST /fus
   # POST /fus.json
   def create
     @fu = Fu.new(fu_params)
     @fu.status = 'new'
-
+    
     respond_to do |format|
       if @fu.save
         format.html { redirect_to upload_fu_path(@fu), notice: 'Fu was successfully created.' }
@@ -403,7 +406,7 @@ class FusController < ApplicationController
       end
     end
   end
-
+  
   # PATCH/PUT /fus/1
   # PATCH/PUT /fus/1.json
   def update
@@ -419,7 +422,7 @@ class FusController < ApplicationController
       end
     end
   end
-
+  
   # DELETE /fus/1
   # DELETE /fus/1.json
   def destroy
@@ -431,7 +434,7 @@ class FusController < ApplicationController
       end
     end
   end
-
+  
   # GET /fus/:id/upload
   def upload
     respond_to do |format|
@@ -441,7 +444,7 @@ class FusController < ApplicationController
 
   # PATCH /fus/:id/upload.json
   def do_upload
-   # upload_params[:upload]_file_name].gsub!(/[()\[\]\#\?\$]/, '')
+    # upload_params[:upload]_file_name].gsub!(/[()\[\]\#\?\$]/, '')
     unpersisted_fu = Fu.new(upload_params)
     unpersisted_fu.upload_file_name.gsub!(/[()\[\]\#\?\$]/, '')
     @fu.upload_file_name.gsub!(/[()\[\]\#\?\$]/, '') if  @fu.upload_file_name
@@ -453,13 +456,13 @@ class FusController < ApplicationController
       @fu.status = 'uploading'
       @fu.save!
       render json: @fu.to_jq_upload and return
-
+      
     # If the already uploaded file has the same filename, try to resume
     else
       current_size = @fu.upload_file_size
       content_range = request.headers['CONTENT-RANGE']
       begin_of_chunk = content_range[/\ (.*?)-/,1].to_i # "bytes 100-999999/1973660678" will return '100'
-
+      
       # If the there is a mismatch between the size of the incomplete upload and the content-range in the
       # headers, then it's the wrong chunk! 
       # In this case, start the upload from scratch
@@ -471,15 +474,15 @@ class FusController < ApplicationController
       # Add the following chunk to the incomplete upload
       logger.debug("write file to " + @fu.upload.path)
       File.open(@fu.upload.path, "ab") { |f| f.write(upload_params[:upload].read) }
-
+      
       # Update the upload_file_size attribute
       @fu.upload_file_size = @fu.upload_file_size.nil? ? unpersisted_fu.upload_file_size : @fu.upload_file_size + unpersisted_fu.upload_file_size
       @fu.save!
-
+      
       render json: @fu.to_jq_upload and return
     end
   end
-
+  
   # GET /fus/:id/reset_upload
   def reset_upload
     # Allow users to delete uploads only if they are incomplete
@@ -487,33 +490,33 @@ class FusController < ApplicationController
     @fu.update!(status: 'new', upload: nil)
     redirect_to @fu, notice: "Upload reset successfully. You can now start over"
   end
-
+  
   # GET /fus/:id/resume_upload.json
   def resume_upload
     render json: { file: { name: @fu.upload.url(:default, timestamp: false), size: @fu.upload_file_size } } and return
   end
-
+  
   # PATCH /fus/:id/update_upload_status
   def update_status
     raise ArgumentError, "Wrong status provided " + params[:status] unless @fu.status == 'uploading' && params[:status] == 'uploaded'
     @fu.update!(status: params[:status])
-#    head :ok
+    #    head :ok
     render json: @fu.to_jq_upload and return
   end
-
-
+  
+  
   private
   # Use callbacks to share common setup or constraints between actions.
   def set_fu
     @fu = Fu.find(params[:id])
     @project = @fu.project
   end
-
+  
   # Never trust parameters from the scary internet, only allow the white list through.
   def fu_params
     params.require(:fu).permit(:name, :upload_type, :project_id, :project_key)
   end
-
+  
   def upload_params
     params.require(:fu).permit(:upload)
   end

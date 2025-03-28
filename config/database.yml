@@ -1,14 +1,15 @@
 ---
 development:
+  #  url: "postgresql://postgres@postgres:5434/asap2?encoding=utf8&pool=300&timeout=15000"
   url: "<%= ENV['DATABASE_URL'].gsub('?', '_development?') %>"
 test:
   url: "<%= ENV['DATABASE_URL'].gsub('?', '_test?') %>"
 staging:
   url: "<%= ENV['DATABASE_URL'].gsub('?', '_staging?') %>"
 production:
-  url: "<%= ENV['DATABASE_URL'].gsub('?', '_production?') %>"
+  url: "<%= ENV['DATABASE_URL'].gsub('?', '_development?') %>"
 data:
-  url: "<%= ENV['DATABASE_URL'].gsub('?', '_data_v6?') %>"
+  url: "<%= ENV['DATABASE_URL'].gsub('?', '_data_v7?') %>"
   pool: 10
 data_v4:
   url: "<%= ENV['DATABASE_URL'].gsub('?', '_data_v4?') %>"
@@ -19,6 +20,9 @@ data_v5:
 data_v6:
   url: "<%= ENV['DATABASE_URL'].gsub('?', '_data_v6?') %>"
   pool: 10
+data_v7:
+  url: "<%= ENV['DATABASE_URL'].gsub('?', '_data_v7?') %>"
+  pool: 10
 data_tmp:
-  url: "<%= ENV['DATABASE_URL'].gsub('?', '_data_v6?') %>"
+  url: "<%= ENV['DATABASE_URL'].gsub('?', '_data_v7?') %>"
   pool: 10

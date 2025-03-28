@@ -253,8 +253,8 @@ class ReqsController < ApplicationController
       end
       Basic.upd_project_step @project, @step.id
       @project.broadcast @step.id
-      @req.delay.set_runs(list_of_runs2, list_of_h_p)
-#      @req.set_runs(list_of_runs2, list_of_h_p)
+#      @req.delay.set_runs(list_of_runs2, list_of_h_p)
+      @req.set_runs(list_of_runs2, list_of_h_p)
 
 #      Basic.upd_project_step @project, @step.id
 

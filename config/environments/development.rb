@@ -10,6 +10,21 @@ Rails.application.configure do
   # Do not eager load code on boot.
   config.eager_load = false
 
+  config.action_cable.logger = Logger.new(STDOUT)
+
+# Tell Rails to trust the proxy headers, including X-Forwarded-Proto
+#config.action_dispatch.trusted_proxies = ['127.0.0.1', '::1', '128.178.219.230']  # Ensure that the remote Nginx IP is included here
+
+# Make sure Rails redirects HTTPS URLs correctly (force_ssl is off for dev)
+#config.force_ssl = false  # Don't enforce SSL for all requests in dev
+
+# Rails should trust the X-Forwarded-Proto header for SSL redirection
+#config.ssl_options = {
+#    redirect: { 
+#    exclude: ->(request) { request.protocol == 'http://' } 
+#  }
+#}
+  
   # Show full error reports.
   config.consider_all_requests_local = false # true
 
@@ -27,10 +42,12 @@ Rails.application.configure do
 
     config.cache_store = :null_store
   end
+
   config.serve_static_assets = true
   config.public_file_server.enabled = true
   config.action_dispatch.x_sendfile_header = 'X-Accel-Redirect'
 
+  
   # Store uploaded files on the local file system
   # (see config/storage.yml for options)
   config.active_storage.service = :local

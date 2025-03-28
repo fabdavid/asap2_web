@@ -148,10 +148,16 @@ task :parse, [:project_key] => [:environment] do |t, args|
       opts.push({'opt' => '--row-names', 'value' => p['rowname_metadata']}) if p['rowname_metadata']
       opts.push({'opt' => '--col-names', 'value' => p['colname_metadata']}) if p['colname_metadata']
       #      end
+
+      h_types = {
+        'MEX' => "H5_10x",
+        'RDS' => "LOOM"
+      }
+      
       opts += [
                {'opt' => "-ncells", 'value' => p["nber_cols"]},
                {'opt' => "-ngenes", 'value' => p["nber_rows"]},
-               {'opt' => "-type", 'value' => (p["file_type"] == 'MEX') ? "H5_10x" : p["file_type"]},
+               {'opt' => "-type", 'value' => (h_types[p["file_type"]]) ? h_types[p["file_type"]] : p["file_type"]},
                #  {:opt => "-project_key", 'value' => project.key},
                #  {:opt => "-step_id", 'value' => 1},
                {'opt' => '-T', 'value' => "Parsing"},
@@ -205,7 +211,7 @@ task :parse, [:project_key] => [:environment] do |t, args|
       fu = Fu.where(:project_id => project.id, :upload_type => 1).first
       upload_dir = Pathname.new(APP_CONFIG[:data_dir]) +  'fus' + fu.id.to_s
       output_file = upload_dir + "output.json"
-     # output_path = project_dir + "parsing" + "output.#{project.extension}"
+      # output_path = project_dir + "parsing" + "output.#{project.extension}"
       output_path = project_dir + "parsing" + "output.loom"
       ori_fu_path = Pathname.new(APP_CONFIG[:upload_data_dir]) + fu.id.to_s + fu.upload_file_name
       # f_log.write(ori_fu_path)
@@ -214,7 +220,18 @@ task :parse, [:project_key] => [:environment] do |t, args|
       # f_log.write(h_preparsing.to_json)
       puts h_preparsing.to_json
       puts "bla"
-      if h_preparsing["detected_format"] == "H5AD" #and h_preparsing["list_groups"][0]["metadata"]
+ #     if ["RDS"].include? h_preparsing["detected_format"]  #and h_preparsing["list_groups"][0]["metadata"]                                   
+ #       list_metadata = h_preparsing["existing_metadata"].select{|e| !h_parsing_metadata[e]}
+ #       if list_metadata
+ #         relative_filepath = Basic.relative_path(project, output_path)
+ #         list_metadata.each do |meta|
+ #           meta['imported'] = true
+ #           puts "add annot #{meta.to_json}"
+ #           Basic.load_annot(run, meta, relative_filepath, h_data_types, h_data_classes, logger)
+ #         end
+ #       end
+
+     if ["H5AD"].include? h_preparsing["detected_format"]  #and h_preparsing["list_groups"][0]["metadata"]
         list_metadata = h_parsing["existing_metadata"].select{|e| !h_parsing_metadata[e]}
         if list_metadata
 #puts "output_path: " + output_path.to_s
@@ -225,8 +242,36 @@ task :parse, [:project_key] => [:environment] do |t, args|
             Basic.load_annot(run, meta, relative_filepath, h_data_types, h_data_classes, logger)
           end
         end
-        
-      elsif h_preparsing["detected_format"] == "LOOM" and h_preparsing["list_groups"][0]["existing_metadata"]
+     elsif ["RDS"].include? h_preparsing["detected_format"]  and h_preparsing["list_groups"][0]["existing_metadata"]
+       #h_tmp_meta = {:meta => h_preparsing["list_groups"][0]["existing_metadata"]}
+       h_meta = {:meta => h_preparsing["list_groups"][0]["existing_metadata"].select{|e| !h_parsing_metadata[e]}}
+       metadata_list_file = tmp_dir + 'list_metadata_to_copy.json'
+       File.open(metadata_list_file, 'w') do |f|
+         f.write(h_meta.to_json)
+       end
+       cmd = "java -jar lib/ASAP.jar -T CopyMetaData -loomFrom \"#{filepath}\" -loomTo #{output_path} -metaJSON #{metadata_list_file}"
+       puts cmd
+       output = `#{cmd}`
+       metadata_list_file2 = tmp_dir + 'list_metadata_to_copy2.json'
+       File.open(metadata_list_file2, 'w') do |f|
+         f.write(output)
+       end
+       cmd = "java -jar lib/ASAP.jar -T ExtractMetadata -no-values -loom #{output_path} -metaJSON #{metadata_list_file2}"
+       puts cmd
+       output = `#{cmd}`
+       h_res = Basic.safe_parse_json(output, {})
+       puts output
+       puts h_res.to_json
+       
+       if list_metadata = h_res["list_meta"] #h_preparsing["list_groups"][0]["existing_metadata"]
+          relative_filepath = Basic.relative_path(project, output_path)
+          list_metadata.each do |meta|
+            meta['imported'] = true
+            puts "add annot #{meta.to_json}"
+            Basic.load_annot(run, meta, relative_filepath, h_data_types, h_data_classes, logger)
+          end
+        end
+     elsif ["LOOM"].include? h_preparsing["detected_format"]  and h_preparsing["list_groups"][0]["existing_metadata"]
         puts "bou"
         h_meta = {:meta => h_preparsing["list_groups"][0]["existing_metadata"].select{|e| !h_parsing_metadata[e]}}
         metadata_list_file = tmp_dir + 'list_metadata_to_copy.json'

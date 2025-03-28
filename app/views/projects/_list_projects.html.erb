@@ -44,7 +44,7 @@
     <tr>
       <% if admin? %>
       <td>
-	<%= check_box_tag 'project_checkbox[#{project.key}]', project.key, (session[:project_cart][project.key]), {:class => 'sel_project'} %>
+	<%= check_box_tag "project_checkbox[#{project.key}]", project.key, (session[:project_cart][project.key]), {:class => 'sel_project'} %>
       </td>
       <% end %>
       <% if admin? %>

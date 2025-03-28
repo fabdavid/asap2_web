@@ -1,26 +1,35 @@
 <%# @query.to_json %>
 <div class='card'>
-<div class='card-header card-primary'>
-<ul class="nav nav-tabs card-header-tabs" id="search_menu-nav" role="tablist">
-  <li class="nav-item">
-    <a class="nav-link <%= (session[:settings][:search_type] == 'public') ? 'active' : '' %>" id="public_projects-tab" data-toggle="tab" href="#pane-public_projects" role="tab" aria-controls="public_projects" aria-selected="true">
-<b>
-Public projects (<%= @public_projects.total_entries %> of <%= @h_counts[:all_public] %>)
-</b></a>
-  </li>
-  <% if current_user %>
-  <li class="nav-item">
-    <a class="nav-link <%= (session[:settings][:search_type] == 'my') ? 'active' : '' %>" id="my_projects-tab" data-toggle="tab" href="#pane-my_projects" role="tab" aria-controls="my_projects" aria-selected="false">
-      <b>
-	My projects (<%= @projects.total_entries %> of <%= @h_counts[:all_my] %>)
-    </b></a>
-  </li>
-  <% end %>
-</ul>
-</div>
-<div class='card-body'> 
-<div class="tab-content">
+  <div class='card-header card-primary'>
 
+    <% if admin? %>
+    <div class='float-right'>
+      <% disabled = 'disabled' %>
+      <%= disabled = '' if @sel_projects and @sel_projects.map{|e| e.organism_id}.size == 1 and @sel_projects.size > 1 %>
+      <button id='integrate_btn' class='btn btn-success' type='button' disabled='<%= disabled %>'>Integrate</button>
+    </div>
+    <% end %>
+    
+    <ul class="nav nav-tabs card-header-tabs" id="search_menu-nav" role="tablist">
+      <li class="nav-item">
+	<a class="nav-link <%= (session[:settings][:search_type] == 'public') ? 'active' : '' %>" id="public_projects-tab" data-toggle="tab" href="#pane-public_projects" role="tab" aria-controls="public_projects" aria-selected="true">
+	  <b>
+	    Public projects (<%= @public_projects.total_entries %> of <%= @h_counts[:all_public] %>)
+	</b></a>
+      </li>
+      <% if current_user %>
+      <li class="nav-item">
+	<a class="nav-link <%= (session[:settings][:search_type] == 'my') ? 'active' : '' %>" id="my_projects-tab" data-toggle="tab" href="#pane-my_projects" role="tab" aria-controls="my_projects" aria-selected="false">
+	  <b>
+	    My projects (<%= @projects.total_entries %> of <%= @h_counts[:all_my] %>)
+	</b></a>
+      </li>
+      <% end %>
+    </ul>
+  </div>
+  <div class='card-body'> 
+    <div class="tab-content">
+      
   <div class="tab-pane <%= (session[:settings][:search_type] == 'public') ? 'active' : '' %>" id="pane-public_projects" role="tabpanel" aria-labelledby="public_projects-tab">
     <div class='float-right'>
       <div class='float-left mr-1 pt-2'><span class=''>Page</span></div>
@@ -102,12 +111,19 @@ Public projects (<%= @public_projects.total_entries %> of <%= @h_counts[:all_pub
 <%= javascript_tag do %>
 
 $(".sel_project").click(function(){
-var count = 0
-$(".sel_project").each(function(){
-if (this.checked){count++}
-})
-console.log("count:" + count)
-$("#upd_tag_btn").prop("disabled", (count == 0))
+ let id = this.id.split("_")
+ let key = id[2]
+ let type = (this.checked) ? 'add' : 'del'
+
+ var count = 0
+ $(".sel_project").each(function(){
+  if (this.checked){count++}
+ })
+ console.log("count:" + count)
+ $("#upd_tag_btn").prop("disabled", (count == 0))
+
+ data = [{name: "type", value: type}, {name: "p_key", value: key}]
+ refresh_post(null, "<%= raw upd_sel_projects_path() %>", data, 'post', {})
 })
 
 $(".per_page").change(function(){

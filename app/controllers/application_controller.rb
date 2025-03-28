@@ -4,7 +4,7 @@ class ApplicationController < ActionController::Base
   helper_method :admin?, :admin_view?, :is_admin?, :uab?, :is_uab?, :authorized?, :read_only?, :readable?, :analyzable?, :analyzable_item?, :clonable?, :downloadable?, :editable?, :exportable?, :exportable_item?, :owner?, :owner_or_admin?
   before_action :init_session, :init_var
   before_action :configure_permitted_parameters, if: :devise_controller?
-
+  
   def admin_view?
     (current_user and APP_CONFIG[:admin_view_emails].include?(current_user.email)) ? true : false
   end
@@ -105,12 +105,23 @@ class ApplicationController < ActionController::Base
     return tmp_key
   end
 
+  def create_key3 o, n, k
+    tmp_key = Array.new(n){[*'0'..'9', *'a'..'z'].sample}.join
+    while o.where(k => tmp_key).count > 0
+      tmp_key = Array.new(n){[*'0'..'9', *'a'..'z'].sample}.join
+    end
+    return tmp_key
+  end
+
+  
   def init_session
     session[:sandbox]||=create_key()  
-    session[:project_cart] = {}
+    session[:project_cart]||={}
     session[:settings]||={:provider_id => 1, :limit => 5, :public_limit => 5, :free_text => '', :public_free_text => ''}
     session[:settings][:provider_id] = 1
     session[:settings][:search_view_type] ||= 'list' #if !session[:settings][:search_view_type]
+    session[:store_run_id]||={}
+    #session[:sel_projects] = {}
     #session[:dr_params] ||= {}
   end
 
@@ -130,6 +141,75 @@ class ApplicationController < ActionController::Base
   def configure_permitted_parameters
     devise_parameter_sanitizer.permit(:account_update, keys: [])
   end
+  
+ # def verified_request?
+ #   super || relaxed_protocol_check?
+ # end
 
+ # private
+
+ # def relaxed_protocol_check?
+ #   origin = request.headers["Origin"]
+ #   base_url = "#{request.protocol}#{request.host_with_port}"
+
+ #   # Allow requests where the origin differs only by protocol
+ #   if origin.present?
+ #     origin.sub(/^https?:\/\//, "") == base_url.sub(/^https?:\/\//, "")
+ #   else
+ #     false
+ #   end
+ # end
+
+ # def handle_unverified_request
+ #   # Skip session reset for protocol mismatch
+ #   if relaxed_protocol_check?
+ #     # Allow the session to persist
+ #     return
+ #   end
+
+ #   # Fallback to default behavior for other cases
+ #   super
+  # end
+
+#  def verified_request?
+#    super || relaxed_protocol_check?
+#  end
+
+#  private
+
+#  def relaxed_protocol_check?
+#    origin = request.headers["Origin"]
+#    base_url = "#{request.protocol}#{request.host_with_port}"
+
+#    # Allow requests where the origin differs only by protocol
+##    if origin.present?
+#      origin.sub(/^https?:\/\//, "") == base_url.sub(/^https?:\/\//, "")
+#    else
+#      false
+#    end
+#  end
+
+# In your ApplicationController (or wherever you have this method)
+def verified_request?
+  # Check if we're in production or if we're explicitly in a secure protocol
+  super || relaxed_protocol_check?
+end
+
+private
+
+def relaxed_protocol_check?
+  # Only apply the relaxed protocol check for non-secure requests in development mode
+  return false unless request.protocol == "http://" && Rails.env.development?
+
+  origin = request.headers["Origin"]
+  base_url = "#{request.protocol}#{request.host_with_port}"
+
+  # Allow requests where the origin differs only by protocol
+  if origin.present?
+    origin.sub(/^https?:\/\//, "") == base_url.sub(/^https?:\/\//, "")
+  else
+    false
+  end
+end
   
 end

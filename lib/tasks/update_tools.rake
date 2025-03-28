@@ -4,10 +4,12 @@ task update_tools: :environment do
 
   now = Time.now
 
-  version_id = 7
+#  version_id = 7
 
-  version = Version.find(version_id) #where(:version_id => version_id).first
-  
+#  version = Version.find(version_id) #where(:version_id => version_id).first
+
+  version = Version.last
+  version_id = version.id
   h_env = Basic.safe_parse_json(version.env_json, {})
 
   tool_types = ToolType.all

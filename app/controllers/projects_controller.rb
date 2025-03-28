@@ -36,6 +36,18 @@ class ProjectsController < ApplicationController
     #    render :text => session[:viz_params].to_json               
   end
 
+  def upd_sel
+    if params[:type]
+      if params[:type] == 'add'
+        session[:project_cart][params[:p_key]] = 1
+      else
+        session[:project_cart].delete(params[:p_key])
+      end
+    end
+    @sel_projects = Project.where(:key => session[:project_cart].keys).all
+    render :partial => 'upd_sel'
+  end
+  
   def search_results
   end
 
@@ -202,7 +214,10 @@ class ProjectsController < ApplicationController
 #                           ]       
 #        list_identifiers |= p.exp_entries.map{|ee| ee.identifier}
 #        
-#      end
+    #      end
+
+    @sel_projects = Project.where(:key => session[:project_cart].keys).all if session[:project_cart]
+    
     now = Time.now
     if params[:auto] and (params[:public_project_ids] == @public_projects.map{|p| p.id}.join(",") and params[:my_project_ids] == @projects.map{|p| p.id}.join(",") and 
                           @public_projects.select{|p| now -p.modified_at <10}.size == 0 and @projects.select{|p| now -p.modified_at <10}.size == 0) 
@@ -5172,7 +5187,7 @@ class ProjectsController < ApplicationController
     parsing_step = Step.where(:docker_image_id => @asap_docker_image.id, :name => 'parsing').first
     parsing_run = Run.where(:project_id => @project.id, :step => parsing_step.id).first
 
-    @klay_data = [{:data => {:id => parsing_run.id, :rank => 1, :label => 'Parsing', :color => @h_steps[parsing_step.id].color}}]
+    @klay_data = [{:data => {:id => parsing_run.id, :rank => 1, :label => 'Parsing', :color => (@h_steps[parsing_step.id]) ? @h_steps[parsing_step.id].color : 'grey' }}]
     rank_diff = @h_steps[parsing_step.id].rank-1
     current_runs = [parsing_run]
   
@@ -6748,6 +6763,7 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
       
       params[:list_attrs].split(",").each do |e|
         e2 = e.split(":")
+        puts "E2: #{e2.to_json}"
         if e2[0] == 'annot'
           @ida[params[:attr_name]].push({#:run_id => @h_annot[e2[1].to_i].run_id, :annot_id => e2[1].to_i
                                           :annot_id => e2[1].to_i, :run_id => e2[2].to_i
@@ -6993,22 +7009,29 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
           send_data content, type: params[:content_type] || 'text', # type: 'application/octet-stream'                                                                   
           x_sendfile: true, buffer_size: 512, disposition: (!params[:display]) ? ("attachment; filename=" + [@project.key, step_name,  run_id, filename].compact.join("_")) : ''        
         else
-           new_filepath = filepath.to_s.gsub(/^\/data\/asap2/, '/rails_send_file')
+          logger.debug "FILEPATH:" + filepath.to_s
+          new_filepath = filepath.to_s.gsub(/^\/data\/asap2/, '/rails_send_file')
       #      response.headers["X-Accel-Redirect"]=  new_filepath
       #     response.headers['Content-Length'] = File.size filepath
- 
-#         send_file filepath.to_s, type: params[:content_type] || 'text', # type: 'application/octet-stream', x_sendfile: true, #stream: true, 
-#          buffer_size: 512, disposition: (!params[:display]) ? ("attachment; filename=" + [@project.key, step_name,  run_id, filename].compact.join("_")) : ''
-          #   #redirect_to "/data/" + filepath.to_s.gsub(/\/data\/asap2\//, "")         
-          #          render :partial => 'get_file', :locals => {:filepath => filepath, :filename => [@project.key, step_name,  run_id, filename].compact.join("_")}
-          
-          path = filepath.to_s.gsub(/\/data\/asap2/, "/rails_send_file") #"/rails_send_file/FB2020_05.sql.gz.05"
-          headers['Content-Disposition'] = (!params[:display]) ? ("attachment; filename=" + [@project.key, step_name,  run_id, filename].compact.join("_")) : ''
-          headers['X-Accel-Redirect'] = path #'/download_public/uploads/stories/' + params[:story_id] +'/' + params[:story_id] + '.zip'                                    
-          headers['Content-Type'] = "application/octet-stream"
-          headers['Content-Length'] = File.size filepath
-          render :nothing => true
 
+#           headers['Content-Disposition'] = (!params[:display]) ? ("attachment; filename=" + [@project.key, step_name,  run_id, filename].compact.join("_")) : ''
+#           headers['Content-Type'] = "application/octet-stream"
+#           headers['Content-Length'] = File.size filepath
+           
+ #         send_file filepath.to_s, #type: params[:content_type] || 'text',
+ #                   type: 'application/octet-stream', x_sendfile: true, #stream: true, 
+ #                    buffer_size: 512, disposition: (!params[:display]) ? ("attachment; filename=" + [@project.key, step_name,  run_id, filename].compact.join("_")) : ''
+           #   #redirect_to "/data/" + filepath.to_s.gsub(/\/data\/asap2\//, "")         
+           #          render :partial => 'get_file', :locals => {:filepath => filepath, :filename => [@project.key, step_name,  run_id, filename].compact.join("_")}
+           
+                     path = filepath.to_s.gsub(/\/data\/asap2/, "/rails_send_file") #"/rails_send_file/FB2020_05.sql.gz.05"
+           headers['Content-Disposition'] = (!params[:display]) ? ("attachment; filename=" + [@project.key, step_name,  run_id, filename].compact.join("_")) : ''
+            headers['X-Accel-Redirect'] = path #'/download_public/uploads/stories/' + params[:story_id] +'/' + params[:story_id] + '.zip'                                    
+           # headers["X-Accel-Mapping"]=  "/data/asap2/=/rails_send_file/" 
+           headers['Content-Type'] = "application/octet-stream"
+           headers['Content-Length'] = File.size filepath
+          render :nothing => true
+           
         end
       else
         render :plain => "This file doesn't exist."
@@ -7153,6 +7176,13 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
   # GET /projects/1.json
   def show
 
+    if params[:direct_link_key]
+      @direct_link = DirectLink.where(:view_key => params[:direct_link_key]).first
+      if @direct_link
+        @direct_link.update_attribute(:nber_views, (@direct_link.nber_views || 0) + 1)
+      end
+    end
+    
      respond_to do |format|
       format.html{
 
@@ -7227,10 +7257,25 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
 
         ### check if all project_steps exist
         init_project_steps()
+        
+        if ! File.exist? @project_dir
+          job_handler = Project::Unarchive.new(@project).to_yaml
+          if Delayed::Job.where(
+               queue: 'fast',
+               locked_at: nil, # Not in progress
+               failed_at: nil  # Not failed
+             ).where("handler LIKE ?", "%#{job_handler}%").exists?
+            # Job already exists, skip enqueuing
+            Rails.logger.info("A similar job is already enqueued for project #{@project.id}")
+          else
+            # No duplicate found, enqueue the job
+            Delayed::Job.enqueue(Project::Unarchive.new(@project), queue: 'fast')
+          end
+        end
 
         ### have to ensure the project is in status unarchived
-        if @project.archive_status_id != 1
-          delayed_job = Delayed::Job.enqueue(Project::Unarchive.new(@project), :queue => 'fast')
+#        if @project.archive_status_id != 1
+#          delayed_job = Delayed::Job.enqueue(Project::Unarchive.new(@project), :queue => 'fast')
           #      while [2, 4].include? @project.archive_status_id
           #        sleep 0.2
           #      end
@@ -7239,7 +7284,7 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
           #        `#{@unarchive_cmd}`
           #        logger.debug(@unarchive_cmd)
           #      end
-        end
+#        end
         
         #      session[:viz_params]={
         #        'dim1' => 1,
@@ -7530,7 +7575,7 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     @shares = @project.shares.to_a
 #    Step.where(:version_id => @project.version_id).all.map{|s| @h_steps[s.id]=s}
     Step.where(:docker_image_id => @asap_docker_image.id).all.map{|s| @h_steps[s.id]=s} 
-    active_step_name = @h_steps[session[:active_step]].name
+    active_step_name = @h_steps[session[:active_step]].name if @h_steps[session[:active_step]]
  #  get_results()
     respond_to do |format|
       format.html {
@@ -7690,7 +7735,8 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     @version = @project.version
     @h_env = Basic.safe_parse_json(@version.env_json, {})
     @list_docker_image_names = @h_env['docker_images'].keys.map{|k| @h_env['docker_images'][k]["name"] + ":" + @h_env['docker_images'][k]["tag"]}
-    @docker_images = DockerImage.where("full_name in (#{@list_docker_image_names.map{|e| "'#{e}'"}.join(",")})").all
+    tmp_text = "full_name in (" + @list_docker_image_names.map{|e| "'#{e}'"}.join(",") + ")"
+    @docker_images = DockerImage.where(tmp_text).all
     @asap_docker_image = @docker_images.select{|e| e.name == APP_CONFIG[:asap_docker_name]}.first
 
     parsing_step = Step.where(:docker_image_id => @asap_docker_image.id, :name => 'parsing').first 
@@ -7709,7 +7755,7 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     default_de_filter = {
       :fc_cutoff => '2',
       :fdr_cutoff => '0.05' #,
-  #    :pval_cutoff => '0.05'
+      #    :pval_cutoff => '0.05'
     }    
     @project.de_filter_json = default_de_filter.to_json
     
@@ -7718,8 +7764,8 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     }
     @project.ge_filter_json = default_ge_filter.to_json
 
-#    tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s
-#    File.delete tmp_dir + ('input.' + @project.extension) if File.exist?(tmp_dir + ('input.' + @project.extension))
+    #    tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s
+    #    File.delete tmp_dir + ('input.' + @project.extension) if File.exist?(tmp_dir + ('input.' + @project.extension))
     # logger.debug("1. File #{file_path} exists!") if File.exist?(file_path)
 
     @project.modified_at = Time.now
@@ -7741,7 +7787,11 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
           upload_dir = Pathname.new(APP_CONFIG[:data_dir]) +  'fus' + input_file.id.to_s
           output_json_file = upload_dir + 'output.json'
           h_output = Basic.safe_parse_json(File.read(output_json_file), {})
-          input_filename = (h_output['detected_format'] == 'MEX') ? 'input.h5' : input_file.upload_file_name
+          h_inputs = {
+            "MEX" => 'input.h5',
+            "RDS" => 'input.loom'
+          }
+          input_filename = (h_inputs[h_output['detected_format']]) ? h_inputs[h_output['detected_format']] : input_file.upload_file_name
        
           ### get extension                                                                                                                                                   
           ext = input_filename.split(".").last
@@ -7839,7 +7889,7 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
             end
           end
           
-     #     puts "ACCESSIONS: " + h_accessions.to_json
+          #     puts "ACCESSIONS: " + h_accessions.to_json
           
           Fetch.add_upd_exp_codes({
                                     :project => @project,
@@ -7857,11 +7907,11 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
         ### read_write access
 
         manage_access()
-     #   logger.debug("3. File #{file_path} exists!") if File.exist?(file_path)
+        #   logger.debug("3. File #{file_path} exists!") if File.exist?(file_path)
         
         h_data = {}
         @project.parse_files(h_data)
-     #   logger.debug("4. File #{file_path} exists!") if File.exist?(file_path)
+        #   logger.debug("4. File #{file_path} exists!") if File.exist?(file_path)
         
         ### setup project sqlite database
         sqlite_schema_file = Pathname.new(Rails.root) + 'db' + 'asap_project_data.sql'
@@ -8227,13 +8277,14 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     public_id = (public_id.match(/^\d+$/)) ? public_id.to_i : 0
     @project = Project.where(["key = ? or public_id = ?", params[:key],public_id]).first
     if @project
+      @project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
       @project_type = @project.project_type
       @organism = @project.organism
       @version =@project.version
       @h_env = Basic.safe_parse_json(@version.env_json, {})
       if @h_env['docker_images']
         @list_docker_image_names = @h_env['docker_images'].keys.map{|k| @h_env['docker_images'][k]["name"] + ":" + @h_env['docker_images'][k]["tag"]}
-        @docker_images = DockerImage.where("full_name in (#{@list_docker_image_names.map{|e| "'#{e}'"}.join(",")})").all 
+        @docker_images = DockerImage.where("full_name in (" + @list_docker_image_names.map{|e| "'#{e}'"}.join(",") + ")").all 
         @asap_docker_image = @docker_images.select{|e| e.name == APP_CONFIG[:asap_docker_name]}.first
       end
     end

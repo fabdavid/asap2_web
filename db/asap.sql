@@ -274,7 +274,7 @@ primary key (id)
 create table norms(
 id serial,
 name text,
-label text,
+11;rgb:ffff/ffff/fffflabel text,
 description  text,
 program text,
 speed_id smallint references speeds,
@@ -713,7 +713,7 @@ run_children_json text, -- list the children with the link properties (which dat
 created_at timestamp,
 submitted_at timestamp, -- time the run execution starts 
 user_id int references users,
-pred_max_ram int,
+pred_max_ram bigint,
 pred_process_duration int,
 return_stdout bool default false,
 pipeline_parent_run_ids text default '',
@@ -1374,3 +1374,13 @@ updated_at timestamp,
 primary key (id)
 );
 
+create table direct_links(
+id serial,
+project_id int references projects,
+view_key text,
+params_json text,
+nber_views int default 0,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);

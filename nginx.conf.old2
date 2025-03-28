@@ -1,0 +1,56 @@
+events {
+    # events context
+    
+}
+
+http {
+
+ upstream cable {
+  server cable:28080;
+ }
+
+ upstream asap{
+  server website:3000;
+ }
+
+
+ server {
+        listen 8080;
+        server_name backend-server;  # Replace with your backend's name or IP address
+
+        root /app/public;  # Rails public directory
+        client_max_body_size 128M;
+        proxy_max_temp_file_size 0;
+        proxy_buffering off;
+        large_client_header_buffers 16 256k;
+
+        # Logs
+        access_log /var/log/nginx/backend-server.access.log;
+
+        location / {
+            # Proxy incoming HTTP requests to your Rails app server
+            proxy_pass http://asap;  # Replace with your Rails app server (Puma, Unicorn, etc.)
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto http;
+        }
+
+        location /rails_send_file/ {
+            # Serve uploaded files directly from a specified directory
+            alias /data/asap2/;
+        }
+
+        location /websocket {
+            # Forward WebSocket connections to the backend WebSocket server
+            proxy_pass http://cable;  # Replace with your ActionCable server
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "Upgrade";
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header Host $http_host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-Proto http;
+        }
+   }
+}

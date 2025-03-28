@@ -10,8 +10,25 @@ module Asap2
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 5.2
- config.exceptions_app = self.routes
+    config.exceptions_app = self.routes
 
+#    require_relative '../app/middleware/response_size_tracker'
+    
+#    config.autoload_paths += %W(#{Rails.root}/app/middleware)
+    
+#    puts "[DEBUG] ACTION_CABLE_FRONTEND_URL: #{ENV['ACTION_CABLE_FRONTEND_URL']}"
+#    puts "[DEBUG] ACTION_CABLE_MOUNT_PATH: #{ENV['ACTION_CABLE_MOUNT_PATH']}"
+
+    
+    # Enable this to ensure Rails respects the protocol forwarded by your proxy
+#    config.action_dispatch.trusted_proxies = ['0.0.0.0/0', '::/0']  # Trust all proxies (or restrict to your proxy's IP)
+#    config.action_dispatch.ssl_redirect = true  # Automatically redirect HTTP to HTTPS
+    
+    # Allow Rails to use the X-Forwarded-Proto header to determine the correct protocol
+#    config.action_controller.default_url_options = { protocol: 'https' }
+#     config.action_controller.default_url_options = { host: 'asap.epfl.ch', protocol: 'https' }
+
+#    config.hosts << "asap-old.epfl.ch"
     # Application configuration should go into files in config/initializers
     # -- all .rb files in that directory are automatically loaded.
 
@@ -28,7 +45,8 @@ module Asap2
     config.middleware.delete Rack::Lock
 
     config.middleware.use Rack::Deflater
-
+#    config.middleware.use ResponseSizeTracker
+    
 #    Rails.application.middleware.use Rack::Timeout
 #    Rack::Timeout.timeout = 20  # seconds
     

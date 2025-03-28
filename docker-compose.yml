@@ -1,31 +1,34 @@
-version: '2'
+#version: '2'
 
 services:
-#  nginx:
-#    image: nginx:latest
-#    container_name: nginx
-#    volumes:
-#       - ./nginx.conf:/etc/nginx/nginx.conf
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    volumes:
+       - ./nginx.conf:/etc/nginx/nginx.conf
+       - /data/asap2/nginx_logs:/var/log/nginx
 #       - /etc/pki/tls/certs/asap.epfl.ch.pem:/etc/nginx/asap.epfl.ch.pem
 #       - /etc/pki/tls/private/asap.epfl.ch.key:/etc/nginx/asap.epfl.ch.key
 #       - /etc/pki/tls/certs/asap-beta.epfl.ch.pem:/etc/nginx/asap-beta.epfl.ch.pem
 #       - /etc/pki/tls/private/asap-beta.epfl.ch.key:/etc/nginx/asap-beta.epfl.ch.key
-#       - '/data/asap2/:/data/asap2'       
-#    links:
-#      - website
-#    ports:
-#      - 80:80
-#      - 443:443
-#      - 28081:28081
-#    networks:
-#       - asap_network
+       - '/data/asap2/:/data/asap2'       
+    links:
+      - website
+    ports:
+      - 8080:8080
+#      - 3000:3000
+#      - 8181:8181
+    restart: always    
+    networks:
+       - asap_network
 
   postgres:
-    image: 'postgres:10.3-alpine'
+    image: 'postgres:13-alpine'
     volumes:
-      - 'postgres:/var/lib/postgresql/data'
+      - '/data/asap2/pgsql-data:/var/lib/postgresql/data'
       - 'dumps:/dumps'
       - '/data/asap2/:/data/asap2'
+      - /data/asap2/dumps_for_docker_init:/docker-entrypoint-initdb.d/
     command: -p 5434
     env_file:
       - '.env'
@@ -33,6 +36,7 @@ services:
       - '5433:5434'
     expose:
       - "5434"
+    restart: always
     networks:
        - asap_network
 #:
@@ -43,6 +47,7 @@ services:
     command: redis-server --requirepass yourpassword
     volumes:
       - 'redis:/data'
+    restart: always
     networks:
       - asap_network
 #:
@@ -55,6 +60,10 @@ services:
     build: .
     ports:
       - '3000:3000'
+    privileged: true
+    group_add:
+      - docker
+#    user: root
     volumes:
       - '.:/app'
       - 'dumps:/dumps'
@@ -63,22 +72,24 @@ services:
       - '/var/run/docker.sock:/var/run/docker.sock'
     env_file:
       - '.env_website'
+    restart: always
     networks:
        - asap_network
 
 
-  sidekiq:
-    depends_on:
-      - 'postgres'
-      - 'redis'
-    build: .
-    command: sidekiq -C config/sidekiq.yml.erb
-    volumes:
-      - '.:/app'
-    env_file:
-      - '.env'
-    networks:
-      - asap_network
+ # sidekiq:
+  #  depends_on:
+  #    - 'postgres'
+  #    - 'redis'
+ #   build: .
+ #   command: sidekiq -C config/sidekiq.yml.erb
+ ##   volumes:
+ #     - '.:/app'
+ #   env_file:
+#      - '.env_website'
+#    restart: always
+#    networks:
+#      - asap_network
 #:
  #      ipv4_address: 172.19.0.5
 
@@ -86,13 +97,15 @@ services:
     depends_on:
       - 'redis'
     build: .
-    command: puma -p 28080 cable/config.ru
+  #    command: puma --bind tcp://0.0.0.0:8181 cable/config.ru
+    command: puma -p 8181 cable/config.ru   
     ports:
-      - '28080:28080'
+      - '8081:8181'
     volumes:
       - '.:/app'
     env_file:
-      - '.env'
+      - '.env_website'
+    restart: always
     networks:
       - asap_network
 #:

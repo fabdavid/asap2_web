@@ -12,13 +12,14 @@ task update_droso_gene_names: :environment do
   #  url = "ftp://ftp.flybase.org/releases/FB2020_03/precomputed_files/genes/gene_snapshots_fb_2020_03.tsv.gz"
   #  url = "ftp://ftp.flybase.org/releases/FB2020_06/precomputed_files/genes/gene_snapshots_fb_2020_06.tsv.gz"
   url = "ftp://ftp.flybase.org/releases/current/precomputed_files/genes/automated_gene_summaries.tsv.gz"
-#  puts url  
+  puts url  
   sum = `wget -qO - '#{url}' | zcat | head` #.force_encoding('iso-8859-1').encode('utf-8')
+  puts sum
 #puts "FIRST LINE"
 #puts sum #.split(/[\r\n]+/).join(",")
   if l = sum.split("\n").first and  m = l.match(/^\#\# FlyBase automated gene summaries (\d+_\d+)/)
     puts "Version: #{m[1]}"
-    url = "ftp://ftp.flybase.org/releases/FB2021_05/precomputed_files/genes/gene_snapshots_fb_#{m[1]}.tsv.gz"
+    url = "ftp://ftp.flybase.org/releases/current/precomputed_files/genes/gene_snapshots_fb_#{m[1]}.tsv.gz"
 
     cmd = "wget -qO - '#{url}' | zcat"
     

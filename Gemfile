@@ -95,6 +95,8 @@ gem 'hpricot'
 gem 'sunspot_rails'
 gem 'sunspot_solr' 
 
+gem 'rack-cors'
+
 group :development, :test do
   # Call 'byebug' anywhere in your code to drop into a debugger console
   gem 'byebug', platform: :mri

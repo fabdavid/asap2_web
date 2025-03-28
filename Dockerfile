@@ -10,7 +10,9 @@ ARG BOOST_DIR=boost_1_75_0
 ENV BOOST_VERSION ${BOOST_VERSION}
 
 #install HDF5
-RUN wget -O hdf5.tar.gz http://gecftools.epfl.ch/share/fab/hdf5-1.10.6-linux-centos7-x86_64-shared.tar.gz; tar -zxf hdf5.tar.gz
+COPY lib/hdf5-1.10.6-linux-centos7-x86_64-shared.tar.gz hdf5.tar.gz
+RUN tar -zxf hdf5.tar.gz
+#RUN wget -O hdf5.tar.gz http://gecftools.epfl.ch/share/fab/hdf5-1.10.6-linux-centos7-x86_64-shared.tar.gz; tar -zxf hdf5.tar.gz
 #RUN tar -zxf hdf5.tar.gz
 ENV LD_LIBRARY_PATH=/hdf5-1.10.6-linux-centos7-x86_64-gcc485-shared/lib/
 ENV PATH=$PATH:/hdf5-1.10.6-linux-centos7-x86_64-gcc485-shared/bin
@@ -40,10 +42,11 @@ RUN wget http://downloads.sourceforge.net/project/boost/boost/${BOOST_VERSION}/$
 
 RUN mkdir /var/log/nginx
 
+
 #RUN apk-install sudo
 #### add dockerroot group
 RUN groupdel docker
-RUN groupadd --gid 995 docker
+RUN groupadd --gid 985 docker
 
 ENV USER=rvmuser USER_ID=1006 USER_GID=1006
 
@@ -59,6 +62,18 @@ ${USER}
 RUN usermod -a -G docker "${USER}"
 
 USER ${USER}
+
+
+#RUN groupadd --gid "${USER_GID}" "${USER}" && \
+#    useradd \
+#      --uid ${USER_ID} \
+#      --gid ${USER_GID} \
+#      --create-home \
+#      --shell /bin/bash \
+#      "${USER}"
+      
+#RUN  usermod -a -G docker "${USER}"
+#RUN chmod g+rw /var/run/docker.sock
 
 #COPY user_mapping.sh /
 #RUN chmod a+x /user_mapping.sh

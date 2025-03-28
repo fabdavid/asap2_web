@@ -10,7 +10,7 @@
     </div>
     <!--  <div class='col col-xs-6 col-md-2 col-lg-1 mb-2'> -->
     <div class='col-md-2 mb-2'>
-      <div class="btn-group ml-4" role="group" aria-label="search_result_view"'>
+      <div class="btn-group ml-4" role="group" aria-label="search_result_view">
 	<button id='card_view_btn' type="button" class="search_view_btn btn btn<%= '-outline' if session[:settings][:search_view_type] == 'list' %>-success"><i class="fas fa-th"></i></button>
 	<button id='list_view_btn' type="button" class="search_view_btn btn btn<%= '-outline' if session[:settings][:search_view_type] == 'card' %>-success"><i class="fas fa-list"></i></button>
       </div>
@@ -39,19 +39,16 @@
 
 <%= javascript_tag do  %>
 
+/*$(".sel_project").each(function(){
+ let type = (this.checked) ? 'add' : 'del'
+ let id = this.id.split("_") 
+ let key = id[2]
 
-$("#upd_tag_btn").click(function(){
-var add_project_keys = []
-var del_project_keys = []
-
-$(".sel_project").each(function(){
-if (this.checked){
- add_project_keys.push($(this).val())
-}else{
- del_project_keys.push($(this).val())
-}
+ data = [{name: "type", value: type}, {name: "p_key", value: key}]
+ refresh(null, "<%= upd_sel_projects_path() %>", data, 'post', {})
 })
-
+*/
+$("#upd_tag_btn").click(function(){
 
 var p = [
 {name : 'tag_name', value : $("#tag_name").val()},

@@ -12,10 +12,31 @@
 
 <%= javascript_tag do %>
 
+// direct_link button
 
+function create_direct_link(){
+ let h_p = {step : "<%= @step.name %>"}
+ let s = {}
+ if (h_p.step == 'cell_scatter'){
+  s = {
+            open_controls : ($("plot_options_window").hasClass("hidden")) ? '1' : '0'<%# params[:open_controls] || '0' %>//,
+//            sel_all_cats : '1'
+  }
+ }
+ h_p.s = s
+let p = [
+ {name : 'project_key', value : "<%= @project.key %>"},
+ {name : 'params_json', value : JSON.stringify(h_p)}
+]
+ refresh_post(null, "<%= raw direct_links_path() %>", p, 'post', {loading:'fa-2x'})
+}
 
- // header
+$("#direct_link_btn").click(function(){
+create_direct_link()
+})
 
+// header
+console.log("add_margin_step_container function")
 function add_margin_step_container(){
  var  w = $(window).width()
  var form_status = $("#new_analysis_form_window_status")
@@ -132,7 +153,7 @@ else{
   }
 /* */
  }		     
-
+console.log("toto2")
  var cur_dashboard = $("#dashboard").val()
 
  $(".standard_dashboard_btn").each(function(){
@@ -152,6 +173,9 @@ else{
    refresh("step_content", "<%= add_metadata_project_path(:key => @project.key) %>", {loading: 'fa-2x loading-step'});
  })		       
 
+
+console.log("toto1")
+		       
 <% end %>
 
 

@@ -3,7 +3,12 @@ module ApplicationCable
     identified_by :current_user
 
     def connect
+#      puts "[DEBUG] WebSocket connection established"
     end
 
+     def disconnect
+#      puts "[DEBUG] WebSocket connection closed"
+     end
+     
   end
 end

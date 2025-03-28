@@ -269,7 +269,7 @@ module Basic
     def get_asap_docker version
       h_env = JSON.parse(version.env_json)
       list_docker_image_names = h_env['docker_images'].keys.map{|k| h_env['docker_images'][k]["name"] + ":" + h_env['docker_images'][k]["tag"]}
-      docker_images = DockerImage.where("full_name in (#{list_docker_image_names.map{|e| "'#{e}'"}.join(",")})").all
+      docker_images = DockerImage.where("full_name in (" + list_docker_image_names.map{|e| "'#{e}'"}.join(",") + ")").all
       asap_docker_image = docker_images.select{|e| e.name == APP_CONFIG[:asap_docker_name]}.first
       return asap_docker_image
     end
@@ -761,17 +761,21 @@ module Basic
       end
       
       f_out.close
+
+      logger.debug("#{init_file_path} == #{file_path}")
       
       if init_file_path == file_path
      
         ## check if it's a rds file
         if file_path.to_s.match(/\.rds$/)
           ##try to convert
+          logger.debug("TRY RDS CONVERSION")
           loom_file_path = base_dir + 'input.loom'
 #          cmd = "#{APP_CONFIG[:docker_call]} \"Rscript -e \\\"rmarkdown::render('convert_seurat.Rmd', params = list(input=\'#{file_path.to_s}\', output=\'#{loom_file_path}\'))\\\"\""
-          cmd =  "#{APP_CONFIG[:docker_call]} 'Rscript --vanilla /srv/convert_seurat.R #{file_path.to_s} #{loom_file_path}'"
-          `#{cmd}`
+          docker_call_v7 = "docker run --network=asap2_asap_network -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2  -v /srv/asap_run/srv:/srv fabdavid/asap_run:v7 -c"
+          cmd = "#{docker_call_v7} 'Rscript --vanilla /srv/convert_seurat.R #{file_path.to_s} #{loom_file_path}'"
           logger.debug("CMD RDS: #{cmd}")
+          `#{cmd}`
           if File.exist? loom_file_path
             file_path = loom_file_path
             type = 'RDS'
@@ -809,8 +813,8 @@ module Basic
       query = "select #{select} from #{from} #{join} where #{where}" #.gsub("'", "\\\\'")
 #      puts query
       h_cmd = {
-        :asap_development => "psql -h 'asap2_postgres_1.asap2_asap_network' -p 5434 --user postgres -AF $'<\t>' --no-align -c \"#{query}\" asap2_development",
-        :asap_data => "psql -h 'asap2_postgres_1.asap2_asap_network' -p 5434 --user postgres -AF $'<\t>' --no-align -c \"#{query}\" asap2_data_v#{version}"
+        :asap_development => "psql -h postgres -p 5434 -U postgres -AF $'<\t>' --no-align -c \"#{query}\" asap2_development",
+        :asap_data => "psql -h postgres -p 5434 -U postgres -AF $'<\t>' --no-align -c \"#{query}\" asap2_data_v#{version}"
       }
       
  
@@ -1670,6 +1674,13 @@ module Basic
       Dir.mkdir output_dir if !File.exist? output_dir
       
       h_attrs = JSON.parse(h_p[:run].attrs_json)
+
+#      version = h_p[:project].version
+#      asap_docker_image = get_asap_docker(version)
+
+#      Step.where(:docker_image_id => asap_docker_image.id).all.each do |s|
+#        h_steps[s.id] = s
+#      end
       
       h_var = {
         'user_id' => h_p[:run].user_id,
@@ -1806,13 +1817,16 @@ module Basic
                   puts "Cannot find output with key #{(dt) ? dt['output_attr_name'] : 'NA'} #{linked_annot.to_json}!!!"
                 end
 
-                if linked_annot and ['output_matrix', 'output_mdata'].include? dt['output_attr_name'] 
+                logger.debug("DATA_TMP:" + dt.to_json)
+                logger.debug("LINKED_ANNOT:" + linked_annot.to_json)
+                logger.debug("HVAR:" + h_var.to_json)
+                if linked_annot and (['output_matrix', 'output_mdata'].include?(dt['output_attr_name']) or linked_annot.imported == true)
                 #  ['nber_cols', 'nber_rows'].each do |v|
                   h_var['nber_cols'] = linked_annot.nber_cols if !h_var['nber_cols'] or h_var['nber_cols'] < linked_annot.nber_cols
                   h_var['nber_rows'] = linked_annot.nber_rows if !h_var['nber_rows'] or h_var['nber_rows'] < linked_annot.nber_rows
                   #  end
                 end
-
+                 logger.debug("HVAR2:" + h_var.to_json)
                 ## if we consider linking datasets from other files
                 #                  h_var[k].push((project_dir + dt['output_filename']) + ":" + dt['output_attr_name'])
                 ## instead lets only consider the datasets from the current file and  restrict the available datasets to the file direct lineage + descendents
@@ -1881,12 +1895,12 @@ module Basic
       ## define if predictable = there is one matrix as input                                                                                                                                      
       matrix_runs = run_parents.select{|parent| parent[:type] == 'dataset'}
       predictable = (matrix_runs.size == 1) ? true : false
-      if predictable
+      if predictable# and ! h_var['nber_cols']
         matrix_run = matrix_runs.first
         if matrix_run and matrix_run[:output_json_filename]
           h_output_json = JSON.parse(File.read(project_dir + matrix_run[:output_json_filename]))
-          h_var['nber_cols'] = h_output_json['nber_cols'] if h_output_json['nber_cols']
-          h_var['nber_rows'] = h_output_json['nber_rows'] if h_output_json['nber_rows']
+          h_var['nber_cols'] ||= h_output_json['nber_cols'] if h_output_json['nber_cols']
+          h_var['nber_rows'] ||= h_output_json['nber_rows'] if h_output_json['nber_rows']
         end
       end
       
@@ -1966,7 +1980,7 @@ module Basic
         asap_docker_name = "fabdavid/asap_run:#{asap_docker_image.tag}"
 #        cmd = "docker run --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2 -v /srv/asap_run/srv:/srv fabdavid/asap_run:v#{h_p[:project].version_id} -c 'Rscript prediction.tool.2.R predict /data/asap2/pred_models/#{h_p[:project].version_id} #{run.std_method_id} " + "#{h_var['nber_rows']} #{h_var['nber_cols']} 2>&1'"
         cmd = "docker run --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2 -v /srv/asap_run/srv:/srv #{asap_docker_name} -c 'Rscript prediction.tool.2.R predict /data/asap2/pred_models/#{h_p[:project].version_id} #{run.std_method_id} " + "#{h_var['nber_rows']} #{h_var['nber_cols']} 2>&1'"
-        #    logger.debug("PRED_CMD: #{cmd}")
+            logger.debug("PRED_CMD: #{cmd}")
         pred_results_json = `#{cmd}`.split("\n").first #.gsub(/^(\{.+?\})/, "\1")                                                                                                       
         h_pred_results = Basic.safe_parse_json(pred_results_json, {})
       end
@@ -2202,6 +2216,7 @@ module Basic
       if !abort and (!h_output_hca or h_output_hca['status_id'] !=4)
 
         h_cmd = Basic.safe_parse_json(run.command_json, {})
+        puts "H_CMD: #{run.command_json} #{h_cmd.to_json}"
         if h_cmd.keys.size == 0
           all_displayed_errors.push("Not valid command")
         else
@@ -2334,6 +2349,7 @@ module Basic
       #      if !h_output_hca or h_output_hca['status_id'] !=4
       
       h_env = Basic.safe_parse_json(version.env_json, {})
+puts "TEST RUN"
       puts run.to_json
       h_cmd = Basic.safe_parse_json(run.command_json, {})     
       #      puts h_cmd.to_json

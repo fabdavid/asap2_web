@@ -1,0 +1,6 @@
+// <%= session[:project_cart].to_json %>
+let nber_projects = <%= @sel_projects.size %>
+let nber_species = <%= @sel_projects.map{|e| e.organism_id}.uniq.size %>
+let disabled = (nber_species == 1 && nber_projects > 1) ? "" : "disabled"
+$("#integrate_btn").prop("disabled", disabled)
+

@@ -123,7 +123,9 @@ task extract_ids_from_ontologies: :environment do
           related_gene_ids[e]||=[]
 	  if h_terms2[e]
             #	   h_terms2[e].node_gene_ids.split(',').map{|e2| e2.to_i}.each do |gene_id|
-            related_gene_ids[e] += h_terms2[e].node_gene_ids.split(',').map{|e2| e2.to_i} 
+            if h_terms2[e].node_gene_ids
+              related_gene_ids[e] += h_terms2[e].node_gene_ids.split(',').map{|e2| e2.to_i} 
+            end
           end
         end
 

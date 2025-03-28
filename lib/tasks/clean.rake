@@ -1,9 +1,9 @@
 desc '####################### Clean'
 task clean: :environment do
   puts 'Executing...'
-
+  
   now = Time.now
-
+  
   ## remove old sandbox projets
   
   Project.where("sandbox is true or (public is false and user_id = 1 and cloned_project_id is not null)").all.each do |p|
@@ -19,11 +19,11 @@ task clean: :environment do
       puts "No session for #{p.key} => delete"
       ProjectsController.new.delete_project(p)  	   
     end
-   
+    
   end
   
   
-
+  
   ## remove fus that are not associated with any project anymore
   
   # get all symbolic links
@@ -59,5 +59,5 @@ task clean: :environment do
       end
     end
   end
-
+  
 end

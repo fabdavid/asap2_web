@@ -87,7 +87,7 @@
  <%= hidden_field_tag "plot[mode]", session[:csp_params][@project.id][:mode] || 1 %>
 
 <%= javascript_tag do %>
-
+console.log("toto0")
 function refresh_plot(){
   var h_opt = {loading : 'fa-2x'}
   var nber_dims = $("#plot_displayed_nber_dims").val()

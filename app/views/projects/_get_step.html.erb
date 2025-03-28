@@ -24,7 +24,11 @@
    <%# @h_attrs_by_run_id.to_json %>
 
    <%# render :partial => 'alert_used_space' %>
-    
+
+   <% if admin? and params[:dl_params_json] %>
+   <%= params[:dl_params_json] %>
+   <% end %>
+   
    <%= @error %>
    <% if !analyzable? @project and !["cell_scatter"].include? @step.name  %>
    <div class='alert alert-info'>Please <%= link_to "clone", clone_project_path(:key => @project.key) %> this project to run new analyses on it</div>
@@ -66,7 +70,7 @@
  </div>
  
  <%= javascript_tag do %>
-
+ console.log("bla0")
  // other
 
  $("#last_project_step").html('<%= @last_update %>');
@@ -75,18 +79,21 @@
   refresh("form_container", "<%= edit_project_path(@project.key) %>?global=1", {});
   $("#ontop_window").removeClass("hidden");
  });
-
+ //console.log("bla1")
  var table_width = $("div.results table").width();
  var panel_width = ( $(window).width() > table_width) ? $(window).width() : table_width;
  $("div.results").css({width: panel_width + 'px'});
 
-// console.log("bla");
+ //console.log("bla2");
  if (!$("#new_analysis_form").hasClass('hidden')){
   $("#new_job_main_btn").addClass("hidden");
  }
 
 // if (!$("#new_analysis_form").hasClass("hidden")){
-  add_margin_step_container()
+ console.log("add margin step container")
+ if (typeof add_margin_step_container === "function") {
+ add_margin_step_container()
+ }
 // }
 
  

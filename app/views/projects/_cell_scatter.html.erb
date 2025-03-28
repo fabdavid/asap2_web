@@ -167,11 +167,10 @@ plotly_graph.updatePlotWidth(w-ww-300);
 
 });
 
-<%# if params[:open_controls] == '1' %>
+<%# if !params[:open_controls] or params[:open_controls] == '1' %>
 /*$(document).ready(function(){
 $("#plot_options_btn").click()
-})
-*/
+})*/
 <%# end %>
 
 <% end %>

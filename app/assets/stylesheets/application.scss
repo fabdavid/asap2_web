@@ -19,7 +19,9 @@
 #main_footer {position:fixed; bottom:0px; width:100%;background-color:#FAFAFA;}
 #main_footer table {width:100%}
 #footer {margin-bottom:50px;text-align:center}
-
+.wrap-text {
+    word-break: break-word;
+  }
 
 /* GENERAL PURPOSE */
 

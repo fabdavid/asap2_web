@@ -16,8 +16,6 @@
    
    <%= javascript_tag do %>
 
-//   console.log("nnn")
-
 //   if ('<%= @plot_type %>' == '3d' && (<%= @nber_cols %> < 200000 || window.navigator.appName == 'Chrome')){
 
     <%= render :partial => "dim_reduction_#{params[:displayed_nber_dims]}d_js" %>
@@ -36,7 +34,9 @@
      }})
 //  }else{
 //    $("#dr_plot").html("<div class='alert alert-danger mt-4'>This dataset is too big (<%= number_with_delimiter(@nber_cols, :delimiter => "'") %> cells) to be visualized in 3D with your current browser. Please use Chrome to be able to visualize this dataset.</div>")
-//  }
+    //  }
+
+    
    <% end %>
 
   <% else %>

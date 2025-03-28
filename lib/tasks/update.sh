@@ -1,4 +1,4 @@
-## OBSOLETE
+## OBSOLETE => new version of update is update.rake
 
 ## update DrugBank
 docker-compose exec website sh -c 'RAILS_ENV=data && rails update_drugbank'
