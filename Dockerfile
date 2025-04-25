@@ -29,9 +29,12 @@ RUN apk add --no-cache --virtual .build-dependencies \
    # && cd .. && rm -rf ${BOOST_DIR} ${BOOST_DIR}.tar.bz2 \
     && apk del .build-dependencies
 
+#RUN gem update --system 3.3.22
+
 WORKDIR /app
 
 COPY Gemfile Gemfile.lock ./
+#COPY Gemfile ./
 #RUN bundle update
 RUN touch /mimetypes
 ENV FREEDESKTOP_MIME_TYPES_PATH=/mimetypes

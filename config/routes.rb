@@ -211,6 +211,7 @@ Rails.application.routes.draw do
       get :get_cart
       get :form_select_input_data
       post :hca_preview
+      get :integrate_form
       get :hca_projects
       post :hca_download
       get :search_form

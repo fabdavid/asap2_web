@@ -88,7 +88,10 @@
 <div id='opt_input'>
   <div class="btn-group" role="group" aria-label="Input">
     <button id='upload-choice_btn' type="button" class="btn btn-primary choice_btn active">Upload file / Send URL</button>
-    <button id='hca-choice_btn' type="button" class="btn btn-secondary choice_btn">Import from the Human Cell Atlas</button>
+    <!--   <button id='hca-choice_btn' type="button" class="btn btn-secondary choice_btn">Import from the Human Cell Atlas</button> -->
+    <% if admin? %>
+    <button id='integrate-choice_btn' type="button" class="btn btn-secondary choice_btn">Integrate projects</button>
+    <% end %>
   </div>
 </div>
 
@@ -108,6 +111,9 @@
 </div>
 
 <div id='hca_container' class='opt_input_container hidden'>
+</div>
+
+<div id='integrate_container' class='opt_input_container hidden'>
 </div>
 
 <div id='share_container'>
@@ -140,13 +146,23 @@
 
 <%= javascript_tag do %>
 
-/*
-$("#project_version_id").change(function(){
-$(".main_container").html("<i>Updating form...</i>")
-window.location = '<%= new_project_path() %>?version_id=' + $(this).val() 
-})
-*/
+function upd_version(){
+if ($("#project_version_id").val() < 8){
+$("#upload-choice_btn").click()
+$("#integrate-choice_btn").addClass("hidden")
+}else{
+$("#integrate-choice_btn").removeClass("hidden")
+}
+}
 
+$("#project_version_id").change(function(){
+//$(".main_container").html("<i>Updating form...</i>")
+//window.location = '<%= new_project_path() %>?version_id=' + $(this).val()
+upd_version()
+})
+
+upd_version()
+		    
 function upd_hca_preview(){
  var p = []
  console.log("test")
@@ -173,6 +189,15 @@ $("#hca-choice_btn").click(function(){
 // if ($("#hca_container").children().length == 0){
   upd_hca_preview()
 // }
+})
+
+function upd_integrate_form(){
+var url = "<%= integrate_form_projects_path() %>"
+refresh("integrate_container", url, {loading:'fa-2x'})
+}
+
+$("#integrate-choice_btn").click(function(){
+  upd_integrate_form()
 })
 
 /*
@@ -220,13 +245,16 @@ test = false
  //var c = $(".hca-hit:checked")
   var c = $('input[name="hca_loom_file"]:checked')
  //if (($("#project_name").val() != '' || c.length > 0) && (($("#nber_cols").val() > 1 && $("#nber_rows").val() > 0) || $("#provider_project_id").val() != '' || $("#sel_provider_projects").val() != '{}')){
-if ( ($("#nber_cols").val() > 1 && $("#nber_rows").val() > 0) || $("#provider_project_id").val() != '' || $("#sel_provider_projects").val() != '{}'){
+if (($("#integrate-choice_btn").hasClass('active') && $("#project_name").val() != '') || ($("#nber_cols").val() > 1 && $("#nber_rows").val() > 0) || $("#provider_project_id").val() != '' || $("#sel_provider_projects").val() != '{}'){
 $("#create_project_button").removeAttr('disabled')
 }else{
 $("#create_project_button").attr('disabled', 'disabled')
 }
 }
 
+$(".choice_btn").click(function(){
+validate_form(null)
+})
 
 $("#project_name").keyup(function(){
  if ($(this).val().trim() != ''){

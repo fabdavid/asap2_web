@@ -1,0 +1,38 @@
+<% if @sel_projects.size == 0 %>
+
+No projects
+
+<% else %>
+
+<table><tbody>
+  <tr><td>
+      Number of PCs to take into account (an integer)</td><td> <%= text_field_tag 'integrate_n_pcs', '', :class => 'form-control' %></td>
+  </tr>
+  <tr>    
+    <td>Projects to integrate</td>
+    <td>
+      <table>
+	<thead>
+	  <tr>
+	    <th>Project key</th>
+	    <th>Project name</th>
+	    <th>Batch metadata<th>
+	  </tr>
+	</thead>
+	<tbody>
+	  
+	  <% @sel_projects.each do |p| %>
+	  <tr>
+	    <td><%= p.key %></td>
+	    <td><%= p.name %></td>      
+	    <td>
+	      <% l = @h_annots[p.id].map{|e| [e.name, e.name]} %>
+	      <%= select_tag 'integrate_batch_paths[' + p.key + ']', options_for_select(l), :class => 'form-control' %></td>
+	  </tr>
+	  <% end %>
+	</tbody>
+      </table>
+    </td>
+</tr></tbody></table>
+
+<% end %>

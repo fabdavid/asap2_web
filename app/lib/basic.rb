@@ -1688,6 +1688,7 @@ module Basic
         'output_dir' => output_dir, #project_dir + h_p[:step].name + run.id.to_s,
         'std_method_name' => h_p[:std_method].name,
         'step_tag' => h_p[:step].tag,
+        'step_name' => h_p[:step].name,
         'run_num' => run.num,
         'asap_data_docker_db_conn' => 'postgres:5434/asap2_data_v' + h_p[:h_env]['asap_data_db_version'].to_s, #h_p[:project].version_id.to_s,
         'asap_data_direct_db_conn' => 'postgres:5433/asap2_data_v' + h_p[:h_env]['asap_data_db_version'].to_s #h_p[:project].version_id.to_s,
@@ -2060,8 +2061,8 @@ module Basic
 
     def build_cmd h_cmd
       puts "H_CMD: " + h_cmd.to_json
-       h_cmd['opts']||=[]
-       h_cmd['args']||=[]
+      h_cmd['opts']||=[]
+      h_cmd['args']||=[]
       puts "H_CMD: " + h_cmd.to_json
       
       cmd_parts = [

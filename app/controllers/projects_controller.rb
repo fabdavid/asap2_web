@@ -5267,7 +5267,7 @@ class ProjectsController < ApplicationController
       h_card = {
         :card_id => "summary_step_card-#{step.id}",
         :card_class => "summary_step_card pointer",
-        :body => "<h5 class='card-title'><i style='color:#{step.color}' class='fa fa-circle'></i> #{step.label}</h5><p class='card-text'>#{card_text.join(" ")}</p>",
+        :body => "<h5 class='card-title'><i style='color:#{step.color}' class='fa fa-circle'></i> #{step.label}" + ((step.multiple_runs == false) ? "<small><span class='badge badge-light'>#{@h_std_methods[run.std_method_id].label}</span></small>" : '') + "</h5><p class='card-text'>#{card_text.join(" ")}</p>",
         :footer => "<small class='text-muted'>Last updated #{display_elapsed_time(ps.updated_at)}</small>"
       }
       @list_cards.push(h_card)
@@ -7462,7 +7462,24 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
       
     end
   end
-  
+
+  def integrate_form
+    @sel_projects = Project.where(:key => session[:project_cart].keys).all
+    @h_annots = {}
+    @sel_projects.each do |p|
+      version =p.version
+      h_env = Basic.safe_parse_json(version.env_json, {})
+      if h_env['docker_images']
+        list_docker_image_names = h_env['docker_images'].keys.map{|k| h_env['docker_images'][k]["name"] + ":" + h_env['docker_images'][k]["tag"]}
+        docker_images = DockerImage.where("full_name in (" + list_docker_image_names.map{|e| "'#{e}'"}.join(",") + ")").all
+        asap_docker_image = docker_images.select{|e| e.name == APP_CONFIG[:asap_docker_name]}.first
+      end      
+      parsing_step = Step.where(:docker_image_id => asap_docker_image.id, :name => 'parsing').first
+      parsing_run = Run.where(:project_id => p.id, :step => parsing_step.id).first 
+      @h_annots[p.id] = Annot.where(:project_id => p.id, :store_run_id => parsing_run.id, :data_type_id => 3, :dim => 1).all
+    end
+    render :partial => 'integrate_form'
+  end
 
   def hca_preview
 
@@ -7707,12 +7724,12 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     tmp_attrs = params[:attrs] || {}
     tmp_attrs[:has_header] = 1 if tmp_attrs[:has_header]
   
-    [:file_type, :sel_name, :nber_cols, :nber_rows, :sel_provider_projects, :provider_project_id, :provider_project_filename, :provider_project_title, :provider_project_filekey, :provider_project_fileurl, :colname_metadata, :rowname_metadata].each do |k|
-      tmp_attrs[k] = params[k] if params[k] and !params[k].strip.empty?
+    [:file_type, :sel_name, :nber_cols, :nber_rows, :sel_provider_projects, :provider_project_id, :provider_project_filename, :provider_project_title, :provider_project_filekey, :provider_project_fileurl, :colname_metadata, :rowname_metadata, :integrate_batch_paths, :integrate_n_pcs].each do |k|
+      tmp_attrs[k] = params[k] if params[k] and (!params[k].is_a?(String) or !params[k].strip.empty?)
     end
     tmp_attrs[:file_type] = 'LOOM' if params[:tab_choice] == 'hca' #!tmp_attrs[:file_type] ### HCA import case  
   
-    if params[:tab_choice] == 'hca' or @h_formats[tmp_attrs[:file_type]].child_format != 'RAW_TEXT' ## delete the RAW_TEXT parsing options
+    if params[:tab_choice] == 'hca' or (tmp_attrs[:file_type] and @h_formats[tmp_attrs[:file_type]].child_format != 'RAW_TEXT') ## delete the RAW_TEXT parsing options
       [:delimiter, :gene_name_col, :has_header].each do |k|
         tmp_attrs.delete(k)
       end
@@ -7924,6 +7941,18 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
         format.html { redirect_to project_path(@project.key) #, notice: 'Project was successfully created.'
         }
         format.json { render :show, status: :created, location: @project }
+      elsif params[:integrate_batch_paths] and @project.save
+
+        tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s
+        Dir.mkdir(tmp_dir) if !File.exist?(tmp_dir)
+        tmp_dir += @project.key
+        Dir.mkdir(tmp_dir) if !File.exist?(tmp_dir)
+
+        init_project_steps()
+        manage_access()
+ 
+        @project.integrate()
+        format.html { redirect_to project_path(@project.key)}
       else
         format.html { redirect_to new_project_path(), notice: "<div class='alert alert-danger'>Something went wrong. Please send us <a href='mailto:bioinfo.epfl@gmail.com?subject=ASAP feedback'>feedback</a>.</div>"}
         format.json { render json: @project.errors, status: :unprocessable_entity }

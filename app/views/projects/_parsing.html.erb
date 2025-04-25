@@ -52,6 +52,47 @@
       <span class="badge badge-secondary">Has header: <%= (h_attrs['has_header']== "1") ? 'Yes' : 'No' %></span> 
       </p>
       <% end %>
+
+      <% if h_attrs['integrate_batch_paths'] %>
+
+      <p class='sub-run_card'>Integration</p>
+
+       <% integrated_projects = Project.where(:key => h_attrs['integrate_batch_paths'].keys).all %>
+
+       <table><tbody>
+	   <tr><td>
+	       Number of PCs taken into account</td><td> <%= h_attrs["integrate_n_pcs"] %></td>
+	   </tr>
+	   <tr>
+	     <td>Integrated projects</td>
+	     <td>
+	       <table>
+		 <thead>
+		   <tr>
+		     <th>Project key</th>
+		     <th>Project name</th>
+		     <th>Batch metadata<th>
+		   </tr>
+		 </thead>
+		 <tbody>
+		   
+		   <% integrated_projects.each do |p| %>
+		   <tr>
+		     <td><%= p.key %></td>
+		     <td><%= p.name %></td>
+		     <td>
+		       <%= h_attrs['integrate_batch_paths'][p.key] %>
+		     </td>
+		   </tr>
+		   <% end %>
+		 </tbody>
+	       </table>
+	     </td>
+       </tr></tbody></table>
+
+       
+      <% end %>
+      
       <p class='sub-run_card'>Output summary</p>
       <p>
 	<span class='badge badge-info'>genes:<%= @results['nber_rows'] %></span>

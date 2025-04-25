@@ -12,7 +12,7 @@ echo 'Start sunspot'
 bundle exec rake sunspot:solr:start
 
 echo 'Start puma and daemon...'
-puma -C config/puma.rb 2>&1 > log/puma.log & #&& rails exec_runs --trace 2>&1 > log/exec_runs.log
+puma -C config/puma.rb 2>&1 > log/puma.log #& #&& rails exec_runs --trace 2>&1 > log/exec_runs.log
 
 #echo 'Start puma in the background...'
 #puma -C config/puma.rb > log/puma.log 2>&1 &

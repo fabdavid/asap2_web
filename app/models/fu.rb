@@ -15,20 +15,25 @@ class Fu < ActiveRecord::Base
 #  validates_attachment :upload, content_type: { content_type: ['application/zip', 'application/pdf', 'text/plain'] }
   
   def broadcast
+    #   logger.debug("DEBUG broadcast fu " + self.id.to_s)
+#         File.open('/data/asap2/toto', "w") do |f|
+#            f.write "test broadcast"
+#          end
     FuBroadcastJob.perform_later self
+    
   end
-
+  
   NewDownload = Struct.new(:fu, :url) do
     def perform
       fu.download url
     end
-
+    
     def error(job, exception)
     end
   end
-
-#  def start_download
-#    Delayed::Job.enqueue NewDownload.new(self), :queue => 'fast'
+  
+  #  def start_download
+  #    Delayed::Job.enqueue NewDownload.new(self), :queue => 'fast'
 #  end
   
   def to_jq_upload(error=nil)
@@ -91,13 +96,13 @@ class Fu < ActiveRecord::Base
       if File.exist? filepath
         self.update_attributes({:upload_file_size => File.size(filepath), :upload_file_name => filename})
       end
-
+      
     end
-
+    
     self.broadcast
     
   end
-
-
-
+  
+  
+  
 end

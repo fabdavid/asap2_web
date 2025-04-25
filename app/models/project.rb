@@ -438,6 +438,74 @@ class Project < ApplicationRecord
     
   end
 
+  def integrate
+    
+    f_log = File.open("./log/delayed_job_parsing.log", "w")
+    version = self.version
+    h_env = JSON.parse(version.env_json)
+    asap_docker_image = Basic.get_asap_docker(version)
+    
+    parsing_step = Step.where(:docker_image_id => asap_docker_image.id, :name => 'parsing').first
+    parsing_std_method = StdMethod.where(:docker_image_id => asap_docker_image.id, :name => 'integration').first
+
+    project_step = ProjectStep.where(:project_id => self.id, :step_id => parsing_step.id).first
+
+    start_time = Time.now
+
+    project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + self.user_id.to_s + self.key
+    tmp_dir = project_dir + 'parsing'
+    FileUtils.mkdir_p(tmp_dir) if !File.exist?(tmp_dir)
+
+
+    h_cmd = {
+      :host_name => "localhost",
+      :program => "rails integrate[#{self.key}]",  #(mem > 10) ? "java -Xms#{mem}g -Xmx#{mem}g -jar /srv/ASAP.jar" : 'java -jar /srv/ASAP.jar',
+      :opts => [],
+      :args => []
+      }
+
+    output_file = tmp_dir + "output.loom"
+    output_json = tmp_dir + "output.json"
+
+    f_log.write(self.to_json)
+
+    h_outputs = {
+      :output_matrix => { "parsing/output.loom" => {:types => ["num_matrix"], :dataset => "matrix", :row_filter => nil, :col_filter => nil}},
+      :output_json => { "parsing/output.json" => {:types => ["json_file"]}}
+    }
+    
+    h_run = {
+      :project_id => self.id,
+      :step_id => parsing_step.id,
+      :std_method_id => parsing_std_method.id,
+      :status_id => 1, #status_id,                                                        
+      :num => 1,
+      :user_id => self.user_id,
+      :command_json => h_cmd.to_json,
+      :attrs_json => self.parsing_attrs_json,
+      :output_json => h_outputs.to_json,
+      :submitted_at => start_time
+    }
+
+    run = Run.where({:project_id => self.id, :step_id => parsing_step.id}).first
+    if !run
+      run = Run.new(h_run)
+      run.save
+      f_log.write("Created!")
+    else
+      f_log.write("Update run...")
+      run.update_attributes(h_run)
+      f_log.write("Updated run!")
+    end
+
+    h_project_step =  Basic.get_project_step_details(self, parsing_step.id)
+    f_log.write(h_project_step.to_json)
+    project_step.update_attributes(h_project_step)
+    self.broadcast run.step_id
+
+  end
+
+  
   def parse
   
     f_log = File.open("./log/delayed_job_parsing.log", "w")
