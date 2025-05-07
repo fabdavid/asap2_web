@@ -1,4 +1,4 @@
-<%# raw @h_cmd.to_json %>
+<%= raw @h_cmds.to_json if admin? %>
 <%# raw @h_data.to_json %>
 <%# raw @h_data.keys.to_json %>
 <%# raw @h_data[:depth] %>

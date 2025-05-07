@@ -24,7 +24,8 @@
 <%= javascript_tag do %>
 
 <%  @h_outputs[output_name].each_key do |f| %>
- <% h_plot = JSON.parse(File.read(@project_dir + f)) %>
+<% h_plot = Basic.safe_parse_json(File.read(@project_dir + f), {}) %>
+<% if h_plot['x'] %>
   <% (0 .. (h_plot['x']['data'].size - 1)).map{|i| h_plot['x']['data'][i]['type'] = 'scattergl' if h_plot['x']['data'][i]['type']=='scatter'} %> 
  var data = <%= raw h_plot['x']['data'].to_json %>
  var layout = <%= raw h_plot['x']['layout'].to_json %>
@@ -39,6 +40,7 @@ layout.height = <%= horiz_element['plot_height'] %>
  Plotly.newPlot('plotly_plot_<%= @run.id %>_<%= output_name %>_<%= @h_outputs[output_name][f]['onum'] %>', data, layout );
 // console.log("layout = " + <%= h_plot['x']['layout'].to_json.size %>)
 //    console.log("data = " + <%= h_plot['x']['data'].to_json.size %>)
+<% end %>
 <% end %>
 
 <% end %>

@@ -67,6 +67,7 @@ services:
       - 'dumps:/dumps'
       - '/data/asap2/:/data/asap2'
       - '/srv/asap_run:/srv/asap_run'
+      - '/srv/asap_run_new:/srv/asap_run_new'
       - '/var/run/docker.sock:/var/run/docker.sock'
     env_file:
       - '.env_website'
