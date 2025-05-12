@@ -19,8 +19,7 @@ function create_direct_link(){
  let s = {}
  if (h_p.step == 'cell_scatter'){
   s = {
-            open_controls : ($("plot_options_window").hasClass("hidden")) ? '1' : '0'<%# params[:open_controls] || '0' %>//,
-//            sel_all_cats : '1'
+open_controls : ($("#plot_options_window").hasClass("hidden")) ? '0' : '1'
   }
  }
  h_p.s = s

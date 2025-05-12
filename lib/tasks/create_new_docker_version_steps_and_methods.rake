@@ -7,7 +7,7 @@ task create_new_docker_version_steps_and_methods: :environment do
 #  new_version = Version.last
 #  prev_version = new_version.id - 1
 
-  docker_images = DockerImage.where(:name => APP_CONFIG[:asap_docker_name]).last(2)
+  docker_images = DockerImage.where(:id => [3, 5], :name => APP_CONFIG[:asap_docker_name]).last(2)
   prev_docker_image = docker_images[0]
   new_docker_image = docker_images[1]
   
@@ -21,7 +21,7 @@ task create_new_docker_version_steps_and_methods: :environment do
   #  Step.where(:version_id => prev_version).order("id").all.each do |s|
   Step.where(:docker_image_id => prev_docker_image.id).order("id").all.each do |s| 
     #   new_s = Step.where(:version_id => new_version, :name => s.name).first
-    new_s = Step.where(:docker_image_id => new_docker_image.id, :name => s.name).first
+    new_s = Step.where(:docker_image_id => new_docker_image.id, :name => s.name, :rank => s.rank, :group_name => s.group_name).first
     h_s = s.attributes
     h_s.delete('id')
     h_s.delete('created_at')
@@ -36,6 +36,8 @@ task create_new_docker_version_steps_and_methods: :environment do
       h_steps[s.id] = new_s.id
     end
   end
+
+
   
   ## copy std_methods  
   #  StdMethod.where(:version_id => prev_version).order("id").all.each do |s|

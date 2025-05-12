@@ -13,7 +13,11 @@ var content = "<div class='wrap-text'>\
   <a class='btn btn-primary' href='<%= raw project_path(:key => @project.key, :direct_link_key => @direct_link.view_key) %>'>\
     <i class='fa fa-link'></i>\
   </a>\
-</div>"
+</div><br/>\
+<% if editable? @project %>\
+<button id='set_landing_page_btn' type='button' class='btn btn-success'>Set as landing page</button> <span id='set_landing_page_check' class='hidden text-success'><i class='fa fa-check'></i></span>\
+<% end %>\
+"
 
 $("#ontop_popup_container").html(content)
 
@@ -23,4 +27,11 @@ $("#ontop_popup_window").css({
  'z-index':1000000,
  top: 110
 }).stop().show(100);
+
+$("#set_landing_page_btn").click(function(){
+	     let data = [
+	     {name : "landing_page_key", value : "<%= @direct_link.view_key %>"}
+	     ]
+	     refresh_post(null, "<%= set_landing_page_project_path(:key => @project.key) %>", data, 'post', {loading:'fa-2x'})
+})	     
 

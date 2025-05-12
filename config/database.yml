@@ -20,9 +20,10 @@ data_v5:
 data_v6:
   url: "<%= ENV['DATABASE_URL'].gsub('?', '_data_v6?') %>"
   pool: 10
-data_v7:
-  url: "<%= ENV['DATABASE_URL'].gsub('?', '_data_v7?') %>"
+data_v8:
+  url: "<%= ENV['DATABASE_URL'].gsub('?', '_data_v8?') %>"
   pool: 10
+
 data_tmp:
-  url: "<%= ENV['DATABASE_URL'].gsub('?', '_data_v7?') %>"
+  url: "<%= ENV['DATABASE_URL'].gsub('?', '_data_v8?') %>"
   pool: 10

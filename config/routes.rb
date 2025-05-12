@@ -222,6 +222,7 @@ Rails.application.routes.draw do
       post :upd_sel
     end
     member do
+      post :set_landing_page
       post :upd_marker_genes
       get :get_marker_gene_stats
       post :upd_gene_expr_stats
@@ -248,6 +249,7 @@ Rails.application.routes.draw do
       get :upload_form
       post :prepare_metadata
       get :add_metadata
+      post :get_step_via_post
       get :get_step
       get :get_step_header
       get :get_run

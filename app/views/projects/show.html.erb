@@ -136,10 +136,13 @@ let i=0
 i=1
 <% elsif @direct_link %>
  <% h_landing_page = Basic.safe_parse_json(@direct_link.params_json, {}) %>
-i=2
+ i=2
+ <% elsif @project.landing_page_key and landing_page_link = DirectLink.where(:view_key => @project.landing_page_key).first %>
+ <% h_landing_page = Basic.safe_parse_json(landing_page_link.params_json, {}) %>
+ i=3
  <% else %>
 <% h_landing_page = Basic.safe_parse_json(@project.landing_page_json, {}) %>
-i=3
+i=4
 <% end %>
 console.log("LANDING_PAGE " + i)
 var landing_page = <%= raw h_landing_page.to_json %>
@@ -147,8 +150,17 @@ var landing_page = <%= raw h_landing_page.to_json %>
 console.log(landing_page)
 <% if h_landing_page['step'] %>
 <% h_p = {:key => @project.key, :nolayout => 1, :fixed_session => 1, :step_id => @h_steps_by_name[h_landing_page['step']].id} %>
-<% h_landing_page['s'].keys.map{|k| h_p[k] = h_landing_page['s'][k] } %>
-refresh("step_container", "<%= raw get_step_project_path(h_p) %>", {loading: 'fa-2x loading-step'});
+<%# h_landing_page['s'].keys.map{|k| h_p[k] = h_landing_page['s'][k] } %>
+<%# if admin? %>
+let p_data = [
+{name : 'no_layout', value : 1},
+{name : 'fixed_session', value : 1},
+{name : 'step_id', value : <%= @h_steps_by_name[h_landing_page['step']].id %>},
+{name : 'landing_page_json', value : JSON.stringify(landing_page)}]
+refresh_post("step_container", "<%= raw get_step_via_post_project_path(:key => @project.key) %>", p_data, 'post', {loading: 'fa-2x loading-step'})
+<%# else %>
+//refresh("step_container", "<%= raw get_step_project_path(h_p) %>", {loading: 'fa-2x loading-step'});
+<%# end %>
 <% else %>
 upd_summary()
 <% end %>

@@ -35,6 +35,7 @@
 .pgpass
 .env
 .env_website
+.env_asap_run
 .idea/*
 
 config/shards.yml

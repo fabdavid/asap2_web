@@ -7,7 +7,7 @@ class ProjectsController < ApplicationController
                                      :broadcast_on_project_channel, :live_upd, 
                                      :form_select_input_data, :form_new_analysis, :form_new_metadata,                                     
                                      :upd_cat_alias, :upd_sel_cats,
-                                     :parse_form, :parse, :get_step, :get_pipeline,
+                                     :parse_form, :parse, :get_step, :get_step_via_post, :get_pipeline,
                                      :get_run, :get_lineage, :get_step_header,
                                      :autocomplete_genes, :autocomplete_gene_set_items, :get_rows, :extract_row, :extract_metadata, 
                                      :filter_de_results, :filter_ge_results, :cluster_comparison, :provider_projects,
@@ -17,7 +17,9 @@ class ProjectsController < ApplicationController
                                      :get_commands, :save_plot_settings, :get_annot_info, :upd_marker_genes, :get_marker_gene_stats, :upd_gene_expr_stats,
                                      :confirm_delete, :delete_all_runs_from_step,
                                      :get_attributes, :set_input_data, :set_geneset, :get_visualization, :replot, :get_file, :tsv_from_json, :upload_file, 
-                                     :delete_batch_file, :upload_form, :clone, :direct_download]
+                                     :delete_batch_file, :upload_form, :clone, :direct_download,
+                                     :set_landing_page
+                                    ]
   before_action :empty_session, only: [:show]
 #  skip_before_action :verify_authenticity_token
   include ApplicationHelper
@@ -29,6 +31,14 @@ class ProjectsController < ApplicationController
     session.delete(:selections)
   end
 
+  def set_landing_page
+    if editable? @project and params[:landing_page_key]      
+      @project.update_column(:landing_page_key, params[:landing_page_key])
+    end
+
+    render :partial => "set_landing_page"
+  end
+  
   def set_search_session
     [:search_type].each do |e|
       session[:settings][e] = params[e] if params[e]
@@ -6259,7 +6269,98 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
 
     end
   end
+
+  def get_step_main
+
+    ### update some session parameters
+    logger.debug params[:step_id]
+    logger.debug("TEST!")
+    if params[:s]
+      logger.debug("session!")
+      params[:s].each_pair do |k, v|
+        logger.debug("blaaaa" + k.to_json)                                                                                                                                                              
+        if ["dr_params", "csp_params", "store_run_id"].include? k.to_s
+          logger.debug("blaaaaa:" + k)                                                                                                                                                                
+          session[k.to_sym] ||={}
+          if v.is_a?(String)
+            session[k.to_sym][@project.id]=v
+          else
+            session[k.to_sym][@project.id]||={}
+            params[:s][k].each_pair do |k2, v2|
+              session[k.to_sym][@project.id][k2.to_sym] = v2
+              logger.debug(["SESSION: ", k, @project.id, k2, v2].join(", "))
+              if [:displayed_nber_dims, :annot_id, :annot_cat_id, :dim1, :dim2].include? k2.to_sym
+                session[k.to_sym][@project.id][k2.to_sym] = session[k.to_sym][@project.id][k2.to_sym].to_i
+              end
+              #  logger.debug("test session:" + k2 + "->" + v2)
+            end
+          end
+        end
+      end
+    end
     
+    if params[:sel_all_cats]
+      annot = Annot.where(:id => session[:dr_params][@project.id][:cat_annot_id]).first
+      h_cats = Basic.safe_parse_json(annot.categories_json, {})
+      session[:dr_params][@project.id][:sel_cats] = h_cats.keys
+    end
+    logger.debug("test session:" + session[:csp_params].to_json)
+    get_base_data()
+    logger.debug params[:step_id]
+    @step_id = params[:step_id].to_i || session[:active_step]
+   
+    @step = @h_steps[@step_id]
+
+    if readable? @project
+      @error = ''
+      function = nil
+      if ["ge"].include? @step.name
+        function = method(("get_step_" + @step.name + "_prelude").to_sym)
+        function.call()
+      end
+    end
+
+     @log = "test"
+    common_get_step()
+
+    if readable? @project
+      @error = ''
+      function = nil
+      if ["de", "ge", "metadata_expr", "summary", "dim_reduction", "cell_scatter", "import_metadata"].include? @step.name
+        function = method(("get_step_" + @step.name).to_sym)
+        function.call()
+      end
+
+      get_results()
+      get_batch_file_groups()
+    end
+
+    ## set params[:open_controls]
+    logger.debug("OPEN_CONTROL=#{params[:s]['open_controls']}")
+    params[:open_controls] = '1' if params[:s]['open_controls'] == '1'
+    
+    respond_to do |format|
+      format.html {
+        render :partial => params[:partial] || "get_step"
+      }
+    end
+
+
+  end
+  
+  def get_step_via_post
+
+    if params[:landing_page_json]
+      h_params = JSON.parse(params[:landing_page_json])
+      h_params.each_key do |k|
+        params[k.to_sym] ||= h_params[k]
+      end
+      
+    end
+
+    get_step_main()
+    
+  end
 
   def get_step
    
@@ -6307,112 +6408,6 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
 
     @log = "test"
     common_get_step()
-
-#    @project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user.id.to_s + @project.key
-
-#    ### redefine the current project (if other windows will change them to this project)
-#    session[:current_project]=@project.key
-#    @lod = 'e'
-#    get_base_data()
-#    @h_std_methods = {}
-#    StdMethod.all.map{|s| @h_std_methods[s.id] = s}
-#    #    @h_steps={}
-#    #   Step.all.map{|s| @h_steps[s.id]=s}
-#    
-#    #    @h_pdr={}
-#    #    ProjectDimReduction.where(:project_id => @project.id).all.map{|pdr| @h_pdr[pdr.dim_reduction_id]=pdr}
-#
-#    session[:active_step] = params[:active_step].to_i if params[:active_step]
-#    @step_id = params[:step_id].to_i || session[:active_step]
-#    @step = @h_steps[@step_id]
-#
-#    @ps = ProjectStep.where(:project_id => @project.id, :step_id => @step_id).first
-#    @h_nber_runs = JSON.parse(@ps.nber_runs_json)
-#
-#    if @step.multiple_runs == true
-#      lineage_filter()
-#   # else
-#   #   @current_filtered_run_ids = ActiveRun.
-#    end
-#
-#    @results = {}
-#    @all_results = {}
-#    @results_parsing={}
-#    @h_batches={}
-#    @h_attrs = (@step.attrs_json and !@step.attrs_json.empty?) ? JSON.parse(@step.attrs_json) : {}
-#
-#    if params[:dashboard]
-#      session[:current_dashboard][@project.id][@step.id] = params[:dashboard]
-#    elsif @h_attrs["dashboards"] and default_dashboard = @h_attrs["dashboards"].first
-#      session[:current_dashboard][@project.id][@step.id] ||= default_dashboard['name'] 
-#    elsif @step.has_std_dashboard
-#       session[:current_dashboard][@project.id][@step.id] ||= 'std_runs'
-#    else
-#      session[:current_dashboard][@project.id][@step.id] ||= @step.name
-#    end
-#    
-#
-#    #jobs = Job.where(:project_id => @project.id, :step_id => session[:active_step], :status_id => [1, 2, 3, 4]).all.to_a.compact
-#    #jobs.sort!{|a, b| (a.updated_at.to_s || '0') <=> (b.updated_at.to_s || '0')} if jobs.size > 0
-#    #last_job = jobs.last
-#    #@last_update = @project.status_id.to_s + ","
-#    #@last_update += [jobs.size, last_job.status_id, last_job.updated_at].join(",") if last_job
-#    @last_update = get_last_update_status()
-#   # session[:last_update_active_step]= @last_update
-#    session[:active_dr_id] ||= 1
-#    session[:active_viz_type] ||= 'dr'
-#
-#    step_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key + @step.name
-#
-#    if readable? @project #(current_user and current_user.id == @project.user_id) or admin? or @project.public == true or @project.sandbox == true
-#  #    tmp_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key + @h_steps[session[:active_step]].label.downcase
-#  #    filename = tmp_dir + "output.json"
-#  #    logger.debug("FILE: " + filename.to_s)
-#  #    @h_statuses = {}
-#  #    Status.all.map{|s| @h_statuses[s.id] = s}
-#  
-##      @runs = ActiveRun.where(:project_id => @project.id, :step_id => @step.id).order("id desc").all
-#   #   @runs = @current_filtered_run_ids.map{|run_id| @h_all_runs[run_id]}  #  (@current_filtered_run_ids.size > 0) ? @current_filtered_run_ids.map{|run_id| @h#_all_runs[run_id]} : @current_run_ids.map{|run_id| @h_all_runs[run_id]}
-#     # lineage_run_ids = @runs.map{|e| e.lineage_run_ids.split(",")}.flatten.uniq
-#     # lineage_runs = ActiveRun.where(:project_id => @project.id, :id => lineage_run_ids).all
-#     # @h_lineage_runs = {}
-#     # lineage_runs.each do |lineage_run|
-#     #   @h_lineage_runs[@h_steps[lineage_run.step_id].label]||=[]
-#     #   @h_lineage_runs[@h_steps[lineage_run.step_id].label].push lineage_run
-#     # end
-#      
-#      @list_cards = []
-#      
-#      if @step.multiple_runs == true 
-#        @runs = @current_filtered_run_ids.map{|run_id| @h_all_runs[run_id]} 
-#        
-#        ## compute the uniq list of methods for successful runs
-#        @h_std_method_ids = {}
-#        @runs.select{|r| r.status_id == 3}.map{|r| @h_std_method_ids[r.std_method_id] = 1}
-#        current_dashboard = session[:current_dashboard][@project.id][@step.id]
-#        if @runs.size > 0 and (!@h_attrs["dashboards"] or current_dashboard=='std_runs')
-#          
-#          #       h_dashboard_card = JSON.parse(@step.dashboard_card_json)
-#          @list_cards = create_run_cards(@runs)
-#        end
-##          <div class='card'>
-##<div class='card-body'>
-##<div class='top-right-buttons'>
-##  <div id='destroy-run_<%= run.id %>' class='btn_destroy-run'><i class='fa fa-times-circle'></i></div>
-##</div>
-##<%# run.id %>
-##<p class='card-title'><b><%= raw display_status_short  @h_statuses[run.status_id] %> #<%= run.num %></b> <%= @h_std_methods[run.std_method_id].label %></p>
-##<% h_attrs = JSON.parse(run.attrs_json) %>
-##<p class='card-text'><%= raw h_attrs.keys.map{|k| v = h_attrs[k]; "<span class='badge badge-info'>#{k}:#{(v.is_a? Hash and v['run_id'] and tmp_run = Run.find(#v['run_id']) and tmp_step = @h_steps[tmp#_\
-##run.step_id]) ? (tmp_step.name + ((tmp_step.multiple_runs == true) ? (" #" + tmp_run.num.to_s) : '')) : v }</span>"}.join(" ") %></p>
-##<p class='card-text'></p>
-##</div>
-##</div>
-##
-##<% end %>
-#
-#
-#      end
 
     if readable? @project 
       @error = ''
