@@ -2,11 +2,20 @@
 <div class='card'>
   <div class='card-header card-primary'>
 
-    <% if admin? %>
+    <% if admin? or uab? %>
     <div class='float-right'>
-      <% disabled = 'disabled' %>
-      <%= disabled = '' if @sel_projects and @sel_projects.map{|e| e.organism_id}.size == 1 and @sel_projects.size > 1 %>
-      <button id='integrate_btn' class='btn btn-success' type='button' disabled='<%= disabled %>'>Integrate</button>
+      <%# disabled = 'disabled' %>
+      <%# disabled = '' if @sel_projects and @sel_projects.map{|e| e.organism_id}.size == 1 and @sel_projects.size > 1 %>
+      <div id='project_cart' class='nowrap'>
+	<% if @sel_projects.size == 0 %>
+	No selection
+	<% else %>
+	<span id='sel_text' class=''><%= @sel_projects.size %> selected project<%= (@sel_projects.size > 1) ? 's' : '' %></span>
+	<span id='clear_sel_btn' class='text text-danger pointer'><i class='fas fa-times-circle'></i></span>
+	<!--<button id='clear_sel_btn' class='btn btn-danger' type='button'>Clear selection</button>-->
+	<button id='integrate_btn' class='btn btn-success' type='button'>Integrate</button>
+	<% end %>
+      </div>
     </div>
     <% end %>
     
@@ -109,6 +118,46 @@
 </div>
 
 <%= javascript_tag do %>
+
+nber_projects = <%= @sel_projects.size %>
+nber_species = <%= @sel_projects.map{|e| e.organism_id}.uniq.size %>
+console.log("test 3")
+if (nber_species == 1 && nber_projects > 1){
+console.log("test")
+$("#integrate_btn").removeClass("fake-disabled")
+}else{
+console.log("test 2")
+$("#integrate_btn").addClass("fake-disabled")
+}
+
+$("#clear_sel_btn").click(function(){
+ let data = [{name: "type", value: 'clear'}]
+ refresh_post(null, "<%= raw upd_sel_projects_path() %>", data, 'post', {})
+})
+
+$("#integrate_btn").click(function(){
+
+if (nber_species == 1 && nber_projects > 1){
+window.location.href = "<%= new_project_path(:version_id => 8, :integrate => 1) %>"
+}else{
+
+alert("Please select projects you want to integrate. Only projects from the same species can be integrated.")
+
+}
+/* var ww = 600
+ var wh = 300
+  $("#ontop_popup_window").css({
+        left: w/2-ww/2,
+        width: ww,
+        'z-index': 1000000,
+        top: h/2-wh/2,
+        height: wh
+}).stop().show(100);
+ 
+ $("#ontop_popup_container").html(" ?")
+ $("#ontop_popup_window").removeClass("hidden")
+*/
+})
 
 $(".sel_project").click(function(){
  let id = this.id.split("_")

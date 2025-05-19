@@ -133,6 +133,11 @@ Array.prototype.alphanumSort = function(caseInsensitive) {
     }
 }
 
+function is_integer(value) {
+  const num = Number(value);
+  return Number.isInteger(num) && isFinite(num);
+}
+
 function is_numeric(str) {
   if (typeof str != "string") return false // we only process strings!  
   return !isNaN(str) && // use type coercion to parse the _entirety_ of the string (`parseFloat` alone does not do this)...

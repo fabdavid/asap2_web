@@ -25,6 +25,11 @@
 
 /* GENERAL PURPOSE */
 
+.fake-disabled {
+  pointer-events: auto; /* allow clicks */
+  opacity: 0.65; /* visual disabled look */
+/*  cursor: not-allowed; */
+}
 .nobullets {list-style-type:none}
 
 

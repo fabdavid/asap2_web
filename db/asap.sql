@@ -202,6 +202,25 @@ updated_at timestamp,
 primary key (id)
 );
 
+
+create table ontology_term_type(
+id serial,
+name text,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create table ontology_term_projects(
+id serial,
+ontology_term_type_id int references ontology_term_types,
+project_id int references projects,
+cell_ontology_term_id int references cell_ontology_terms,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
 create table speeds(
 id serial,
 name text,
@@ -414,6 +433,8 @@ project_cell_set_id int references project_cell_sets,
 project_type_id int references project_types,
 primary key (id)
 );
+
+create table 
 
 create table info_types(
 id serial,

@@ -32,6 +32,7 @@
 
 /vendor/bundle
 /public/assets/*
+/public/assets_old
 .pgpass
 .env
 .env_website

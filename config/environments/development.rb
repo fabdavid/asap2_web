@@ -6,24 +6,24 @@ Rails.application.configure do
   # every request. This slows down response time but is perfect for development
   # since you don't have to restart the web server when you make code changes.
   config.cache_classes = false
-#  config.action_cable.mount_path = "/cable"
+  #  config.action_cable.mount_path = "/cable"
   # Do not eager load code on boot.
   config.eager_load = false
 
   config.action_cable.logger = Logger.new(STDOUT)
 
-# Tell Rails to trust the proxy headers, including X-Forwarded-Proto
-#config.action_dispatch.trusted_proxies = ['127.0.0.1', '::1', '128.178.219.230']  # Ensure that the remote Nginx IP is included here
-
-# Make sure Rails redirects HTTPS URLs correctly (force_ssl is off for dev)
-#config.force_ssl = false  # Don't enforce SSL for all requests in dev
-
-# Rails should trust the X-Forwarded-Proto header for SSL redirection
-#config.ssl_options = {
-#    redirect: { 
-#    exclude: ->(request) { request.protocol == 'http://' } 
-#  }
-#}
+  # Tell Rails to trust the proxy headers, including X-Forwarded-Proto
+  #config.action_dispatch.trusted_proxies = ['127.0.0.1', '::1', '128.178.219.230']  # Ensure that the remote Nginx IP is included here
+  
+  # Make sure Rails redirects HTTPS URLs correctly (force_ssl is off for dev)
+  #config.force_ssl = false  # Don't enforce SSL for all requests in dev
+  
+  # Rails should trust the X-Forwarded-Proto header for SSL redirection
+  #config.ssl_options = {
+  #    redirect: { 
+  #    exclude: ->(request) { request.protocol == 'http://' } 
+  #  }
+  #}
   
   # Show full error reports.
   config.consider_all_requests_local = false # true
@@ -70,7 +70,7 @@ Rails.application.configure do
   # This option may cause significant delays in view rendering with a large
   # number of complex assets.
   config.assets.debug = false
-#  config.assets.compile = true
+  # config.assets.compile = true
 
   # Suppress logger output for asset requests.
   config.assets.quiet = true

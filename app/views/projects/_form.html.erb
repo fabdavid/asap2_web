@@ -72,7 +72,7 @@
 </div>
 
 
-<% if admin? %>
+<% if uab? or admin? %>
 
 <!-- <div id='opt_input_select' class="btn-group btn-group-toggle" data-toggle="buttons">
   <label id='upload-choice_btn' class="btn btn-primary choice-btn active">
@@ -89,7 +89,7 @@
   <div class="btn-group" role="group" aria-label="Input">
     <button id='upload-choice_btn' type="button" class="btn btn-primary choice_btn active">Upload file / Send URL</button>
     <!--   <button id='hca-choice_btn' type="button" class="btn btn-secondary choice_btn">Import from the Human Cell Atlas</button> -->
-    <% if admin? %>
+    <% if uab? or admin? %>
     <button id='integrate-choice_btn' type="button" class="btn btn-secondary choice_btn">Integrate projects</button>
     <% end %>
   </div>
@@ -145,6 +145,15 @@
 </div>
 
 <%= javascript_tag do %>
+
+$(window).ready(function(){
+<% if params[:integrate] %>
+
+console.log("integrate")
+$("#integrate-choice_btn").click()
+
+<% end %>
+})
 
 function upd_version(){
 if ($("#project_version_id").val() < 8){
@@ -249,7 +258,22 @@ if (($("#integrate-choice_btn").hasClass('active') && $("#project_name").val() !
 $("#create_project_button").removeAttr('disabled')
 }else{
 $("#create_project_button").attr('disabled', 'disabled')
-}
+  }
+  if ($("#integrate-choice_btn").hasClass('active')){
+   if (is_integer($("#integrate_n_pcs").val()) == false || <%= @sel_projects.select{|p| @h_annots[p.id].size > 0 }.size %> == 0 ){
+     $("#create_project_button").attr('disabled', 'disabled')
+   }else{
+      $("#create_project_button").removeAttr('disabled')
+   }
+    if (is_integer($("#integrate_n_pcs").val()) == false){
+         console.log("test error format")
+        $("#integrate_n_pcs").css("border", "1px solid #dc3545");
+      }else{
+         $("#integrate_n_pcs").css("border", "1px solid rgb(206, 212, 218)");
+     }
+
+  }
+  
 }
 
 $(".choice_btn").click(function(){

@@ -4,14 +4,26 @@ No projects
 
 <% else %>
 
+<% if @sel_projects.select{|p| @h_annots[p.id].size > 0 }.size == 0 %>
+<div class='alert alert-danger'>
+  Projects <%= @sel_projects.select{|p| @h_annots[p.id].size == 0 }.map{|p| p.key}.join(", ") %> are ignored as they do not contain any categorical metadata on which running the integration. 
+</div>
+<% end %>
+
 <table><tbody>
-  <tr><td>
-      Number of PCs to take into account (an integer)</td><td> <%= text_field_tag 'integrate_n_pcs', '', :class => 'form-control' %></td>
+    <tr>
+      <td class='pt-2' style='vertical-align:top'>Number of PCs to take into account (an integer)</td>
+      <td>
+	<%= text_field_tag 'integrate_n_pcs', '', :class => 'form-control is-invalid' %>
+	<div class="invalid-feedback">
+	  Mandatory integer
+ 	</div>
+      </td>
   </tr>
   <tr>    
-    <td>Projects to integrate</td>
+    <td class='pt-3' style='vertical-align:top'>Projects to integrate</td>
     <td>
-      <table>
+      <table id='projects_to_integrate'>
 	<thead>
 	  <tr>
 	    <th>Project key</th>
@@ -21,12 +33,13 @@ No projects
 	</thead>
 	<tbody>
 	  
-	  <% @sel_projects.each do |p| %>
+	  <% @sel_projects.select{|p| @h_annots[p.id].size > 0 }.each do |p| %>
 	  <tr>
 	    <td><%= p.key %></td>
 	    <td><%= p.name %></td>      
 	    <td>
 	      <% l = @h_annots[p.id].map{|e| [e.name, e.name]} %>
+	      <% l.unshift ["None", 'null'] %>
 	      <%= select_tag 'integrate_batch_paths[' + p.key + ']', options_for_select(l), :class => 'form-control' %></td>
 	  </tr>
 	  <% end %>
@@ -35,4 +48,16 @@ No projects
     </td>
 </tr></tbody></table>
 
+<%= javascript_tag do %>
+
+$("#projects_to_integrate").DataTable()
+
+
+$("#integrate_n_pcs").keyup(function(){
+validate_form()
+})
+
 <% end %>
+
+<% end %>
+

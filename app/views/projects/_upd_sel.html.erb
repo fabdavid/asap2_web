@@ -1,6 +1,27 @@
 // <%= session[:project_cart].to_json %>
-let nber_projects = <%= @sel_projects.size %>
-let nber_species = <%= @sel_projects.map{|e| e.organism_id}.uniq.size %>
-let disabled = (nber_species == 1 && nber_projects > 1) ? "" : "disabled"
-$("#integrate_btn").prop("disabled", disabled)
+sel_projects = <%= raw @sel_projects.to_json %>
+nber_projects = <%= @sel_projects.size %>
+nber_species = <%= @sel_projects.map{|e| e.organism_id}.uniq.size %>
+console.log("test 3")
+if (nber_species == 1 && nber_projects > 1){
+console.log("test")
+$("#integrate_btn").removeClass("fake-disabled")
+}else{
+console.log("test 2")
+$("#integrate_btn").addClass("fake-disabled")
+}
 
+let sel_text = ""
+<% if @sel_projects.size == 0 %>
+$("#clear_sel_btn").addClass("hidden")
+sel_text = "No selection"
+<% else %>
+$("#clear_sel_btn").removeClass("hidden")
+sel_text = "<span class=''><%= @sel_projects.size %> selected project<%= (@sel_projects.size > 1) ? 's' : '' %></span>"
+<% end %>
+
+$("#sel_text").html(sel_text)
+
+<% if params[:type] == 'clear' %>
+ $(".sel_project").prop('checked', false);
+<% end %>

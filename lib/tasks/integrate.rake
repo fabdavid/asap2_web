@@ -65,7 +65,7 @@ task :integrate, [:project_key] => [:environment] do |t, args|
         'opts' => {},
         'args' => [
           {"param_key" => 'input_loom_path_list', "value" => file_paths},
-          {"param_key" => 'nput_batch_path_list', "value" => batch_paths},
+          {"param_key" => 'input_batch_path_list', "value" => batch_paths},
           {"param_key" => 'input_n_pcs', "value" => h_attrs['integrate_n_pcs']},
           {"param_key" => 'output_rds_path', "value" => rds_file},
           {"param_key" => 'output_convergence_plot', "value" => project_dir + 'parsing' + "convergence_plot.png"}

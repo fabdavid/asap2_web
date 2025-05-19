@@ -50,6 +50,8 @@ class ProjectsController < ApplicationController
     if params[:type]
       if params[:type] == 'add'
         session[:project_cart][params[:p_key]] = 1
+      elsif params[:type] == 'clear'
+        session[:project_cart] = {}
       else
         session[:project_cart].delete(params[:p_key])
       end
@@ -7130,6 +7132,8 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     ArchiveStatus.all.map{|s| @h_archive_statuses[s.id] = s}
     @h_organisms = {}
     Organism.all.map{|o| @h_organisms[o.id]=o}
+
+    @sel_projects = Project.where(:key => session[:project_cart].keys).all
     
      respond_to do |format|
       format.html { 
@@ -7458,7 +7462,7 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     end
   end
 
-  def integrate_form
+  def get_sel_projects
     @sel_projects = Project.where(:key => session[:project_cart].keys).all
     @h_annots = {}
     @sel_projects.each do |p|
@@ -7468,11 +7472,16 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
         list_docker_image_names = h_env['docker_images'].keys.map{|k| h_env['docker_images'][k]["name"] + ":" + h_env['docker_images'][k]["tag"]}
         docker_images = DockerImage.where("full_name in (" + list_docker_image_names.map{|e| "'#{e}'"}.join(",") + ")").all
         asap_docker_image = docker_images.select{|e| e.name == APP_CONFIG[:asap_docker_name]}.first
-      end      
+      end
       parsing_step = Step.where(:docker_image_id => asap_docker_image.id, :name => 'parsing').first
-      parsing_run = Run.where(:project_id => p.id, :step => parsing_step.id).first 
+      parsing_run = Run.where(:project_id => p.id, :step => parsing_step.id).first
       @h_annots[p.id] = Annot.where(:project_id => p.id, :store_run_id => parsing_run.id, :data_type_id => 3, :dim => 1).all
     end
+  end
+    
+  
+  def integrate_form
+    get_sel_projects()
     render :partial => 'integrate_form'
   end
 
@@ -7573,6 +7582,8 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
       @project.name ||= params[:project_name]
     end
 
+    get_sel_projects()
+    
     render :layout => 'welcome'
 
   end

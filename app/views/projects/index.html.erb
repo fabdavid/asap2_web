@@ -99,7 +99,13 @@ Sorry for the inconvenience.
 
 <%= javascript_tag do %>
 
+var sel_projects = <%= raw @sel_projects.to_json %>
+var nber_projects = sel_projects.length
+var nber_species = <%= @sel_projects.map{|e| e.organism_id}.uniq.size %>
+
 $(document).ready(function(){
+
+
 
  refresh("project_lists", "<%= search_projects_path(:nolayout => 1) %>", {loading:'fa-2x'})
 

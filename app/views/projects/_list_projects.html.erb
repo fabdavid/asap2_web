@@ -42,7 +42,7 @@
   <tbody>
     <% projects.each do |project| %> <%#sort{|a, b| b.modified_at <=> a.modified_at}.each do |project| %>
     <tr>
-      <% if admin? %>
+      <% if uab? or admin? %>
       <td>
 	<%= check_box_tag "project_checkbox[#{project.key}]", project.key, (session[:project_cart][project.key]), {:class => 'sel_project'} %>
       </td>
