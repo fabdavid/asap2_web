@@ -8,8 +8,10 @@ task :archive, [:project_key] => [:environment] do |t, args|
   def include_fus p
     
     project_dir = Pathname.new(APP_CONFIG[:data_dir]) + 'users' + p.user_id.to_s + p.key
+    original_fus_dir = Pathname.new(APP_CONFIG[:data_dir]) + 'fus'
     
     project_fus_dir = project_dir + 'fus'
+
     Dir.mkdir project_fus_dir if !File.exist? project_fus_dir
     
     input_file = Dir.entries(project_dir).select{|e| File.symlink?(project_dir + e) == true and e.match(/^input/)}.first
@@ -46,12 +48,16 @@ task :archive, [:project_key] => [:environment] do |t, args|
     puts "destination_file: #{destination_file}"
     puts "input_file: #{input_file.to_s}"
     puts "move destination #{original_fus_dir.to_s} -> #{project_fus_dir.to_s}"
-    if File.exist? destination_file.to_s.gsub(/#{original_fus_dir.to_s}/, "./fus")
-      FileUtils.ln_sf(destination_file.to_s.gsub(/#{original_fus_dir.to_s}/, "./fus"), project_dir + input_file)
+    Dir.chdir(project_dir) do
+      new_destination_file = destination_file.to_s.gsub(/#{original_fus_dir.to_s}/, "./fus")
+      puts "new destination file: #{new_destination_file}"
+      if File.exist? new_destination_file
+        puts "Create new ln #{new_destination_file} -> #{project_dir + input_file}"
+        FileUtils.ln_sf(new_destination_file, project_dir + input_file)
+      end
     end
   end
-
-
+  
 
   h_archive_status = {}
   ArchiveStatus.all.map{|e| h_archive_status[e.name] = e}
@@ -107,8 +113,7 @@ task :archive, [:project_key] => [:environment] do |t, args|
       #      project_dir =  Pathname.new(APP_CONFIG[:user_data_dir]) + p.user_id.to_s + p.key
 
       ## include potential fus
-#      include_fus(p)
-
+      include_fus(p)
 
       
       ## tar and pigz

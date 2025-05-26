@@ -1,0 +1,2 @@
+module OtProjectsHelper
+end

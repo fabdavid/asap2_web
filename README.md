@@ -1,27 +1,27 @@
-# README
+# ASAP (Automated Single-Cell Analysis Portal) web application
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+* History and context
 
-Things you may want to cover:
+This is the second iteration of ASAP. It implements [this interface](https://asap.epfl.ch).
+It comes after implementing a [first version](https://asap-old.epfl.ch) [[github link](https://github.com/DeplanckeLab/asap_old)]
+We started developing in parallel a new version of ASAP using rails 8 [[github](https://github.com/DeplanckeLab/asap_web)]
 
-* Ruby version
+* Goals with this version
 
-* System dependencies
+We wanted with this version of ASAP:
+   - to offer more flexibility on the order of analysis steps to run.
+   - to allow a total reproducibility of the analyses to support their publication. Each project comes with a script to be able to reproduce the analysis locally, using the according asap_run docker image.
+   - to enable collaborative annotations of single-cell datasets
 
-* Configuration
+* What we do not provide with this version
 
-* Database creation
+We didn't plan to provide a support to install the application on other systems.
+It's actually quite dependent on out local architecture (regarding computing and storage) and to adapt the code to different infrasturcture would require some work.
+As we received a few requests to install locally the web server, we plan to provide this feature with the next version of ASAP.
 
-* Database initialization
+* Job daemon
 
-* How to run the test suite
+docker-compose exec website bash
+nohup rails exec_runs --trace > log/exec_runs.log &
 
-* Services (job queues, cache servers, search engines, etc.)
-
-RAILS_ENV=development bin/delayed_job --pool=fast:1 --pool=medium:1 --pool=slow:1  restart
-
-* Deployment instructions
-
-* ...
 

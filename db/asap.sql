@@ -203,7 +203,7 @@ primary key (id)
 );
 
 
-create table ontology_term_type(
+create table ontology_term_types(
 id serial,
 name text,
 created_at timestamp,
@@ -211,11 +211,22 @@ updated_at timestamp,
 primary key (id)
 );
 
-create table ontology_term_projects(
+create table ott_projects(
+id serial,
+project_id int references projects,
+ontology_term_type_id int references ontology_term_types,
+annot_id int references annots,
+created_at timestamp,
+updated_at timestamp,
+primary key (id)
+);
+
+create table ot_projects(
 id serial,
 ontology_term_type_id int references ontology_term_types,
 project_id int references projects,
 cell_ontology_term_id int references cell_ontology_terms,
+free_text text,
 created_at timestamp,
 updated_at timestamp,
 primary key (id)
@@ -1406,3 +1417,4 @@ created_at timestamp,
 updated_at timestamp,
 primary key (id)
 );
+

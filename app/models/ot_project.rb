@@ -1,0 +1,2 @@
+class OtProject < ApplicationRecord
+end

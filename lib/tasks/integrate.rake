@@ -109,7 +109,7 @@ task :integrate, [:project_key] => [:environment] do |t, args|
 #      puts cmd
 #      `#{cmd}`
       
-      mem = parsing_attrs["nber_cols"].to_i * parsing_attrs["nber_rows"].to_i * 128 / (31053 * 1474560) # project sample = gi6qfz     
+#      mem = parsing_attrs["nber_cols"].to_i * parsing_attrs["nber_rows"].to_i * 128 / (31053 * 1474560) # project sample = gi6qfz     
       h_env_docker_image = h_env['docker_images']['asap_run']
       image_name = h_env_docker_image['name'] + ":" + h_env_docker_image['tag']
 

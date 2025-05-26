@@ -1,0 +1,17 @@
+<%= form_with(model: ot_project, local: true) do |form| %>
+  <% if ot_project.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(ot_project.errors.count, "error") %> prohibited this ot_project from being saved:</h2>
+
+      <ul>
+      <% ot_project.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

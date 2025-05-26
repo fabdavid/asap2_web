@@ -1,4 +1,7 @@
 Rails.application.routes.draw do
+  resources :ott_projects
+  resources :ot_projects
+  resources :ontology_term_types
   resources :direct_links
   resources :project_types
   resources :project_cell_sets

@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Ott Projects</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @ott_projects.each do |ott_project| %>
+      <tr>
+        <td><%= link_to 'Show', ott_project %></td>
+        <td><%= link_to 'Edit', edit_ott_project_path(ott_project) %></td>
+        <td><%= link_to 'Destroy', ott_project, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Ott Project', new_ott_project_path %>

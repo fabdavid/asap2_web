@@ -1,0 +1,2 @@
+class OntologyTermType < ApplicationRecord
+end

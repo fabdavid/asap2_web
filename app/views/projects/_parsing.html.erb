@@ -59,14 +59,15 @@
 
        <% integrated_projects = Project.where(:key => h_attrs['integrate_batch_paths'].keys).all %>
 
-       <table><tbody>
+       <table id='integration_params'>
+	 <tbody>
 	   <tr><td>
 	       Number of PCs taken into account</td><td> <%= h_attrs["integrate_n_pcs"] %></td>
 	   </tr>
 	   <tr>
 	     <td>Integrated projects</td>
 	     <td>
-	       <table>
+	       <table id='integration_projects'>
 		 <thead>
 		   <tr>
 		     <th>Project key</th>
@@ -81,7 +82,7 @@
 		     <td><%= p.key %></td>
 		     <td><%= p.name %></td>
 		     <td>
-		       <%= h_attrs['integrate_batch_paths'][p.key] %>
+		       <%= (h_attrs['integrate_batch_paths'][p.key] == 'null') ? 'None' : h_attrs['integrate_batch_paths'][p.key] %>
 		     </td>
 		   </tr>
 		   <% end %>
@@ -89,7 +90,7 @@
 	       </table>
 	     </td>
        </tr></tbody></table>
-
+       
        
       <% end %>
       
@@ -211,6 +212,8 @@
 <% end %>
 
 <%= javascript_tag do %>
+
+ $("#integration_projects").DataTable()
 
  $(".link_to_loom_tuto").click(function(e){
    var url = '<%= tutorial_home_index_path(:t => 'loom') %>'
