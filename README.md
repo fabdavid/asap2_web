@@ -1,6 +1,6 @@
 # ASAP (Automated Single-Cell Analysis Portal) web application
 
-##History and context
+## History and context
 
 This is the second iteration of ASAP. It implements [this interface](https://asap.epfl.ch).
 It comes after implementing a [first version](https://asap-old.epfl.ch) [[github link](https://github.com/DeplanckeLab/asap_old)]
