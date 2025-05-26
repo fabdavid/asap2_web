@@ -21,7 +21,8 @@ As we received a few requests to install locally the web server, we plan to prov
 
 ## Job daemon
 
+```
 docker-compose exec website bash
 nohup rails exec_runs --trace > log/exec_runs.log &
-
+```
 
