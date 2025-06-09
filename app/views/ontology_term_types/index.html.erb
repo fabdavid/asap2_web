@@ -2,19 +2,35 @@
 
 <h1>Ontology Term Types</h1>
 
-<table>
+<table id='ott_table'>
   <thead>
     <tr>
-      <th colspan="3"></th>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Label</th>
+      <th>Ontologies</th>
+      <th>In lineage</th>
+      <th>Included terms</th>
+      <th>Free text terms</th>
+      <th></th>      
+      <th></th>
+      <th></th>
     </tr>
   </thead>
 
   <tbody>
-    <% @ontology_term_types.each do |ontology_term_type| %>
-      <tr>
-        <td><%= link_to 'Show', ontology_term_type %></td>
-        <td><%= link_to 'Edit', edit_ontology_term_type_path(ontology_term_type) %></td>
-        <td><%= link_to 'Destroy', ontology_term_type, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+    <% @ontology_term_types.each do |ott| %>
+    <tr>
+      <td><%= ott.id %></td>
+      <td><%= ott.name %></td>
+      <td><%= ott.label %></td>
+      <td><%= (ott.cell_ontology_ids) ? ott.cell_ontology_ids.split(",").map{|e| @h_cell_ontologies[e.to_i].tag}.join(" ") : 'NA' %></td>
+      <td><%= (ott.in_lineage_term_ids) ? ott.in_lineage_term_ids.split(",").map{|e| @h_terms[e.to_i].name}.join(" ") : 'NA' %> </td>
+      <td></td>
+      <td></td>
+      <td><%= link_to 'Show', ott %></td>
+      <td><%= link_to 'Edit', edit_ontology_term_type_path(ott) %></td>
+      <td><%= link_to 'Destroy', ott, method: :delete, data: { confirm: 'Are you sure?' } %></td>
       </tr>
     <% end %>
   </tbody>
@@ -23,3 +39,9 @@
 <br>
 
 <%= link_to 'New Ontology Term Type', new_ontology_term_type_path %>
+
+<%= javascript_tag do %>
+
+$("#ott_table").DataTable()
+
+<% end %>

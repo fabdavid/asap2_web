@@ -1,6 +1,75 @@
 class AnnotsController < ApplicationController
-  before_action :set_annot, only: [:get_cats, :get_cat_legend, :get_cat_details, :show, :edit, :update, :destroy]
+  before_action :set_annot, only: [:batch_load_ontology, :check_ontology, :get_cats, :get_cat_legend, :get_cat_details, :show, :edit, :update, :destroy]
 
+  def batch_load_ontology
+    
+    cots = []
+    @h_cot_by_name = {}
+    @list_cats = []
+    if readable?(@project) and params[:ott_id]
+      @list_cats = Basic.safe_parse_json(@annot.list_cat_json, [])
+      
+      ott = OntologyTermType.where(:id => params[:ott_id]).first
+      cots = CellOntologyTerm.where(:name => @list_cats, :cell_ontology_id => ott.cell_ontology_ids.split(","))
+      cots |= CellOntologyTerm.where(:identifier => @list_cats, :cell_ontology_id => ott.cell_ontology_ids.split(","))
+    end
+
+    cots.each do |cot|
+      @h_cot_by_name[cot.identifier] = cot.id
+      @h_cot_by_name[cot.name] = cot.id
+    end
+
+    @list_cats.each do |cat|
+      h_ot_project = {
+        :project_id => @project.id,
+        :ontology_term_type_id => params[:ott_id].to_i
+      }
+      if !@h_cot_by_name[cat]
+        h_ot_project[:free_text] = cat
+      else
+        h_ot_project[:cell_ontology_term_id] = @h_cot_by_name[cat] 
+      end
+      new_ot_project = OtProject.where(h_ot_project).first
+      if !new_ot_project
+        new_ot_project = OtProject.new(h_ot_project)
+        new_ot_project.save
+      end
+
+      @ot_projects = OtProject.where(:project_id => @project.id, :ontology_term_type_id => params[:ott_id]).all
+
+      all_cots = CellOntologyTerm.where(:id => @ot_projects.map{|e| e.cell_ontology_term_id}.compact).all
+      @h_cots = {}
+      all_cots.map{|e| @h_cots[e.id] =e}
+#      all_cots.each do |cot|
+#        @h_cot_by_name[cot.identifier] = cot.id
+#        @h_cot_by_name[cot.name] = cot.id
+#      end      
+    end
+
+    render :partial => "ot_projects/index"
+    
+  end
+  
+  def check_ontology
+    cots = []
+    @h_cot_by_name = {}
+    @list_cats = []
+    if readable?(@project) and params[:ott_id]
+      @list_cats = Basic.safe_parse_json(@annot.list_cat_json, [])
+      
+      ott = OntologyTermType.where(:id => params[:ott_id]).first
+      cots = CellOntologyTerm.where(:name => @list_cats, :cell_ontology_id => ott.cell_ontology_ids.split(","))
+      cots |= CellOntologyTerm.where(:identifier => @list_cats, :cell_ontology_id => ott.cell_ontology_ids.split(","))
+    end
+    @h_cots = {}
+    cots.map{|e| @h_cots[e.id] =e}
+    cots.each do |cot|
+      @h_cot_by_name[cot.identifier] = cot.id
+      @h_cot_by_name[cot.name] = cot.id
+    end
+   render :partial => "check_ontology"
+  end
+  
   def get_cat_details
     @project = @annot.project
     if readable?(@project) and @annot.data_type_id == 3

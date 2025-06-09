@@ -80,6 +80,6 @@ class CellOntologiesController < ApplicationController
     #url text,
     #last_version text,
     #      params.fetch(:cell_ontology, {})
-    params.fetch(:cell_ontology).permit(:name, :tag, :format, :file_url, :url, :last_version, :tax_ids)
+    params.fetch(:cell_ontology).permit(:name, :tag, :format, :file_url, :url, :latest_version, :tax_ids)
   end
 end

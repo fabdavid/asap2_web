@@ -4,18 +4,33 @@ class CellOntologyTermsController < ApplicationController
   def autocomplete
 
     organism = Organism.where(:id => params[:organism_id]).first
-    co_ids = CellOntology.all.select{|co| tax_ids = (co.tax_ids) ? co.tax_ids.split(",") : nil; flag = (tax_ids) ? tax_ids.include?(organism.tax_id.to_s) : false; default_tax_id = organism.tax_id if flag; (flag or co.tax_ids.to_i == 0)}.map{|co| co.id} 
-    
+    co_ids = []
+    if params[:organism_id]# == '0'
+      CellOntology.all.each do |co|
+        tax_ids = (co.tax_ids) ? co.tax_ids.split(",").map{|e| e.to_i} : nil
+        flag = (tax_ids) ? tax_ids.include?(organism.tax_id.to_s) : false
+        # default_tax_id = organism.tax_id if flag
+        co_ids.push co.id if (flag or co.tax_ids.to_i == 0)
+      end  
+      logger.debug("CO_IDS:" + co_ids.to_json)
+    end
+    if params[:cell_ontology_id] and params[:cell_ontology_id] != '0'
+      co_ids &= params[:cell_ontology_id].split(",").map{|e| e.to_i}
+      logger.debug("CO_IDS2:" + co_ids.to_json)
+    end
     tax_id = params[:tax_id]
     to_render = []
     final_list=[]
+    lineage_ids = params[:in_lineage].split(",").map(&:to_i) if params[:in_lineage].present?
     query = CellOntologyTerm.search do
       fulltext (params[:term].gsub(/\$\{jndi\:/, '') + " or " + params[:term].gsub(/\$\{jndi\:/, '') + "*") do
         fields(:identifier => 3.0, :name => 2.0)
       end
       with :tax_id, tax_id if tax_id 
-      with :cell_ontology_id, (params[:cell_ontology_id] != '0') ? params[:cell_ontology_id].to_i : co_ids
+      with :cell_ontology_id, (co_ids.size > 0) ? co_ids : 0 
+      with :lineage_term_id, lineage_ids if lineage_ids && lineage_ids.any?
       with :original, true
+      
       paginate :page => 1, :per_page => 20
     end
     final_list = query.results

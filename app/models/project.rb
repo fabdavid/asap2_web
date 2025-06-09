@@ -34,6 +34,7 @@ class Project < ApplicationRecord
   has_many :fos
   has_many :clas
   has_many :annot_cell_sets
+  has_many :direct_links
   has_and_belongs_to_many :provider_projects
   has_and_belongs_to_many :exp_entries
   has_and_belongs_to_many :articles

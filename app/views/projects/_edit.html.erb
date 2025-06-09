@@ -56,6 +56,12 @@
 </div>
 -->
 
+<% if admin? %>
+
+<%= render :partial => 'edit_metadata' %>
+
+<% end %>
+
 <div class='form-group'>
  <%= f.label :technology, 'Technology' %>
 <%= f.text_field :technology, {:class => 'form-control form-inline'} %>
@@ -76,6 +82,46 @@
 <%= f.text_area :description, {:class => 'form-control form-inline'} %>
 </div>
 
+<% if admin? %>
+
+<% @otts.each do |ott| %>
+
+<div class='form-group'>
+  <%= f.label ott.name.to_sym, ott.label %>
+  <% l = @annots.map{|annot| [annot.name, annot.id]}.sort %>
+  <% l.unshift(["Select a metadata to load", ""]) %>
+  <div class='form-inline'>
+  <%= select_tag "project[ott][" + ott.id.to_s + "][annot]", options_for_select(l, (@h_ott_projects[ott.id] || '')), {:class => 'form-control annot_sel'} %>
+  <span class='pl-3 pr-3'> OR </span>  
+  <%= text_field_tag "project[ott][" + ott.id.to_s + "][ot]", "", {:class => 'form-control ot_search_field', :placeholder => 'Search and add an ontology term', :size => 26} %>
+  <div id='list_ots_<%= ott.id %>'></div>
+  <span class='pl-3 pr-3'> OR </span>
+  <%= text_field_tag "project[ott][" + ott.id.to_s + "][free_text]", '', {:class => 'form-control form-inline ot_free_text', :placeholder => 'Add free-text term'} %>
+  <button id='btn-add-<%= ott.id %>'  type='button' class='btn_load_free_text_term btn btn-success hidden'>Add term</button>
+  </div>
+  <div id='list_cats_<%= ott.id %>'></div>
+<!--  <button id='btn-load_valid_terms-<%= ott.id %>' type='button' class='btn_load_terms btn btn-success hidden'>Load only valid terms</button> -->
+  <button id='btn-load_all_terms-<%= ott.id %>' type='button' class='mt-3 btn_load_terms btn btn-success hidden'>Load terms</button>
+  <div id='list_ot_projects_<%= ott.id %>' class='list_ot_projects'>   
+    <% if @h_ot_projects[ott.id] %>
+    <% @h_ot_projects[ott.id].each do |ot_project| %>
+    <span id='ot_project_<%= ot_project.id %>'>
+      <% if ot_project.cell_ontology_term_id %>
+      <span class='badge badge-success ot_project_badge pointer'><%= @h_ots[ot_project.cell_ontology_term_id].name %></span>
+      <% else %>
+      <span class='badge badge-secondary ot_project_badge pointer'><%= ot_project.free_text %></span>
+      <% end %>
+      <span id='del_ot_project-btn_<%= ott.id %>_<%= ot_project.id %>' class='del_ot_project text-danger pointer'><i class='fa fa-times-circle'></i></span>
+    </span>
+    <% end %>
+    <% end %>
+  </div>
+  <%= hidden_field_tag "ot_project_ids_#{ott.id}", (@h_ot_projects[ott.id]) ? @h_ot_projects[ott.id].map{|e| e.id}.join(",") : '' %>
+</div>
+
+<% end %>
+
+<% end %>
 
 <div class='form-group'>
  <%# f.label :pmid, 'PMID of the article referencing this analysis' %>
@@ -185,6 +231,138 @@ It will still be possible to create new analyses to your project and freeze them
 <% end %>
 
 <%= javascript_tag do %>
+
+var h_annots = <%= raw @h_annots.to_json %>
+
+function reset_ott_form(ott_id){
+$("#list_cats_" + ott_id).empty()
+$("#btn-load_all_terms-" + ott_id).addClass("hidden")
+}
+
+$(".ot_free_text").keyup(function(){
+let ott_id= this.id.split("_")[2]
+if ($(this).val().trim() != ''){
+$("#btn-add-" + ott_id).removeClass("hidden")
+}
+})
+
+$(".btn_load_free_text_term").click(function(){
+let ott_id = this.id.split("-")[2]
+let data = [
+{name : 'project_key', value : "<%= @project.key %>"},
+{name : 'ot_project[free_text]', value : $("#project_ott_" + ott_id + "_free_text").val()},
+{name : 'ot_project[ontology_term_type_id]', value : ott_id},
+{name : 'partial', value : '1'}] 
+refresh_post("list_ot_projects_" + ott_id, "<%= raw ot_projects_path %>", data, 'post', {loading:'fa-2x'})
+$("#project_ott_" + ott_id + "_free_text").val("")
+$(this).addClass('hidden')
+})
+
+$(".btn_load_terms").click(function(){
+var ott_id = this.id.split("-")[2]                                                                                                                                                
+var v = $("#project_ott_" + ott_id + "_annot").val()                                                                                                                                                             
+console.log("OTT_ID: " + ott_id + " => " + v)
+let list_cats = JSON.parse(h_annots[v].list_cat_json)
+if (list_cats){
+$("#list_cats_" + ott_id).html(list_cats.map(x => "<span class='badge badge-info'>" + x + "</span>").join(" "))
+}
+let data = [{name : 'ott_id', value : ott_id}]
+reset_ott_form(ott_id)
+refresh_post("list_ot_projects_" + ott_id, "<%= raw annots_path %>/" + v + "/batch_load_ontology", data, "post", {loading:'fa:2x'})
+
+})
+
+$(".list_ot_projects").on("click", ".del_ot_project", function(){
+  let t =  this.id.split("_")
+let ott_id = t[3]
+let cot_id = t[4]
+/*  var l = $("#cla_cell_ontology_term_ids").val().split(",")
+  l = l.filter(x => x != cot)
+  $("#cla_cell_ontology_term_ids").val(l.join(","))
+$("#cla_cot_" + cot).remove()
+*/
+let data = [{name : 'partial', value : '1'}, {name : 'ott_id', value: ott_id}]
+refresh_post("list_ot_projects_" + ott_id, "<%= raw ot_projects_path %>/" + cot_id, data, "delete", {loading:'fa:2x'})
+ })
+
+
+var otts = <%= raw @otts.to_json %>
+
+for (const ott of otts) {
+
+ $("#project_ott_" + ott.id + "_ot").autocomplete({
+   minLength: 0,
+  appendTo: '#list_ots_' + ott.id,
+  classes: {
+   "ui-autocomplete": "test_ui",
+  },
+  position: {
+   offset: '0 0' // Shift 0px left, 4px down.
+  },
+  source:  function(request, response) {
+  $.ajax({
+          url: "<%= raw autocomplete_cell_ontology_terms_path() %>",
+          dataType: "json",
+          beforeSend: function(){
+         },
+          data: {
+            term:  $("#project_ott_" + ott.id + "_ot").val(),
+            cell_ontology_id: ott.cell_ontology_ids,
+            organism_id: <%= @organism.id %>
+          //  tax_id: <%= @organism.tax_id %>
+          //,
+          //  dataset_id: $("#dataset_id").val()//,
+          },
+          success: function( data ) {
+            response( data );
+          }
+        });
+     },
+     select: function( event, ui ) {
+if (ui.item){
+console.log("OTT_ID: " + ott.id)
+//           var list_cots = ($("#ot_ids_" + ott.id).val() != '') ? $("#ot_ids_" + ott.id).val().split(",") : []
+ //          if (!list_cots.includes(ui.item.id)){
+   //         var cot =  ui.item.label
+   //         list_cots.push(ui.item.id)
+//  var ontology_term_name = t_gene[0] + " [" + t_gene[1] + "]"
+let data = [
+{name : 'project_key', value : "<%= @project.key %>"},
+{name : 'ot_project[cell_ontology_term_id]', value : ui.item.id},
+{name : 'ot_project[ontology_term_type_id]', value : ott.id},
+{name : 'partial', value : '1'}]
+refresh_post("list_ot_projects_" + ott.id, "<%= raw ot_projects_path %>", data, 'post', {loading:'fa-2x'})
+         //   $("#list_ots_" + ott.id).append("<span id='cla_cot_" + ui.item.id + "'><span class='badge badge-info cot_badge pointer'>" + cot + "</span><span id='cla_del_cot-btn_" + ui.item.id + "' class='cla_del_cot text-danger pointer'><i class='fa fa-times-circle'></i></span></span> ")
+         //   $("#ot_ids_" + ott.id).val(list_cots.join(","))
+     //      }
+         }
+
+        $(this).val('');
+
+        return false;
+       }
+ })
+
+$("#project_ott_" + ott.id + "_ot").on('click', function() {
+console.log("logblblbl: ")
+    // Manually trigger the search, sending an empty value
+    // This works because you have minLength: 0
+    $(this).autocomplete("search", "");
+});
+
+}
+$(".annot_sel").change(function(){
+var ott_id = this.id.split("_")[2]
+var v = $(this).val()
+console.log("OTT_ID: " + ott_id + " => " + v)
+let list_cats = JSON.parse(h_annots[v].list_cat_json)
+if (list_cats){ 
+$("#list_cats_" + ott_id).html(list_cats.map(x => "<span class='badge badge-info'>" + x + "</span>").join(" "))
+}
+
+refresh("list_cats_" + ott_id, "<%= raw annots_path %>/" + v + "/check_ontology?ott_id=" + ott_id, {loading:'fa:2x'})
+
+})
 
 $("#cancel_project").click(function(){
 $("#ontop_window").addClass("hidden");

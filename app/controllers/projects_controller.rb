@@ -7599,7 +7599,27 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
 #    Step.where(:version_id => @project.version_id).all.map{|s| @h_steps[s.id]=s}
     Step.where(:docker_image_id => @asap_docker_image.id).all.map{|s| @h_steps[s.id]=s} 
     active_step_name = @h_steps[session[:active_step]].name if @h_steps[session[:active_step]]
- #  get_results()
+    #  get_results()
+
+    parsing_step = Step.where(:docker_image_id => @asap_docker_image.id, :name => 'parsing').first
+    parsing_run = Run.where(:project_id => @project.id, :step => parsing_step.id).first
+    @annots = Annot.where(:project_id => @project.id, :store_run_id => parsing_run.id, :data_type_id => 3, :dim => 1).all
+    @h_annots = {}
+    @annots.map{|e| @h_annots[e.id] = e}
+    @h_ott_projects = {}
+    @h_ot_projects = {}
+    @h_ots = {}
+    @otts = OntologyTermType.all
+    OttProject.where(:project_id => @project.id).all.each do |ott_project|
+      @h_ott_projects[ott_project.ontology_term_type_id] = ott_project
+    end
+    ot_projects = OtProject.where(:project_id => @project.id)
+    ot_projects.all.each do |ot_project|
+      @h_ot_projects[ot_project.ontology_term_type_id] ||= []
+      @h_ot_projects[ot_project.ontology_term_type_id].push ot_project
+    end
+    CellOntologyTerm.where(:id => ot_projects.map{|e| e.cell_ontology_term_id}).all.map{|ot| @h_ots[ot.id] = ot}
+    
     respond_to do |format|
       format.html {
         if params[:global]
@@ -8225,6 +8245,7 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     end
 
     # delete objects
+  
       p.shares.destroy_all
       p.annot_cell_sets.destroy_all
 #      clas = p.clas
@@ -8266,6 +8287,7 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
       p.fus.destroy_all
       p.exp_entries.clear
       p.provider_projects.clear
+      p.direct_links.destroy_all
       #    p.runs.destroy_all
 
       Sunspot.remove(p)

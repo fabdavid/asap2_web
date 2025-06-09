@@ -16,14 +16,15 @@ class CellOntologyTerm < ApplicationRecord
     text :name
     text :description
     integer :cell_ontology_id
-    boolean :original do
-      t = (identifier) ? identifier.split(":") : ['']
-      (t[0] == cell_ontology.tag) ? true : false
-    end
+    boolean :original #do
+#      t = (identifier) ? identifier.split(":") : ['']
+      #      (t[0] == cell_ontology.tag) ? true : false
+#      origi
+#    end
     text :parent_term_id do
       (parent_term_ids) ? parent_term_ids.split(",") : []
     end
-    text :lineage_term_id do
+    text :lineage_term_id do #, :multiple => true, :stored => true do
       (lineage) ? lineage.split(",") : []
     end
     text :node_term_id do

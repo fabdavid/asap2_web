@@ -1,3 +1,4 @@
+
 create table project_cell_sets(
 id serial,
 key text,
@@ -170,6 +171,7 @@ url text,
 format text,
 latest_version text, -- only keep last version
 tax_ids text,
+obsolete bool default false,
 created_at timestamp,
 updated_at timestamp,
 primary key (id)
@@ -187,6 +189,7 @@ identifier text,
 alt_identifiers text,
 name text,
 description text,
+comment text,
 content_json text,
 obsolete bool default false,
 latest_version text,
@@ -196,16 +199,21 @@ node_term_ids text,
 parent_term_ids text,
 children_term_ids text,
 lineage text,
+tax_id int,
 original bool,
 created_at timestamp,
 updated_at timestamp,
 primary key (id)
 );
 
-
 create table ontology_term_types(
 id serial,
 name text,
+label text,
+cell_ontology_ids text,
+in_lineage_term_ids text,
+term_ids text,
+free_text_json text, -- {"top" : [], "bottom" : [], "merged" : []} => by inclusion type in the list
 created_at timestamp,
 updated_at timestamp,
 primary key (id)

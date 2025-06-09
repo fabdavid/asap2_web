@@ -11,6 +11,38 @@
     </div>
   <% end %>
 
+  <div class='form-group col-12 col-sm-4'>
+    <%= label_tag 'name', 'Name', {'data-toggle' => "tooltip"} %>
+    <%= form.text_field :name, {:class => "form-control", :placeholder => "Name of the ontology type"} %>
+  </div>
+
+  <div class='form-group col-12 col-sm-4'>
+    <%= label_tag 'label', 'Label', {'data-toggle' => "tooltip"} %>
+    <%= form.text_field :label, {:class => "form-control", :placeholder => "Label of the ontology type"} %>
+  </div>
+
+  <div class='form-group col-12 col-sm-4'>
+    <%= label_tag 'cell_ontology_ids', 'Applicable ontologies', {'data-toggle' => "tooltip"} %>
+    <%= form.text_field :cell_ontology_ids, {:class => "form-control", :placeholder => "Comma-separated list of the ontology ids"} %>
+  </div>
+  
+  <div class='form-group col-12 col-sm-4'>
+    <%= label_tag 'in_lineage_term_ids', 'Ontologies terms in the lineage of applicable ontology terms', {'data-toggle' => "tooltip"} %>
+    <%= form.text_field :in_lineage_term_ids, {:class => "form-control", :placeholder => "Comma-separated list of the terms ids in the lineage of the allowed terms"} %>
+  </div>
+  
+  <div class='form-group col-12 col-sm-4'>
+    <%= label_tag 'term_ids', 'Ontology term IDs', {'data-toggle' => "tooltip"} %>
+    <%= form.text_field :term_ids, {:class => "form-control", :placeholder => "Comma-separated list of the terms ids in the lineage of the allowed terms"} %>
+  </div>
+
+  <div class='form-group col-12 col-sm-4'>
+    <%= label_tag '', 'Free-text terms JSON', {'data-toggle' => "tooltip"} %>
+    <%= form.text_field :free_text_json, {:class => "form-control", :placeholder => ""} %>
+  </div>
+
+  
+  
   <div class="actions">
     <%= form.submit %>
   </div>

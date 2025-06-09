@@ -1,0 +1,15 @@
+<i>Preview</i><br/>
+<% @list_cats.each do |cat| %>
+
+<% cl = (@h_cot_by_name[cat]) ? 'badge-success' : 'badge-danger' %>
+<span class='badge <%= cl %>'>
+ <%= cat %>
+</span>
+
+
+<% end %>
+
+<%= javascript_tag do %>
+$("#btn-load_all_terms-<%= params[:ott_id] %>").removeClass("hidden")
+$("#btn-load_valid_terms-<%= params[:ott_id] %>").removeClass("hidden")
+<% end %>

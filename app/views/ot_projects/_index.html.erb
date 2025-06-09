@@ -1,0 +1,21 @@
+<% @ot_projects.each do |ot_project| %>
+
+<span id='ot_project_<%= ot_project.id %>'>
+  <% if ot_project.cell_ontology_term_id %>
+  <span class='badge badge-success ot_project_badge pointer'>
+    <%= @h_cots[ot_project.cell_ontology_term_id].name %>
+  </span>
+  <% else %>
+  <span class='badge badge-secondary ot_project_badge pointer'>
+    <%= ot_project.free_text %>
+  </span>
+  <% end %>
+  <span id='del_ot_project-btn_<%= ot_project.ontology_term_type_id %>_<%= ot_project.id %>' class='del_ot_project text-danger pointer'><i class='fa fa-times-circle'></i></span>
+</span>
+
+<% end %>
+
+<%= javascript_tag do %>
+//$("#btn-load_all_terms-<%= params[:ott_id] %>").removeClass("hidden")
+//$("#btn-load_valid_terms-<%= params[:ott_id] %>").removeClass("hidden")
+<% end %>

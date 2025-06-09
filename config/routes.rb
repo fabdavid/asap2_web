@@ -81,6 +81,8 @@ Rails.application.routes.draw do
   end
   resources :annots do
     member do
+      post :batch_load_ontology
+      get :check_ontology
       get :get_cats
       get :get_cat_details
       get :get_cat_legend

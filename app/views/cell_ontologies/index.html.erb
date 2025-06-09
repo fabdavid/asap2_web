@@ -9,13 +9,18 @@
 <table id='cell_ontologies'>
   <thead>
     <tr>
+      <% if admin? %>
+      <th>ID</th>
+      <% end %>
       <th>Name</th>
       <th>Tag</th>
       <th>Website URL</th>
       <th>File URL</th>
       <th>Format</th>      
-      <th>Number of annotations</th>
+      <th>Number of terms</th>
       <th>Organisms</th>
+      <th>Version</th>
+      <th>Status</th>
       <th></th>
       <th></th>
       <th></th>
@@ -24,14 +29,19 @@
 
   <tbody>
     <% @cell_ontologies.each do |cell_ontology| %>
-      <tr>
+    <tr>
+      <% if admin? %>
+       <td><%= cell_ontology.id %></td>
+      <% end %>
 	<td><%= cell_ontology.name %></td>
 	<td><%= cell_ontology.tag %></td>
 	<td><%= link_to cell_ontology.url, cell_ontology.url %></td>
 	<td><%= cell_ontology.file_url %></td>
 	<td><%= cell_ontology.format %></td>
-	<td><%= cell_ontology.cell_ontology_terms.size %></td>
+	<td><%= CellOntologyTerm.where(:cell_ontology_id => cell_ontology.id, :original => true).count %> / <%= CellOntologyTerm.where(:cell_ontology_id => cell_ontology.id).count %></td>
 	<td><%= (tids = cell_ontology.tax_ids and tids!='') ? tids.split(",").map{|tid| @h_organisms[tid.to_i].name}.join(", ") : 'All' %></td>
+	<td><%= cell_ontology.latest_version %></td>
+	<th><%= raw (cell_ontology.obsolete) ? "<span class='badge badge-danger'>Obsolete</span>" : "<span class='badge badge-success'>Active</span>" %></th>
         <td><%= link_to 'Show', cell_ontology_path(cell_ontology) %></td>
         <td><%= link_to('Edit', edit_cell_ontology_path(cell_ontology)) if admin? %></td>
         <td><%= link_to('Destroy', cell_ontology_path(cell_ontology), method: :delete, data: { confirm: 'Are you sure?' }) if admin? %></td>
