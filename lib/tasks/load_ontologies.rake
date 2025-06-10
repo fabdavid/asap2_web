@@ -41,6 +41,7 @@ task load_ontologies: :environment do
       if co.tag == 'EFO' and m = h_term['id'].match(/^efo\:EFO_(.+)/)
         h_term['alt_id'] = [h_term['id']]
         h_term['id'] = "EFO:" + m[1]
+        original = true
       end
       
       #  h_term[]
@@ -94,7 +95,7 @@ task load_ontologies: :environment do
   
   #  filename = Pathname.new(APP_CONFIG[:data_dir]) + "hcao" + "hcao.obo"
   #  CellOntology.where(:tag => 'FBdv').all.each do |co|
-  CellOntology.where(:obsolete => false).order("id desc").all.each do |co|
+  CellOntology.where(:obsolete => false, :tag => 'EFO').order("id desc").all.each do |co|
     ## download file
     ori_file = ontology_dir + "#{co.id}.#{co.format}"
     cmd = `wget -O #{ori_file} '#{co.file_url}'`

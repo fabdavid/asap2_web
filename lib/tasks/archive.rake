@@ -15,7 +15,7 @@ task :archive, [:project_key] => [:environment] do |t, args|
     Dir.mkdir project_fus_dir if !File.exist? project_fus_dir
     
     input_file = Dir.entries(project_dir).select{|e| File.symlink?(project_dir + e) == true and e.match(/^input/)}.first
-    destination_file = File.readlink(project_dir + input_file)
+    destination_file = File.readlink(project_dir + input_file) if input_file
     
     test = false
     p.fus.sort{|a, b| b.id <=> a.id}.each do |fu|
@@ -29,26 +29,28 @@ task :archive, [:project_key] => [:environment] do |t, args|
           FileUtils.cp_r(fu_dir, project_fus_dir)
           ## replace symlinks                                                                                                                                                                            
           Dir.glob(File.join(project_fus_dir + fu.id.to_s, '**', '*')).each do |entry|
-            if File.symlink?(entry)
+            if File.exist?(entry) and File.symlink?(entry)
               symlink_target = File.realpath(entry)
               FileUtils.rm(entry)
               FileUtils.cp_r(symlink_target, entry)
             end
           end
           
-          if File.exist? project_fus_dir + fu.id.to_s
-            FileUtils.rm_r fu_dir
-          end
-          
         end
+
+        if File.exist? project_fus_dir + fu.id.to_s
+          FileUtils.rm_r fu_dir
+        end
+        
       end
-      
+
     end
     
     puts "destination_file: #{destination_file}"
     puts "input_file: #{input_file.to_s}"
     puts "move destination #{original_fus_dir.to_s} -> #{project_fus_dir.to_s}"
     Dir.chdir(project_dir) do
+     
       new_destination_file = destination_file.to_s.gsub(/#{original_fus_dir.to_s}/, "./fus")
       puts "new destination file: #{new_destination_file}"
       if File.exist? new_destination_file
@@ -56,6 +58,7 @@ task :archive, [:project_key] => [:environment] do |t, args|
         FileUtils.ln_sf(new_destination_file, project_dir + input_file)
       end
     end
+
   end
   
 
