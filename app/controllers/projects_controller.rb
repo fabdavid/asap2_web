@@ -3755,12 +3755,13 @@ class ProjectsController < ApplicationController
       @annot = Annot.where(:id => annot_id).first
       project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + @project.user_id.to_s + @project.key
       loom_path = project_dir + @annot.filepath
-      
+      logger.debug("TEST_EXTRACT")
       if occ 
         occ_k = ("occ_" + occ).to_sym
         s = session[:dr_params][@project.id][occ_k]
         
         if s[:data_type] == "1" and s[:dataset_annot_id] and s[:row_i]
+          logger.debug("TEST_EXTRACT4")
           @dataset_annot = Annot.where(:id => s[:dataset_annot_id]).first
           loom_path = project_dir + @dataset_annot.filepath
           # run = Run.where(:project_id => @project.id, :id => params[:annot_id])
@@ -3785,6 +3786,7 @@ class ProjectsController < ApplicationController
           if @num_annot and @num_annot.dim == 1 
             # col =>  ExtractCol
             if @num_annot.nber_rows == 1
+              logger.debug("TEST_EXTRACT3")
               @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractMetadata " + ((dt = @num_annot.data_type and dt.name) ? "-type #{dt.name}" : "") + " -prec 2 -loom #{loom_path} -meta \"#{@num_annot.name}\""
               row_txt = `#{@cmd}`
              # row = (row_txt.match(/^\{/)) ? JSON.parse(row_txt)['values'].map{|e| e.to_f} : nil
@@ -3792,8 +3794,12 @@ class ProjectsController < ApplicationController
               #      row = (tmp_h['list_meta'] and meta = tmp_h['list_meta'][0]) ? meta['values'] : []
               row = (tmp_h['values']) ? tmp_h['values'] : [] 
             else
+              logger.debug("TEST_EXTRACT2")
               @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T ExtractCol -prec 2 -indexes #{s[:header_i]} -loom #{loom_path} -iAnnot #{@num_annot.name}"
+              t = Time.now
               row_txt = `#{@cmd}`
+              t2 = Time.now
+              logger.debug("ExtractCol timing: " + t2-t1)
               #              row = (row_txt.match(/^\{/)) ? JSON.parse(row_txt)['col'] : nil
               row = (parsed_row_txt = Basic.safe_parse_json(row_txt, {}) and parsed_row_txt['values']) ? parsed_row_txt['values'][0] : nil
             end
@@ -7608,7 +7614,9 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     @annots.map{|e| @h_annots[e.id] = e}
     @h_ott_projects = {}
     @h_ot_projects = {}
+    @h_ontologies = {}
     @h_ots = {}
+    CellOntology.all.map{|e| @h_ontologies[e.id] = e}
     @otts = OntologyTermType.all
     OttProject.where(:project_id => @project.id).all.each do |ott_project|
       @h_ott_projects[ott_project.ontology_term_type_id] = ott_project

@@ -172,6 +172,7 @@ format text,
 latest_version text, -- only keep last version
 tax_ids text,
 obsolete bool default false,
+url_mask text,
 created_at timestamp,
 updated_at timestamp,
 primary key (id)
@@ -214,6 +215,7 @@ cell_ontology_ids text,
 in_lineage_term_ids text,
 term_ids text,
 free_text_json text, -- {"top" : [], "bottom" : [], "merged" : []} => by inclusion type in the list
+rank int,
 created_at timestamp,
 updated_at timestamp,
 primary key (id)

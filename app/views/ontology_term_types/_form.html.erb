@@ -41,6 +41,11 @@
     <%= form.text_field :free_text_json, {:class => "form-control", :placeholder => ""} %>
   </div>
 
+    <div class='form-group col-12 col-sm-4'>
+    <%= label_tag '', 'Free-text terms JSON', {'data-toggle' => "tooltip"} %>
+    <% l = (1..20).to_a %>
+    <%= form.select :rank, l, {:class => "form-control"} %>
+  </div>
   
   
   <div class="actions">

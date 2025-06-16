@@ -32,6 +32,10 @@
     <%= form.text_field :file_url, {:class => "form-control", :placeholder => "URL of the OBO file"} %>
   </div>
   <div class='form-group col-12 col-sm-4'>
+    <%= label_tag 'cell_ontology_url_mask', 'URL mask', {'data-toggle' => "tooltip"} %>
+    <%= form.text_field :url_mask, {:class => "form-control", :placeholder => "URL mask"} %>
+  </div>
+  <div class='form-group col-12 col-sm-4'>
     <%= label_tag 'tax_ids', 'taxIDs (comma-separated) if applicable', {'data-toggle' => "tooltip"} %>
     <%= form.text_field :tax_ids, {:class => "form-control", :placeholder => "Latest version"} %>
   </div>

@@ -84,7 +84,7 @@
 
 <% if admin? %>
 
-<% @otts.each do |ott| %>
+<% @otts.sort{|a, b| a.rank <=> b.rank}.each do |ott| %>
 
 <div class='form-group'>
   <%= f.label ott.name.to_sym, ott.label %>
@@ -107,7 +107,7 @@
     <% @h_ot_projects[ott.id].each do |ot_project| %>
     <span id='ot_project_<%= ot_project.id %>'>
       <% if ot_project.cell_ontology_term_id %>
-      <span class='badge badge-success ot_project_badge pointer'><%= @h_ots[ot_project.cell_ontology_term_id].name %></span>
+      <span id='ontology_term-<%= @h_ots[ot_project.cell_ontology_term_id].cell_ontology_id %>-<%= @h_ots[ot_project.cell_ontology_term_id].identifier %>' class='badge badge-success ot_project_badge pointer'><%= @h_ots[ot_project.cell_ontology_term_id].name %></span>
       <% else %>
       <span class='badge badge-secondary ot_project_badge pointer'><%= ot_project.free_text %></span>
       <% end %>
@@ -232,7 +232,27 @@ It will still be possible to create new analyses to your project and freeze them
 
 <%= javascript_tag do %>
 
+var h_ontologies = <%= raw @h_ontologies.to_json %>
 var h_annots = <%= raw @h_annots.to_json %>
+
+$(".ot_project_badge").click(function(){
+let t= this.id.split("-")
+let ontology_id = t[1]
+let identifier = t[2]
+console.log("ONTOLOGY_ID:" + ontology_id)
+console.log(h_ontologies[ontology_id])
+console.log("http://purl.obolibrary.org/obo/" +identifier.replace(":", "_"))
+let url_mask = h_ontologies[ontology_id].url_mask
+console.log("URL_MASK: " + url_mask)
+let url = ""
+if (url_mask == null || url_mask == ''){
+url = "http://purl.obolibrary.org/obo/" + identifier.replace(":", "_")
+}else{
+url = url_mask.replace("{ID_WITH_UNDERSCORE}", identifier.replace(":", "_"))
+url = url.replace("{ID}", identifier)
+}
+window.open(url)
+})
 
 function reset_ott_form(ott_id){
 $("#list_cats_" + ott_id).empty()

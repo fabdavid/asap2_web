@@ -73,6 +73,6 @@ class OntologyTermTypesController < ApplicationController
 
     # Only allow a list of trusted parameters through.
     def ontology_term_type_params
-      params.fetch(:ontology_term_type).permit(:name, :label, :cell_ontology_ids, :in_lineage_term_ids, :term_ids, :free_text_json)
+      params.fetch(:ontology_term_type).permit(:name, :label, :cell_ontology_ids, :in_lineage_term_ids, :term_ids, :free_text_json, :rank)
     end
 end

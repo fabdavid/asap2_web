@@ -12,6 +12,7 @@
       <th>In lineage</th>
       <th>Included terms</th>
       <th>Free text terms</th>
+      <th>Rank</th>
       <th></th>      
       <th></th>
       <th></th>
@@ -28,6 +29,7 @@
       <td><%= (ott.in_lineage_term_ids) ? ott.in_lineage_term_ids.split(",").map{|e| @h_terms[e.to_i].name}.join(" ") : 'NA' %> </td>
       <td></td>
       <td></td>
+      <td><%= ott.rank %></td>
       <td><%= link_to 'Show', ott %></td>
       <td><%= link_to 'Edit', edit_ontology_term_type_path(ott) %></td>
       <td><%= link_to 'Destroy', ott, method: :delete, data: { confirm: 'Are you sure?' } %></td>
