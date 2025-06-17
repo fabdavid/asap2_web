@@ -1,0 +1,7 @@
+<% if @ott_project.not_applicable == true %>
+$("#ot_container_<%= @ott_project.ontology_term_type_id %>").addClass("hidden")
+<% else %>
+$("#ot_container_<%= @ott_project.ontology_term_type_id %>").removeClass("hidden")
+<% end %>
+
+validate_for_publication()

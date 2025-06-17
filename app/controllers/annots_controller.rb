@@ -32,6 +32,7 @@ class AnnotsController < ApplicationController
       new_ot_project = OtProject.where(h_ot_project).first
       if !new_ot_project
         new_ot_project = OtProject.new(h_ot_project)
+        new_ot_project[:annot_id] = @annot.id
         new_ot_project.save
       end
 
@@ -40,10 +41,10 @@ class AnnotsController < ApplicationController
       all_cots = CellOntologyTerm.where(:id => @ot_projects.map{|e| e.cell_ontology_term_id}.compact).all
       @h_cots = {}
       all_cots.map{|e| @h_cots[e.id] =e}
-#      all_cots.each do |cot|
-#        @h_cot_by_name[cot.identifier] = cot.id
-#        @h_cot_by_name[cot.name] = cot.id
-#      end      
+      #      all_cots.each do |cot|
+      #        @h_cot_by_name[cot.identifier] = cot.id
+      #        @h_cot_by_name[cot.name] = cot.id
+      #      end      
     end
 
     render :partial => "ot_projects/index"

@@ -227,6 +227,7 @@ Rails.application.routes.draw do
       post :upd_sel
     end
     member do
+      post :set_ott_project
       post :set_landing_page
       post :upd_marker_genes
       get :get_marker_gene_stats

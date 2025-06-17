@@ -18,7 +18,7 @@ class ProjectsController < ApplicationController
                                      :confirm_delete, :delete_all_runs_from_step,
                                      :get_attributes, :set_input_data, :set_geneset, :get_visualization, :replot, :get_file, :tsv_from_json, :upload_file, 
                                      :delete_batch_file, :upload_form, :clone, :direct_download,
-                                     :set_landing_page
+                                     :set_landing_page, :set_ott_project
                                     ]
   before_action :empty_session, only: [:show]
 #  skip_before_action :verify_authenticity_token
@@ -31,6 +31,25 @@ class ProjectsController < ApplicationController
     session.delete(:selections)
   end
 
+  def set_ott_project
+    if editable? @project
+      h_ott_project = {
+        :project_id => @project.id,
+        :ontology_term_type_id => params[:ontology_term_type_id]
+      }
+      
+      @ott_project = OttProject.where(h_ott_project).first
+      h_ott_project[:not_applicable] = (params[:not_applicable] == '1') ? true : false
+      if !@ott_project
+        @ott_project = OttProject.new(h_ott_project)
+        @ott_project.save
+      else
+        @ott_project.update(h_ott_project)
+      end
+    end
+    render :partial => 'set_ott_project'
+  end
+  
   def set_landing_page
     if editable? @project and params[:landing_page_key]      
       @project.update_column(:landing_page_key, params[:landing_page_key])

@@ -87,36 +87,51 @@
 <% @otts.sort{|a, b| a.rank <=> b.rank}.each do |ott| %>
 
 <div class='form-group'>
-  <%= f.label ott.name.to_sym, ott.label %>
-  <% l = @annots.map{|annot| [annot.name, annot.id]}.sort %>
-  <% l.unshift(["Select a metadata to load", ""]) %>
-  <div class='form-inline'>
-  <%= select_tag "project[ott][" + ott.id.to_s + "][annot]", options_for_select(l, (@h_ott_projects[ott.id] || '')), {:class => 'form-control annot_sel'} %>
-  <span class='pl-3 pr-3'> OR </span>  
-  <%= text_field_tag "project[ott][" + ott.id.to_s + "][ot]", "", {:class => 'form-control ot_search_field', :placeholder => 'Search and add an ontology term', :size => 26} %>
-  <div id='list_ots_<%= ott.id %>'></div>
-  <span class='pl-3 pr-3'> OR </span>
-  <%= text_field_tag "project[ott][" + ott.id.to_s + "][free_text]", '', {:class => 'form-control form-inline ot_free_text', :placeholder => 'Add free-text term'} %>
-  <button id='btn-add-<%= ott.id %>'  type='button' class='btn_load_free_text_term btn btn-success hidden'>Add term</button>
-  </div>
-  <div id='list_cats_<%= ott.id %>'></div>
-<!--  <button id='btn-load_valid_terms-<%= ott.id %>' type='button' class='btn_load_terms btn btn-success hidden'>Load only valid terms</button> -->
-  <button id='btn-load_all_terms-<%= ott.id %>' type='button' class='mt-3 btn_load_terms btn btn-success hidden'>Load terms</button>
-  <div id='list_ot_projects_<%= ott.id %>' class='list_ot_projects'>   
-    <% if @h_ot_projects[ott.id] %>
-    <% @h_ot_projects[ott.id].each do |ot_project| %>
-    <span id='ot_project_<%= ot_project.id %>'>
-      <% if ot_project.cell_ontology_term_id %>
-      <span id='ontology_term-<%= @h_ots[ot_project.cell_ontology_term_id].cell_ontology_id %>-<%= @h_ots[ot_project.cell_ontology_term_id].identifier %>' class='badge badge-success ot_project_badge pointer'><%= @h_ots[ot_project.cell_ontology_term_id].name %></span>
+  <div class='form-online'>
+    <span id='status_ott_<%= ott.id %>'>
+      <% if (ottp = @h_ott_projects[ott.id] and ottp.not_applicable == true) or (otp=@h_ot_projects[ott.id] and otp.size > 0) %>
+      <i class='text-success fa fa-check'></i>
       <% else %>
-      <span class='badge badge-secondary ot_project_badge pointer'><%= ot_project.free_text %></span>
+      <i class='text-danger fa fa-question'></i>
       <% end %>
-      <span id='del_ot_project-btn_<%= ott.id %>_<%= ot_project.id %>' class='del_ot_project text-danger pointer'><i class='fa fa-times-circle'></i></span>
     </span>
-    <% end %>
-    <% end %>
+    <%= f.label ott.name.to_sym, ott.label, {:style => 'width:200px'} %>
+    <%= check_box_tag "not_applicable_#{ott.id}", "1", (ott_project =@h_ott_projects[ott.id] and ott_project.not_applicable == true), {:class => 'not_applicable_checkbox'} %> Not applicable or not defined
   </div>
-  <%= hidden_field_tag "ot_project_ids_#{ott.id}", (@h_ot_projects[ott.id]) ? @h_ot_projects[ott.id].map{|e| e.id}.join(",") : '' %>
+  
+  <div id='ot_container_<%= ott.id %>' class='<%= 'hidden' if ott_project and ott_project.not_applicable %>'>
+    <% l = @annots.map{|annot| [annot.name, annot.id]}.sort %>
+    <% l.unshift(["Select a metadata to load", ""]) %>
+    <div class='form-inline'>
+      <%= select_tag "project[ott][" + ott.id.to_s + "][annot]", options_for_select(l, (@h_ott_projects[ott.id] || '')), {:class => 'form-control annot_sel'} %>
+      <span class='pl-3 pr-3'> OR </span>  
+      <%= text_field_tag "project[ott][" + ott.id.to_s + "][ot]", "", {:class => 'form-control ot_search_field', :placeholder => 'Search and add an ontology term', :size => 26} %>
+      <div id='list_ots_<%= ott.id %>'></div>
+      <span class='pl-3 pr-3'> OR </span>
+      <%= text_field_tag "project[ott][" + ott.id.to_s + "][free_text]", '', {:class => 'form-control form-inline ot_free_text', :placeholder => 'Add free-text term'} %>
+      <button id='btn-add-<%= ott.id %>'  type='button' class='btn_load_free_text_term btn btn-success hidden'>Add term</button>
+    </div>
+    <div id='list_cats_<%= ott.id %>'></div>
+    <!--  <button id='btn-load_valid_terms-<%= ott.id %>' type='button' class='btn_load_terms btn btn-success hidden'>Load only valid terms</button> -->
+    <button id='btn-load_all_terms-<%= ott.id %>' type='button' class='mt-3 btn_load_terms btn btn-success hidden'>Load terms</button>
+    <button id='btn-cancel_load_terms-<%= ott.id %>' type='button' class='mt-3 btn_cancel_load_terms btn btn-secondary hidden'>Cancel</button>
+    <div id='list_ot_projects_<%= ott.id %>' class='list_ot_projects'>   
+      <% if @h_ot_projects[ott.id] %>
+      <% @h_ot_projects[ott.id].each do |ot_project| %>
+      <span id='ot_project_<%= ot_project.id %>' class='nowrap mr-2'>
+	<% if ot_project.cell_ontology_term_id %>
+	<span id='ontology_term-<%= @h_ots[ot_project.cell_ontology_term_id].cell_ontology_id %>-<%= @h_ots[ot_project.cell_ontology_term_id].identifier %>' class='badge badge-success ot_project_badge pointer'><%= @h_ots[ot_project.cell_ontology_term_id].name %></span>
+	<% else %>
+	<span class='badge badge-secondary ot_project_badge pointer'><%= ot_project.free_text %></span>
+	<% end %>
+	<span id='del_ot_project-btn_<%= ott.id %>_<%= ot_project.id %>' class='del_ot_project text-danger pointer'><i class='fa fa-times-circle'></i></span>
+      </span>
+      <% end %>
+      <% end %>
+      <%= hidden_field_tag "ot_project_ids_#{ott.id}", (@h_ot_projects[ott.id]) ? @h_ot_projects[ott.id].map{|e| e.id}.join(",") : '' %>
+    </div>
+  </div>
+  
 </div>
 
 <% end %>
@@ -190,7 +205,7 @@
 <% if owner? @project %>
 <div id='set_public_container'>
 <p>
-<span id='public-btn' class='btn btn-success'><%= (@project.public == false) ? "Set public" : "Freeze new analyses" %></span>
+<button id='public-btn' type='button' class='btn btn-success'><%= (@project.public == false) ? "Set public" : "Freeze new analyses" %></button>
 <div id='set-public-details' class='hidden' >
   <% if @project.public == false %>
   <div class='alert alert-info'>
@@ -235,6 +250,16 @@ It will still be possible to create new analyses to your project and freeze them
 var h_ontologies = <%= raw @h_ontologies.to_json %>
 var h_annots = <%= raw @h_annots.to_json %>
 
+$(".not_applicable_checkbox").click(function(){
+let ott_id = this.id.split("_")[2]
+console.log("test")
+let data = [ //{name: 'project_key', value : '<%= @project.key %>'},
+{name: 'ontology_term_type_id', value : ott_id},  
+{name: 'not_applicable', value : ($(this).prop('checked')) ? '1' : '0' }]
+console.log(data)
+refresh_post(null, "<%= raw set_ott_project_project_path(:key => @project.key) %>", data, 'post', {loading:'fa-2x'})
+})
+
 $(".ot_project_badge").click(function(){
 let t= this.id.split("-")
 let ontology_id = t[1]
@@ -257,6 +282,8 @@ window.open(url)
 function reset_ott_form(ott_id){
 $("#list_cats_" + ott_id).empty()
 $("#btn-load_all_terms-" + ott_id).addClass("hidden")
+$("#btn-cancel_load_terms-" + ott_id).addClass("hidden")
+$("#project_ott_" + ott_id + "_annot").val("")
 }
 
 $(".ot_free_text").keyup(function(){
@@ -276,6 +303,11 @@ let data = [
 refresh_post("list_ot_projects_" + ott_id, "<%= raw ot_projects_path %>", data, 'post', {loading:'fa-2x'})
 $("#project_ott_" + ott_id + "_free_text").val("")
 $(this).addClass('hidden')
+})
+
+$(".btn_cancel_load_terms").click(function(){
+var ott_id = this.id.split("-")[2]
+reset_ott_form(ott_id)
 })
 
 $(".btn_load_terms").click(function(){
@@ -352,7 +384,7 @@ let data = [
 {name : 'ot_project[ontology_term_type_id]', value : ott.id},
 {name : 'partial', value : '1'}]
 refresh_post("list_ot_projects_" + ott.id, "<%= raw ot_projects_path %>", data, 'post', {loading:'fa-2x'})
-         //   $("#list_ots_" + ott.id).append("<span id='cla_cot_" + ui.item.id + "'><span class='badge badge-info cot_badge pointer'>" + cot + "</span><span id='cla_del_cot-btn_" + ui.item.id + "' class='cla_del_cot text-danger pointer'><i class='fa fa-times-circle'></i></span></span> ")
+         //   $("#list_ots_" + ott.id).append("<span id='cla_cot_" + ui.item.id + "' class='nowrap mr-2'><span class='badge badge-info cot_badge pointer'>" + cot + "</span><span id='cla_del_cot-btn_" + ui.item.id + "' class='cla_del_cot text-danger pointer'><i class='fa fa-times-circle'></i></span></span> ")
          //   $("#ot_ids_" + ott.id).val(list_cots.join(","))
      //      }
          }
@@ -450,5 +482,30 @@ $("#ontop_window").on("click", "#confirm_set_public-btn", function(e){
  $("#ontop_window").addClass("hidden")
 });
 
+   function validate_for_publication(){
 
+   let valid = true
+   for (const ott of otts) {
+   if ($("#not_applicable_" + ott.id).prop("checked") == false && $("#ot_project_ids_" + ott.id).val() == ''){
+   console.log("FALSE FOR " + ott.name)
+   console.log($("#ot_project_ids_" + ott.id).val())
+   valid = false
+   $("#status_ott_" + ott.id).html("<i class='text-danger fa fa-question'></i>")
+   }else{
+   console.log("CHECKED: " + ott.id + " : " + $("#not_applicable_" + ott.id).prop("checked"))
+   $("#status_ott_" + ott.id).html("<i class='text-success fa fa-check'></i>")
+   }
+   
+   }
+   if (valid == true){
+    $("#public-btn").attr("disabled", false)
+   }else{
+    $("#public-btn").attr("disabled", "disabled")
+   }
+   return valid
+   }   
+
+
+validate_for_publication()
+   
 <% end %>

@@ -23,9 +23,12 @@ class OttProjectsController < ApplicationController
   def create
     @ott_project = OttProject.new(ott_project_params)
 
+    @project = Project.where(:key => params[:project_key]).first
+    @ott_project.project_id = @project.id
+    
     respond_to do |format|
       if @ott_project.save
-        format.html { redirect_to ott_project_url(@ott_project), notice: "Ott project was successfully created." }
+        format.html { render :partial => 'create'}# redirect_to ott_project_url(@ott_project), notice: "Ott project was successfully created." }
         format.json { render :show, status: :created, location: @ott_project }
       else
         format.html { render :new, status: :unprocessable_entity }

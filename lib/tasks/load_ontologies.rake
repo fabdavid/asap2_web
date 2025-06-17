@@ -92,10 +92,14 @@ task load_ontologies: :environment do
   output_json = Pathname.new(APP_CONFIG[:data_dir]) + 'tmp' + 'tool_versions.json'
   
   h_tool_versions = Basic.safe_parse_json(output_json, {})
+  h_new_tool_versions = {}
+  h_tool_versions.each_key do |k|
+    h_new_tool_versions[k] = h_tool_versions[k]
+  end
   
   #  filename = Pathname.new(APP_CONFIG[:data_dir]) + "hcao" + "hcao.obo"
   #  CellOntology.where(:tag => 'FBdv').all.each do |co|
-  CellOntology.where(:obsolete => false, :tag => 'EFO').order("id desc").all.each do |co|
+  CellOntology.where(:obsolete => false, :tag => ['AEO', 'CARO']).order("id desc").all.each do |co|
     ## download file
     ori_file = ontology_dir + "#{co.id}.#{co.format}"
     cmd = `wget -O #{ori_file} '#{co.file_url}'`
@@ -109,7 +113,7 @@ task load_ontologies: :environment do
     end
     
     h_term = {}
-    h_new_tool_versions = {}
+#    h_new_tool_versions = {}
     #relationship: develops_from FBbt:00000091 ! pole bud
     #relationship: expresses http://flybase.org/reports/FBgn0283442 ! vasa
     #relationship: part_of FBbt:00005311 ! stage 5 embryo

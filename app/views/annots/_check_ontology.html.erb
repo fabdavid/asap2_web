@@ -10,6 +10,9 @@
 <% end %>
 
 <%= javascript_tag do %>
+
 $("#btn-load_all_terms-<%= params[:ott_id] %>").removeClass("hidden")
 $("#btn-load_valid_terms-<%= params[:ott_id] %>").removeClass("hidden")
+$("#btn-cancel_load_terms-<%= params[:ott_id] %>").removeClass("hidden")
+
 <% end %>

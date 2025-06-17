@@ -13,9 +13,12 @@
   <span id='del_ot_project-btn_<%= ot_project.ontology_term_type_id %>_<%= ot_project.id %>' class='del_ot_project text-danger pointer'><i class='fa fa-times-circle'></i></span>
 </span>
 
+<%= hidden_field_tag "ot_project_ids_#{params[:ott_id]}", (@ot_projects) ? @ot_projects.map{|e| e.id}.join(",") : '' %>
 <% end %>
+
 
 <%= javascript_tag do %>
 //$("#btn-load_all_terms-<%= params[:ott_id] %>").removeClass("hidden")
 //$("#btn-load_valid_terms-<%= params[:ott_id] %>").removeClass("hidden")
+validate_for_publication()
 <% end %>

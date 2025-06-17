@@ -8,7 +8,7 @@ class CellOntologyTermsController < ApplicationController
     if params[:organism_id]# == '0'
       CellOntology.all.each do |co|
         tax_ids = (co.tax_ids) ? co.tax_ids.split(",").map{|e| e.to_i} : nil
-        flag = (tax_ids) ? tax_ids.include?(organism.tax_id.to_s) : false
+        flag = (tax_ids) ? tax_ids.include?(organism.tax_id) : false
         # default_tax_id = organism.tax_id if flag
         co_ids.push co.id if (flag or co.tax_ids.to_i == 0)
       end  

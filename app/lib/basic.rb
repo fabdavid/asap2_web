@@ -6,25 +6,25 @@ module Basic
 
     def generate_project_json p
 
-          h_references = {}
-  Article.all.map{|a| h_references[a.doi] = a}
-  h_organisms = {}
-  Organism.all.map{|e| h_organisms[e.id] = e}
-  h_identifier_types = {}
-  IdentifierType.all.map{|it| h_identifier_types[it.id] = it}
-  h_cla_sources = {}
-  ClaSource.all.map{|cla_source| h_cla_sources[cla_source.id] = cla_source}
-  h_cell_ontologies = {}
-  CellOntology.all.map{|co| h_cell_ontologies[co.id] = co}
-  h_envs = {}
-  Version.all.map{|v| h_envs[v.id] = Basic.safe_parse_json(v.env_json, {})}
-  h_steps = {}
-  Step.all.map{|s| h_steps[s.id] =s}
-  h_std_methods = {}
-  StdMethod.all.map{|s| h_std_methods[s.id] = s}
-  h_project_types = {}
-  ProjectType.all.map{|e| h_project_types[e.id] = e}
-
+      h_references = {}
+      Article.all.map{|a| h_references[a.doi] = a}
+      h_organisms = {}
+      Organism.all.map{|e| h_organisms[e.id] = e}
+      h_identifier_types = {}
+      IdentifierType.all.map{|it| h_identifier_types[it.id] = it}
+      h_cla_sources = {}
+      ClaSource.all.map{|cla_source| h_cla_sources[cla_source.id] = cla_source}
+      h_cell_ontologies = {}
+      CellOntology.all.map{|co| h_cell_ontologies[co.id] = co}
+      h_envs = {}
+      Version.all.map{|v| h_envs[v.id] = Basic.safe_parse_json(v.env_json, {})}
+      h_steps = {}
+      Step.all.map{|s| h_steps[s.id] =s}
+      h_std_methods = {}
+      StdMethod.all.map{|s| h_std_methods[s.id] = s}
+      h_project_types = {}
+      ProjectType.all.map{|e| h_project_types[e.id] = e}
+      
       project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + p.user_id.to_s + p.key
       
       h_env = h_envs[p.version_id]
@@ -62,7 +62,7 @@ module Basic
           :down_genes => down_genes,
           :orcid_user => OrcidUser.where(:id => e.orcid_user_id).first,
           :user_id => (u = User.where(:id => e.user_id).first) ? u.email : nil,
-          :source => h_cla_sources[e.cla_source_id].name,
+          :source => (e.cla_source_id and h_cla_sources[e.cla_source_id]) ? h_cla_sources[e.cla_source_id].name : nil,
           :nber_agree => e.nber_agree,
           :nber_disagree => e.nber_disagree,
           :score => e.nber_agree - e.nber_disagree,
@@ -115,7 +115,7 @@ module Basic
           :annot_id => annot.id,
           :annot_run_id => annot.run_id,
           :metadata => annot.name,
-          :annotations => h_clas[annot_id].sort{|a, b| [b[:score], a[:num]] <=> [a[:score], b[:num]]}
+          :annotations => h_clas[annot_id].select{|e| e[:num] and e[:score]}.sort{|a, b| [b[:score], a[:num]] <=> [a[:score], b[:num]]}
         }
         annotation_groups.push annotation_group
       end
@@ -151,6 +151,30 @@ module Basic
         },
         :annotation_groups => annotation_groups
       }
+
+      h_cots = {}
+      CellOntologyTerm.where(:id => OtProject.where(:project_id => p.id).all.map{|e| e.cell_ontology_term_id}.uniq).all.each do |cot|
+        h_cots[cot.id] = cot
+      end
+      
+      OntologyTermType.all.each do |ott|
+        ott_key = ott.name
+        ot_projects = OtProject.where(:ontology_term_type_id => ott.id, :project_id => p.id).all
+        ott_project = OttProject.where(:ontology_term_type_id => ott.id, :project_id => p.id).first
+        if ott_project and ott_project.not_applicable
+          h[ott_key] = nil
+        else
+          h[ott_key] = ot_projects.map{|otp|
+            {
+              :identifier => (cot_id = otp.cell_ontology_term_id) ? h_cots[cot_id].identifier : nil,
+              :name => (cot_id) ? h_cots[cot_id].name : otp.free_text,
+              :from_metadata => (otp.annot_id) ? h_annots[otp.annot_id].name : nil
+            }
+          }
+        end
+        
+      end
+      
       return h
 
     end
@@ -2030,7 +2054,7 @@ module Basic
     def build_docker_cmd h_cmd, core_cmd
       cmd = core_cmd
       if h_cmd['docker_call']
-        puts ">#{h_cmd['container_name']}-#{h_cmd['docker_call']}"
+     #   puts ">#{h_cmd['container_name']}-#{h_cmd['docker_call']}"
         h_cmd['docker_call'].gsub!(/\#container_name/, h_cmd['container_name'])
         host_option = ""
         if h_cmd['host_name'] != 'localhost'
