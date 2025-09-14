@@ -77,22 +77,44 @@
   <%# ActionCable.server.connections.to_json %>
   <%# Run.where(:project_id => @project.id, :step_id => 1).first.to_json %>
   <div class="col-md-7">
-    <% if @project.pmid %>
+    <% if @project.doi %>
       <h4>Analysis publications</h4>
-      <% @project.pmid.to_s.split(",").each do |pmid| %>
-       <% a = Article.where(:pmid => pmid).first %>
+      <% @project.doi.to_s.split(/\s*,\s*/).each do |doi| %>
+      <%# a = Article.where(:pmid => pmid).first %>
+       <% a = @h_articles[doi] %>
        <% if a %>
-         <% authors =  a.authors.split(";") %>
-         <%= raw authors.first + ((authors.size > 1) ? '<i> et al.</i> ' : '. ') + "<b>#{a.title}</b>" + " " + ((j = a.journal) ? "<i>#{j.name}</i>" : '') + ". " + a.year.to_s + "."  %> <%= link_to "PubMed link", "https://www.ncbi.nlm.nih.gov/pubmed/" + a.pmid.to_s, {:class => 'badge badge-info'} %>
+         <% authors =  (a.authors) ? a.authors.split(";") : [""] %>
+         <%= raw authors.first + ((authors.size > 1) ? '<i> et al.</i> ' : '. ') + "<b>#{a.title}</b>" + " " + ((j = a.journal) ? "<i>#{j.name}</i>" : '') + ". " + a.year.to_s + "."  %> <%= link_to "DOI link", "https://doi.org/" + doi.to_s, {:class => 'badge badge-info'} %>
         
        <% end %>
       <% end %>
       <br/><br/>
     <% end %>
+
+    <% if @project.replaced_by_project_key %>
+
+    <div class='alert alert-danger'>
+      This project is obsolete and replaced by
+      <%= link_to @project.replaced_by_project_key, projects_path(:key => @project.replaced_by_project_key) %>
+      <% if @project.replaced_by_comment %>
+      <br/>
+      <small>
+	<b>Comment</b>:
+	<%= @project.replaced_by_comment %>
+      </small>
+      <% end %>
+    </div>
+
+    <% end %>
     
     <% if @h_exp_entries.keys.size > 0 %>
     <h4>Experimental data</h4>
 
+    <%# if @project.doi %>
+    <%# @project.doi %>
+     <%# raw display_article(@h_articles[@project.doi]) %>
+    <%# end %>
+    
     <% @h_exp_entries.each_key do |k| %>
      <% if @h_exp_entries[k].size > 0 %>
     <table id='data_authors'>

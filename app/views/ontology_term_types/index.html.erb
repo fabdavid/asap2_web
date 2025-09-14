@@ -13,9 +13,11 @@
       <th>Included terms</th>
       <th>Free text terms</th>
       <th>Rank</th>
-      <th></th>      
+      <th></th>
+      <% if admin? %>
       <th></th>
       <th></th>
+      <% end %>
     </tr>
   </thead>
 
@@ -30,10 +32,12 @@
       <td></td>
       <td></td>
       <td><%= ott.rank %></td>
-      <td><%= link_to 'Show', ott %></td>
+      <td><%# link_to 'Show', ott %></td>
+      <% if admin? %>
       <td><%= link_to 'Edit', edit_ontology_term_type_path(ott) %></td>
       <td><%= link_to 'Destroy', ott, method: :delete, data: { confirm: 'Are you sure?' } %></td>
-      </tr>
+      <% end %>
+    </tr>
     <% end %>
   </tbody>
 </table>

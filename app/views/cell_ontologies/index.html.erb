@@ -21,7 +21,7 @@
       <th>Organisms</th>
       <th>Version</th>
       <th>Status</th>
-      <th></th>
+<!--      <th></th> -->
       <th></th>
       <th></th>
     </tr>
@@ -42,7 +42,7 @@
 	<td><%= (tids = cell_ontology.tax_ids and tids!='') ? tids.split(",").map{|tid| @h_organisms[tid.to_i].name}.join(", ") : 'All' %></td>
 	<td><%= cell_ontology.latest_version %></td>
 	<th><%= raw (cell_ontology.obsolete) ? "<span class='badge badge-danger'>Obsolete</span>" : "<span class='badge badge-success'>Active</span>" %></th>
-        <td><%= link_to 'Show', cell_ontology_path(cell_ontology) %></td>
+       <!-- <td><%# link_to 'Show', cell_ontology_path(cell_ontology) %></td> -->
         <td><%= link_to('Edit', edit_cell_ontology_path(cell_ontology)) if admin? %></td>
         <td><%= link_to('Destroy', cell_ontology_path(cell_ontology), method: :delete, data: { confirm: 'Are you sure?' }) if admin? %></td>
       </tr>

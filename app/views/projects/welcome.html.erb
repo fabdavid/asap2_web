@@ -18,6 +18,18 @@
 	<!--	<h1 class="display-4"><b>ASAP</b></h1>-->
 	<%= image_tag "ASAP_avecTagline_Colors.svg", {} %>
 	<p class="lead mt-5">A collaborative portal to analyze single-cell transcriptomics data.</p>
+
+	<div class='row'>
+	  <div class='col-4 d-flex p-0 m-0 align-items-center'>
+	    <%= image_tag 'sib_logo.svg', :width => '100px' %>
+	  </div>
+	  <div class='col'>
+	    <p class="mt-3">
+	      ASAP is proudly part of SIB resources</br>
+	      <i class='fa fa-arrow-right'></i> Explore <%= link_to raw("resources"), "https://www.sib.swiss/services/open-software-and-databases#resources-portfolio", :target => '_blank' %> and <%= link_to "their impact", "https://www.sib.swiss/services/open-software-and-databases/impact", :target => '_blank' %>
+	    </p>
+	  </div>
+	</div>
 	<!--	<button type='button' class='btn btn-secondary'>List of <%= @nber_public_projects %> public projects</button>-->
 
 	<% if current_user %>

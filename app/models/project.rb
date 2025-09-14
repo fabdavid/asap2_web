@@ -75,7 +75,7 @@ class Project < ApplicationRecord
     text :provider_projects, :stored => true do
       provider_projects.map{|e| [e.key, "#{e.provider.tag}:#{e.key}"]}.flatten
     end
-
+    text :replaced_by_project_key
     string :order_name, :stored => true do
       name
     end

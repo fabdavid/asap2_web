@@ -6,6 +6,19 @@
 </div>
 
 
+  <% if @project.replaced_by_project_key %>
+  <div class='alert alert-danger'>
+    This project is obsolete and replaced by
+    <%= link_to @project.replaced_by_project_key, projects_path(:key => @project.replaced_by_project_key) %>
+    <% if @project.replaced_by_comment %>
+    <small>
+      (<%= @project.replaced_by_comment %>)
+    </small>
+    <% end %>
+  </div>
+  <% end %>
+
+
  <% if params[:errors] %>
  <div class='alert alert-danger'><%= params[:errors] %></div>
  <% end %>

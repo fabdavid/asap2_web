@@ -7,7 +7,8 @@
 	<!--	<h1 class="display-4"><b>ASAP</b></h1>-->
 	<%= image_tag "ASAP_avecTagline_Colors.svg" %>
 	<p class="lead mt-3">A collaborative portal to analyze single-cell transcriptomics data.</p>
-	<button type='button' class='btn btn-secondary'>List of <%= @nber_public_projects %> public projects</button>
+	<p class="lead mt-3">Explore other <%= link_to "SIB resources", "https://www.sib.swiss/services/open-software-and-databases/impact" %></p>
+	<button type='button' class='btn btn-secondary'>List of <%= @nber_public_projects %> public projects</button>	
 	<% if current_user %>
 	<button type='button' class='btn btn-success'>New project</button>
 	<% else %>

@@ -1,8 +1,8 @@
 <% @ot_projects.each do |ot_project| %>
 
-<span id='ot_project_<%= ot_project.id %>'>
+<span id='ot_project_<%= ot_project.id %>' class='nowrap mr-2'>
   <% if ot_project.cell_ontology_term_id %>
-  <span class='badge badge-success ot_project_badge pointer'>
+  <span  id='ontology_term-<%= @h_cots[ot_project.cell_ontology_term_id].cell_ontology_id %>-<%= @h_cots[ot_project.cell_ontology_term_id].identifier %>' class='badge badge-success ot_project_badge pointer'>
     <%= @h_cots[ot_project.cell_ontology_term_id].name %>
   </span>
   <% else %>
@@ -13,9 +13,8 @@
   <span id='del_ot_project-btn_<%= ot_project.ontology_term_type_id %>_<%= ot_project.id %>' class='del_ot_project text-danger pointer'><i class='fa fa-times-circle'></i></span>
 </span>
 
-<%= hidden_field_tag "ot_project_ids_#{params[:ott_id]}", (@ot_projects) ? @ot_projects.map{|e| e.id}.join(",") : '' %>
 <% end %>
-
+<%= hidden_field_tag "ot_project_ids_#{params[:ott_id]}", (@ot_projects) ? @ot_projects.map{|e| e.id}.join(",") : '' %>
 
 <%= javascript_tag do %>
 //$("#btn-load_all_terms-<%= params[:ott_id] %>").removeClass("hidden")

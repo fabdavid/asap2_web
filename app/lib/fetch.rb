@@ -467,9 +467,9 @@ module Fetch
     def doi_info doi
       
       h_article = {}
-      puts "toto"
+    #  puts "toto"
       cmd = "wget -qO - 'http://api.crossref.org/works/#{doi}'"
-      puts cmd
+     # puts cmd
       data_json = `#{cmd}`
       h_json = Basic.safe_parse_json(data_json, {})
       #        puts h_json.to_json                                                                                                                                                                                                             
@@ -479,7 +479,7 @@ module Fetch
       if m
         
         j_name = nil
-        puts m["institution"].to_json
+   #     puts m["institution"].to_json
         if journals = m['container-title'] and journals[0]
           j_name = journals[0]
         elsif inst = m["institution"] and (inst = inst.is_a?(Array) ? inst.first : inst) and inst["name"]
@@ -494,16 +494,16 @@ module Fetch
           end
         end
         title = (m['title']) ? m['title'][0] : ''
-        puts title.to_json
+ #       puts title.to_json
         if m2 = title.match(/\[sub\s*(\d+)\]/)
-          puts title
+#          puts title
           title.gsub!(/\[sub\s*(\d+)\]/, "<sub>/1</sub>")
         end
         
         authors =  (m['author']) ? m['author'].map{|e|
           format_author(e)
         }.compact : []
-        puts authors.to_json
+  #      puts authors.to_json
         fa = (authors and authors.size > 0) ? authors.first : nil
         
         #          puts  m['journal-issue'].to_json                                                                               
@@ -522,7 +522,7 @@ module Fetch
         # doi          | text                                                                           
         h_article = {
           :doi => doi,
-          :title => title,
+          :title =>  title, #JSON.parse(title).gsub(/( *<\w+>)(.+?)(<\/w+> *)/, ' \1\2\3 '), #.gsub(/(<\/\w+>)/, ' \1'),
           :authors => (fa) ? ("#{fa['initials']} #{fa['lname']}" + ((authors.size > 1) ?  " et al." : '')) : nil ,
           :authors_json => authors.to_json,
           :first_author => (fa) ? fa['lname'] : nil,
@@ -532,14 +532,13 @@ module Fetch
           :issue => m['issue'],
           :year => (m['issued']) ? m['issued']['date-parts'][0][0] : nil,#                                                                                                                                                                       
           #          :published_online_at => (m['journal-issue'] and e = m['journal-issue']['published-online'] and e2 = e["date-parts"] and d = e2[0]) ? Time.new(d[0], d[1] || 1, d[2] || 1) : nil,                                            
-          :published_at => (m['journal-issue'] and e = m['journal-issue']['published-print'] and e2 = e["date-parts"] and d = e2[0]) ? Time.new(d[0], d[1] || 1, d[2] || 1) : ((m['issued'] and  e3 = m['issued']["date-parts"] and d2 = e3[0]) \
-                                                                                                                                                                               ? Time.new(d2[0], d2[1] || 1, d2[2] || 1) : nil)
+          :published_at => (m['journal-issue'] and e = m['journal-issue']['published-print'] and e2 = e["date-parts"] and d = e2[0]) ? Time.new(d[0], d[1] || 1, d[2] || 1) : ((m['issued'] and  e3 = m['issued']["date-parts"] and d2 = e3[0]) ? Time.new(d2[0], d2[1] || 1, d2[2] || 1) : nil)
           #            :url => m["URL"]                                                                                                                                                                                                          
         }
         if m['issued'] and  e3 = m['issued']["date-parts"] and d2 = e3[0]
           puts Time.new(d2[0], d2[1] || 1, d2[2] || 1)
         end
-        puts h_article
+#        puts h_article
         
       end
       return h_article

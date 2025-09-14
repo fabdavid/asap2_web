@@ -167,6 +167,7 @@ id serial,
 name text, --HCAO or FlyBase Fly Anatomy
 tag text,
 file_url text,
+file_url_bkp text,
 url text,
 format text,
 latest_version text, -- only keep last version

@@ -67,6 +67,13 @@ module ApplicationHelper
     
   end
 
+  def display_article a
+    html = "<i>" + display_reference(a) + "</i><br/>#{a.title}<br/>\                                                                                                                                   
+    <i>[<a href='https://doi.org/#{a.doi}' target='_blank'>#{a.doi}</a>]</i>"
+    return html
+  end
+
+  
   def display_reference a
     return a.authors.split(";")[0] + ", #{a.year}"
   end

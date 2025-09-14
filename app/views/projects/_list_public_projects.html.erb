@@ -22,10 +22,13 @@
       <% if current_user %>
       <th>User</th>
       <% end %>
-      <th>PMID</th>
+      <th>PMID</th>      
       <th></th>
       <th></th>
       <% if current_user %>
+      <th></th>
+      <% end %>
+      <% if admin? %>
       <th></th>
       <% end %>
     </tr>
@@ -82,6 +85,11 @@
 	<% end %>
       </td>
       <% end %>
+      <% if admin? %>
+       <td>
+         <span id='edit_project_<%= project.key %>' class='edit_project pointer' title='Edit project'><i class='fa fa-cog'></i></span>
+       </td>
+      <% end %>
     </tr>
     <% end %>
   </tbody>
@@ -90,6 +98,12 @@
 <!--<iframe width="560" height="315" src="https://www.youtube.com/embed/bB_yCpaXH1E" frameborder="0" allowfullscreen></iframe>-->
 <!--<iframe width="560" height="315" src="https://www.youtube.com/embed/Qk3fwXt3RSM" frameborder="0" allowfullscreen></iframe>-->
 <%= javascript_tag do %>
+
+$(".edit_project").click(function(){
+let project_key = this.id.split("_")[2]
+refresh("form_container", "<%= raw projects_path() %>/" + project_key + "/edit?global=1", {});
+$("#ontop_window").removeClass("hidden");
+});
 
 $(document).ready(function() {
 /* $('#public_projects').off().DataTable( {
