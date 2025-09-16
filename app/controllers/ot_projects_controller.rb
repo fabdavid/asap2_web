@@ -24,8 +24,9 @@ class OtProjectsController < ApplicationController
     @ot_project = OtProject.new(ot_project_params)
     p = Project.where(:key => params[:project_key]).first
     @ot_project.project_id = p.id if p
+    existing_ot_project = OtProject.where(:project_id => p.id, :ontology_term_type_id => @ot_project.ontology_term_type_id, :cell_ontology_term_id => @ot_project.cell_ontology_term_id).first
     respond_to do |format|
-      if editable? @project and @ot_project.save
+      if editable? @project and (existing_ot_project or @ot_project.save)
         @ot_projects = OtProject.where(:project_id => p.id, :ontology_term_type_id => @ot_project.ontology_term_type_id).all
         
         all_cots = CellOntologyTerm.where(:id => @ot_projects.map{|e| e.cell_ontology_term_id}.compact).all

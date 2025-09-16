@@ -98,7 +98,7 @@ task :archive, [:project_key] => [:environment] do |t, args|
   if args[:project_key]
     projects = Project.where(:key => args[:project_key]).all
   else
-    projects = Project.where({:archive_status_id => 1}).all
+    projects = Project.where({:archive_status_id => 1}).where("public_id is null").all
   end
 
   projects.each do |p|

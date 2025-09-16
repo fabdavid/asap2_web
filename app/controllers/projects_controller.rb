@@ -181,7 +181,7 @@ class ProjectsController < ApplicationController
     @public_projects = []
     @projects = []
     @h_counts = {
-      :all_public => Project.where(:public => true).count, # .where.not("name ~ '^\\[FCA\\]' and public_id > 1").count,
+      :all_public => Project.where(:public => true).count, #where("replaced_by_project_key != (?)", ['', nil]).count, # .where.not("name ~ '^\\[FCA\\]' and public_id > 1").count,
       :all_my => (admin?) ? Project.count : ((current_user) ? (Project.where(:user_id => current_user.id).count + Share.select("distinct project_id").where(:user_id => current_user.id).count) : nil)
     }
     
@@ -190,18 +190,20 @@ class ProjectsController < ApplicationController
     #    if  session[:settings][:search_type] == 'public'
     @query = Project.search do
       fulltext words.join(" ").gsub(/\$\{jndi\:/, '')
-      with :public, true  
+      with :public, true
+      with :replaced_by_project_key, nil
       # without(:project_tags, 'FCA') if !admin? #public_id 
       order_by(h_order[:public], h_order_direction[:public])
       paginate :page => session[:settings][:public_page], :per_page => session[:settings][:public_per_page]
       end
-    @public_projects= @query.results
+    @public_projects= @query.results#.select{|p| ['', nil].include? p.replaced_by_project_key}
     
     #    elsif session[:settings][:search_type] == 'public' 
     if current_user and !admin?
       @query = Project.search do
         fulltext words.join(" ").gsub(/\$\{jndi\:/, '')
         with :shared_user_ids, current_user.id
+#        with :replaced_by_prokect_key, nil
         order_by(h_order[:my], h_order_direction[:my]) #modified_at
         paginate :page => session[:settings][:my_page], :per_page =>  session[:settings][:my_per_page]
       end
@@ -5168,9 +5170,12 @@ class ProjectsController < ApplicationController
       @time_to_destroy = (c + 3.days + 1.hour) - Time.now# + d //one day after the max 2 days 
     end
     @h_articles = {}
-#    Article.where(:pmid => @project.exp_entries.map{|ge| ge.pmid}).all.map{|a| @h_articles[a.pmid] = a}
-    Article.where(:doi => @project.exp_entries.map{|ge| ge.doi}).all.map{|a| @h_articles[a.doi] = a}
-    
+    if @project.pmid
+      Article.where(:pmid => @project.exp_entries.map{|ge| ge.pmid}).all.map{|a| @h_articles[a.pmid] = a}
+    end
+    if @project.doi
+      Article.where(:doi => ([@project.doi.split(/\s*,\s*/)] | @project.exp_entries.map{|ge| ge.doi}).compact).all.map{|a| @h_articles[a.doi] = a}
+    end
     @klay_data = []
     @log = ""
     h_runs = {}
@@ -7622,13 +7627,17 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
     @all_results = {}
     @shares = @project.shares.to_a
 #    Step.where(:version_id => @project.version_id).all.map{|s| @h_steps[s.id]=s}
-    Step.where(:docker_image_id => @asap_docker_image.id).all.map{|s| @h_steps[s.id]=s} 
-    active_step_name = @h_steps[session[:active_step]].name if @h_steps[session[:active_step]]
-    #  get_results()
-
-    parsing_step = Step.where(:docker_image_id => @asap_docker_image.id, :name => 'parsing').first
-    parsing_run = Run.where(:project_id => @project.id, :step => parsing_step.id).first
-    @annots = Annot.where(:project_id => @project.id, :store_run_id => parsing_run.id, :data_type_id => 3, :dim => 1).all
+    @annots = []
+    if @asap_docker_image
+      Step.where(:docker_image_id => @asap_docker_image.id).all.map{|s| @h_steps[s.id]=s} 
+      active_step_name = @h_steps[session[:active_step]].name if @h_steps[session[:active_step]]
+      #  get_results()
+      
+      parsing_step = Step.where(:docker_image_id => @asap_docker_image.id, :name => 'parsing').first
+      parsing_run = Run.where(:project_id => @project.id, :step => parsing_step.id).first
+      @annots = Annot.where(:project_id => @project.id, :store_run_id => parsing_run.id, :data_type_id => 3, :dim => 1).all
+    end
+    
     @h_annots = {}
     @annots.map{|e| @h_annots[e.id] = e}
     @h_ott_projects = {}
@@ -8111,8 +8120,13 @@ logger.debug("CSP_PARAMS: " + session[:csp_params][9728].to_json)
         
         #      ### read_write access      
         #      manage_access()
-        
+
       end
+
+      [:replaced_by_project_key, :replaced_by_comment].each do |e|
+        params[:project][e] = nil if params[:project][e] == ''
+        end
+      
       respond_to do |format|
         if @project.update(project_params)
           

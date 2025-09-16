@@ -104,261 +104,444 @@ class FusController < ApplicationController
     end
     
     #    logger.debug("SEL: #{params[:sel]}")
-    
-    options = []    
-    options.push("-sel '#{params[:sel]}'") if params[:sel]
-    options.push("-col #{params[:gene_name_col]}") if params[:gene_name_col]
-    options.push("-d '#{params[:delimiter]}'") if params[:delimiter] and params[:delimiter] != ''
-    options.push("-header " + ((params[:has_header] and params[:has_header] == '1') ? 'true' : 'false')) if params[:has_header]
-    options.push("--row-names '" + params[:rowname_metadata] + "'") if params[:rowname_metadata] and  params[:rowname_metadata] != ''
-    options.push("--col-names '" + params[:colname_metadata] + "'") if params[:colname_metadata] and  params[:colname_metadata] != ''
-    options_txt = options.join(" ")
-    
-    #    logger.debug("OPTIONS: #{options_txt}")
-    
-    ### get datasets
-    @h_datasets = {}
-    if File.exist? dataset_file
-      @h_datasets = JSON.parse(File.read(dataset_file))
-    end
-    
-    #    logger.debug(@h_datasets.to_json)
-    
-    # get file list if it already exists                                                                                                                      
-    @list_datasets = []
-    if File.exist? filelist_file
-      @list_datasets = JSON.parse(File.read(filelist_file))['list_files']
-    end
-    file_format = nil
-    @error = nil
-    @current_dataset = nil
+
     @log = ''
-    if @h_datasets[options_txt]
-      @current_dataset = @h_datasets[options_txt]
-      #     logger.debug("CURRENT_DATASET: " + @current_dataset.to_json)
-      @h_json = @current_dataset
-      @error = @current_dataset['displayed_error'] if @current_dataset['displayed_error'] 
-    end
-    if !@current_dataset or !@current_dataset['matrix'] or !@current_dataset['pred_max_ram']
-      #      cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T Preparsing #{options.join(" ")} -organism #{params['organism']} -f #{filepath} -o #{upload_dir}\""
-      @cmd = ''
-      if params['organism']
-        begin
-          logger.debug("CONVERT MTX or RDS")
-          h_conv_res = Basic.convert_other_formats filepath, logger
-          #          filepath = h_conv_res[:file_path]
-          if h_conv_res[:file_path] != filepath
-            logger.debug("IF:  #{h_conv_res.to_json}")
-            file_format = h_conv_res[:type]
-            filepath = h_conv_res[:file_path]
-            #          options = []
-            #            @fu.update_attribute(:upload_file_name, File.basename(filepath))
+    
+    if !admin?
+    
+      options = []    
+      options.push("-sel '#{params[:sel]}'") if params[:sel]
+      options.push("-col #{params[:gene_name_col]}") if params[:gene_name_col]
+      options.push("-d '#{params[:delimiter]}'") if params[:delimiter] and params[:delimiter] != ''
+      options.push("-header " + ((params[:has_header] and params[:has_header] == '1') ? 'true' : 'false')) if params[:has_header]
+      options.push("--row-names '" + params[:rowname_metadata] + "'") if params[:rowname_metadata] and  params[:rowname_metadata] != ''
+      options.push("--col-names '" + params[:colname_metadata] + "'") if params[:colname_metadata] and  params[:colname_metadata] != ''
+      options_txt = options.join(" ")
+      
+      
+      #    logger.debug("OPTIONS: #{options_txt}")
+      
+      ### get datasets
+      @h_datasets = {}
+      if File.exist? dataset_file
+        @h_datasets = JSON.parse(File.read(dataset_file))
+      end
+      
+      #    logger.debug(@h_datasets.to_json)
+      
+      # get file list if it already exists                                                                                                                      
+      @list_datasets = []
+      if File.exist? filelist_file
+        @list_datasets = JSON.parse(File.read(filelist_file))['list_files']
+      end
+      file_format = nil
+      @error = nil
+      @current_dataset = nil
+    #  @log = ''
+      if @h_datasets[options_txt]
+        @current_dataset = @h_datasets[options_txt]
+        #     logger.debug("CURRENT_DATASET: " + @current_dataset.to_json)
+        @h_json = @current_dataset
+        @error = @current_dataset['displayed_error'] if @current_dataset['displayed_error'] 
+      end
+      if !@current_dataset or !@current_dataset['matrix'] or !@current_dataset['pred_max_ram']
+        #      cmd = "#{APP_CONFIG[:docker_call]} \"java -jar /srv/ASAP.jar -T Preparsing #{options.join(" ")} -organism #{params['organism']} -f #{filepath} -o #{upload_dir}\""
+        @cmd = ''
+        if params['organism']
+          if admin?
+            
+          else
+            begin
+              logger.debug("CONVERT MTX or RDS")
+              h_conv_res = Basic.convert_other_formats filepath, logger
+              #          filepath = h_conv_res[:file_path]
+              if h_conv_res[:file_path] != filepath
+                logger.debug("IF:  #{h_conv_res.to_json}")
+                file_format = h_conv_res[:type]
+                filepath = h_conv_res[:file_path]
+                #          options = []
+                #            @fu.update_attribute(:upload_file_name, File.basename(filepath))
+              end
+            rescue Exception => error
+              logger.debug("ERROR:" + error.to_json)
+            end
+            @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T Preparsing #{options.join(" ")} -organism #{params['organism']} -f \"#{filepath}\" -o #{upload_dir} -h localhost:5434/asap2_development 2> #{upload_dir + 'output.err'}"
+            logger.debug("CMD:: #{@cmd}")
           end
-        rescue Exception => error
-          logger.debug("ERROR:" + error.to_json)
+        else
+          @h_metadata_types = {'1' => 'cell', '2' => 'gene'}
+          project = @fu.project
+          project_dir = Pathname.new(APP_CONFIG[:data_dir]) + 'users' + project.user_id.to_s + project.key
+          parsing_loom_file = project_dir + 'parsing' + 'output.loom'
+          @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T PreparseMetadata #{options.join(" ")} -loom #{parsing_loom_file} -f \"#{filepath}\" -o #{upload_dir + 'output.json'} -which #{@h_metadata_types[params[:metadata_type]].upcase} 2> #{upload_dir + 'output.err'}"
         end
-        @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T Preparsing #{options.join(" ")} -organism #{params['organism']} -f \"#{filepath}\" -o #{upload_dir} -h localhost:5434/asap2_development 2> #{upload_dir + 'output.err'}"
-        logger.debug("CMD:: #{@cmd}")
+        # logger.debug("FINAL_FORMAT:" + file_format.to_json)
+        @log += output_file.to_s
+        logger.debug "CMD #{@cmd}"
+        @res = `#{@cmd}`
+        @h_json = nil
+        logger.debug("Output file exists: #{File.exist? output_file}")
+        ## check if h5AD correct otherwise try to convert it                                                                                              
+        if File.exist? output_file
+          output_json = File.read output_file
+          output_json.gsub!(/\s+/, ' ')
+          h_json = JSON.parse(output_json)
+          if params['organism'] and h_json['displayed_error'] and m = h_json['displayed_error'].match(/\[FORMAT_H5AD\]/)
+            
+            if admin?
+            else
+              #           convert_filepath = filepath + '.tmp' 
+              convert_output = upload_dir + 'convert_output.json'
+              convert_filepath = upload_dir + "converted.h5ad"
+              
+              cmd = "docker run -t --network=asap2_asap_network -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --rm -v /data/asap2:/data/asap2 -v /srv/asap_run/srv:/srv fabdavid/asap_run:v5 python3 h5ad_reformat.py #{filepath} #{convert_filepath} #{convert_output}" # 1> #{upload_dir + "convert.log"} 2> #{upload_dir + "convert.err"}"
+              logger.debug("CONVERT : #{cmd}")
+              res = `#{cmd}`
+              logger.debug("res: #{res}")
+              if File.exist? convert_filepath
+                logger.debug "TEST preparsing"
+                FileUtils.move convert_filepath, filepath
+                @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T Preparsing #{options.join(" ")} -organism #{params['organism']} -f \"#{filepath}\" -o #{upload_dir} -h localhost:5434/asap2_development 2> #{upload_dir + 'output.err'}"
+                @res = `#{@cmd}`
+                @log += output_file.to_s
+                logger.debug "CMD2 #{@cmd}"
+              else
+                logger.debug("#{convert_filepath} is not found")
+              end
+            end
+          end
+        end
         
-      else
+        if File.exist? output_file
+          output_json = File.read output_file
+          output_json.gsub!(/\s+/, ' ')
+          @log+= output_json
+          
+          if !output_json.empty?
+            # logger.debug output_json
+            @h_json = JSON.parse(output_json)
+            
+            @h_json['detected_format'] = file_format || @h_json['detected_format']
+            #{"detected_format":null,"list_groups":[{"group":"Pernille","nb_cells":6,"nb_genes":47729","is_count":1,"genes":["ENSMUSG00000000001","ENSMUSG00000000003","ENSMUSG00000000028","ENSMUSG00000000031","ENSMUSG00000000037","ENSMUSG00000000049","ENSMUSG00000000056","ENSMUSG00000000058","ENSMUSG00000000078","ENSMUSG00000000085"],"cells":["E5_S7","A1_S5","D6_S8","A9_S6","pos_control_S9","neg_control_S10"],"matrix":[[97.0,0.0,26.0,0.0,66.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,13.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,2.0,0.0],[0.0,0.0,0.0,8.0,12.0,0.0],[0.0,176.0,0.0,44.0,60.0,0.0],[1.0,33.0,0.0,0.0,4.0,0.0]]}]}
+            
+            ### record upload details if available                                                                                              
+            if @h_json['detected_format'] and !params[:sel]
+              @h_upload_details = {
+                'detected_format' => file_format || @h_json['detected_format']              
+              }
+              
+              File.open(upload_details_file, 'w') do |f|
+                f.write @h_upload_details.to_json
+              end
+            end
+            
+            if @h_json['list_groups'] and @h_json['list_groups'].size == 1 and (!@current_dataset or !@current_dataset['matrix'] or !@current_dataset['pred_max_ram']) ## it is a file and add new dataset
+              
+              current_dataset = @h_json['list_groups'].first
+              
+              ## predict parsing time 
+              std_method = StdMethod.where(:step_id => parsing_step.id).first                                                                                                                                                
+              @cmd = "docker run --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2 -v /srv/asap_run/srv:/srv fabdavid/asap_run:v#{params[:version_id]} -c 'Rscript prediction.tool.2.R predict /data/asap2/pred_models/#{params[:version_id]} #{std_method.id} #{current_dataset['nber_rows']} #{current_dataset['nber_cols']} 2>&1'"                                                                           
+              pred_results_json = `#{@cmd}`.split("\n").first #.gsub(/^(\{.+?\})/, "\1")            
+              h_pred_results = Basic.safe_parse_json(pred_results_json, {})
+              
+              #            h_pred_results = Basic.safe_parse_json(pred_results_json, {})              
+              
+              current_dataset['pred_max_ram'] = (h_pred_results['predicted_ram'] == 'NA') ? '' : h_pred_results['predicted_ram']
+              current_dataset['pred_process_duration'] = (h_pred_results['predicted_time'] == 'NA') ? '' : h_pred_results['predicted_time']
+              
+              @h_json['list_groups'] = [current_dataset]
+              ### re-write
+              File.open(output_file, 'w') do |fw|
+                fw.write @h_json.to_json
+              end
+              
+              @current_dataset = current_dataset #@h_json['list_groups'].first
+              ["detected_format", "metadata"].each do |e|
+                @current_dataset[e] = @h_json[e]
+              end
+              
+              ## read existing datasets.json          
+              if File.exist? dataset_file
+                @h_datasets = JSON.parse(File.read(dataset_file))            
+              end
+              #          h_datasets = {}
+              #          @datasets.map{|d| h_datasets[d['group']]=1}
+              if !@h_datasets[options_txt]
+                @h_datasets[options_txt]= @current_dataset
+                #          if !h_datasets[@current_dataset['group']]
+                #            @datasets.push @current_dataset
+                #          end
+              end
+              ##write new datasets.json
+              File.open(dataset_file, 'w') do |f|
+                f.write @h_datasets.to_json
+              end
+              
+            #File.delete output_file
+            elsif @h_json['list_groups'] and @h_json['list_groups'].size > 1
+              @h_datasets = {}
+              opt = []
+              @list_datasets = []
+              @h_json['list_groups'].each do |group|
+                ['detected_format', 'metadata'].each do |e|
+                  group[e] = @h_json[e]
+                end
+                opt = "-sel '" + group['group'] + "'"
+                @h_datasets[opt] = group
+                @list_datasets.push({'filename' => group['group']})
+              end
+              ##write new datasets.json                                                                                                                                                                                              
+              File.open(dataset_file, 'w') do |f|
+                f.write @h_datasets.to_json
+              end
+              
+              ##write list_files.json                    
+              File.open( filelist_file, 'w') do |f|
+                f.write({'list_files' => @list_datasets}.to_json)
+              end
+              
+            elsif @h_json['displayed_error']
+              @error = @h_json['displayed_error']
+            elsif @h_json['list_files'] and @h_json['list_files'].size > 1 ## it is a list of datasets
+              
+              ### re-write                                                                                                                                                                      
+              File.open(output_file, 'w') do |fw|
+                fw.write @h_json.to_json
+              end
+              
+              ## move file
+              @list_datasets = @h_json['list_files']
+              FileUtils.cp output_file, filelist_file
+              
+              #File.open(filelist_file, 'w') do |f|
+              #  f.write @list_datasets.to_json
+              #end
+              # elsif  @h_json['metadata']
+              #   @current_dataset =  @h_json['metadata']
+            end
+          end
+        else
+          if File.exist?(upload_dir + 'output.err')
+            err = File.read(upload_dir + 'output.err')
+            #          puts "Rewriting output.json... #{@h_json.to_json}"
+            @h_json = {"displayed_error" => err} #(@h_json and @h_json['displayed_error']) ? @h_json['displayed_error'] : err}
+            File.open(output_file, 'w') do |fw|
+              fw.write @h_json.to_json
+            end
+          end
+        end
+        ['row_names', 'col_names'].each do |e|
+          new_e = (e.gsub("_", "").singularize + "_metadata").to_sym
+          params[new_e] = @h_json[e]
+        end
+        
+        #      else
+        #        #-col first -o tutu -loom /data/asap2/users/1/06y2o7/parsing/output.loom -f /data/asap2/fus/24350/gene_annotation.txt  -header true -which gene
+        #        project = @fu.project 
+        #        project_dir = Pathname.new(APP_CONFIG[:data_dir]) + 'users' + @project.user_id.to_s + @project.key
+        #        upload_dir = Pathname.new(APP_CONFIG[:data_dir]) +  'fus' + @fu.id.to_s
+        #        filepath = upload_dir + @fu.upload_file_name
+        
+        #        parsing_loom_file = project_dir + 'parsing' + 'output.loom' 
+        ##       @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T PreparseMetadata #{options.join(" ")} -loom #{parsing_loom_file} -f \"#{filepath}\" -o #{upload_dir} -h localhost:5434/asap2_development"
+        
+        #        @res = `#{@cmd}`
+        #       @h_json = nil
+        #       if File.exist? output_file
+        #       output_json = File.read output_file
+        #         output_json.gsub!(/\s+/, ' ')
+        #         @log+= output_json
+        #
+        #          if !output_json.empty?
+        #            logger.debug output_json
+        #            @h_json = JSON.parse(output_json)
+        #
+        #            ### record upload details if available                                                                                                            #  
+        #            if @h_json['detected_format'] and !params[:sel]
+        #              @h_upload_details = {
+        #                'detected_format' => @h_json['detected_format']
+        #              }
+        #              
+        #              File.open(upload_details_file, 'w') do |f|
+        #                f.write @h_upload_details.to_json
+        #              end
+        #            end
+        #            
+        #          end
+        
+        # end
+        
+        
+        
+        
+      end
+      
+    else
+      
+      @log = ''
+      options = []
+      options.push("--sel '#{params[:sel]}'") if params[:sel]
+      options.push("--col #{params[:gene_name_col]}") if params[:gene_name_col]
+      options.push("--delim '#{params[:delimiter]}'") if params[:delimiter] and params[:delimiter] != ''
+      options.push("--header " + ((params[:has_header] and params[:has_header] == '1') ? 'true' : 'false')) if params[:has_header]
+      #  options.push("--row-names '" + params[:rowname_metadata] + "'") if params[:rowname_metadata] and  params[:rowname_metadata] != ''
+      #  options.push("--col-names '" + params[:colname_metadata] + "'") if params[:colname_metadata] and  params[:colname_metadata] != ''
+      options_txt = options.join(" ")
+      @log += options_txt
+      # ### get datasets              
+      @h_datasets = {}
+      if File.exist? dataset_file
+        @h_datasets = JSON.parse(File.read(dataset_file))
+      end
+
+      # get file list if it already exists    
+      @list_datasets = []
+      if File.exist? filelist_file
+        @list_datasets = JSON.parse(File.read(filelist_file))['list_files']
+      end
+      
+      file_format = nil
+      @error = nil
+      @current_dataset = nil
+     
+      if @h_datasets[options_txt]
+        @current_dataset = @h_datasets[options_txt]
+        #     logger.debug("CURRENT_DATASET: " + @current_dataset.to_json)                                                                                                                             # 
+        @h_json = @current_dataset
+        @error = @current_dataset['displayed_error'] if @current_dataset['displayed_error']
+      end
+      if !@current_dataset or !@current_dataset['matrix'] or !@current_dataset['pred_max_ram']
+
+      
+      if !params['organism'] ### preparsing of metadata file (before import metadata)
+        
         @h_metadata_types = {'1' => 'cell', '2' => 'gene'}
         project = @fu.project
         project_dir = Pathname.new(APP_CONFIG[:data_dir]) + 'users' + project.user_id.to_s + project.key
         parsing_loom_file = project_dir + 'parsing' + 'output.loom'
         @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T PreparseMetadata #{options.join(" ")} -loom #{parsing_loom_file} -f \"#{filepath}\" -o #{upload_dir + 'output.json'} -which #{@h_metadata_types[params[:metadata_type]].upcase} 2> #{upload_dir + 'output.err'}"
-      end
-      # logger.debug("FINAL_FORMAT:" + file_format.to_json)
-      @log += output_file.to_s
-      logger.debug "CMD #{@cmd}"
-      @res = `#{@cmd}`
-      @h_json = nil
-      logger.debug("Output file exists: #{File.exist? output_file}")
-      ## check if h5AD correct otherwise try to convert it                                                                                              
-      if File.exist? output_file
-        output_json = File.read output_file
-        output_json.gsub!(/\s+/, ' ')
-        h_json = JSON.parse(output_json)
-        if params['organism'] and h_json['displayed_error'] and m = h_json['displayed_error'].match(/\[FORMAT_H5AD\]/)
-          #           convert_filepath = filepath + '.tmp'                        
-          convert_output = upload_dir + 'convert_output.json'
-          convert_filepath = upload_dir + "converted.h5ad"
-          cmd = "docker run -t --network=asap2_asap_network -e HOST_USER_ID=$(id -u) -e HOST_USER_GID=$(id -g) --rm -v /data/asap2:/data/asap2 -v /srv/asap_run/srv:/srv fabdavid/asap_run:v5 python3 h5ad_reformat.py #{filepath} #{convert_filepath} #{convert_output}" # 1> #{upload_dir + "convert.log"} 2> #{upload_dir + "convert.err"}"
-          logger.debug("CONVERT : #{cmd}")
-          res = `#{cmd}`
-          logger.debug("res: #{res}")
-          if File.exist? convert_filepath
-            logger.debug "TEST preparsing"
-            FileUtils.move convert_filepath, filepath
-            @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T Preparsing #{options.join(" ")} -organism #{params['organism']} -f \"#{filepath}\" -o #{upload_dir} -h localhost:5434/asap2_development 2> #{upload_dir + 'output.err'}"
-            @res = `#{@cmd}`
-            @log += output_file.to_s
-            logger.debug "CMD2 #{@cmd}"
-          else
-            logger.debug("#{convert_filepath} is not found")
-          end
-        end
-      end
-      
-      if File.exist? output_file
-        output_json = File.read output_file
-        output_json.gsub!(/\s+/, ' ')
-        @log+= output_json
         
-        if !output_json.empty?
-          # logger.debug output_json
-          @h_json = JSON.parse(output_json)
+      else ### preparsing of input file (before parsing)
+        
+        #        @cmd = "docker run --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2 fabdavid/asap_run:v8.1 -c 'python3 preparse.v8.py #{options.join(" ")} --organism #{params['organism']} -f \"#{filepath}\" -o #{upload_dir} -h localhost:5434/asap2_development 2> #{upload_dir + 'output.err'}'"
+         @cmd = "docker run --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2 fabdavid/asap_run:v8.1 -c 'python3 preparse.v8.py #{options.join(" ")} --organism #{params['organism']} -f \"#{filepath}\" -o #{upload_dir} 2> #{upload_dir + 'output.err'}'" 
+        @res = `#{@cmd}`
+        @log += output_file.to_s
+        logger.debug "CMD2 #{@cmd}"
+        
+        @h_json = {}
+        
+        if File.exist? output_file
+          output_json = File.read output_file
+          output_json.gsub!(/\s+/, ' ')
           
-          @h_json['detected_format'] = file_format || @h_json['detected_format']
-          #{"detected_format":null,"list_groups":[{"group":"Pernille","nb_cells":6,"nb_genes":47729","is_count":1,"genes":["ENSMUSG00000000001","ENSMUSG00000000003","ENSMUSG00000000028","ENSMUSG00000000031","ENSMUSG00000000037","ENSMUSG00000000049","ENSMUSG00000000056","ENSMUSG00000000058","ENSMUSG00000000078","ENSMUSG00000000085"],"cells":["E5_S7","A1_S5","D6_S8","A9_S6","pos_control_S9","neg_control_S10"],"matrix":[[97.0,0.0,26.0,0.0,66.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,13.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,2.0,0.0],[0.0,0.0,0.0,8.0,12.0,0.0],[0.0,176.0,0.0,44.0,60.0,0.0],[1.0,33.0,0.0,0.0,4.0,0.0]]}]}
-          
-          ### record upload details if available                                                                                              
-          if @h_json['detected_format'] and !params[:sel]
-            @h_upload_details = {
-              'detected_format' => file_format || @h_json['detected_format']              
-            }
+          if !output_json.empty?
+            # logger.debug output_json                                                                                                                                                                    
+            @h_json = JSON.parse(output_json)
             
-            File.open(upload_details_file, 'w') do |f|
-              f.write @h_upload_details.to_json
-            end
-          end
-          
-          if @h_json['list_groups'] and @h_json['list_groups'].size == 1 and (!@current_dataset or !@current_dataset['matrix'] or !@current_dataset['pred_max_ram']) ## it is a file and add new dataset
-            
-            current_dataset = @h_json['list_groups'].first
-            
-            ## predict parsing time 
-            std_method = StdMethod.where(:step_id => parsing_step.id).first                                                                                                                                                
-            @cmd = "docker run --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2 -v /srv/asap_run/srv:/srv fabdavid/asap_run:v#{params[:version_id]} -c 'Rscript prediction.tool.2.R predict /data/asap2/pred_models/#{params[:version_id]} #{std_method.id} #{current_dataset['nber_rows']} #{current_dataset['nber_cols']} 2>&1'"                                                                           
-            pred_results_json = `#{@cmd}`.split("\n").first #.gsub(/^(\{.+?\})/, "\1")            
-            h_pred_results = Basic.safe_parse_json(pred_results_json, {})
-            
-            #            h_pred_results = Basic.safe_parse_json(pred_results_json, {})              
-            
-            current_dataset['pred_max_ram'] = (h_pred_results['predicted_ram'] == 'NA') ? '' : h_pred_results['predicted_ram']
-            current_dataset['pred_process_duration'] = (h_pred_results['predicted_time'] == 'NA') ? '' : h_pred_results['predicted_time']
-            
-            @h_json['list_groups'] = [current_dataset]
-            ### re-write
-            File.open(output_file, 'w') do |fw|
-              fw.write @h_json.to_json
-            end
-            
-            @current_dataset = current_dataset #@h_json['list_groups'].first
-            ["detected_format", "metadata"].each do |e|
-              @current_dataset[e] = @h_json[e]
-            end
-            
-            ## read existing datasets.json          
-            if File.exist? dataset_file
-              @h_datasets = JSON.parse(File.read(dataset_file))            
-            end
-            #          h_datasets = {}
-            #          @datasets.map{|d| h_datasets[d['group']]=1}
-            if !@h_datasets[options_txt]
-              @h_datasets[options_txt]= @current_dataset
-              #          if !h_datasets[@current_dataset['group']]
-              #            @datasets.push @current_dataset
-              #          end
-            end
-            ##write new datasets.json
-            File.open(dataset_file, 'w') do |f|
-              f.write @h_datasets.to_json
-            end
-            
-          #File.delete output_file
-          elsif @h_json['list_groups'] and @h_json['list_groups'].size > 1
-            @h_datasets = {}
-            opt = []
-            @list_datasets = []
-            @h_json['list_groups'].each do |group|
-              ['detected_format', 'metadata'].each do |e|
-                group[e] = @h_json[e]
+            @h_json['detected_format'] = file_format || @h_json['detected_format']
+            #{"detected_format":null,"list_groups":[{"group":"Pernille","nb_cells":6,"nb_genes":47729","is_count":1,"genes":["ENSMUSG00000000001","ENSMUSG00000000003","ENSMUSG00000000028","ENSMUSG00000000031","ENSMUSG00000000037","ENSMUSG00000000049","ENSMUSG00000000056","ENSMUSG00000000058","ENSMUSG00000000078","ENSMUSG00000000085"],"cells":["E5_S7","A1_S5","D6_S8","A9_S6","pos_control_S9","neg_control_S10"],"matrix":[[97.0,0.0,26.0,0.0,66.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,13.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,2.0,0.0],[0.0,0.0,0.0,8.0,12.0,0.0],[0.0,176.0,0.0,44.0,60.0,0.0],[1.0,33.0,0.0,0.0,4.0,0.0]]}]}                                                                                                      
+            ### record upload details if available                                                                                                                                                        
+            if @h_json['detected_format'] and !params[:sel]
+              @h_upload_details = {
+                'detected_format' => file_format || @h_json['detected_format']
+              }
+              
+              File.open(upload_details_file, 'w') do |f|
+                f.write @h_upload_details.to_json
               end
-              opt = "-sel '" + group['group'] + "'"
-              @h_datasets[opt] = group
-              @list_datasets.push({'filename' => group['group']})
-            end
-            ##write new datasets.json                                                                                                                                                                                              
-            File.open(dataset_file, 'w') do |f|
-              f.write @h_datasets.to_json
             end
             
-            ##write list_files.json                    
-            File.open( filelist_file, 'w') do |f|
-              f.write({'list_files' => @list_datasets}.to_json)
+            if @h_json['list_groups'] and @h_json['list_groups'].size == 1 and (!@current_dataset or !@current_dataset['matrix'] or !@current_dataset['pred_max_ram']) ## it is a file and add new dataset                                                                                                                                                                                                   
+              current_dataset = @h_json['list_groups'].first
+              
+              ## predict parsing time                                                                                                                                                                     
+              std_method = StdMethod.where(:step_id => parsing_step.id).first    
+              
+              @cmd = "docker run --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2 fabdavid/asap_run:v#{params[:version_id]} -c 'Rscript prediction.tool.2.R predict /data/asap2/pred_models/#{params[:version_id]} #{std_method.id} #{current_dataset['nber_rows']} #{current_dataset['nber_cols']} 2>&1'"                          
+              
+              pred_results_json = `#{@cmd}`.split("\n").first #.gsub(/^(\{.+?\})/, "\1")                                                                                                                  
+              h_pred_results = Basic.safe_parse_json(pred_results_json, {})
+              
+              current_dataset['pred_max_ram'] = (h_pred_results['predicted_ram'] == 'NA') ? '' : h_pred_results['predicted_ram']
+              current_dataset['pred_process_duration'] = (h_pred_results['predicted_time'] == 'NA') ? '' : h_pred_results['predicted_time']
+              
+              @h_json['list_groups'] = [current_dataset]
+              ### re-write                                                                                                                                                                                
+              File.open(output_file, 'w') do |fw|
+                fw.write @h_json.to_json
+              end
+              
+              @current_dataset = current_dataset #@h_json['list_groups'].first                                                                                                                            
+              ["detected_format", "metadata"].each do |e|
+                @current_dataset[e] = @h_json[e]
+              end
+              
+              ## read existing datasets.json                                                                                                                                                              
+              if File.exist? dataset_file
+                @h_datasets = JSON.parse(File.read(dataset_file))
+              end
+              if !@h_datasets[options_txt]
+                @h_datasets[options_txt]= @current_dataset
+              end
+              ##write new datasets.json                                                                                                                                                                   
+              File.open(dataset_file, 'w') do |f|
+                f.write @h_datasets.to_json
+              end
+              
+            #File.delete output_file                                                                                                                                                                      
+            elsif @h_json['list_groups'] and @h_json['list_groups'].size > 1
+              @h_datasets = {}
+              opt = []
+              @list_datasets = []
+              @h_json['list_groups'].each do |group|
+                ['detected_format', 'metadata'].each do |e|
+                  group[e] = @h_json[e]
+                end
+                opt = "--sel '" + group['group'] + "'"
+                @h_datasets[opt] = group
+                @list_datasets.push({'filename' => group['group']})
+              end
+              
+              ##write new datasets.json
+              File.open(dataset_file, 'w') do |f|
+                f.write @h_datasets.to_json
+              end
+              
+              ##write list_files.json
+              File.open( filelist_file, 'w') do |f|
+                f.write({'list_files' => @list_datasets}.to_json)
+              end
+              
+            elsif @h_json['displayed_error']
+              @error = @h_json['displayed_error']
+            elsif @h_json['list_files'] and @h_json['list_files'].size > 1 ## it is a list of datasets                                                                                                                  
+              ### re-write     
+              File.open(output_file, 'w') do |fw|
+                fw.write @h_json.to_json
+              end
+              
+              ## move file         
+              @list_datasets = @h_json['list_files']
+              FileUtils.cp output_file, filelist_file
             end
-            
-          elsif @h_json['displayed_error']
-            @error = @h_json['displayed_error']
-          elsif @h_json['list_files'] and @h_json['list_files'].size > 1 ## it is a list of datasets
-            
-            ### re-write                                                                                                                                                                      
-            File.open(output_file, 'w') do |fw|
-              fw.write @h_json.to_json
+          else
+            if File.exist?(upload_dir + 'output.err')
+              err = File.read(upload_dir + 'output.err')
+              @h_json = {"displayed_error" => err} #(@h_json and @h_json['displayed_error']) ? @h_json['displayed_error'] : err}       
+              File.open(output_file, 'w') do |fw|
+                fw.write @h_json.to_json
+              end
             end
-            
-            ## move file
-            @list_datasets = @h_json['list_files']
-            FileUtils.cp output_file, filelist_file
-            
-            #File.open(filelist_file, 'w') do |f|
-            #  f.write @list_datasets.to_json
-            #end
-            # elsif  @h_json['metadata']
-            #   @current_dataset =  @h_json['metadata']
           end
         end
-      else
-        if File.exist?(upload_dir + 'output.err')
-          err = File.read(upload_dir + 'output.err')
-          #          puts "Rewriting output.json... #{@h_json.to_json}"
-          @h_json = {"displayed_error" => err} #(@h_json and @h_json['displayed_error']) ? @h_json['displayed_error'] : err}
-          File.open(output_file, 'w') do |fw|
-            fw.write @h_json.to_json
-          end
+        
+        if @h_json['list_files']
+          @list_datasets = @h_json['list_files']
         end
       end
-      ['row_names', 'col_names'].each do |e|
-        new_e = (e.gsub("_", "").singularize + "_metadata").to_sym
-        params[new_e] = @h_json[e]
       end
-      
-      #      else
-      #        #-col first -o tutu -loom /data/asap2/users/1/06y2o7/parsing/output.loom -f /data/asap2/fus/24350/gene_annotation.txt  -header true -which gene
-      #        project = @fu.project 
-      #        project_dir = Pathname.new(APP_CONFIG[:data_dir]) + 'users' + @project.user_id.to_s + @project.key
-      #        upload_dir = Pathname.new(APP_CONFIG[:data_dir]) +  'fus' + @fu.id.to_s
-      #        filepath = upload_dir + @fu.upload_file_name
-      
-      #        parsing_loom_file = project_dir + 'parsing' + 'output.loom' 
-      ##       @cmd = "java -jar #{APP_CONFIG[:local_asap_run_dir]}/ASAP.jar -T PreparseMetadata #{options.join(" ")} -loom #{parsing_loom_file} -f \"#{filepath}\" -o #{upload_dir} -h localhost:5434/asap2_development"
-      
-      #        @res = `#{@cmd}`
-      #       @h_json = nil
-      #       if File.exist? output_file
-      #       output_json = File.read output_file
-      #         output_json.gsub!(/\s+/, ' ')
-      #         @log+= output_json
-      #
-      #          if !output_json.empty?
-      #            logger.debug output_json
-      #            @h_json = JSON.parse(output_json)
-      #
-      #            ### record upload details if available                                                                                                            #  
-#            if @h_json['detected_format'] and !params[:sel]
-      #              @h_upload_details = {
-      #                'detected_format' => @h_json['detected_format']
-      #              }
-      #              
-      #              File.open(upload_details_file, 'w') do |f|
-      #                f.write @h_upload_details.to_json
-      #              end
-      #            end
-#            
-      #          end
-      
-      # end
-      
     end
     
     render :partial => 'preparsing' 

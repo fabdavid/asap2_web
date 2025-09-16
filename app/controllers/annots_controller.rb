@@ -1,19 +1,99 @@
 class AnnotsController < ApplicationController
   before_action :set_annot, only: [:batch_load_ontology, :check_ontology, :get_cats, :get_cat_legend, :get_cat_details, :show, :edit, :update, :destroy]
 
+
+  def find_preferred_ontology_terms_with_mapping(list_cats, selected_cell_ontology_ids)
+    # 1. Ensure we have valid inputs to prevent errors
+    return {} if list_cats.blank? || selected_cell_ontology_ids.blank?
+    
+    # 2. Build a database-specific ORDER BY clause for custom sorting
+    order_clause = selected_cell_ontology_ids.map.with_index do |id, index|
+      "WHEN #{id.to_i} THEN #{index}"
+    end.join(' ')
+    sql_order_statement = "CASE cell_ontology_id #{order_clause} END"
+    
+    # 3. Build and execute the combined query, sorted by our preference
+    base_query = CellOntologyTerm.where(cell_ontology_id: selected_cell_ontology_ids)
+    
+    all_matches_sorted = base_query
+                           .where(name: list_cats, original: true)
+                           .or(base_query.where(identifier: list_cats))
+                           .order(Arel.sql(sql_order_statement))
+    
+    # 4. Process sorted results to get the first unique match for each search term.
+    # The `result_map` will store our final 'input' => 'record' mapping.
+    result_map = {}
+    
+    # Create a set of remaining search terms for efficiency.
+    # This avoids repeatedly searching the original list_cats array.
+    remaining_terms = Set.new(list_cats)
+    
+    all_matches_sorted.each do |cot|
+      # Stop iterating if we have found a match for every single search term.
+      break if remaining_terms.empty?
+      
+      # Check if the record's name matches a term we are still looking for.
+      if remaining_terms.include?(cot.name)
+        result_map[cot.name] = cot
+        remaining_terms.delete(cot.name) # We found it, so don't look for it again.
+      end
+      
+      # Check if the record's identifier matches a term we are still looking for.
+      if remaining_terms.include?(cot.identifier)
+        result_map[cot.identifier] = cot
+        remaining_terms.delete(cot.identifier) # We found it, so don't look for it again.
+      end
+    end
+
+   logger.debug(result_map)
+    
+    # 5. Return the hash map directly.
+    return result_map
+  end
+  
   def batch_load_ontology
     
     cots = []
     @h_cot_by_name = {}
     @list_cats = []
     if readable?(@project) and params[:ott_id]
-      @list_cats = Basic.safe_parse_json(@annot.list_cat_json, [])
+      @tmp_list_cats = Basic.safe_parse_json(@annot.list_cat_json, [])
       
-      ott = OntologyTermType.where(:id => params[:ott_id]).first
-      cots = CellOntologyTerm.where(:name => @list_cats, :cell_ontology_id => ott.cell_ontology_ids.split(","))
-      cots |= CellOntologyTerm.where(:identifier => @list_cats, :cell_ontology_id => ott.cell_ontology_ids.split(","))
-    end
+      @tmp_list_cats.each do |cat|
+        begin
+          sub_list = JSON.parse(cat.gsub(/'/, "\""))
+          @list_cats += sub_list
+        rescue
+          @list_cats.push cat
+        end
+      end
 
+      ott = OntologyTermType.where(:id => params[:ott_id]).first
+      
+      project = @annot.project
+      organism = project.organism
+      cell_ontology_ids = ott.cell_ontology_ids.split(",")
+      h_co = {}
+      cell_ontologies = CellOntology.where(:id => cell_ontology_ids).all
+      cell_ontologies.map{|e| h_co[e.id.to_s] = e}
+      selected_cell_ontologies = cell_ontology_ids.map{|e_id| h_co[e_id]}.select{|e|
+        if e.tax_ids and e.tax_ids != ''
+          e.tax_ids.split(",").include?(organism.tax_id.to_s)
+        else
+          true
+        end
+      }
+      
+      selected_cell_ontology_ids = selected_cell_ontologies.map{|e| e.id}
+   
+    #  cots = CellOntologyTerm.where(:name => @list_cats, :cell_ontology_id => selected_cell_ontology_ids)
+    #  cots |= CellOntologyTerm.where(:identifier => @list_cats, :cell_ontology_id => selected_cell_ontology_ids)
+
+      h_cots = find_preferred_ontology_terms_with_mapping(@list_cats, selected_cell_ontology_ids)
+      cots = h_cots.values
+      
+    end
+    
     cots.each do |cot|
       @h_cot_by_name[cot.identifier] = cot.id
       @h_cot_by_name[cot.name] = cot.id

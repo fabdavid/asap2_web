@@ -168,7 +168,7 @@ module Basic
             {
               :identifier => (cot_id = otp.cell_ontology_term_id) ? h_cots[cot_id].identifier : nil,
               :name => (cot_id) ? h_cots[cot_id].name : otp.free_text,
-              :from_metadata => (otp.annot_id) ? h_annots[otp.annot_id].name : nil
+              :from_metadata => (otp.annot_id and h_annots[otp.annot_id]) ? h_annots[otp.annot_id].name : nil
             }
           }
         end
@@ -1070,14 +1070,14 @@ module Basic
         filepath = user_dir + project_archive
 
         ## get file from s3
-        #if !File.exist? filepath
-        
-        r = write_file_from_s3 s3, s3b[:key], p, filepath
-        while r == false and !File.exist? filepath
-          sleep 2
+        if !File.exist? filepath
+          
           r = write_file_from_s3 s3, s3b[:key], p, filepath
+          while r == false and !File.exist? filepath
+            sleep 2
+            r = write_file_from_s3 s3, s3b[:key], p, filepath
+          end
         end
-        #end
         
         ## tar and pigz
         cmd = "cd #{user_dir} && pigz -p 32 -dc #{project_archive} | tar -xv"

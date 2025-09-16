@@ -4,7 +4,7 @@ task generate_projects_json: :environment do
 
   now = Time.now
 
-  @public_projects = Project.where(:public => true).all
+  @public_projects = Project.where(:public => true, :replaced_by_project_key => ["", nil]).where("version_id > 3").order(:public_id).all
 
   
   # Set the ActiveRecord logger level to a higher level to suppress SQL logs

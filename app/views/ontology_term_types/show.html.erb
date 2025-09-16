@@ -1,4 +1,6 @@
 <p id="notice"><%= notice %></p>
 
+<% if admin? %>
 <%= link_to 'Edit', edit_ontology_term_type_path(@ontology_term_type) %> |
+<% end %>
 <%= link_to 'Back', ontology_term_types_path %>

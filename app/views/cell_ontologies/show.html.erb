@@ -1,4 +1,6 @@
 <p id="notice"><%= notice %></p>
 
+<% if admin? %>
 <%= link_to 'Edit', edit_cell_ontology_path(@cell_ontology) %> |
+<% end %>
 <%= link_to 'Back', cell_ontologies_path %>

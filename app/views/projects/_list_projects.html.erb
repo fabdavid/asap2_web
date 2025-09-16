@@ -79,7 +79,7 @@
 	<% shares = project.shares %>
 	  <% if (current_user and u and u.email == current_user.email) or admin? %>
 	  <%= raw ((nb_shares = shares.size) > 0) ? ("<span title='" + shares.map{|s| s.email + "[" + [s.view_perm && 'V', s.analyze_perm && 'A', s.export_perm && 'E'].select{|e| e}.join(",") + "]"}.join(", ") + "'>Shared <span class='badge badge-info'>#{nb_shares}</span></span>") : "Not shared" %>
- <% elsif s = shares.select{|s| s.email == current_user.email}.first %>
+ <% elsif current_user and s = shares.select{|s| s.email == current_user.email}.first %>
 	   <%# (read_only?(project)) ? ' : 'Read/Write' %> 
 	   <% h_title = {'eye-open' => 'View', 'stats' => 'Analyze', 'export' => 'Export'} %>
 	   <%= raw [s.view_perm && 'eye-open', s.analyze_perm && 'stats', s.export_perm && 'export'].select{|e| e}.map{|e| 

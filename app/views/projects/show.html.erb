@@ -149,6 +149,11 @@ var landing_page = <%= raw h_landing_page.to_json %>
 
 console.log(landing_page)
 <% if h_landing_page['step'] %>
+if (i==4){
+<% h_p = {:key => @project.key, :nolayout => 1, :fixed_session => 1, :step_id => @h_steps_by_name[h_landing_page['step']].id} %>
+<% h_landing_page['s'].keys.map{|k| h_p[k] = h_landing_page['s'][k] } %>
+refresh("step_container", "<%= raw get_step_project_path(h_p) %>", {loading: 'fa-2x loading-step'});
+}else{
 <% h_p = {:key => @project.key, :nolayout => 1, :fixed_session => 1, :step_id => @h_steps_by_name[h_landing_page['step']].id} %>
 <%# h_landing_page['s'].keys.map{|k| h_p[k] = h_landing_page['s'][k] } %>
 <%# if admin? %>
@@ -161,6 +166,7 @@ refresh_post("step_container", "<%= raw get_step_via_post_project_path(:key => @
 <%# else %>
 //refresh("step_container", "<%= raw get_step_project_path(h_p) %>", {loading: 'fa-2x loading-step'});
 <%# end %>
+}
 <% else %>
 upd_summary()
 <% end %>
