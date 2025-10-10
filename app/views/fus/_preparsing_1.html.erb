@@ -5,10 +5,13 @@
 -->
 <% end %>
 
-<%= @log.to_json %>
+<% if admin? %>
+<%# @log.to_json %>
 ========
-<%= @h_datasets.to_json %>
-<%= @current_dataset.to_json %>
+<%# @h_datasets.to_json %>
+<%# @current_dataset.to_json %>
+<% end %>
+
 
 <div id='list_datasets' class="list-group <%= 'hidden' if @current_dataset or params[:sel] %>">
   <% if @list_datasets.size > 0 %>
