@@ -425,7 +425,9 @@ class FusController < ApplicationController
       else ### preparsing of input file (before parsing)
         
         #        @cmd = "docker run --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2 fabdavid/asap_run:v8.1 -c 'python3 preparse.v8.py #{options.join(" ")} --organism #{params['organism']} -f \"#{filepath}\" -o #{upload_dir} -h localhost:5434/asap2_development 2> #{upload_dir + 'output.err'}'"
-         @cmd = "docker run --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2 fabdavid/asap_run:v8.1 -c 'python3 preparse.v8.py #{options.join(" ")} --organism #{params['organism']} -f \"#{filepath}\" -o #{upload_dir} 2> #{upload_dir + 'output.err'}'" 
+        @cmd = "docker run --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2 fabdavid/asap_run:v8.1 -c 'python3 preparse.v8.py #{options.join(" ")} -f \"#{filepath}\" -o #{upload_dir} 2> #{upload_dir + 'output.err'}'"
+#          @cmd = "docker run --entrypoint '/bin/sh' --rm -v /data/asap2:/data/asap2 fabdavid/asap_run:v7 -c 'java -jar ASAP.jar -T Preparsing #{options.join(" ")} --organism #{params['organism']} -f \"#{filepath}\" -o #{upload_dir} 2> #{upload_dir + 'output.err'}'"
+
         @res = `#{@cmd}`
         @log += output_file.to_s
         logger.debug "CMD2 #{@cmd}"

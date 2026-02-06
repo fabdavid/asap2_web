@@ -45,7 +45,7 @@
 
   <div class='form-group col-12 col-md-2'>
     <%= label_tag 'version_id', 'ASAP version', {'data-toggle' => "tooltip"} %>
-    <% l = Version.where(:activated => (admin? or uab?) ? [true, false] : true).order("id desc").all.select{|e| e.id > 3}.map{|e| [e.id.to_s + ((e.beta) ? ' (beta)' : ''), e.id]} %>
+    <% l = Version.where(:activated => (admin?) ? [true, false] : true).order("id desc").all.select{|e| e.id > 3}.map{|e| [e.id.to_s + ((e.beta) ? ' (beta)' : ''), e.id]} %>
     <%= f.select :version_id, l,  {}, {:class => "form-control", :placeholder => "ASAP version"} %>
   </div>
   
