@@ -1737,7 +1737,7 @@ class ProjectsController < ApplicationController
           @cmd = "echo '#{runs.map{|r| r.id}.join("\n")}' | xargs -P 24 -I '{}' lib/filter_ge '#{@project_dir}' #{@h_ge_filters['fdr_cutoff']} ge_results #{(current_user) ? current_user.id : 1} '{}' > #{@project_dir + 'toto_ge.txt'}"
           logger.debug("ge_filter cmd : #{@cmd}")
 #          #        
-          script_file = @project_dir + "tmp" + "#{(current_user.id) ? current_user.id : 1}_ge_script.sh"
+          script_file = @project_dir + "tmp" + "#{(current_user) ? current_user.id : 1}_ge_script.sh"
           File.open(script_file, "w") do |f2|
             f2.write(@cmd)
           end
