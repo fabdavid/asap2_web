@@ -26,6 +26,10 @@ task exec_runs: :environment do
     project = run.project
     step = run.step
     project_dir = Pathname.new(APP_CONFIG[:user_data_dir]) + project.user_id.to_s + project.key
+    if !File.exist? project_dir and project.archive_status_id == 3
+      Basic.unarchive(project.key)
+    end
+    
     step_dir = project_dir + step.name
     Dir.mkdir step_dir if !File.exist? step_dir
     output_dir = (step.multiple_runs == true) ? (step_dir + run.id.to_s) : step_dir  

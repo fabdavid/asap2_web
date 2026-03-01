@@ -41,7 +41,7 @@ task update_xrefs: :environment do
     end
   end
   
-  base_url = "ftp://ftp.ensembl.org/pub/current_mysql/"
+  base_url = "ftp://ftp.ensembl.org/pub/60/"
   tmp_dir = Pathname.new("./tmp/")
   data_dir = Pathname.new(APP_CONFIG[:data_dir])
 

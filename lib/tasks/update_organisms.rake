@@ -12,7 +12,7 @@ task update_organisms: :environment do
 
   urls = [
 #    "https://ftp.ensembl.org/pub/release-113/species_EnsemblVertebrates.txt",
-#    "https://ftp.ensemblgenomes.org/pub/release-60/species.txt"
+    #    "https://ftp.ensemblgenomes.org/pub/release-60/species.txt"
     ["https://ftp.ensembl.org/pub/release-113/species_metadata_EnsemblVertebrates.json", 'vertebrates_species.json'],
     ["https://ftp.ensemblgenomes.org/pub/release-60/species_metadata.json", 'ensemblgenomes_species.json']
   ]

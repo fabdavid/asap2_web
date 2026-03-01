@@ -2840,7 +2840,7 @@ class ProjectsController < ApplicationController
                       new_command[k].gsub!(/\/#{run_id}$/, "/#{h_runs[run_id.to_i].id}")
                       new_command[k].gsub!(/\/#{run_id}\//, "/#{h_runs[run_id.to_i].id}\/")
                       new_command[k].gsub!(/\/#{@project.key}\//, "/#{new_project.key}/")
-                      new_command[k].gsub!(/\/#{user_id}\//, "/#{current_user.id}/")
+                      new_command[k].gsub!(/\/#{user_id}\//, "/#{new_project.user_id}/")
                     end
                   end             
                   #              new_command['time_call'].gsub!(/\/#{@project.key}\//, "/#{new_project.key}/")
@@ -2860,7 +2860,7 @@ class ProjectsController < ApplicationController
                     end
                     if new_command[k][i]['value'].to_s.match(/\/data\/asap2\/users\/(\d+)\/#{@project.key}\//)
                       new_command[k][i]['value'].gsub!(/\/#{@project.key}\//, "/#{new_project.key}/")
-                      new_command[k][i]['value'].gsub!(/\/#{user_id}\//, "/#{current_user.id}/")
+                      new_command[k][i]['value'].gsub!(/\/#{user_id}\//, "/#{new_project.user_id}/")
                     end
                   end
                 end
@@ -2890,7 +2890,7 @@ class ProjectsController < ApplicationController
                 end
                 if new_attrs[k].to_s.match(/\/data\/asap2\/users\/(\d+)\/#{@project.key}\//)
                   new_attrs[k].gsub!(/\/#{@project.key}\//, "/#{new_project.key}/")
-                  new_attrs[k].gsub!(/\/#{user_id}\//, "/#{current_user.id}/")
+                  new_attrs[k].gsub!(/\/#{user_id}\//, "/#{new_project.user_id}/")
                 end
 
               end
@@ -2950,6 +2950,8 @@ class ProjectsController < ApplicationController
         @project.update_attribute(:nber_cloned, @project.nber_cloned + 1) if !admin?
 
         rescue Exception => e
+        logger.error("Clone failed for source project #{@project.key} to target project #{new_project.key}: #{e.class}: #{e.message}")
+        logger.error(e.backtrace.join("\n"))
         @error = (admin?) ? (e.message + "\n" + e.backtrace.to_json) : "Cloning the project failed, please contact us to investigate the issue"
         #new_pp = Project.where(:key => new_project.key)
         #delete_project(new_p)

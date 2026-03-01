@@ -654,7 +654,7 @@ task update_genes: :environment do
   #  readme = `wget -O - 'http://ftp.ensembl.org/pub/current_README'`
   #  if m = readme.match(/Ensembl Release (\d+) Databases./)
   #   final_release = m[1].to_i
-  final_release = 113
+  final_release = 115
   if initial_release <= final_release
     puts "RELEASE update : from #{initial_release} to #{final_release}"
     
@@ -673,13 +673,13 @@ task update_genes: :environment do
   
   #    final_release = 49 #h_env["tool_versions"]["ensembl_genomes"]
   [:bacteria, :fungi, :metazoa, :plants, :protists].each do |db_type|
-    initial_release = 49
+    initial_release = 61
     #  initial_release = EnsemblSubdomain.where(:name => db_type.to_s).first.latest_ensembl_release + 1
     
     #    readme = `wget -O - 'http://ftp.ensemblgenomes.org/pub/current_README'`
     #    if m = readme.match(/The current release is Ensembl Genomes (\d+)/)
     #      final_release = m[1].to_i
-    final_release = 60
+    final_release = 62
     if initial_release <= final_release
       
       puts "RELEASE update : from #{initial_release} to #{final_release}"
